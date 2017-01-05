@@ -243,7 +243,7 @@ any resulting litigation.
       <import plugin="org.eclipse.ui.workbench"/>
       <import plugin="org.eclipse.ui"/>
       <import plugin="org.eclipse.ltk.ui.refactoring"/>
-      <import plugin="edu.cuny.hunter.streamrefactoring.core" version="1.1.0" match="greaterOrEqual"/>
+      <import plugin="edu.cuny.hunter.streamrefactoring.core" version="1.0.0" match="greaterOrEqual"/>
       <import plugin="edu.cuny.citytech.refactoring.common.ui" version="1.1.0" match="greaterOrEqual"/>
    </requires>
 
