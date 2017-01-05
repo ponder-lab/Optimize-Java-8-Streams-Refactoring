@@ -4,13 +4,13 @@
   <extension point="org.eclipse.ui.commands">
     <command
           categoryId="org.eclipse.jdt.ui.category.refactoring"
-          defaultHandler="edu.cuny.hunter.streamrefactoring.ui.handlers.MigrateSkeletalImplementationToInterfaceHandler"
+          defaultHandler="edu.cuny.hunter.streamrefactoring.ui.handlers.ConvertStreamToParallelHandler"
           description="%MigrateSkeletalImplementationToInterfaceDescription"
           id="org.eclipse.migrate.skeletal.implementation.to.interface.command"
-          name="%MigrateSkeletalImplementationToInterfaceLabel"></command>
+          name="%ConvertStreamToParallelLabel"></command>
   </extension>
   <extension point="org.eclipse.ui.handlers">
-    <handler class="edu.cuny.hunter.streamrefactoring.ui.handlers.MigrateSkeletalImplementationToInterfaceHandler" commandId="org.eclipse.migrate.skeletal.implementation.to.interface.command">
+    <handler class="edu.cuny.hunter.streamrefactoring.ui.handlers.ConvertStreamToParallelHandler" commandId="org.eclipse.migrate.skeletal.implementation.to.interface.command">
       <activeWhen>
         <with variable="selection">
           <iterate ifEmpty="false" operator="or">

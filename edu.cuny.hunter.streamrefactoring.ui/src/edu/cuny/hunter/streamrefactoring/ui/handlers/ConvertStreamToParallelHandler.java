@@ -31,10 +31,10 @@ import org.osgi.framework.FrameworkUtil;
 import edu.cuny.hunter.streamrefactoring.core.utils.RefactoringAvailabilityTester;
 import edu.cuny.hunter.streamrefactoring.ui.wizards.MigrateSkeletalImplementationToInterfaceRefactoringWizard;
 
-public class MigrateSkeletalImplementationToInterfaceHandler extends AbstractHandler {
+public class ConvertStreamToParallelHandler extends AbstractHandler {
 
 	/**
-	 * Gather all the methods from the user's selection.
+	 * Gather all the streams from the user's selection.
 	 */
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
