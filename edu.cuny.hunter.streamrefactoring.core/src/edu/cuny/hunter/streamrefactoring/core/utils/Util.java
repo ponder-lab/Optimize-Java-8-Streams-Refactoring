@@ -23,7 +23,7 @@ import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.participants.ProcessorBasedRefactoring;
 import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
 
-import edu.cuny.hunter.streamrefactoring.core.refactorings.MigrateSkeletalImplementationToInterfaceRefactoringProcessor;
+import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
 
 /**
  * @author <a href="mailto:rkhatchadourian@citytech.cuny.edu">Raffi
@@ -37,15 +37,15 @@ public final class Util {
 
 	public static ProcessorBasedRefactoring createRefactoring(IJavaProject project, IMethod[] methods,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
-		MigrateSkeletalImplementationToInterfaceRefactoringProcessor processor = createMigrateSkeletalImplementationToInterfaceRefactoringProcessor(
+		ConvertToParallelStreamRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(
 				project, methods, monitor);
 		return new ProcessorBasedRefactoring(processor);
 	}
 
-	public static MigrateSkeletalImplementationToInterfaceRefactoringProcessor createMigrateSkeletalImplementationToInterfaceRefactoringProcessor(
+	public static ConvertToParallelStreamRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
 			IJavaProject project, IMethod[] methods, Optional<IProgressMonitor> monitor) throws JavaModelException {
 		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(project);
-		MigrateSkeletalImplementationToInterfaceRefactoringProcessor processor = new MigrateSkeletalImplementationToInterfaceRefactoringProcessor(
+		ConvertToParallelStreamRefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor(
 				methods, settings, monitor);
 		return processor;
 	}
@@ -65,7 +65,7 @@ public final class Util {
 	}
 
 	public static ProcessorBasedRefactoring createRefactoring() throws JavaModelException {
-		RefactoringProcessor processor = new MigrateSkeletalImplementationToInterfaceRefactoringProcessor();
+		RefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor();
 		return new ProcessorBasedRefactoring(processor);
 	}
 

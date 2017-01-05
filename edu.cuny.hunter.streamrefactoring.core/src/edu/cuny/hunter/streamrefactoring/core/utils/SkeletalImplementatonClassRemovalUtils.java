@@ -24,7 +24,7 @@ import org.eclipse.jdt.internal.corext.util.JdtFlags;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.RefactoringStatusContext;
 
-import edu.cuny.hunter.streamrefactoring.core.refactorings.MigrateSkeletalImplementationToInterfaceRefactoringProcessor;
+import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
 
 @SuppressWarnings("restriction")
 public final class SkeletalImplementatonClassRemovalUtils {
@@ -154,7 +154,7 @@ public final class SkeletalImplementatonClassRemovalUtils {
 		monitor.ifPresent(m -> m.beginTask("Checking superclass ...", IProgressMonitor.UNKNOWN));
 		try {
 			if (type.getSuperclassName() != null) { // there's a superclass.
-				ITypeHierarchy superTypeHierarchy = MigrateSkeletalImplementationToInterfaceRefactoringProcessor
+				ITypeHierarchy superTypeHierarchy = ConvertToParallelStreamRefactoringProcessor
 						.getSuperTypeHierarchy(type,
 								monitor.map(m -> new SubProgressMonitor(m, IProgressMonitor.UNKNOWN)));
 				IType superclass = superTypeHierarchy.getSuperclass(type);

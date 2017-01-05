@@ -4,7 +4,7 @@
    <extension
          point="org.eclipse.ltk.core.refactoring.refactoringContributions">
       <contribution
-            class="edu.cuny.hunter.streamrefactoring.core.contributions.MigrateSkeletalImplementationToInterfaceRefactoringContribution"
+            class="edu.cuny.hunter.streamrefactoring.core.contributions.ConvertStreamToParallelRefactoringContribution"
             id="org.eclipse.migrate.skeletal.implementation.to.interface.contribution">
       </contribution>
    </extension>

@@ -9,10 +9,10 @@ import org.eclipse.ltk.core.refactoring.Refactoring;
 import org.eclipse.ltk.core.refactoring.RefactoringDescriptor;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 
-import edu.cuny.hunter.streamrefactoring.core.descriptors.MigrateSkeletalImplementationToInterfaceRefactoringDescriptor;
+import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
 
 @SuppressWarnings("restriction")
-public class MigrateSkeletalImplementationToInterfaceRefactoringContribution
+public class ConvertStreamToParallelRefactoringContribution
 		extends JavaUIRefactoringContribution {
 
 	/*
@@ -28,7 +28,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringContribution
 			String description, String comment,
 			@SuppressWarnings("rawtypes") Map arguments, int flags)
 			throws IllegalArgumentException {
-		return new MigrateSkeletalImplementationToInterfaceRefactoringDescriptor(
+		return new ConvertStreamToParallelRefactoringDescriptor(
 				id, project, description, comment, arguments, flags);
 	}
 

@@ -15,13 +15,13 @@ public class Messages extends NLS {
 	public static String Name;
 	public static String CategoryName;
 	public static String CategoryDescription;
-	public static String MethodsNotSpecified;
+	public static String StreamsNotSpecified;
 	public static String CheckingPreconditions;
 	public static String CompilingSource;
 	public static String CreatingChange;
 	public static String CUContainsCompileErrors;
-	public static String NoMethodsHavePassedThePreconditions;
-	public static String NoMethodsToMigrate;
+	public static String NoStreamsHavePassedThePreconditions;
+	public static String NoStreamsToConvert;
 
 	public static String MethodDoesNotExist;
 	public static String PreconditionFailed;

@@ -2,12 +2,12 @@ package edu.cuny.hunter.streamrefactoring.ui.plugins;
 
 import org.osgi.framework.BundleContext;
 
-import edu.cuny.hunter.streamrefactoring.core.descriptors.MigrateSkeletalImplementationToInterfaceRefactoringDescriptor;
+import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
 import edu.cuny.citytech.refactoring.common.ui.RefactoringPlugin;
 
-public class MigrateSkeletalImplementationToInterfaceRefactoringPlugin extends RefactoringPlugin {
+public class OptimizeStreamRefactoringPlugin extends RefactoringPlugin {
 	
-	private static MigrateSkeletalImplementationToInterfaceRefactoringPlugin plugin;
+	private static OptimizeStreamRefactoringPlugin plugin;
 	
 	public static RefactoringPlugin getDefault() {
 		return plugin;
@@ -30,6 +30,6 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringPlugin extends R
 	 */
 	@Override
 	protected String getRefactoringId() {
-		return MigrateSkeletalImplementationToInterfaceRefactoringDescriptor.REFACTORING_ID;
+		return ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID;
 	}
 }

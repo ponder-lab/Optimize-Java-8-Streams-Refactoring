@@ -30,7 +30,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.PlatformUI;
 
 import edu.cuny.hunter.streamrefactoring.core.messages.Messages;
-import edu.cuny.hunter.streamrefactoring.core.refactorings.MigrateSkeletalImplementationToInterfaceRefactoringProcessor;
+import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
 
 /**
@@ -68,7 +68,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringWizard extends R
 
 		IDialogSettings settings;
 
-		private MigrateSkeletalImplementationToInterfaceRefactoringProcessor processor;
+		private ConvertToParallelStreamRefactoringProcessor processor;
 
 		public MigrateSkeletalImplementationToInterfaceInputPage() {
 			super(PAGE_NAME);
@@ -79,7 +79,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringWizard extends R
 		public void createControl(Composite parent) {
 			ProcessorBasedRefactoring processorBasedRefactoring = (ProcessorBasedRefactoring) getRefactoring();
 			RefactoringProcessor refactoringProcessor = processorBasedRefactoring.getProcessor();
-			this.processor = (MigrateSkeletalImplementationToInterfaceRefactoringProcessor) refactoringProcessor;
+			this.processor = (ConvertToParallelStreamRefactoringProcessor) refactoringProcessor;
 			this.loadSettings();
 
 			Composite result = new Composite(parent, SWT.NONE);

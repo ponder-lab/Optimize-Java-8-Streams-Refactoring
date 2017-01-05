@@ -80,7 +80,7 @@ public enum PreconditionFailure {
 	AnnotationMismatch(Messages.AnnotationMismatch),
 	AnnotationNameMismatch(Messages.AnnotationNameMismatch),
 	AnnotationValueMismatch(Messages.AnnotationValueMismatch),
-	NoMethodsHavePassedThePreconditions(Messages.NoMethodsHavePassedThePreconditions),
+	NoMethodsHavePassedThePreconditions(Messages.NoStreamsHavePassedThePreconditions),
 	NoMethodsInAnnotationTypes(Messages.NoMethodsInAnnotationTypes),
 	SourceMethodAccessesInstanceField(Messages.SourceMethodAccessesInstanceField),
 	DestinationProjectIncompatible(Messages.DestinationProjectIncompatible),

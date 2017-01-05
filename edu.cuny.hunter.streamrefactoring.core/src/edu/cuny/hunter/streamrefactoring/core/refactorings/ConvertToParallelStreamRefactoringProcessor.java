@@ -134,7 +134,7 @@ import org.osgi.framework.FrameworkUtil;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
-import edu.cuny.hunter.streamrefactoring.core.descriptors.MigrateSkeletalImplementationToInterfaceRefactoringDescriptor;
+import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
 import edu.cuny.hunter.streamrefactoring.core.messages.Messages;
 import edu.cuny.hunter.streamrefactoring.core.messages.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.utils.RefactoringAvailabilityTester;
@@ -149,7 +149,7 @@ import edu.cuny.hunter.streamrefactoring.core.utils.Util;
  *         Khatchadourian</a>
  */
 @SuppressWarnings({ "restriction" })
-public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extends RefactoringProcessor {
+public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProcessor {
 
 	private final class SourceMethodBodyAnalysisVisitor extends ASTVisitor {
 		private boolean methodContainsSuperReference;
@@ -567,7 +567,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 	 *            The methods to refactor.
 	 * @throws JavaModelException
 	 */
-	public MigrateSkeletalImplementationToInterfaceRefactoringProcessor(final IMethod[] methods,
+	public ConvertToParallelStreamRefactoringProcessor(final IMethod[] methods,
 			final CodeGenerationSettings settings, boolean layer, Optional<IProgressMonitor> monitor)
 					throws JavaModelException {
 		try {
@@ -588,17 +588,17 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 		}
 	}
 
-	public MigrateSkeletalImplementationToInterfaceRefactoringProcessor(final IMethod[] methods,
+	public ConvertToParallelStreamRefactoringProcessor(final IMethod[] methods,
 			final CodeGenerationSettings settings, Optional<IProgressMonitor> monitor) throws JavaModelException {
 		this(methods, settings, false, monitor);
 	}
 
-	public MigrateSkeletalImplementationToInterfaceRefactoringProcessor(Optional<IProgressMonitor> monitor)
+	public ConvertToParallelStreamRefactoringProcessor(Optional<IProgressMonitor> monitor)
 			throws JavaModelException {
 		this(null, null, false, monitor);
 	}
 
-	public MigrateSkeletalImplementationToInterfaceRefactoringProcessor() throws JavaModelException {
+	public ConvertToParallelStreamRefactoringProcessor() throws JavaModelException {
 		this(null, null, false, Optional.empty());
 	}
 
@@ -624,7 +624,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 			this.getExcludedTimeCollector().clear();
 
 			if (this.getSourceMethods().isEmpty())
-				return RefactoringStatus.createFatalErrorStatus(Messages.MethodsNotSpecified);
+				return RefactoringStatus.createFatalErrorStatus(Messages.StreamsNotSpecified);
 			else {
 				RefactoringStatus status = new RefactoringStatus();
 
@@ -848,7 +848,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 						new String[] { JavaElementLabels.getTextLabel(type, JavaElementLabels.ALL_FULLY_QUALIFIED),
 								JavaElementLabels.getTextLabel(destination, JavaElementLabels.ALL_FULLY_QUALIFIED) });
 				result.addEntry(RefactoringStatus.ERROR, message, JavaStatusContext.create(type),
-						MigrateSkeletalImplementationToInterfaceRefactoringDescriptor.REFACTORING_ID,
+						ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID,
 						PreconditionFailure.TypeNotAccessible.ordinal(), sourceMethod);
 				this.getUnmigratableMethods().add(sourceMethod);
 			}
@@ -887,7 +887,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 								JavaElementLabels.getTextLabel(accessedField, JavaElementLabels.ALL_FULLY_QUALIFIED),
 								JavaElementLabels.getTextLabel(destination, JavaElementLabels.ALL_FULLY_QUALIFIED) });
 				result.addEntry(RefactoringStatus.ERROR, message, JavaStatusContext.create(accessedField),
-						MigrateSkeletalImplementationToInterfaceRefactoringDescriptor.REFACTORING_ID,
+						ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID,
 						PreconditionFailure.FieldNotAccessible.ordinal(), sourceMethod);
 				this.getUnmigratableMethods().add(sourceMethod);
 			} else if (!JdtFlags.isStatic(accessedField) && !accessedField.getDeclaringType().isInterface()) {
@@ -944,7 +944,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 						new String[] { getTextLabel(accessedMethod, ALL_FULLY_QUALIFIED),
 								getTextLabel(destination, ALL_FULLY_QUALIFIED) });
 				result.addEntry(RefactoringStatus.ERROR, message, JavaStatusContext.create(accessedMethod),
-						MigrateSkeletalImplementationToInterfaceRefactoringDescriptor.REFACTORING_ID,
+						ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID,
 						PreconditionFailure.MethodNotAccessible.ordinal(), sourceMethod);
 				this.getUnmigratableMethods().add(sourceMethod);
 			} else if (!JdtFlags.isStatic(accessedMethod)) {
@@ -980,7 +980,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 									new String[] { getTextLabel(accessedMethod, ALL_FULLY_QUALIFIED),
 											getTextLabel(destination, ALL_FULLY_QUALIFIED) });
 							result.addEntry(RefactoringStatus.ERROR, message, JavaStatusContext.create(accessedMethod),
-									MigrateSkeletalImplementationToInterfaceRefactoringDescriptor.REFACTORING_ID,
+									ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID,
 									PreconditionFailure.MethodNotAccessible.ordinal(), sourceMethod);
 							this.getUnmigratableMethods().add(sourceMethod);
 						}
@@ -1609,7 +1609,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 								String.format(PreconditionFailure.TypeVariableNotAvailable.getMessage(), unmapped[0],
 										superClassLabel),
 								JavaStatusContext.create(member),
-								MigrateSkeletalImplementationToInterfaceRefactoringDescriptor.REFACTORING_ID,
+								ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID,
 								PreconditionFailure.TypeVariableNotAvailable.ordinal(), sourceMethod);
 						addUnmigratableMethod(sourceMethod, status.getEntryWithHighestSeverity());
 						break;
@@ -1618,7 +1618,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 								MessageFormat.format(PreconditionFailure.TypeVariable2NotAvailable.getMessage(),
 										unmapped[0], unmapped[1], superClassLabel),
 								JavaStatusContext.create(member),
-								MigrateSkeletalImplementationToInterfaceRefactoringDescriptor.REFACTORING_ID,
+								ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID,
 								PreconditionFailure.TypeVariable2NotAvailable.ordinal(), sourceMethod);
 						addUnmigratableMethod(sourceMethod, status.getEntryWithHighestSeverity());
 						break;
@@ -1627,7 +1627,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 								MessageFormat.format(PreconditionFailure.TypeVariable3NotAvailable.getMessage(),
 										unmapped[0], unmapped[1], unmapped[2], superClassLabel),
 								JavaStatusContext.create(member),
-								MigrateSkeletalImplementationToInterfaceRefactoringDescriptor.REFACTORING_ID,
+								ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID,
 								PreconditionFailure.TypeVariable3NotAvailable.ordinal(), sourceMethod);
 						addUnmigratableMethod(sourceMethod, status.getEntryWithHighestSeverity());
 						break;
@@ -1636,7 +1636,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 								MessageFormat.format(PreconditionFailure.TypeVariablesNotAvailable.getMessage(),
 										superClassLabel),
 								JavaStatusContext.create(member),
-								MigrateSkeletalImplementationToInterfaceRefactoringDescriptor.REFACTORING_ID,
+								ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID,
 								PreconditionFailure.TypeVariablesNotAvailable.ordinal(), sourceMethod);
 						addUnmigratableMethod(sourceMethod, status.getEntryWithHighestSeverity());
 					}
@@ -2116,11 +2116,11 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 			IMember member = (IMember) relatedElementCollection[0];
 			RefactoringStatusContext context = JavaStatusContext.create(member);
 			status.addEntry(new RefactoringStatusEntry(severity, message, context,
-					MigrateSkeletalImplementationToInterfaceRefactoringDescriptor.REFACTORING_ID, failure.ordinal(),
+					ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID, failure.ordinal(),
 					sourceMethod));
 		} else // otherwise, just add the message.
 			status.addEntry(new RefactoringStatusEntry(severity, message, null,
-					MigrateSkeletalImplementationToInterfaceRefactoringDescriptor.REFACTORING_ID, failure.ordinal(),
+					ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID, failure.ordinal(),
 					sourceMethod));
 	}
 
@@ -2142,7 +2142,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 
 		status.addEntry(RefactoringStatus.ERROR, MessageFormat.format(failure.getMessage(), collect.toArray()),
 				JavaStatusContext.create(member),
-				MigrateSkeletalImplementationToInterfaceRefactoringDescriptor.REFACTORING_ID, failure.ordinal(),
+				ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID, failure.ordinal(),
 				sourceMethod);
 		return getLastRefactoringStatusEntry(status);
 	}
@@ -2225,7 +2225,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 			// check if there are any methods left to migrate.
 			if (this.getUnmigratableMethods().containsAll(this.getSourceMethods()))
 				// if not, we have a fatal error.
-				status.addFatalError(Messages.NoMethodsHavePassedThePreconditions);
+				status.addFatalError(Messages.NoStreamsHavePassedThePreconditions);
 
 			// TODO:
 			// Checks.addModifiedFilesToChecker(ResourceUtil.getFiles(fChangeManager.getAllCompilationUnits()),
@@ -2421,7 +2421,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 			Set<IMethod> migratableMethods = this.getMigratableMethods();
 
 			if (migratableMethods.isEmpty())
-				return new NullChange(Messages.NoMethodsToMigrate);
+				return new NullChange(Messages.NoStreamsToConvert);
 
 			// the set of target methods that we transformed to default methods.
 			Set<IMethod> transformedTargetMethods = new HashSet<>(migratableMethods.size());
@@ -2527,7 +2527,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 
 			// TODO: Fill in description.
 
-			MigrateSkeletalImplementationToInterfaceRefactoringDescriptor descriptor = new MigrateSkeletalImplementationToInterfaceRefactoringDescriptor(
+			ConvertStreamToParallelRefactoringDescriptor descriptor = new ConvertStreamToParallelRefactoringDescriptor(
 					null, "TODO", null, arguments, flags);
 
 			return new DynamicValidationRefactoringChange(descriptor, getProcessorName(), manager.getAllChanges());
@@ -2826,7 +2826,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 
 	private static void log(int severity, String message) {
 		if (severity >= getLoggingLevel()) {
-			String name = FrameworkUtil.getBundle(MigrateSkeletalImplementationToInterfaceRefactoringProcessor.class)
+			String name = FrameworkUtil.getBundle(ConvertToParallelStreamRefactoringProcessor.class)
 					.getSymbolicName();
 			IStatus status = new Status(severity, name, message);
 			JavaPlugin.log(status);
@@ -2843,7 +2843,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringProcessor extend
 
 	@Override
 	public String getIdentifier() {
-		return MigrateSkeletalImplementationToInterfaceRefactoringDescriptor.REFACTORING_ID;
+		return ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID;
 	}
 
 	@Override
