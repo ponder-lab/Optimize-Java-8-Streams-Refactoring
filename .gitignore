@@ -1,0 +1,8 @@
+bin
+*.swp
+build
+.gradle
+target
+*.class
+myimport.cfg
+mysql_backup.cfg
