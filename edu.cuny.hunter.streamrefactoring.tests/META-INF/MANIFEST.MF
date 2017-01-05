@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: %Bundle-Name
 Bundle-SymbolicName: edu.cuny.hunter.streamrefactoring.tests;singleton:=true
-Bundle-Version: 1.3.0
+Bundle-Version: 1.0.0
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: %Bundle-Vendor
 Fragment-Host: org.eclipse.jdt.ui

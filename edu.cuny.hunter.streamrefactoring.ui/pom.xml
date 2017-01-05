@@ -7,7 +7,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
   <parent>
     <groupId>edu.cuny.hunter.streamrefactoring</groupId>
     <artifactId>parent</artifactId>
-    <version>1.3.0</version>
+    <version>1.0.0</version>
   </parent>
   <artifactId>edu.cuny.hunter.streamrefactoring.ui</artifactId>
   <packaging>eclipse-plugin</packaging>
