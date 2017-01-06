@@ -142,7 +142,8 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 
 		if (type.isClass()) {
 			for (IMethod method : type.getMethods())
-				if (RefactoringAvailabilityTester.isInterfaceMigrationAvailable(method, monitor)) {
+//				if (RefactoringAvailabilityTester.isInterfaceMigrationAvailable(method, monitor)) {
+				if (true) {
 					logPossiblyMigratableMethod(method);
 					methodSet.add(method);
 				} else

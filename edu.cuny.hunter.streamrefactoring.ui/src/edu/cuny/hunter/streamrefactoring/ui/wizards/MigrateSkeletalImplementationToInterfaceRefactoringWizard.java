@@ -98,7 +98,6 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringWizard extends R
 			Button cloneCheckBox = new Button(result, SWT.CHECK);
 			cloneCheckBox.setText("Deprecate empty declaring types rather than removing them.");
 			boolean deprecateDeclaringTypesValue = settings.getBoolean(DEPRECATE_EMPTY_DECLARING_TYPES);
-			this.processor.setDeprecateEmptyDeclaringTypes(deprecateDeclaringTypesValue);
 			cloneCheckBox.setSelection(deprecateDeclaringTypesValue);
 			cloneCheckBox.addSelectionListener(new SelectionAdapter() {
 				@Override
@@ -110,7 +109,6 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringWizard extends R
 			Button leaveRawCheckBox = new Button(result, SWT.CHECK);
 			leaveRawCheckBox.setText("Analyze differences in nonstandard annotation types.");
 			boolean noAnnotationsValue = settings.getBoolean(CONSIDER_NONSTANDARD_ANNOTATION_DIFFERENCES);
-			processor.setConsiderNonstandardAnnotationDifferences(noAnnotationsValue);
 			leaveRawCheckBox.setSelection(noAnnotationsValue);
 			leaveRawCheckBox.addSelectionListener(new SelectionAdapter() {
 				@Override
@@ -127,12 +125,10 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringWizard extends R
 
 		private void setDeprecateEmptyDeclaringTypes(boolean selection) {
 			settings.put(DEPRECATE_EMPTY_DECLARING_TYPES, selection);
-			this.processor.setDeprecateEmptyDeclaringTypes(selection);
 		}
 
 		private void setConsiderNonstandardAnnotationDifferences(boolean selection) {
 			settings.put(CONSIDER_NONSTANDARD_ANNOTATION_DIFFERENCES, selection);
-			processor.setConsiderNonstandardAnnotationDifferences(selection);
 		}
 
 		private void updateStatus() {
@@ -146,9 +142,6 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringWizard extends R
 				settings.put(DEPRECATE_EMPTY_DECLARING_TYPES, false);
 				settings.put(CONSIDER_NONSTANDARD_ANNOTATION_DIFFERENCES, true);
 			}
-			processor.setDeprecateEmptyDeclaringTypes(settings.getBoolean(DEPRECATE_EMPTY_DECLARING_TYPES));
-			processor.setConsiderNonstandardAnnotationDifferences(
-					settings.getBoolean(CONSIDER_NONSTANDARD_ANNOTATION_DIFFERENCES));
 		}
 
 	}
@@ -156,7 +149,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringWizard extends R
 	public static void startRefactoring(IMethod[] methods, Shell shell, Optional<IProgressMonitor> monitor)
 			throws JavaModelException {
 		// TODO: Will need to set the target type at some point but see #23.
-		Refactoring refactoring = Util.createRefactoring(methods, monitor);
+		Refactoring refactoring = Util.createRefactoring(methods[0].getJavaProject(), monitor);
 		RefactoringWizard wizard = new MigrateSkeletalImplementationToInterfaceRefactoringWizard(refactoring);
 
 		new RefactoringStarter().activate(wizard, shell, RefactoringMessages.OpenRefactoringWizardAction_refactoring,

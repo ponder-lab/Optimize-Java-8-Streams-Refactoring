@@ -35,33 +35,19 @@ public final class Util {
 	private Util() {
 	}
 
-	public static ProcessorBasedRefactoring createRefactoring(IJavaProject project, IMethod[] methods,
+	public static ProcessorBasedRefactoring createRefactoring(IJavaProject project, 
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		ConvertToParallelStreamRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(
-				project, methods, monitor);
+				project, monitor);
 		return new ProcessorBasedRefactoring(processor);
 	}
 
 	public static ConvertToParallelStreamRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
-			IJavaProject project, IMethod[] methods, Optional<IProgressMonitor> monitor) throws JavaModelException {
+			IJavaProject project, Optional<IProgressMonitor> monitor) throws JavaModelException {
 		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(project);
 		ConvertToParallelStreamRefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor(
-				methods, settings, monitor);
+				settings, monitor);
 		return processor;
-	}
-
-	public static ProcessorBasedRefactoring createRefactoring(IMethod[] methods, Optional<IProgressMonitor> monitor)
-			throws JavaModelException {
-		IJavaProject project = null;
-
-		if (methods != null && methods.length > 0)
-			project = methods[0].getJavaProject();
-
-		return createRefactoring(project, methods, monitor);
-	}
-
-	public static ProcessorBasedRefactoring createRefactoring(IMethod[] methods) throws JavaModelException {
-		return createRefactoring(methods, Optional.empty());
 	}
 
 	public static ProcessorBasedRefactoring createRefactoring() throws JavaModelException {

@@ -3,6 +3,7 @@
  */
 package edu.cuny.hunter.streamrefactoring.ui.tests;
 
+import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -57,7 +58,7 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringTest extends Ref
 
 	@Override
 	protected Refactoring getRefactoring(IMethod... methods) throws JavaModelException {
-		return Util.createRefactoring(methods);
+		return Util.createRefactoring(methods[0].getJavaProject(), Optional.empty());
 	}
 
 	@Override
