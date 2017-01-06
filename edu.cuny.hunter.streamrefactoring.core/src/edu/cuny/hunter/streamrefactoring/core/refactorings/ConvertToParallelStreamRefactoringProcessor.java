@@ -7,6 +7,7 @@ import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -51,6 +52,7 @@ import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParalle
 import edu.cuny.hunter.streamrefactoring.core.messages.Messages;
 import edu.cuny.hunter.streamrefactoring.core.messages.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
+import edu.cuny.hunter.streamrefactoring.core.visitors.Stream;
 import edu.cuny.hunter.streamrefactoring.core.visitors.StreamAnalysisVisitor;
 
 /**
@@ -184,6 +186,8 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 								CompilationUnit compilationUnit = getCompilationUnit(unit, subMonitor.split(1));
 								StreamAnalysisVisitor visitor = new StreamAnalysisVisitor();
 								compilationUnit.accept(visitor);
+								Set<Stream> streamSet = visitor.getStreamSet();
+								System.out.println(streamSet);
 							}
 						}
 					}

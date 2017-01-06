@@ -9,6 +9,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.ILocalVariable;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
@@ -131,5 +132,20 @@ public final class Util {
 			return stripParenthesizedExpressions(parenthesizedExpression.getExpression());
 		} else
 			return node;
+	}
+	
+	public static String getMethodIdentifier(IMethod method) throws JavaModelException {
+		StringBuilder sb = new StringBuilder();
+		sb.append((method.getElementName()) + "(");
+		ILocalVariable[] parameters = method.getParameters();
+		for (int i = 0; i < parameters.length; i++) {
+			sb.append(edu.cuny.hunter.streamrefactoring.core.utils.Util
+					.getQualifiedNameFromTypeSignature(parameters[i].getTypeSignature(), method.getDeclaringType()));
+			if (i != (parameters.length - 1)) {
+				sb.append(",");
+			}
+		}
+		sb.append(")");
+		return sb.toString();
 	}
 }
