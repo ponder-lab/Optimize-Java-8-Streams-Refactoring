@@ -22,7 +22,7 @@ import junit.framework.Test;
 import junit.framework.TestSuite;
 
 /**
- * @author <a href="mailto:rkhatchadourian@citytech.cuny.edu">Raffi
+ * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi
  *         Khatchadourian</a>
  *
  */
@@ -58,7 +58,8 @@ public class MigrateSkeletalImplementationToInterfaceRefactoringTest extends Ref
 
 	@Override
 	protected Refactoring getRefactoring(IMethod... methods) throws JavaModelException {
-		return Util.createRefactoring(methods[0].getJavaProject(), Optional.empty());
+//		return Util.createRefactoring(methods[0].getJavaProject(), Optional.empty());
+		return null;
 	}
 
 	@Override

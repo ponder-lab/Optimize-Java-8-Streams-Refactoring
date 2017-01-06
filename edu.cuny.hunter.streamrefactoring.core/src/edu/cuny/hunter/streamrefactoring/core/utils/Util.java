@@ -26,7 +26,7 @@ import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
 import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
 
 /**
- * @author <a href="mailto:rkhatchadourian@citytech.cuny.edu">Raffi
+ * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi
  *         Khatchadourian</a>
  *
  */
@@ -35,17 +35,17 @@ public final class Util {
 	private Util() {
 	}
 
-	public static ProcessorBasedRefactoring createRefactoring(IJavaProject project, 
+	public static ProcessorBasedRefactoring createRefactoring(IJavaProject[] projects,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		ConvertToParallelStreamRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(
-				project, monitor);
+				projects, monitor);
 		return new ProcessorBasedRefactoring(processor);
 	}
 
 	public static ConvertToParallelStreamRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
-			IJavaProject project, Optional<IProgressMonitor> monitor) throws JavaModelException {
-		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(project);
-		ConvertToParallelStreamRefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor(
+			IJavaProject[] projects, Optional<IProgressMonitor> monitor) throws JavaModelException {
+		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(projects[0]);
+		ConvertToParallelStreamRefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor(projects,
 				settings, monitor);
 		return processor;
 	}

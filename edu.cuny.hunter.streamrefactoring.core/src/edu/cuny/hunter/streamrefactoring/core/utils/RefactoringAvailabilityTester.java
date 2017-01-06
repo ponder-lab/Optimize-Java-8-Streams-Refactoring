@@ -18,7 +18,7 @@ import org.eclipse.jdt.internal.corext.util.JdtFlags;
 import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
 
 /**
- * @author <a href="mailto:rkhatchadourian@citytech.cuny.edu">Raffi
+ * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi
  *         Khatchadourian</a>
  * @see org.eclipse.jdt.internal.corext.refactoring.
  *      RefactoringAvailabilityTester

@@ -29,7 +29,7 @@ import org.eclipse.ui.handlers.HandlerUtil;
 import org.osgi.framework.FrameworkUtil;
 
 import edu.cuny.hunter.streamrefactoring.core.utils.RefactoringAvailabilityTester;
-import edu.cuny.hunter.streamrefactoring.ui.wizards.MigrateSkeletalImplementationToInterfaceRefactoringWizard;
+import edu.cuny.hunter.streamrefactoring.ui.wizards.ConvertStreamToParallelRefactoringWizard;
 
 public class ConvertStreamToParallelHandler extends AbstractHandler {
 
@@ -41,46 +41,35 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 		Optional<IProgressMonitor> monitor = Optional.empty();
 		ISelection currentSelection = HandlerUtil.getCurrentSelectionChecked(event);
 		List<?> list = SelectionUtil.toList(currentSelection);
+		
+		Set<IJavaProject> javaProjectSet = new HashSet<>();
 
 		if (list != null) {
 			try {
-				Set<IMethod> methodSet = new HashSet<>();
-
 				for (Object obj : list) {
 					if (obj instanceof IJavaElement) {
 						IJavaElement jElem = (IJavaElement) obj;
 						switch (jElem.getElementType()) {
 						case IJavaElement.METHOD:
-							// if a method is explicitly selected, add it
-							// straight away.
-							methodSet.add((IMethod) jElem);
 							break;
 						case IJavaElement.TYPE:
-							// A type is either a class, interface, or enum. Get
-							// only methods from classes. TODO: Should mention
-							// this in paper as a filtered context.
-							methodSet.addAll(extractMethodsFromClass((IType) jElem, monitor));
 							break;
 						case IJavaElement.COMPILATION_UNIT:
-							methodSet.addAll(extractMethodsFromCompilationUnit((ICompilationUnit) jElem, monitor));
 							break;
 						case IJavaElement.PACKAGE_FRAGMENT:
-							methodSet.addAll(extractMethodsFromPackageFragment((IPackageFragment) jElem, monitor));
 							break;
 						case IJavaElement.PACKAGE_FRAGMENT_ROOT:
-							methodSet.addAll(
-									extractMethodsFromPackageFragmentRoot((IPackageFragmentRoot) jElem, monitor));
 							break;
 						case IJavaElement.JAVA_PROJECT:
-							methodSet.addAll(extractMethodsFromJavaProject((IJavaProject) jElem, monitor));
+							javaProjectSet.add((IJavaProject)jElem);
 							break;
 						}
 					}
 				}
 
 				Shell shell = HandlerUtil.getActiveShellChecked(event);
-				MigrateSkeletalImplementationToInterfaceRefactoringWizard
-						.startRefactoring(methodSet.toArray(new IMethod[methodSet.size()]), shell, Optional.empty());
+				ConvertStreamToParallelRefactoringWizard
+						.startRefactoring(javaProjectSet.toArray(new IJavaProject[javaProjectSet.size()]), shell, Optional.empty());
 			} catch (JavaModelException e) {
 				JavaPlugin.log(e);
 				throw new ExecutionException("Failed to start refactoring", e);

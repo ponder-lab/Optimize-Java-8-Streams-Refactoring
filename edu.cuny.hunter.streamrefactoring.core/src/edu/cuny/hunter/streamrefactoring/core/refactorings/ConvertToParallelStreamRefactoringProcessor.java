@@ -14,10 +14,14 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IMember;
+import org.eclipse.jdt.core.IPackageFragment;
+import org.eclipse.jdt.core.IPackageFragmentRoot;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.ITypeHierarchy;
 import org.eclipse.jdt.core.ITypeRoot;
@@ -47,17 +51,19 @@ import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParalle
 import edu.cuny.hunter.streamrefactoring.core.messages.Messages;
 import edu.cuny.hunter.streamrefactoring.core.messages.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
+import edu.cuny.hunter.streamrefactoring.core.visitors.StreamAnalysisVisitor;
 
 /**
  * The activator class controls the plug-in life cycle
  * 
- * @author <a href="mailto:rkhatchadourian@citytech.cuny.edu">Raffi
+ * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi
  *         Khatchadourian</a>
  */
 @SuppressWarnings({ "restriction" })
 public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProcessor {
 
-//	private Set<IMethod> unmigratableMethods = new UnmigratableMethodSet(sourceMethods);
+	// private Set<IMethod> unmigratableMethods = new
+	// UnmigratableMethodSet(sourceMethods);
 
 	/**
 	 * The minimum logging level, one of the constants in
@@ -76,8 +82,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	private static void log(int severity, String message) {
 		if (severity >= getLoggingLevel()) {
-			String name = FrameworkUtil.getBundle(ConvertToParallelStreamRefactoringProcessor.class)
-					.getSymbolicName();
+			String name = FrameworkUtil.getBundle(ConvertToParallelStreamRefactoringProcessor.class).getSymbolicName();
 			IStatus status = new Status(severity, name, message);
 			JavaPlugin.log(status);
 		}
@@ -118,14 +123,17 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	private Map<IType, ITypeHierarchy> typeToTypeHierarchyMap = new HashMap<>();
 
+	private IJavaProject[] javaProjects;
+
 	public ConvertToParallelStreamRefactoringProcessor() throws JavaModelException {
-		this(null, false, Optional.empty());
+		this(null, null, false, Optional.empty());
 	}
 
-	public ConvertToParallelStreamRefactoringProcessor(
+	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
 			final CodeGenerationSettings settings, boolean layer, Optional<IProgressMonitor> monitor)
-					throws JavaModelException {
+			throws JavaModelException {
 		try {
+			this.javaProjects = javaProjects;
 			this.settings = settings;
 			this.layer = layer;
 
@@ -134,20 +142,24 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		}
 	}
 
-	public ConvertToParallelStreamRefactoringProcessor(
-			final CodeGenerationSettings settings, Optional<IProgressMonitor> monitor) throws JavaModelException {
-		this(settings, false, monitor);
+	public ConvertToParallelStreamRefactoringProcessor(final CodeGenerationSettings settings,
+			Optional<IProgressMonitor> monitor) throws JavaModelException {
+		this(null, settings, false, monitor);
 	}
 
-	public ConvertToParallelStreamRefactoringProcessor(Optional<IProgressMonitor> monitor)
-			throws JavaModelException {
-		this(null, false, monitor);
+	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
+			final CodeGenerationSettings settings, Optional<IProgressMonitor> monitor) throws JavaModelException {
+		this(javaProjects, settings, false, monitor);
+	}
+
+	public ConvertToParallelStreamRefactoringProcessor(Optional<IProgressMonitor> monitor) throws JavaModelException {
+		this(null, null, false, monitor);
 	}
 
 	private RefactoringStatus checkExistence(IMember member, PreconditionFailure failure) {
-//		if (member == null || !member.exists()) {
-//			return createError(failure, member);
-//		}
+		// if (member == null || !member.exists()) {
+		// return createError(failure, member);
+		// }
 		return new RefactoringStatus();
 	}
 
@@ -155,14 +167,34 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	public RefactoringStatus checkFinalConditions(final IProgressMonitor monitor, final CheckConditionsContext context)
 			throws CoreException, OperationCanceledException {
 		try {
-			monitor.beginTask(Messages.CheckingPreconditions, 12);
+			SubMonitor subMonitor = SubMonitor.convert(monitor, Messages.CheckingPreconditions,
+					this.getJavaProjects().length * 1000);
 
 			final RefactoringStatus status = new RefactoringStatus();
 
+			for (IJavaProject jproj : this.getJavaProjects()) {
+				IPackageFragmentRoot[] roots = jproj.getPackageFragmentRoots();
+				for (IPackageFragmentRoot root : roots) {
+					IJavaElement[] children = root.getChildren();
+					for (IJavaElement child : children) {
+						if (child.getElementType() == IJavaElement.PACKAGE_FRAGMENT) {
+							IPackageFragment fragment = (IPackageFragment) child;
+							ICompilationUnit[] units = fragment.getCompilationUnits();
+							for (ICompilationUnit unit : units) {
+								CompilationUnit compilationUnit = getCompilationUnit(unit, subMonitor.split(1));
+								StreamAnalysisVisitor visitor = new StreamAnalysisVisitor();
+								compilationUnit.accept(visitor);
+							}
+						}
+					}
+				}
+			}
+
 			// check if there are any methods left to migrate.
-//			if (this.getUnmigratableMethods().containsAll(this.getSourceMethods()))
-				// if not, we have a fatal error.
-//				status.addFatalError(Messages.NoStreamsHavePassedThePreconditions);
+			// if
+			// (this.getUnmigratableMethods().containsAll(this.getSourceMethods()))
+			// if not, we have a fatal error.
+			// status.addFatalError(Messages.NoStreamsHavePassedThePreconditions);
 
 			// TODO:
 			// Checks.addModifiedFilesToChecker(ResourceUtil.getFiles(fChangeManager.getAllCompilationUnits()),
@@ -184,15 +216,16 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 			this.clearCaches();
 			this.getExcludedTimeCollector().clear();
 
-//			if (this.getSourceMethods().isEmpty())
-//				return RefactoringStatus.createFatalErrorStatus(Messages.StreamsNotSpecified);
-//			else {
-				RefactoringStatus status = new RefactoringStatus();
+			// if (this.getSourceMethods().isEmpty())
+			// return
+			// RefactoringStatus.createFatalErrorStatus(Messages.StreamsNotSpecified);
+			// else {
+			RefactoringStatus status = new RefactoringStatus();
 
-				pm.beginTask(Messages.CheckingPreconditions, 1);
+			pm.beginTask(Messages.CheckingPreconditions, 1);
 
-				return status;
-//			}
+			return status;
+			// }
 		} catch (Exception e) {
 			JavaPlugin.log(e);
 			throw e;
@@ -204,8 +237,10 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	private RefactoringStatus checkProjectCompliance(IJavaProject destinationProject) throws JavaModelException {
 		RefactoringStatus status = new RefactoringStatus();
 
-//		if (!JavaModelUtil.is18OrHigher(destinationProject))
-//			addErrorAndMark(status, PreconditionFailure.DestinationProjectIncompatible, sourceMethod, targetMethod);
+		// if (!JavaModelUtil.is18OrHigher(destinationProject))
+		// addErrorAndMark(status,
+		// PreconditionFailure.DestinationProjectIncompatible, sourceMethod,
+		// targetMethod);
 
 		return status;
 	}
@@ -221,9 +256,9 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	}
 
 	private RefactoringStatus checkWritabilitiy(IMember member, PreconditionFailure failure) {
-//		if (member.isBinary() || member.isReadOnly()) {
-//			return createError(failure, member);
-//		}
+		// if (member.isBinary() || member.isReadOnly()) {
+		// return createError(failure, member);
+		// }
 		return new RefactoringStatus();
 	}
 
@@ -356,8 +391,11 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	@Override
 	public boolean isApplicable() throws CoreException {
-//		return RefactoringAvailabilityTester.isInterfaceMigrationAvailable(getSourceMethods().parallelStream()
-//				.filter(m -> !this.getUnmigratableMethods().contains(m)).toArray(IMethod[]::new), Optional.empty());
+		// return
+		// RefactoringAvailabilityTester.isInterfaceMigrationAvailable(getSourceMethods().parallelStream()
+		// .filter(m ->
+		// !this.getUnmigratableMethods().contains(m)).toArray(IMethod[]::new),
+		// Optional.empty());
 		return true;
 	}
 
@@ -380,5 +418,9 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 			change.setTextType("java");
 
 		manager.manage(rewrite.getCu(), change);
+	}
+
+	protected IJavaProject[] getJavaProjects() {
+		return javaProjects;
 	}
 }
