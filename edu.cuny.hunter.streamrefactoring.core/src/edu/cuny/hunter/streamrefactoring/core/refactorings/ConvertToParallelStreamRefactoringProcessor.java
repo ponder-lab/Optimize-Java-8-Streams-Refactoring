@@ -186,8 +186,6 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 								CompilationUnit compilationUnit = getCompilationUnit(unit, subMonitor.split(1));
 								StreamAnalysisVisitor visitor = new StreamAnalysisVisitor();
 								compilationUnit.accept(visitor);
-								Set<Stream> streamSet = visitor.getStreamSet();
-								System.out.println(streamSet);
 							}
 						}
 					}
