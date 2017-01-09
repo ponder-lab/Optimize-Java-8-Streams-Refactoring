@@ -1,4 +1,4 @@
-package edu.cuny.hunter.streamrefactoring.core.visitors;
+package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import java.util.Arrays;
 import java.util.HashSet;

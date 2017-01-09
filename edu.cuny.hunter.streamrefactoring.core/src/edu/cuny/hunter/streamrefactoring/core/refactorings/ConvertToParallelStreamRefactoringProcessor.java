@@ -48,12 +48,12 @@ import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
 import org.eclipse.ltk.core.refactoring.participants.SharableParticipants;
 import org.osgi.framework.FrameworkUtil;
 
+import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
+import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalysisVisitor;
 import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
 import edu.cuny.hunter.streamrefactoring.core.messages.Messages;
 import edu.cuny.hunter.streamrefactoring.core.messages.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
-import edu.cuny.hunter.streamrefactoring.core.visitors.Stream;
-import edu.cuny.hunter.streamrefactoring.core.visitors.StreamAnalysisVisitor;
 
 /**
  * The activator class controls the plug-in life cycle

@@ -1,4 +1,4 @@
-package edu.cuny.hunter.streamrefactoring.core.visitors;
+package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 public enum StreamExecutionMode {
 	SEQUENTIAL,
