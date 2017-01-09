@@ -45,24 +45,28 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 		// streams. Make sure we don't include intermediate operations.
 		if (returnTypeImplementsBaseStream && !declaringClassImplementsBaseStream) {
 			Stream stream = new Stream(node);
-			IMethod method = (IMethod) methodBinding.getJavaElement();
-
-			String methodIdentifier = null;
-			try {
-				methodIdentifier = Util.getMethodIdentifier(method);
-			} catch (JavaModelException e) {
-				throw new RuntimeException(e);
-			}
-
-			if (methodIdentifier.equals("parallelStream()"))
-				stream.setExecutionMode(StreamExecutionMode.PARALLEL);
-			else
-				stream.setExecutionMode(StreamExecutionMode.SEQUENTIAL);
+			inferStreamExecution(stream, methodBinding);
 
 			System.out.println(stream);
 		}
 
 		return super.visit(node);
+	}
+
+	private void inferStreamExecution(Stream stream, IMethodBinding methodBinding) {
+		IMethod method = (IMethod) methodBinding.getJavaElement();
+
+		String methodIdentifier = null;
+		try {
+			methodIdentifier = Util.getMethodIdentifier(method);
+		} catch (JavaModelException e) {
+			throw new RuntimeException(e);
+		}
+
+		if (methodIdentifier.equals("parallelStream()"))
+			stream.setExecutionMode(StreamExecutionMode.PARALLEL);
+		else
+			stream.setExecutionMode(StreamExecutionMode.SEQUENTIAL);
 	}
 
 	private static boolean implementsBaseStream(ITypeBinding type) {
