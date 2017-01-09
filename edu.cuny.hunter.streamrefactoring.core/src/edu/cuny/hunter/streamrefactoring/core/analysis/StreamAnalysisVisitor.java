@@ -16,6 +16,7 @@ import org.eclipse.jdt.internal.corext.codemanipulation.StubUtility2;
 import org.eclipse.jdt.internal.corext.dom.Bindings;
 import org.eclipse.jdt.internal.corext.refactoring.util.JavaElementUtil;
 import org.eclipse.jdt.internal.corext.util.JavaModelUtil;
+import org.eclipse.jdt.internal.corext.util.JdtFlags;
 
 import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
@@ -43,10 +44,32 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 
 		// java.util.stream.BaseStream is the top-level interface for all
 		// streams. Make sure we don't include intermediate operations.
-		if (returnTypeImplementsBaseStream && !declaringClassImplementsBaseStream) {
+		if (returnTypeImplementsBaseStream && !(!JdtFlags.isStatic(methodBinding) && declaringClassImplementsBaseStream)) {
 			Stream stream = new Stream(node);
 			inferStreamExecution(stream, methodBinding);
 
+			ITypeBinding expressionTypeBinding = node.getExpression().resolveTypeBinding();
+			String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
+			
+			if (JdtFlags.isStatic(methodBinding)) {
+				//static methods returning unordered streams.
+				if (expressionTypeQualifiedName.equals("java.util.stream.Stream")) {
+					String methodIdentifier = getMethodIdentifier(methodBinding);
+					if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
+						stream.setOrdering(StreamOrdering.UNORDERED);
+				} else
+					stream.setOrdering(StreamOrdering.ORDERED);
+			} else { //instance method. 
+				if (expressionTypeQualifiedName.equals("java.util.HashSet"))
+					stream.setOrdering(StreamOrdering.UNORDERED);
+				else
+					stream.setOrdering(StreamOrdering.ORDERED);
+			}
+			
+			// TODO: Are there more such methods?
+			// FIXME: Can we have a better approximation of the expression run time type?
+			
+			System.out.println(expressionTypeQualifiedName);	
 			System.out.println(stream);
 		}
 
@@ -54,6 +77,15 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 	}
 
 	private void inferStreamExecution(Stream stream, IMethodBinding methodBinding) {
+		String methodIdentifier = getMethodIdentifier(methodBinding);
+
+		if (methodIdentifier.equals("parallelStream()"))
+			stream.setExecutionMode(StreamExecutionMode.PARALLEL);
+		else
+			stream.setExecutionMode(StreamExecutionMode.SEQUENTIAL);
+	}
+
+	private String getMethodIdentifier(IMethodBinding methodBinding) {
 		IMethod method = (IMethod) methodBinding.getJavaElement();
 
 		String methodIdentifier = null;
@@ -62,11 +94,7 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 		} catch (JavaModelException e) {
 			throw new RuntimeException(e);
 		}
-
-		if (methodIdentifier.equals("parallelStream()"))
-			stream.setExecutionMode(StreamExecutionMode.PARALLEL);
-		else
-			stream.setExecutionMode(StreamExecutionMode.SEQUENTIAL);
+		return methodIdentifier;
 	}
 
 	private static boolean implementsBaseStream(ITypeBinding type) {
