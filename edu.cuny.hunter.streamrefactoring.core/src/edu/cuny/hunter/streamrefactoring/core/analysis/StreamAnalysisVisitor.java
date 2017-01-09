@@ -21,6 +21,7 @@ import org.eclipse.jdt.internal.corext.util.JdtFlags;
 import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
 
+@SuppressWarnings("restriction")
 public class StreamAnalysisVisitor extends ASTVisitor {
 	private Set<Stream> streamSet = new HashSet<>();
 
@@ -32,52 +33,56 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 		super(visitDocTags);
 	}
 
-	@SuppressWarnings("restriction")
 	@Override
 	public boolean visit(MethodInvocation node) {
 		IMethodBinding methodBinding = node.resolveMethodBinding();
 		ITypeBinding returnType = methodBinding.getReturnType();
 		boolean returnTypeImplementsBaseStream = implementsBaseStream(returnType);
-		
+
 		ITypeBinding declaringClass = methodBinding.getDeclaringClass();
 		boolean declaringClassImplementsBaseStream = implementsBaseStream(declaringClass);
 
 		// java.util.stream.BaseStream is the top-level interface for all
 		// streams. Make sure we don't include intermediate operations.
-		if (returnTypeImplementsBaseStream && !(!JdtFlags.isStatic(methodBinding) && declaringClassImplementsBaseStream)) {
+		if (returnTypeImplementsBaseStream
+				&& !(!JdtFlags.isStatic(methodBinding) && declaringClassImplementsBaseStream)) {
 			Stream stream = new Stream(node);
-			inferStreamExecution(stream, methodBinding);
-
-			ITypeBinding expressionTypeBinding = node.getExpression().resolveTypeBinding();
-			String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
-			
-			if (JdtFlags.isStatic(methodBinding)) {
-				//static methods returning unordered streams.
-				if (expressionTypeQualifiedName.equals("java.util.stream.Stream")) {
-					String methodIdentifier = getMethodIdentifier(methodBinding);
-					if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
-						stream.setOrdering(StreamOrdering.UNORDERED);
-				} else
-					stream.setOrdering(StreamOrdering.ORDERED);
-			} else { //instance method. 
-				if (expressionTypeQualifiedName.equals("java.util.HashSet"))
-					stream.setOrdering(StreamOrdering.UNORDERED);
-				else
-					stream.setOrdering(StreamOrdering.ORDERED);
-			}
-			
-			// TODO: Are there more such methods?
-			// FIXME: Can we have a better approximation of the expression run time type?
-			
-			System.out.println(expressionTypeQualifiedName);	
+			inferStreamExecution(stream, node);
+			inferStreamOrdering(stream, node);
 			System.out.println(stream);
 		}
 
 		return super.visit(node);
 	}
 
-	private void inferStreamExecution(Stream stream, IMethodBinding methodBinding) {
-		String methodIdentifier = getMethodIdentifier(methodBinding);
+	private void inferStreamOrdering(Stream stream, MethodInvocation node) {
+		ITypeBinding expressionTypeBinding = node.getExpression().resolveTypeBinding();
+		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
+
+		if (JdtFlags.isStatic(node.resolveMethodBinding())) {
+			// static methods returning unordered streams.
+			if (expressionTypeQualifiedName.equals("java.util.stream.Stream")) {
+				String methodIdentifier = getMethodIdentifier(node.resolveMethodBinding());
+				if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
+					stream.setOrdering(StreamOrdering.UNORDERED);
+			} else
+				stream.setOrdering(StreamOrdering.ORDERED);
+		} else { // instance method.
+			if (expressionTypeQualifiedName.equals("java.util.HashSet"))
+				stream.setOrdering(StreamOrdering.UNORDERED);
+			else
+				stream.setOrdering(StreamOrdering.ORDERED); // FIXME: A java.util.Set may actually not be ordered.
+		}
+
+		// TODO: Are there more such methods? TreeSet?
+		// FIXME: Can we have a better approximation of the expression run time
+		// type?
+
+		System.out.println(expressionTypeQualifiedName);
+	}
+
+	private void inferStreamExecution(Stream stream, MethodInvocation node) {
+		String methodIdentifier = getMethodIdentifier(node.resolveMethodBinding());
 
 		if (methodIdentifier.equals("parallelStream()"))
 			stream.setExecutionMode(StreamExecutionMode.PARALLEL);
