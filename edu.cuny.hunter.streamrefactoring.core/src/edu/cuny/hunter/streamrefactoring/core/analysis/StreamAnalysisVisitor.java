@@ -37,10 +37,13 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 		IMethodBinding methodBinding = node.resolveMethodBinding();
 		ITypeBinding returnType = methodBinding.getReturnType();
 		boolean returnTypeImplementsBaseStream = implementsBaseStream(returnType);
+		
+		ITypeBinding declaringClass = methodBinding.getDeclaringClass();
+		boolean declaringClassImplementsBaseStream = implementsBaseStream(declaringClass);
 
 		// java.util.stream.BaseStream is the top-level interface for all
-		// streams.
-		if (returnTypeImplementsBaseStream) {
+		// streams. Make sure we don't include intermediate operations.
+		if (returnTypeImplementsBaseStream && !declaringClassImplementsBaseStream) {
 			Stream stream = new Stream(node);
 			IMethod method = (IMethod) methodBinding.getJavaElement();
 
