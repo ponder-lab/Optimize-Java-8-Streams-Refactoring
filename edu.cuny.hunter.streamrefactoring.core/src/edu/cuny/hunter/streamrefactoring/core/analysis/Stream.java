@@ -55,4 +55,8 @@ public class Stream {
 	public void setOrdering(StreamOrdering ordering) {
 		this.ordering = ordering;
 	}
+
+	public MethodInvocation getStreamCreation() {
+		return streamCreation;
+	}
 }

@@ -49,7 +49,8 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 			Stream stream = new Stream(node);
 			inferStreamExecution(stream, node);
 			inferStreamOrdering(stream, node);
-			System.out.println(stream);
+
+			this.getStreamSet().add(stream);
 		}
 
 		return super.visit(node);
@@ -68,7 +69,7 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 			} else
 				stream.setOrdering(StreamOrdering.ORDERED);
 		} else { // instance method.
-			if (expressionTypeQualifiedName.equals("java.util.HashSet"))
+			if (expressionTypeQualifiedName.equals("java.util.HashSet")) // FIXME: What if there is something under this that is ordered?
 				stream.setOrdering(StreamOrdering.UNORDERED);
 			else
 				stream.setOrdering(StreamOrdering.ORDERED); // FIXME: A java.util.Set may actually not be ordered.
