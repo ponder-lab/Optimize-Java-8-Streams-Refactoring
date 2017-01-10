@@ -9,8 +9,6 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Hashtable;
-import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -19,27 +17,18 @@ import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.jdt.core.IBuffer;
 import org.eclipse.jdt.core.ICompilationUnit;
-import org.eclipse.jdt.core.IJavaElement;
-import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IPackageFragment;
-import org.eclipse.jdt.core.JavaCore;
-import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.core.Signature;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.ui.tests.refactoring.Java18Setup;
-import org.eclipse.ltk.core.refactoring.Refactoring;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalysisVisitor;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamExecutionMode;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamOrdering;
-import edu.cuny.hunter.streamrefactoring.core.utils.Util;
-import edu.cuny.citytech.refactoring.common.tests.RefactoringTest;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
@@ -83,7 +72,7 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 	public String getRefactoringPath() {
 		return REFACTORING_PATH;
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -132,7 +121,7 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 	protected Logger getLogger() {
 		return logger;
 	}
-	
+
 	private static boolean compiles(String source) throws IOException {
 		// Save source in .java file.
 		Path root = Files.createTempDirectory(null);
@@ -144,34 +133,59 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
 		return compiler.run(null, null, null, sourceFile.getPath()) == 0;
 	}
-	
+
 	public void testArraysAsList() throws Exception {
+		helper("Arrays.asList().stream()", StreamExecutionMode.SEQUENTIAL, StreamOrdering.ORDERED);
+	}
+
+	public void testHashSetParallelStream() throws Exception {
+		helper("new HashSet<>().parallelStream()", StreamExecutionMode.PARALLEL, StreamOrdering.UNORDERED);
+	}
+
+	public void testArraysStream() throws Exception {
+		helper("Arrays.stream(new Object[1])", StreamExecutionMode.SEQUENTIAL, StreamOrdering.ORDERED);
+	}
+
+	public void testBitSet() throws Exception {
+		helper("set.stream()", StreamExecutionMode.SEQUENTIAL, StreamOrdering.ORDERED);
+	}
+
+	public void testIntermediateOperations() throws Exception {
+		helper("set.stream()", StreamExecutionMode.SEQUENTIAL, StreamOrdering.ORDERED);
+	}
+
+	public void testGenerate() throws Exception {
+		helper("Stream.generate(() -> 1)", StreamExecutionMode.SEQUENTIAL, StreamOrdering.UNORDERED);
+	}
+
+	private void helper(String expectedCreation, StreamExecutionMode expectedExecutionMode,
+			StreamOrdering expectedOrdering) throws Exception {
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
 		assertTrue("Input should compile.", compiles(cu.getSource()));
-		
+
 		ASTParser parser = ASTParser.newParser(AST.JLS8);
 		parser.setResolveBindings(true);
 		parser.setSource(cu);
-		
+
 		ASTNode ast = parser.createAST(new NullProgressMonitor());
-		
+
 		StreamAnalysisVisitor visitor = new StreamAnalysisVisitor();
 		ast.accept(visitor);
-		
+
 		Set<Stream> streamSet = visitor.getStreamSet();
 
 		assertNotNull(streamSet);
 		assertEquals(1, streamSet.size());
-		
+
 		Stream stream = streamSet.iterator().next();
-		
+
 		MethodInvocation creation = stream.getStreamCreation();
-		assertEquals("Arrays.asList().stream()", creation.toString());
-		
+		assertEquals(expectedCreation, creation.toString());
+
 		StreamExecutionMode executionMode = stream.getExecutionMode();
-		assertEquals(StreamExecutionMode.SEQUENTIAL, executionMode);
+		assertEquals(expectedExecutionMode, executionMode);
 
 		StreamOrdering ordering = stream.getOrdering();
-		assertEquals(StreamOrdering.ORDERED, ordering);
+		assertEquals(expectedOrdering, ordering);
 	}
 }
