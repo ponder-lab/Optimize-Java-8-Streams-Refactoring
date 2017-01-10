@@ -1,5 +1,5 @@
 # Java 8 Stream Optimization Refactorings
-[![Build Status](https://travis-ci.com/khatchadourian-lab/Java-8-Stream-Refactoring.svg?token=ysqq4ZuxzD688KNytWSA&branch=master)](https://travis-ci.com/khatchadourian-lab/Java-8-Stream-Refactoring) [![GitHub license](https://img.shields.io/badge/license-Eclipse-blue.svg)](/khatchadourian-lab/Java-8-Stream-Refactoring/raw/master/LICENSE.txt)
+[![Build Status](https://travis-ci.com/khatchadourian-lab/Java-8-Stream-Refactoring.svg?token=ysqq4ZuxzD688KNytWSA&branch=master)](https://travis-ci.com/khatchadourian-lab/Java-8-Stream-Refactoring) [![GitHub license](https://img.shields.io/badge/license-Eclipse-blue.svg)](https://github.com/khatchadourian-lab/Java-8-Stream-Refactoring/raw/master/LICENSE.txt)
 
 ## Screenshot
 
