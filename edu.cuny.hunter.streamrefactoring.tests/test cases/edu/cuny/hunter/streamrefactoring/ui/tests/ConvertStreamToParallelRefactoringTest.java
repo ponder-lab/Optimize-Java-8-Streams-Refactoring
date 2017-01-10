@@ -158,6 +158,10 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 		helper("Stream.generate(() -> 1)", StreamExecutionMode.SEQUENTIAL, StreamOrdering.UNORDERED);
 	}
 
+	public void testTypeResolution() throws Exception {
+		helper("anotherSet.parallelStream()", StreamExecutionMode.PARALLEL, StreamOrdering.UNORDERED);
+	}
+
 	private void helper(String expectedCreation, StreamExecutionMode expectedExecutionMode,
 			StreamOrdering expectedOrdering) throws Exception {
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
