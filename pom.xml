@@ -101,7 +101,7 @@
         <artifactId>coveralls-maven-plugin</artifactId>
         <version>4.3.0</version>
         <configuration>
-          <repoToken></repoToken> <!-- TODO: Need to fill this in -->
+          <repoToken>ehYtt3Qff0LLwR9RPFJZn6sZqkhpBXpTU</repoToken>
         </configuration>
       </plugin>
       <plugin>
