@@ -1,11 +1,15 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
+import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.ASTVisitor;
@@ -17,9 +21,22 @@ import org.eclipse.jdt.internal.corext.dom.Bindings;
 import org.eclipse.jdt.internal.corext.refactoring.util.JavaElementUtil;
 import org.eclipse.jdt.internal.corext.util.JavaModelUtil;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
+import org.eclipse.jdt.internal.ui.preferences.JavaEditorColoringPreferencePage;
+
+import com.ibm.wala.ide.util.JavaEclipseProjectPath;
+import com.ibm.wala.ide.util.JdtUtil;
+import com.ibm.wala.ipa.callgraph.AnalysisScope;
+import com.ibm.wala.ipa.cha.ClassHierarchy;
+import com.ibm.wala.ipa.cha.ClassHierarchyException;
+import com.ibm.wala.ipa.cha.IClassHierarchy;
+import com.ibm.wala.cast.java.client.JDTJavaSourceAnalysisEngine;
+import com.ibm.wala.client.AbstractAnalysisEngine;
+import com.ibm.wala.ide.util.EclipseProjectPath.AnalysisScopeType;
 
 import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
+import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
+import edu.cuny.hunter.streamrefactoring.core.wala.WalaUtil;
 
 @SuppressWarnings("restriction")
 public class StreamAnalysisVisitor extends ASTVisitor {
@@ -48,31 +65,63 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 				&& !(!JdtFlags.isStatic(methodBinding) && declaringClassImplementsBaseStream)) {
 			Stream stream = new Stream(node);
 			inferStreamExecution(stream, node);
-			inferStreamOrdering(stream, node);
-
+			try {
+				inferStreamOrdering(stream, node);
+			} catch (Exception e) {
+				e.printStackTrace();
+				throw new RuntimeException(e);
+			}
 			this.getStreamSet().add(stream);
 		}
 
 		return super.visit(node);
 	}
 
-	private void inferStreamOrdering(Stream stream, MethodInvocation node) {
+	private void inferStreamOrdering(Stream stream, MethodInvocation node)
+			throws IOException, CoreException, ClassHierarchyException {
 		ITypeBinding expressionTypeBinding = node.getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
+		IMethodBinding methodBinding = node.resolveMethodBinding();
 
-		if (JdtFlags.isStatic(node.resolveMethodBinding())) {
+		if (JdtFlags.isStatic(methodBinding)) {
 			// static methods returning unordered streams.
 			if (expressionTypeQualifiedName.equals("java.util.stream.Stream")) {
-				String methodIdentifier = getMethodIdentifier(node.resolveMethodBinding());
+				String methodIdentifier = getMethodIdentifier(methodBinding);
 				if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
 					stream.setOrdering(StreamOrdering.UNORDERED);
 			} else
 				stream.setOrdering(StreamOrdering.ORDERED);
 		} else { // instance method.
-			if (expressionTypeQualifiedName.equals("java.util.HashSet")) // FIXME: What if there is something under this that is ordered?
+			IJavaElement javaElement = methodBinding.getJavaElement();
+			IJavaProject javaProject = javaElement.getJavaProject();
+			AbstractAnalysisEngine engine = new EclipseProjectAnalysisEngine(javaProject);
+			// FIXME: [RK] Inefficient to build this every time, I'd imagine.
+			engine.buildAnalysisScope();
+			IClassHierarchy cha = engine.buildClassHierarchy();
+			System.out.println("# of classes :" + cha.getNumberOfClasses());
+
+			// JDTJavaSourceAnalysisEngine engine = new
+			// JDTJavaSourceAnalysisEngine(
+			// node.resolveMethodBinding().getJavaElement().getJavaProject());
+			// engine.setDump(true);
+			// engine.buildAnalysisScope();
+			// engine.buildClassHierarchy();
+			// IClassHierarchy cha = engine.getClassHierarchy();
+
+			// JavaEclipseProjectPath path = JavaEclipseProjectPath.make(
+			// javaProject,
+			// AnalysisScopeType.SOURCE_FOR_PROJ_AND_LINKED_PROJS);
+
+			// AnalysisScope scope =
+			// WalaUtil.mergeProjectPaths(Collections.singleton(path));
+			// ClassHierarchy cha = ClassHierarchy.make(scope);
+
+			// FIXME: What if there is something under this that is ordered?
+			if (expressionTypeQualifiedName.equals("java.util.HashSet"))
 				stream.setOrdering(StreamOrdering.UNORDERED);
 			else
-				stream.setOrdering(StreamOrdering.ORDERED); // FIXME: A java.util.Set may actually not be ordered.
+				// FIXME: A java.util.Set may actually not be ordered.
+				stream.setOrdering(StreamOrdering.ORDERED);
 		}
 
 		// TODO: Are there more such methods? TreeSet?
@@ -133,5 +182,4 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 	public Set<Stream> getStreamSet() {
 		return streamSet;
 	}
-
 }
