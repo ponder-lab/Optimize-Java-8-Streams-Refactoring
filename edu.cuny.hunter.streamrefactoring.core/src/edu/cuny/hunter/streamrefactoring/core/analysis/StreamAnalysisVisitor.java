@@ -2,9 +2,7 @@ package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import org.eclipse.core.runtime.CoreException;
@@ -15,28 +13,26 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
-import org.eclipse.jdt.internal.corext.codemanipulation.StubUtility2;
-import org.eclipse.jdt.internal.corext.dom.Bindings;
-import org.eclipse.jdt.internal.corext.refactoring.util.JavaElementUtil;
-import org.eclipse.jdt.internal.corext.util.JavaModelUtil;
+import org.eclipse.jdt.internal.corext.dom.ASTNodes;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
-import org.eclipse.jdt.internal.ui.preferences.JavaEditorColoringPreferencePage;
 
-import com.ibm.wala.ide.util.JavaEclipseProjectPath;
-import com.ibm.wala.ide.util.JdtUtil;
-import com.ibm.wala.ipa.callgraph.AnalysisScope;
-import com.ibm.wala.ipa.cha.ClassHierarchy;
+import com.ibm.wala.analysis.typeInference.TypeAbstraction;
+import com.ibm.wala.analysis.typeInference.TypeInference;
+import com.ibm.wala.cast.java.ipa.callgraph.JavaSourceAnalysisScope;
+import com.ibm.wala.cast.java.translator.jdt.JDTIdentityMapper;
+import com.ibm.wala.client.AbstractAnalysisEngine;
+import com.ibm.wala.ipa.callgraph.AnalysisCache;
+import com.ibm.wala.ipa.callgraph.AnalysisOptions;
+import com.ibm.wala.ipa.callgraph.impl.Everywhere;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
-import com.ibm.wala.cast.java.client.JDTJavaSourceAnalysisEngine;
-import com.ibm.wala.client.AbstractAnalysisEngine;
-import com.ibm.wala.ide.util.EclipseProjectPath.AnalysisScopeType;
+import com.ibm.wala.ssa.IR;
+import com.ibm.wala.types.MethodReference;
 
-import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
-import edu.cuny.hunter.streamrefactoring.core.wala.WalaUtil;
 
 @SuppressWarnings("restriction")
 public class StreamAnalysisVisitor extends ASTVisitor {
@@ -97,8 +93,34 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 			AbstractAnalysisEngine engine = new EclipseProjectAnalysisEngine(javaProject);
 			// FIXME: [RK] Inefficient to build this every time, I'd imagine.
 			engine.buildAnalysisScope();
-			IClassHierarchy cha = engine.buildClassHierarchy();
-			System.out.println("# of classes :" + cha.getNumberOfClasses());
+			IClassHierarchy classHierarchy = engine.buildClassHierarchy();
+			AnalysisOptions options = new AnalysisOptions();
+			// options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
+			AnalysisCache cache = new AnalysisCache();
+
+			// get the IR for the enclosing method.
+			MethodDeclaration enclosingMethodDeclaration = (MethodDeclaration) ASTNodes.getParent(node,
+					MethodDeclaration.class);
+
+			JDTIdentityMapper mapper = new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE,
+					enclosingMethodDeclaration.getAST());
+			MethodReference methodRef = mapper.getMethodRef(enclosingMethodDeclaration.resolveBinding());
+
+			if (methodRef == null)
+				throw new IllegalStateException(
+						"Could not get method reference for: " + enclosingMethodDeclaration.getName());
+
+			com.ibm.wala.classLoader.IMethod method = classHierarchy.resolveMethod(methodRef);
+			IR ir = cache.getSSACache().findOrCreateIR(method, Everywhere.EVERYWHERE, options.getSSAOptions());
+
+			if (ir == null)
+				throw new IllegalStateException("IR is null for: " + method);
+
+			System.err.println(ir.toString());
+
+			TypeInference inference = TypeInference.make(ir, false);
+			TypeAbstraction[] results = inference.extractAllResults();
+			System.out.println(results);
 
 			// JDTJavaSourceAnalysisEngine engine = new
 			// JDTJavaSourceAnalysisEngine(
