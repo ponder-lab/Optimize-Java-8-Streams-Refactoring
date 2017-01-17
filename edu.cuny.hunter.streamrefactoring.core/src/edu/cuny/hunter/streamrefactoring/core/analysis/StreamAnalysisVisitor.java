@@ -3,18 +3,23 @@ package edu.cuny.hunter.streamrefactoring.core.analysis;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.internal.corext.dom.ASTNodes;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
 
@@ -22,14 +27,21 @@ import com.ibm.wala.analysis.typeInference.TypeAbstraction;
 import com.ibm.wala.analysis.typeInference.TypeInference;
 import com.ibm.wala.cast.java.ipa.callgraph.JavaSourceAnalysisScope;
 import com.ibm.wala.cast.java.translator.jdt.JDTIdentityMapper;
+import com.ibm.wala.classLoader.IBytecodeMethod;
 import com.ibm.wala.client.AbstractAnalysisEngine;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.impl.Everywhere;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
+import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.IR;
+import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.types.MethodReference;
+import com.ibm.wala.types.TypeName;
+import com.ibm.wala.types.TypeReference;
+import com.ibm.wala.util.strings.StringStuff;
 
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
@@ -37,6 +49,8 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 @SuppressWarnings("restriction")
 public class StreamAnalysisVisitor extends ASTVisitor {
 	private Set<Stream> streamSet = new HashSet<>();
+
+	private static final Logger logger = Logger.getLogger("edu.cuny.hunter.streamrefactoring");
 
 	public StreamAnalysisVisitor() {
 		super();
@@ -74,7 +88,7 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 	}
 
 	private void inferStreamOrdering(Stream stream, MethodInvocation node)
-			throws IOException, CoreException, ClassHierarchyException {
+			throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException {
 		ITypeBinding expressionTypeBinding = node.getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding methodBinding = node.resolveMethodBinding();
@@ -116,27 +130,15 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 			if (ir == null)
 				throw new IllegalStateException("IR is null for: " + method);
 
-			System.err.println(ir.toString());
+			int valueNumber = getValueNumberForInvocation(node, ir);
 
 			TypeInference inference = TypeInference.make(ir, false);
-			TypeAbstraction[] results = inference.extractAllResults();
-			System.out.println(results);
+			TypeAbstraction type = inference.getType(valueNumber);
+			System.out.println(type);
 
-			// JDTJavaSourceAnalysisEngine engine = new
-			// JDTJavaSourceAnalysisEngine(
-			// node.resolveMethodBinding().getJavaElement().getJavaProject());
-			// engine.setDump(true);
-			// engine.buildAnalysisScope();
-			// engine.buildClassHierarchy();
-			// IClassHierarchy cha = engine.getClassHierarchy();
-
-			// JavaEclipseProjectPath path = JavaEclipseProjectPath.make(
-			// javaProject,
-			// AnalysisScopeType.SOURCE_FOR_PROJ_AND_LINKED_PROJS);
-
-			// AnalysisScope scope =
-			// WalaUtil.mergeProjectPaths(Collections.singleton(path));
-			// ClassHierarchy cha = ClassHierarchy.make(scope);
+			// TODO: This is great that we have the least general type but we
+			// really need a collection of possible types. Then, we can check
+			// that each one.
 
 			// FIXME: What if there is something under this that is ordered?
 			if (expressionTypeQualifiedName.equals("java.util.HashSet"))
@@ -149,8 +151,63 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 		// TODO: Are there more such methods? TreeSet?
 		// FIXME: Can we have a better approximation of the expression run time
 		// type?
+	}
 
-		System.out.println(expressionTypeQualifiedName);
+	private static int getValueNumberForInvocation(MethodInvocation node, IR ir) throws InvalidClassFileException {
+		IBytecodeMethod method = (IBytecodeMethod) ir.getMethod();
+		SimpleName methodName = node.getName();
+
+		for (Iterator<SSAInstruction> it = ir.iterateNormalInstructions(); it.hasNext();) {
+			SSAInstruction instruction = it.next();
+			System.out.println(instruction);
+
+			int lineNumberFromIR = getLineNumberFromIR(method, instruction);
+			int lineNumberFromAST = getLineNumberFromAST(methodName);
+
+			if (lineNumberFromIR == lineNumberFromAST) {
+				// lines from the AST and the IR match. Let's dive a little
+				// deeper to be more confident of the correspondence.
+				if (instruction.hasDef() && instruction.getNumberOfDefs() == 2) {
+					if (instruction instanceof SSAInvokeInstruction) {
+						SSAInvokeInstruction invokeInstruction = (SSAInvokeInstruction) instruction;
+						TypeReference declaredTargetDeclaringClass = invokeInstruction.getDeclaredTarget()
+								.getDeclaringClass();
+						if (getBinaryName(declaredTargetDeclaringClass)
+								.equals(node.getExpression().resolveTypeBinding().getBinaryName())) {
+							MethodReference callSiteDeclaredTarget = invokeInstruction.getCallSite()
+									.getDeclaredTarget();
+							// FIXME: This matching needs much work.
+							if (callSiteDeclaredTarget.getName().toString()
+									.equals(node.resolveMethodBinding().getName())) {
+								int use = invokeInstruction.getUse(0);
+								return use;
+							}
+						}
+					}
+				} else
+					logger.warning("Instruction: " + instruction + " has no definitions.");
+			}
+		}
+		return -1;
+	}
+
+	private static String getBinaryName(TypeReference typeReference) {
+		TypeName name = typeReference.getName();
+		String slashToDot = StringStuff.slashToDot(name.getPackage().toString() + "." + name.getClassName().toString());
+		return slashToDot;
+	}
+
+	private static int getLineNumberFromAST(SimpleName methodName) {
+		CompilationUnit compilationUnit = (CompilationUnit) ASTNodes.getParent(methodName, ASTNode.COMPILATION_UNIT);
+		int lineNumberFromAST = compilationUnit.getLineNumber(methodName.getStartPosition());
+		return lineNumberFromAST;
+	}
+
+	private static int getLineNumberFromIR(IBytecodeMethod method, SSAInstruction instruction)
+			throws InvalidClassFileException {
+		int bytecodeIndex = method.getBytecodeIndex(instruction.iindex);
+		int lineNumberFromIR = method.getLineNumber(bytecodeIndex);
+		return lineNumberFromIR;
 	}
 
 	private void inferStreamExecution(Stream stream, MethodInvocation node) {
