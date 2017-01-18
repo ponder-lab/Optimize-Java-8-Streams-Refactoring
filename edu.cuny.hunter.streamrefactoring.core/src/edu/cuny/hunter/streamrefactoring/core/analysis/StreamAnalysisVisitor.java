@@ -193,7 +193,8 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
 			// TODO Not sure what we should do in this situation. What if we
 			// can't instantiate the iterable? Is there another way to find out
-			// this information?
+			// this information? This could be a problem in third-party
+			// container libraries.
 			e.printStackTrace();
 			throw new RuntimeException(e);
 		}
