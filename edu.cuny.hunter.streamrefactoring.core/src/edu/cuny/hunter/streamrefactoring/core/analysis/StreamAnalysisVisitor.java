@@ -36,8 +36,11 @@ import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.IR;
+import com.ibm.wala.ssa.PhiValue;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
+import com.ibm.wala.ssa.SSAPhiInstruction;
+import com.ibm.wala.ssa.Value;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
@@ -130,11 +133,10 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 			if (ir == null)
 				throw new IllegalStateException("IR is null for: " + method);
 
-			int valueNumber = getValueNumberForInvocation(node, ir);
-
+			int valueNumber = getUseValueNumberForInvocation(node, ir);
 			TypeInference inference = TypeInference.make(ir, false);
-			TypeAbstraction type = inference.getType(valueNumber);
-			System.out.println(type);
+			Set<TypeAbstraction> possibleTypes = getPossibleTypes(valueNumber, inference);
+			System.out.println(possibleTypes);
 
 			// TODO: This is great that we have the least general type but we
 			// really need a collection of possible types. Then, we can check
@@ -153,7 +155,30 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 		// type?
 	}
 
-	private static int getValueNumberForInvocation(MethodInvocation node, IR ir) throws InvalidClassFileException {
+	private Set<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
+		Set<TypeAbstraction> ret = new HashSet<>();
+		Value value = inference.getIR().getSymbolTable().getValue(valueNumber);
+
+		if (value instanceof PhiValue) {
+			// multiple possible types.
+			PhiValue phiValue = (PhiValue) value;
+			SSAPhiInstruction phiInstruction = phiValue.getPhiInstruction();
+			int numberOfUses = phiInstruction.getNumberOfUses();
+			// get the possible types for each use.
+			for (int i = 0; i < numberOfUses; i++) {
+				int use = phiInstruction.getUse(i);
+				Set<TypeAbstraction> possibleTypes = getPossibleTypes(use, inference);
+				ret.addAll(possibleTypes);
+			}
+		} else {
+			// one one possible type.
+			ret.add(inference.getType(valueNumber));
+		}
+
+		return ret;
+	}
+
+	private static int getUseValueNumberForInvocation(MethodInvocation node, IR ir) throws InvalidClassFileException {
 		IBytecodeMethod method = (IBytecodeMethod) ir.getMethod();
 		SimpleName methodName = node.getName();
 
@@ -179,11 +204,11 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 							// FIXME: This matching needs much work.
 							if (callSiteDeclaredTarget.getName().toString()
 									.equals(node.resolveMethodBinding().getName())) {
-								int use = invokeInstruction.getUse(0);
-								return use;
+								return invokeInstruction.getUse(0);
 							}
 						}
-					}
+					} else
+						logger.warning("Instruction: " + instruction + " is not an SSAInstruction.");
 				} else
 					logger.warning("Instruction: " + instruction + " has no definitions.");
 			}
