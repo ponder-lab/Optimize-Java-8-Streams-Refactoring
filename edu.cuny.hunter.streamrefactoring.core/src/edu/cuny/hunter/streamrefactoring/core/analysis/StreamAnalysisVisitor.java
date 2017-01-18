@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.Spliterator;
 import java.util.logging.Logger;
 
 import org.eclipse.core.runtime.CoreException;
@@ -32,6 +33,7 @@ import com.ibm.wala.client.AbstractAnalysisEngine;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.impl.Everywhere;
+import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
@@ -46,6 +48,8 @@ import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.strings.StringStuff;
 
+import edu.cuny.hunter.streamrefactoring.core.analysis.exceptions.InconsistentPossibleStreamSourceOrderingException;
+import edu.cuny.hunter.streamrefactoring.core.analysis.exceptions.NoniterablePossibleStreamSourceException;
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
@@ -80,6 +84,9 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 			inferStreamExecution(stream, node);
 			try {
 				inferStreamOrdering(stream, node);
+				// TODO: Need to single out some exceptions here for errors.
+				// Exceptions should be converted to RefactoringStatuses and
+				// associated with the Stream.
 			} catch (Exception e) {
 				e.printStackTrace();
 				throw new RuntimeException(e);
@@ -90,8 +97,9 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 		return super.visit(node);
 	}
 
-	private void inferStreamOrdering(Stream stream, MethodInvocation node)
-			throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException {
+	private static void inferStreamOrdering(Stream stream, MethodInvocation node)
+			throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
+			InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException {
 		ITypeBinding expressionTypeBinding = node.getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding methodBinding = node.resolveMethodBinding();
@@ -107,7 +115,7 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 		} else { // instance method.
 			IJavaElement javaElement = methodBinding.getJavaElement();
 			IJavaProject javaProject = javaElement.getJavaProject();
-			AbstractAnalysisEngine engine = new EclipseProjectAnalysisEngine(javaProject);
+			AbstractAnalysisEngine<InstanceKey> engine = new EclipseProjectAnalysisEngine<InstanceKey>(javaProject);
 			// FIXME: [RK] Inefficient to build this every time, I'd imagine.
 			engine.buildAnalysisScope();
 			IClassHierarchy classHierarchy = engine.buildClassHierarchy();
@@ -136,26 +144,62 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 			int valueNumber = getUseValueNumberForInvocation(node, ir);
 			TypeInference inference = TypeInference.make(ir, false);
 			Set<TypeAbstraction> possibleTypes = getPossibleTypes(valueNumber, inference);
-			System.out.println(possibleTypes);
 
-			// TODO: This is great that we have the least general type but we
-			// really need a collection of possible types. Then, we can check
-			// that each one.
-
-			// FIXME: What if there is something under this that is ordered?
-			if (expressionTypeQualifiedName.equals("java.util.HashSet"))
-				stream.setOrdering(StreamOrdering.UNORDERED);
-			else
-				// FIXME: A java.util.Set may actually not be ordered.
-				stream.setOrdering(StreamOrdering.ORDERED);
+			// Possible types: check each one.
+			StreamOrdering ordering = inferStreamOrdering(possibleTypes);
+			stream.setOrdering(ordering);
 		}
-
-		// TODO: Are there more such methods? TreeSet?
-		// FIXME: Can we have a better approximation of the expression run time
-		// type?
 	}
 
-	private Set<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
+	private static StreamOrdering inferStreamOrdering(Set<TypeAbstraction> possibleStreamSourceTypes)
+			throws InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException {
+		StreamOrdering ret = null;
+
+		for (TypeAbstraction typeAbstraction : possibleStreamSourceTypes) {
+			StreamOrdering ordering = inferStreamOrdering(typeAbstraction);
+
+			if (ret == null)
+				ret = ordering;
+			else if (ret != ordering)
+				throw new InconsistentPossibleStreamSourceOrderingException(
+						ret + " does not match " + ordering + " for type: " + typeAbstraction + ".");
+		}
+
+		return ret;
+	}
+
+	private static StreamOrdering inferStreamOrdering(TypeAbstraction typeAbstraction)
+			throws NoniterablePossibleStreamSourceException {
+		TypeReference typeReference = typeAbstraction.getTypeReference();
+		String binaryName = getBinaryName(typeReference);
+
+		try {
+			Class<?> clazz = Class.forName(binaryName);
+
+			// is it an Iterable?
+			if (Iterable.class.isAssignableFrom(clazz)) {
+				Iterable<?> instance = (Iterable<?>) clazz.newInstance();
+				boolean ordered = instance.spliterator().hasCharacteristics(Spliterator.ORDERED);
+
+				// FIXME: What if there is something under this that is ordered?
+				if (!ordered)
+					return StreamOrdering.UNORDERED;
+				else
+					// FIXME: A java.util.Set may actually not be ordered.
+					return StreamOrdering.ORDERED;
+			} else
+				throw new NoniterablePossibleStreamSourceException(clazz + " does not implement java.util.Iterable.");
+
+		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+			// TODO Not sure what we should do in this situation. What if we
+			// can't instantiate the iterable? Is there another way to find out
+			// this information?
+			e.printStackTrace();
+			throw new RuntimeException(e);
+		}
+	}
+
+	private static Set<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
 		Set<TypeAbstraction> ret = new HashSet<>();
 		Value value = inference.getIR().getSymbolTable().getValue(valueNumber);
 
@@ -235,7 +279,7 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 		return lineNumberFromIR;
 	}
 
-	private void inferStreamExecution(Stream stream, MethodInvocation node) {
+	private static void inferStreamExecution(Stream stream, MethodInvocation node) {
 		String methodIdentifier = getMethodIdentifier(node.resolveMethodBinding());
 
 		if (methodIdentifier.equals("parallelStream()"))
@@ -244,7 +288,7 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 			stream.setExecutionMode(StreamExecutionMode.SEQUENTIAL);
 	}
 
-	private String getMethodIdentifier(IMethodBinding methodBinding) {
+	private static String getMethodIdentifier(IMethodBinding methodBinding) {
 		IMethod method = (IMethod) methodBinding.getJavaElement();
 
 		String methodIdentifier = null;

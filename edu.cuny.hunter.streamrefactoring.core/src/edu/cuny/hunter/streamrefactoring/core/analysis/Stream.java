@@ -1,10 +1,13 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 
 /**
  * An abstract notion of a stream in memory.
- * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi Khatchadourian</a>
+ * 
+ * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi
+ *         Khatchadourian</a>
  *
  */
 public class Stream {
@@ -13,6 +16,8 @@ public class Stream {
 	private StreamExecutionMode executionMode;
 
 	private StreamOrdering ordering;
+
+	private RefactoringStatus status;
 
 	public Stream(MethodInvocation streamCreation) {
 		super();
@@ -36,6 +41,8 @@ public class Stream {
 		builder.append(executionMode);
 		builder.append(", ordering=");
 		builder.append(ordering);
+		builder.append(", status=");
+		builder.append(status);
 		builder.append("]");
 		return builder.toString();
 	}
@@ -58,5 +65,9 @@ public class Stream {
 
 	public MethodInvocation getStreamCreation() {
 		return streamCreation;
+	}
+
+	public RefactoringStatus getStatus() {
+		return status;
 	}
 }
