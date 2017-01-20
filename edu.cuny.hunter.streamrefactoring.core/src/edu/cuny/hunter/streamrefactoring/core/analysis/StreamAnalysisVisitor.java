@@ -48,8 +48,6 @@ import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.strings.StringStuff;
 
-import edu.cuny.hunter.streamrefactoring.core.analysis.exceptions.InconsistentPossibleStreamSourceOrderingException;
-import edu.cuny.hunter.streamrefactoring.core.analysis.exceptions.NoniterablePossibleStreamSourceException;
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
@@ -97,9 +95,9 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 		return super.visit(node);
 	}
 
-	private static void inferStreamOrdering(Stream stream, MethodInvocation node)
-			throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
-			InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException {
+	private static void inferStreamOrdering(Stream stream, MethodInvocation node) throws IOException, CoreException,
+			ClassHierarchyException, InvalidClassFileException, InconsistentPossibleStreamSourceOrderingException,
+			NoniterablePossibleStreamSourceException, NoninstantiablePossibleStreamSourceException {
 		ITypeBinding expressionTypeBinding = node.getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding methodBinding = node.resolveMethodBinding();
@@ -152,7 +150,8 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 	}
 
 	private static StreamOrdering inferStreamOrdering(Set<TypeAbstraction> possibleStreamSourceTypes)
-			throws InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException {
+			throws InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException,
+			NoninstantiablePossibleStreamSourceException {
 		StreamOrdering ret = null;
 
 		for (TypeAbstraction typeAbstraction : possibleStreamSourceTypes) {
@@ -169,32 +168,53 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 	}
 
 	private static StreamOrdering inferStreamOrdering(TypeAbstraction typeAbstraction)
-			throws NoniterablePossibleStreamSourceException {
+			throws NoniterablePossibleStreamSourceException, NoninstantiablePossibleStreamSourceException {
 		TypeReference typeReference = typeAbstraction.getTypeReference();
 		String binaryName = getBinaryName(typeReference);
 
+		return inferStreamOrdering(binaryName);
+	}
+
+	public static StreamOrdering inferStreamOrdering(String className)
+			throws NoniterablePossibleStreamSourceException, NoninstantiablePossibleStreamSourceException {
 		try {
-			Class<?> clazz = Class.forName(binaryName);
+			Class<?> clazz = Class.forName(className);
 
 			// is it an Iterable?
 			if (Iterable.class.isAssignableFrom(clazz)) {
-				Iterable<?> instance = (Iterable<?>) clazz.newInstance();
-				boolean ordered = instance.spliterator().hasCharacteristics(Spliterator.ORDERED);
+				// is it instantiable?
+				if (!clazz.isInterface()) {
+					Iterable<?> instance = null;
+					try {
+						instance = (Iterable<?>) clazz.newInstance();
+					} catch (InstantiationException e) {
+						throw new NoninstantiablePossibleStreamSourceException(clazz + " cannot be instantiated: " + e.getCause(),
+								e);
+					} catch (IllegalAccessException e) {
+						throw new NoninstantiablePossibleStreamSourceException(
+								clazz + " cannot be instantiated due to an access exception: " + e, e);
+					}
+					boolean ordered = instance.spliterator().hasCharacteristics(Spliterator.ORDERED);
 
-				// FIXME: What if there is something under this that is ordered?
-				if (!ordered)
-					return StreamOrdering.UNORDERED;
-				else
-					// FIXME: A java.util.Set may actually not be ordered.
-					return StreamOrdering.ORDERED;
+					// FIXME: What if there is something under this that is
+					// ordered?
+					if (!ordered)
+						return StreamOrdering.UNORDERED;
+					else
+						// FIXME: A java.util.Set may actually not be ordered.
+						return StreamOrdering.ORDERED;
+				} else
+					throw new NoninstantiablePossibleStreamSourceException(
+							clazz + " cannot be instantiated because it is an interface.");
 			} else
 				throw new NoniterablePossibleStreamSourceException(clazz + " does not implement java.util.Iterable.");
 
-		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+		} catch (ClassNotFoundException e) {
 			// TODO Not sure what we should do in this situation. What if we
 			// can't instantiate the iterable? Is there another way to find out
 			// this information? This could be a problem in third-party
-			// container libraries.
+			// container libraries. Also, what if we don't have the class in the
+			// classpath?
 			e.printStackTrace();
 			throw new RuntimeException(e);
 		}
