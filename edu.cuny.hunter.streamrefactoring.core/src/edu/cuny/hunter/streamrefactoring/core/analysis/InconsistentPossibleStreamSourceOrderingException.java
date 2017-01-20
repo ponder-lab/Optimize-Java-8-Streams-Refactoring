@@ -1,4 +1,4 @@
-package edu.cuny.hunter.streamrefactoring.core.analysis.exceptions;
+package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 public class InconsistentPossibleStreamSourceOrderingException extends Exception {
 
