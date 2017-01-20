@@ -23,6 +23,9 @@ import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.internal.corext.dom.ASTNodes;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
+import org.objenesis.Objenesis;
+import org.objenesis.ObjenesisStd;
+import org.objenesis.instantiator.ObjectInstantiator;
 
 import com.ibm.wala.analysis.typeInference.TypeAbstraction;
 import com.ibm.wala.analysis.typeInference.TypeInference;
@@ -54,6 +57,8 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 @SuppressWarnings("restriction")
 public class StreamAnalysisVisitor extends ASTVisitor {
 	private Set<Stream> streamSet = new HashSet<>();
+
+	private static Objenesis objenesis = new ObjenesisStd();
 
 	private static final Logger logger = Logger.getLogger("edu.cuny.hunter.streamrefactoring");
 
@@ -95,9 +100,10 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 		return super.visit(node);
 	}
 
-	private static void inferStreamOrdering(Stream stream, MethodInvocation node) throws IOException, CoreException,
-			ClassHierarchyException, InvalidClassFileException, InconsistentPossibleStreamSourceOrderingException,
-			NoniterablePossibleStreamSourceException, NoninstantiablePossibleStreamSourceException {
+	private static void inferStreamOrdering(Stream stream, MethodInvocation node)
+			throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
+			InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException,
+			NoninstantiablePossibleStreamSourceException, CannotDetermineStreamOrderingException {
 		ITypeBinding expressionTypeBinding = node.getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding methodBinding = node.resolveMethodBinding();
@@ -151,7 +157,7 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 
 	private static StreamOrdering inferStreamOrdering(Set<TypeAbstraction> possibleStreamSourceTypes)
 			throws InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException,
-			NoninstantiablePossibleStreamSourceException {
+			NoninstantiablePossibleStreamSourceException, CannotDetermineStreamOrderingException {
 		StreamOrdering ret = null;
 
 		for (TypeAbstraction typeAbstraction : possibleStreamSourceTypes) {
@@ -168,15 +174,16 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 	}
 
 	private static StreamOrdering inferStreamOrdering(TypeAbstraction typeAbstraction)
-			throws NoniterablePossibleStreamSourceException, NoninstantiablePossibleStreamSourceException {
+			throws NoniterablePossibleStreamSourceException, NoninstantiablePossibleStreamSourceException,
+			CannotDetermineStreamOrderingException {
 		TypeReference typeReference = typeAbstraction.getTypeReference();
 		String binaryName = getBinaryName(typeReference);
 
 		return inferStreamOrdering(binaryName);
 	}
 
-	public static StreamOrdering inferStreamOrdering(String className)
-			throws NoniterablePossibleStreamSourceException, NoninstantiablePossibleStreamSourceException {
+	public static StreamOrdering inferStreamOrdering(String className) throws NoniterablePossibleStreamSourceException,
+			NoninstantiablePossibleStreamSourceException, CannotDetermineStreamOrderingException {
 		try {
 			Class<?> clazz = Class.forName(className);
 
@@ -184,17 +191,16 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 			if (Iterable.class.isAssignableFrom(clazz)) {
 				// is it instantiable?
 				if (!clazz.isInterface()) {
-					Iterable<?> instance = null;
+					Iterable<?> instance = createInstance(clazz);
+					boolean ordered;
+
 					try {
-						instance = (Iterable<?>) clazz.newInstance();
-					} catch (InstantiationException e) {
-						throw new NoninstantiablePossibleStreamSourceException(clazz + " cannot be instantiated: " + e.getCause(),
-								e);
-					} catch (IllegalAccessException e) {
-						throw new NoninstantiablePossibleStreamSourceException(
-								clazz + " cannot be instantiated due to an access exception: " + e, e);
+						ordered = instance.spliterator().hasCharacteristics(Spliterator.ORDERED);
+					} catch (Exception e) {
+						// not able to determine ordering via reflection.
+						throw new CannotDetermineStreamOrderingException(
+								"Cannot determine stream ordering via reflection for: " + clazz + ": " + e, e);
 					}
-					boolean ordered = instance.spliterator().hasCharacteristics(Spliterator.ORDERED);
 
 					// FIXME: What if there is something under this that is
 					// ordered?
@@ -217,6 +223,20 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 			// classpath?
 			e.printStackTrace();
 			throw new RuntimeException(e);
+		}
+	}
+
+	private static Iterable<?> createInstance(Class<?> clazz) throws NoninstantiablePossibleStreamSourceException {
+		try {
+			return (Iterable<?>) clazz.newInstance();
+		} catch (InstantiationException | IllegalAccessException e) {
+			ObjectInstantiator<?> instantiator = objenesis.getInstantiatorOf(clazz);
+			try {
+				return (Iterable<?>) instantiator.newInstance();
+			} catch (InstantiationError e2) {
+				throw new NoninstantiablePossibleStreamSourceException(
+						clazz + " cannot be instantiated: " + e2.getCause(), e2);
+			}
 		}
 	}
 

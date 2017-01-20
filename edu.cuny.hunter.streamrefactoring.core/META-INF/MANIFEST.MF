@@ -5,7 +5,8 @@ Bundle-SymbolicName: edu.cuny.hunter.streamrefactoring.core;singleton:=true
 Bundle-Version: 1.0.0
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-Vendor: %Bundle-Vendor
-Bundle-ClassPath: .
+Bundle-ClassPath: .,
+ lib/objenesis-2.5.1.jar
 Require-Bundle: org.eclipse.ltk.core.refactoring,
  org.eclipse.equinox.registry,
  org.eclipse.jdt.core,
@@ -24,7 +25,8 @@ Export-Package: edu.cuny.hunter.streamrefactoring.core.analysis,
  edu.cuny.hunter.streamrefactoring.core.descriptors,
  edu.cuny.hunter.streamrefactoring.core.messages,
  edu.cuny.hunter.streamrefactoring.core.refactorings,
- edu.cuny.hunter.streamrefactoring.core.utils
+ edu.cuny.hunter.streamrefactoring.core.utils,
+ edu.cuny.hunter.streamrefactoring.core.wala
 Import-Package: org.eclipse.core.resources,
  org.eclipse.core.runtime;version="3.5.0",
  org.eclipse.core.runtime.jobs,
