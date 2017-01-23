@@ -189,7 +189,8 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 								CompilationUnit compilationUnit = getCompilationUnit(unit, subMonitor.split(1));
 								StreamAnalysisVisitor visitor = new StreamAnalysisVisitor();
 								compilationUnit.accept(visitor);
-								// TODO: Get the RefactoringStatus from each Stream.
+								// TODO: Get the RefactoringStatus from each
+								// Stream.
 							}
 						}
 					}
@@ -227,9 +228,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 			// RefactoringStatus.createFatalErrorStatus(Messages.StreamsNotSpecified);
 			// else {
 			RefactoringStatus status = new RefactoringStatus();
-
 			pm.beginTask(Messages.CheckingPreconditions, 1);
-
 			return status;
 			// }
 		} catch (Exception e) {
