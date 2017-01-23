@@ -7,7 +7,8 @@ import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collector;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -175,8 +176,8 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		try {
 			SubMonitor subMonitor = SubMonitor.convert(monitor, Messages.CheckingPreconditions,
 					this.getJavaProjects().length * 1000);
-
 			final RefactoringStatus status = new RefactoringStatus();
+			StreamAnalysisVisitor visitor = new StreamAnalysisVisitor();
 
 			for (IJavaProject jproj : this.getJavaProjects()) {
 				IPackageFragmentRoot[] roots = jproj.getPackageFragmentRoots();
@@ -188,28 +189,32 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 							ICompilationUnit[] units = fragment.getCompilationUnits();
 							for (ICompilationUnit unit : units) {
 								CompilationUnit compilationUnit = getCompilationUnit(unit, subMonitor.split(1));
-								StreamAnalysisVisitor visitor = new StreamAnalysisVisitor();
 								compilationUnit.accept(visitor);
-								RefactoringStatus collect = visitor.getStreamSet().stream().map(Stream::getStatus)
-										.collect(() -> new RefactoringStatus(), (a, b) -> a.merge(b),
-												(a, b) -> a.merge(b));
-								status.merge(collect);
 							}
 						}
 					}
 				}
 			}
 
-			// check if there are any methods left to migrate.
-			// if
-			// (this.getUnmigratableMethods().containsAll(this.getSourceMethods()))
-			// if not, we have a fatal error.
-			// status.addFatalError(Messages.NoStreamsHavePassedThePreconditions);
+			RefactoringStatus collectedStatus = visitor.getStreamSet().stream().map(Stream::getStatus)
+					.collect(() -> new RefactoringStatus(), (a, b) -> a.merge(b), (a, b) -> a.merge(b));
+			status.merge(collectedStatus);
 
-			// TODO:
-			// Checks.addModifiedFilesToChecker(ResourceUtil.getFiles(fChangeManager.getAllCompilationUnits()),
-			// context);
+			// if there are no fatal errors.
+			if (!status.hasFatalError()) {
+				// these are the streams passing preconditions.
+				Set<Stream> passingStreamSet = visitor.getStreamSet().stream().filter(s -> !s.getStatus().hasError())
+						.collect(Collectors.toSet());
 
+				// add a fatal error if there are no passing streams.
+				if (passingStreamSet.isEmpty())
+					status.addFatalError(Messages.NoStreamsHavePassedThePreconditions);
+				else {
+					// TODO:
+					// Checks.addModifiedFilesToChecker(ResourceUtil.getFiles(fChangeManager.getAllCompilationUnits()),
+					// context);
+				}
+			}
 			return status;
 		} catch (Exception e) {
 			JavaPlugin.log(e);
