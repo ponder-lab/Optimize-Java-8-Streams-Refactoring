@@ -275,13 +275,15 @@ public class Stream {
 		StreamOrdering ret = null;
 
 		for (TypeAbstraction typeAbstraction : possibleStreamSourceTypes) {
-			StreamOrdering ordering = inferStreamOrdering(typeAbstraction);
+			if (typeAbstraction != TypeAbstraction.TOP) {
+				StreamOrdering ordering = inferStreamOrdering(typeAbstraction);
 
-			if (ret == null)
-				ret = ordering;
-			else if (ret != ordering)
-				throw new InconsistentPossibleStreamSourceOrderingException(
-						ret + " does not match " + ordering + " for type: " + typeAbstraction + ".");
+				if (ret == null)
+					ret = ordering;
+				else if (ret != ordering)
+					throw new InconsistentPossibleStreamSourceOrderingException(
+							ret + " does not match " + ordering + " for type: " + typeAbstraction + ".");
+			}
 		}
 
 		return ret;
