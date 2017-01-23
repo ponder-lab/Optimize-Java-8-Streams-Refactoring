@@ -110,7 +110,7 @@ public class Stream {
 				ASTNode.COMPILATION_UNIT);
 		ICompilationUnit compilationUnit2 = (ICompilationUnit) compilationUnit.getJavaElement();
 		RefactoringStatusContext context = JavaStatusContext.create(compilationUnit2, streamCreation);
-		this.getStatus().addEntry(RefactoringStatus.WARNING, message, context, REFACTORING_ID, failure.getCode(),
+		this.getStatus().addEntry(RefactoringStatus.ERROR, message, context, REFACTORING_ID, failure.getCode(),
 				streamCreation);
 	}
 
