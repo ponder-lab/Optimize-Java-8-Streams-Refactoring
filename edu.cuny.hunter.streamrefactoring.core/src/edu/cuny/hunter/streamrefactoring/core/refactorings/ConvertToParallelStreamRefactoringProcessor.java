@@ -7,6 +7,7 @@ import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collector;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -50,12 +51,12 @@ import org.osgi.framework.FrameworkUtil;
 import edu.cuny.hunter.streamrefactoring.core.analysis.CannotDetermineStreamOrderingException;
 import edu.cuny.hunter.streamrefactoring.core.analysis.NoninstantiablePossibleStreamSourceException;
 import edu.cuny.hunter.streamrefactoring.core.analysis.NoniterablePossibleStreamSourceException;
+import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalysisVisitor;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamOrdering;
 import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
 import edu.cuny.hunter.streamrefactoring.core.messages.Messages;
-import edu.cuny.hunter.streamrefactoring.core.messages.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
 
 /**
@@ -77,7 +78,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	private static int loggingLevel = IStatus.WARNING;
 
 	@SuppressWarnings("unused")
-	private static final GroupCategorySet SET_MIGRATE_METHOD_IMPLEMENTATION_TO_INTERFACE = new GroupCategorySet(
+	private static final GroupCategorySet SET_CONVERT_STREAM_TO_PARALLEL = new GroupCategorySet(
 			new GroupCategory("edu.cuny.hunter.streamrefactoring", //$NON-NLS-1$
 					Messages.CategoryName, Messages.CategoryDescription));
 
@@ -189,8 +190,10 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 								CompilationUnit compilationUnit = getCompilationUnit(unit, subMonitor.split(1));
 								StreamAnalysisVisitor visitor = new StreamAnalysisVisitor();
 								compilationUnit.accept(visitor);
-								// TODO: Get the RefactoringStatus from each
-								// Stream.
+								RefactoringStatus collect = visitor.getStreamSet().stream().map(Stream::getStatus)
+										.collect(() -> new RefactoringStatus(), (a, b) -> a.merge(b),
+												(a, b) -> a.merge(b));
+								status.merge(collect);
 							}
 						}
 					}

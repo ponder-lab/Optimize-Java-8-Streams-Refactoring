@@ -1,21 +1,29 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
 
+import com.ibm.wala.ipa.cha.ClassHierarchyException;
+import com.ibm.wala.shrikeCT.InvalidClassFileException;
+
 @SuppressWarnings("restriction")
 public class StreamAnalysisVisitor extends ASTVisitor {
 	private Set<Stream> streamSet = new HashSet<>();
 
+	private static final Logger logger = Logger.getLogger("edu.cuny.hunter.streamrefactoring");
+
 	public StreamAnalysisVisitor() {
-		super();
 	}
 
 	public StreamAnalysisVisitor(boolean visitDocTags) {
@@ -38,11 +46,8 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 			Stream stream = null;
 			try {
 				stream = new Stream(node);
-				// TODO: Need to single out some exceptions here for errors.
-				// Exceptions should be converted to RefactoringStatuses and
-				// associated with the Stream.
-			} catch (Exception e) {
-				e.printStackTrace();
+			} catch (ClassHierarchyException | IOException | CoreException | InvalidClassFileException e) {
+				logger.log(Level.SEVERE, "Encountered exception while processing: " + node, e);
 				throw new RuntimeException(e);
 			}
 			this.getStreamSet().add(stream);

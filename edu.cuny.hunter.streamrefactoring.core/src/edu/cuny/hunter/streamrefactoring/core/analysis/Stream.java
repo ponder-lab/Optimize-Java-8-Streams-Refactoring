@@ -1,13 +1,17 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
+import static edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID;
+
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Spliterator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IMethod;
@@ -20,8 +24,10 @@ import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.internal.corext.dom.ASTNodes;
+import org.eclipse.jdt.internal.corext.refactoring.base.JavaStatusContext;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
+import org.eclipse.ltk.core.refactoring.RefactoringStatusContext;
 import org.objenesis.Objenesis;
 import org.objenesis.ObjenesisStd;
 import org.objenesis.instantiator.ObjectInstantiator;
@@ -68,19 +74,44 @@ public class Stream {
 
 	private StreamOrdering ordering;
 
-	private RefactoringStatus status;
+	private RefactoringStatus status = new RefactoringStatus();
 
 	private static Objenesis objenesis = new ObjenesisStd();
 
 	private static final Logger logger = Logger.getLogger("edu.cuny.hunter.streamrefactoring");
 
 	public Stream(MethodInvocation streamCreation)
-			throws ClassHierarchyException, IOException, CoreException, InvalidClassFileException,
-			InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException,
-			NoninstantiablePossibleStreamSourceException, CannotDetermineStreamOrderingException {
+			throws ClassHierarchyException, IOException, CoreException, InvalidClassFileException {
 		this.creation = streamCreation;
 		this.inferExecution();
-		this.inferOrdering();
+		try {
+			this.inferOrdering();
+		} catch (InconsistentPossibleStreamSourceOrderingException e) {
+			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+			addStatusEntry(streamCreation, PreconditionFailure.INCONSISTENT_POSSIBLE_STREAM_SOURCE_ORDERING,
+					"Stream: " + streamCreation + " has inconsistent possible source orderings.");
+		} catch (NoniterablePossibleStreamSourceException e) {
+			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+			addStatusEntry(streamCreation, PreconditionFailure.NON_ITERABLE_POSSIBLE_STREAM_SOURCE,
+					"Stream: " + streamCreation + " has a non-iterable possible source.");
+		} catch (NoninstantiablePossibleStreamSourceException e) {
+			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+			addStatusEntry(streamCreation, PreconditionFailure.NON_INSTANTIABLE_POSSIBLE_STREAM_SOURCE,
+					"Stream: " + streamCreation + " has a non-instantiable possible source.");
+		} catch (CannotDetermineStreamOrderingException e) {
+			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_STREAM_SOURCE_ORDERING,
+					"Cannot determine ordering of source for stream: " + streamCreation + ".");
+		}
+	}
+
+	private void addStatusEntry(MethodInvocation streamCreation, PreconditionFailure failure, String message) {
+		CompilationUnit compilationUnit = (CompilationUnit) ASTNodes.getParent(streamCreation,
+				ASTNode.COMPILATION_UNIT);
+		ICompilationUnit compilationUnit2 = (ICompilationUnit) compilationUnit.getJavaElement();
+		RefactoringStatusContext context = JavaStatusContext.create(compilationUnit2, streamCreation);
+		this.getStatus().addEntry(RefactoringStatus.WARNING, message, context, REFACTORING_ID, failure.getCode(),
+				streamCreation);
 	}
 
 	private void inferExecution() {
