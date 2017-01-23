@@ -7,7 +7,6 @@ import java.text.MessageFormat;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -48,8 +47,12 @@ import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
 import org.eclipse.ltk.core.refactoring.participants.SharableParticipants;
 import org.osgi.framework.FrameworkUtil;
 
+import edu.cuny.hunter.streamrefactoring.core.analysis.CannotDetermineStreamOrderingException;
+import edu.cuny.hunter.streamrefactoring.core.analysis.NoninstantiablePossibleStreamSourceException;
+import edu.cuny.hunter.streamrefactoring.core.analysis.NoniterablePossibleStreamSourceException;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalysisVisitor;
+import edu.cuny.hunter.streamrefactoring.core.analysis.StreamOrdering;
 import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
 import edu.cuny.hunter.streamrefactoring.core.messages.Messages;
 import edu.cuny.hunter.streamrefactoring.core.messages.PreconditionFailure;
@@ -234,6 +237,34 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 			throw e;
 		} finally {
 			pm.done();
+		}
+	}
+
+	@SuppressWarnings("unused")
+	private void printStreamSourceTypeOrderingAttributes(IProgressMonitor pm) throws JavaModelException {
+		for (IJavaProject project : this.getJavaProjects()) {
+			IType type = project.findType("java.lang.Iterable");
+			ITypeHierarchy hierarchy = type.newTypeHierarchy(pm);
+			IType[] subtypes = hierarchy.getAllSubtypes(type);
+			for (IType subtype : subtypes) {
+				Class<?> clazz = null;
+				try {
+					clazz = Class.forName(subtype.getFullyQualifiedName());
+				} catch (ClassNotFoundException e) {
+					System.err.println(e);
+					continue;
+				}
+
+				StreamOrdering ordering;
+				try {
+					ordering = Stream.inferStreamOrdering(subtype.getFullyQualifiedName());
+				} catch (NoniterablePossibleStreamSourceException | NoninstantiablePossibleStreamSourceException
+						| CannotDetermineStreamOrderingException e) {
+					System.err.println(e);
+					continue;
+				}
+				System.out.println(clazz + "," + ordering);
+			}
 		}
 	}
 
