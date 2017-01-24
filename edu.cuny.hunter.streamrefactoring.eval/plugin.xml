@@ -3,31 +3,15 @@
 <plugin>
   <extension point="org.eclipse.ui.commands">
     <command
-          defaultHandler="edu.cuny.hunter.streamrefactoring.eval.handlers.FindCandidateSkeletalImplementationsHandler"
-          description="Find Candidate Skeletal Implementations"
-          id="org.eclipse.find.candidate.skeletal.implementations.command"
-          name="Find Candidate Skeletal Implementations"/>
-    <command
-          defaultHandler="edu.cuny.hunter.streamrefactoring.eval.handlers.EvaluateMigrateSkeletalImplementationToInterfaceRefactoringHandler"
-          description="Evaluates the Migrate Skeletal Implementation To Interface refactoring"
-          id="org.eclipse.evaluate.migrate.skeletal.implementation.to.interface.refactoring.command"
-          name="Evaluate Migrate Skeletal Implementation To Interface Refactoring"/>
+          defaultHandler="edu.cuny.hunter.streamrefactoring.eval.handlers.EvaluateConvertToParallelStreamRefactoringHandler"
+          description="Evaluates the Convert Stream to Parallel refactoring"
+          id="edu.cuny.hunter.evaluate.convert.stream.to.parallel.refactoring.command"
+          name="Evaluate Convert Stream To Parallel Refactoring"/>
   </extension>
   <extension point="org.eclipse.ui.handlers">
     <handler
-          class="edu.cuny.hunter.streamrefactoring.eval.handlers.FindCandidateSkeletalImplementationsHandler"
-          commandId="org.eclipse.find.candidate.skeletal.implementations.command">
-      <activeWhen>
-        <with variable="selection">
-          <iterate ifEmpty="false" operator="or">
-            <instanceof value="org.eclipse.jdt.core.IJavaProject"></instanceof>
-          </iterate>
-        </with>
-      </activeWhen>
-    </handler>
-    <handler
-          class="edu.cuny.hunter.streamrefactoring.eval.handlers.EvaluateMigrateSkeletalImplementationToInterfaceRefactoringHandler"
-          commandId="org.eclipse.evaluate.migrate.skeletal.implementation.to.interface.refactoring.command">
+          class="edu.cuny.hunter.streamrefactoring.eval.handlers.EvaluateConvertToParallelStreamRefactoringHandler"
+          commandId="edu.cuny.hunter.evaluate.convert.stream.to.parallel.refactoring.command">
       <activeWhen>
         <with variable="selection">
           <iterate ifEmpty="false" operator="or">

@@ -1,7 +1,5 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
-import static edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID;
-
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -15,6 +13,7 @@ import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IMethod;
+import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.CompilationUnit;
@@ -31,6 +30,7 @@ import org.eclipse.ltk.core.refactoring.RefactoringStatusContext;
 import org.objenesis.Objenesis;
 import org.objenesis.ObjenesisStd;
 import org.objenesis.instantiator.ObjectInstantiator;
+import org.osgi.framework.FrameworkUtil;
 
 import com.ibm.wala.analysis.typeInference.TypeAbstraction;
 import com.ibm.wala.analysis.typeInference.TypeInference;
@@ -68,7 +68,11 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
  */
 @SuppressWarnings("restriction")
 public class Stream {
-	private MethodInvocation creation;
+	private static final String PLUGIN_ID = FrameworkUtil.getBundle(Stream.class).getSymbolicName();
+
+	private final MethodInvocation creation;
+
+	private final MethodDeclaration enclosingMethodDeclaration;
 
 	private StreamExecutionMode executionMode;
 
@@ -83,6 +87,8 @@ public class Stream {
 	public Stream(MethodInvocation streamCreation)
 			throws ClassHierarchyException, IOException, CoreException, InvalidClassFileException {
 		this.creation = streamCreation;
+		this.enclosingMethodDeclaration = (MethodDeclaration) ASTNodes.getParent(this.getCreation(),
+				ASTNode.METHOD_DECLARATION);
 		this.inferExecution();
 		try {
 			this.inferOrdering();
@@ -110,8 +116,7 @@ public class Stream {
 				ASTNode.COMPILATION_UNIT);
 		ICompilationUnit compilationUnit2 = (ICompilationUnit) compilationUnit.getJavaElement();
 		RefactoringStatusContext context = JavaStatusContext.create(compilationUnit2, streamCreation);
-		this.getStatus().addEntry(RefactoringStatus.ERROR, message, context, REFACTORING_ID, failure.getCode(),
-				streamCreation);
+		this.getStatus().addEntry(RefactoringStatus.ERROR, message, context, PLUGIN_ID, failure.getCode(), this);
 	}
 
 	private void inferExecution() {
@@ -150,16 +155,13 @@ public class Stream {
 			AnalysisCache cache = new AnalysisCache();
 
 			// get the IR for the enclosing method.
-			MethodDeclaration enclosingMethodDeclaration = (MethodDeclaration) ASTNodes.getParent(this.getCreation(),
-					MethodDeclaration.class);
-
 			JDTIdentityMapper mapper = new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE,
-					enclosingMethodDeclaration.getAST());
-			MethodReference methodRef = mapper.getMethodRef(enclosingMethodDeclaration.resolveBinding());
+					getEnclosingMethodDeclaration().getAST());
+			MethodReference methodRef = mapper.getMethodRef(getEnclosingMethodDeclaration().resolveBinding());
 
 			if (methodRef == null)
 				throw new IllegalStateException(
-						"Could not get method reference for: " + enclosingMethodDeclaration.getName());
+						"Could not get method reference for: " + getEnclosingMethodDeclaration().getName());
 
 			com.ibm.wala.classLoader.IMethod method = classHierarchy.resolveMethod(methodRef);
 			IR ir = cache.getSSACache().findOrCreateIR(method, Everywhere.EVERYWHERE, options.getSSAOptions());
@@ -363,6 +365,8 @@ public class Stream {
 		StringBuilder builder = new StringBuilder();
 		builder.append("Stream [streamCreation=");
 		builder.append(creation);
+		builder.append(", enclosingMethodDeclaration=");
+		builder.append(enclosingMethodDeclaration);
 		builder.append(", executionMode=");
 		builder.append(executionMode);
 		builder.append(", ordering=");
@@ -393,7 +397,19 @@ public class Stream {
 		return creation;
 	}
 
+	public MethodDeclaration getEnclosingMethodDeclaration() {
+		return enclosingMethodDeclaration;
+	}
+
 	public RefactoringStatus getStatus() {
 		return status;
+	}
+
+	public IMethod getEnclosingMethod() {
+		return (IMethod) getEnclosingMethodDeclaration().resolveBinding().getJavaElement();
+	}
+
+	public IType getEnclosingType() {
+		return (IType) getEnclosingMethodDeclaration().resolveBinding().getDeclaringClass().getJavaElement();
 	}
 }

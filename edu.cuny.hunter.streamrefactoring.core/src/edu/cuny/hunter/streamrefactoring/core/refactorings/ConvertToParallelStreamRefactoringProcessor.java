@@ -132,6 +132,8 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	private IJavaProject[] javaProjects;
 
+	private Set<Stream> streamSet;
+
 	public ConvertToParallelStreamRefactoringProcessor() throws JavaModelException {
 		this(null, null, false, Optional.empty());
 	}
@@ -178,6 +180,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 					this.getJavaProjects().length * 1000);
 			final RefactoringStatus status = new RefactoringStatus();
 			StreamAnalysisVisitor visitor = new StreamAnalysisVisitor();
+			setStreamSet(visitor.getStreamSet());
 
 			for (IJavaProject jproj : this.getJavaProjects()) {
 				IPackageFragmentRoot[] roots = jproj.getPackageFragmentRoots();
@@ -196,15 +199,14 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 				}
 			}
 
-			RefactoringStatus collectedStatus = visitor.getStreamSet().stream().map(Stream::getStatus)
+			RefactoringStatus collectedStatus = getStreamSet().stream().map(Stream::getStatus)
 					.collect(() -> new RefactoringStatus(), (a, b) -> a.merge(b), (a, b) -> a.merge(b));
 			status.merge(collectedStatus);
 
 			// if there are no fatal errors.
 			if (!status.hasFatalError()) {
 				// these are the streams passing preconditions.
-				Set<Stream> passingStreamSet = visitor.getStreamSet().stream().filter(s -> !s.getStatus().hasError())
-						.collect(Collectors.toSet());
+				Set<Stream> passingStreamSet = this.getOptimizableStreams();
 
 				// add a fatal error if there are no passing streams.
 				if (passingStreamSet.isEmpty())
@@ -463,5 +465,21 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	protected IJavaProject[] getJavaProjects() {
 		return javaProjects;
+	}
+
+	public Set<Stream> getStreamSet() {
+		return streamSet;
+	}
+
+	protected void setStreamSet(Set<Stream> streamSet) {
+		this.streamSet = streamSet;
+	}
+
+	public Set<Stream> getOptimizableStreams() {
+		return this.getStreamSet().parallelStream().filter(s -> !s.getStatus().hasError()).collect(Collectors.toSet());
+	}
+
+	public Set<Stream> getUnoptimizableStreams() {
+		return this.getStreamSet().parallelStream().filter(s -> s.getStatus().hasError()).collect(Collectors.toSet());
 	}
 }

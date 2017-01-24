@@ -3,9 +3,9 @@ package edu.cuny.hunter.streamrefactoring.ui.plugins;
 import org.eclipse.core.runtime.Plugin;
 import org.osgi.framework.BundleContext;
 
-public class EvaluateMigrationOfSkeletalImplementationToInterfaceRefactoringPlugin extends Plugin {
+public class EvaluateConvertToParllelStreamRefactoringPlugin extends Plugin {
 	
-	private static EvaluateMigrationOfSkeletalImplementationToInterfaceRefactoringPlugin plugin;
+	private static EvaluateConvertToParllelStreamRefactoringPlugin plugin;
 	
 	public static Plugin getDefault() {
 		return plugin;

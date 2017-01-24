@@ -3,7 +3,7 @@ Bundle-ManifestVersion: 2
 Bundle-Name: %Bundle-Name
 Bundle-SymbolicName: edu.cuny.hunter.streamrefactoring.eval;singleton:=true
 Bundle-Version: 1.0.0
-Bundle-Activator: edu.cuny.hunter.streamrefactoring.ui.plugins.EvaluateMigrationOfSkeletalImplementationToInterfaceRefactoringPlugin
+Bundle-Activator: edu.cuny.hunter.streamrefactoring.ui.plugins.EvaluateConvertToParllelStreamRefactoringPlugin
 Bundle-Vendor: %Bundle-Vendor
 Bundle-Localization: bundle
 Require-Bundle: org.eclipse.ui,
@@ -18,8 +18,10 @@ Bundle-ClassPath: .,
  lib/commons-csv-1.1.jar
 Export-Package: edu.cuny.hunter.streamrefactoring.eval.handlers,
  edu.cuny.hunter.streamrefactoring.eval.messages,
+ edu.cuny.hunter.streamrefactoring.eval.utils,
  edu.cuny.hunter.streamrefactoring.ui.plugins
 Import-Package: com.google.common.io,
+ edu.cuny.hunter.streamrefactoring.core.analysis,
  edu.cuny.hunter.streamrefactoring.core.refactorings,
  edu.cuny.hunter.streamrefactoring.core.utils,
  org.eclipse.core.resources
