@@ -33,7 +33,7 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	}
 
 	private String retrieveExclusionFile() throws IOException {
-		URL url = new URL("platform:/plugin/edu.cuny.hunter.streamrefactoring.core/EclipseDefaultExclusions.txt");
+		URL url = this.getClass().getResource("/EclipseDefaultExclusions.txt");
 		File file = null;
 		try {
 			file = new File(FileLocator.resolve(url).toURI());
