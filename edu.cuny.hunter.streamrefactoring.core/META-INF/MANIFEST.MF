@@ -34,5 +34,6 @@ Import-Package: org.eclipse.core.resources,
  org.eclipse.jdt.core.refactoring.descriptors,
  org.eclipse.jdt.internal.ui,
  org.eclipse.jface.text,
+ org.eclipse.pde.core.plugin,
  org.eclipse.text.edits,
  org.eclipse.ui.plugin
