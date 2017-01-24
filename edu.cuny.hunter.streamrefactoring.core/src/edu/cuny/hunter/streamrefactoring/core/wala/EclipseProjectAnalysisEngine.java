@@ -3,14 +3,9 @@
  */
 package edu.cuny.hunter.streamrefactoring.core.wala;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
-
+import java.io.InputStream;
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.IJavaProject;
 
@@ -32,18 +27,6 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 		super(project);
 	}
 
-	private String retrieveExclusionFile() throws IOException {
-		URL url = this.getClass().getResource("/EclipseDefaultExclusions.txt");
-		File file = null;
-		try {
-			file = new File(FileLocator.resolve(url).toURI());
-		} catch (URISyntaxException | IOException e) {
-			e.printStackTrace();
-			throw new RuntimeException(e);
-		}
-		return file.getAbsolutePath();
-	}
-
 	@Override
 	public void buildAnalysisScope() throws IOException {
 		try {
@@ -54,8 +37,7 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 		}
 		super.scope = ePath.toAnalysisScope(makeAnalysisScope());
 		if (getExclusionsFile() != null) {
-			File file = new File(retrieveExclusionFile());
-			FileInputStream stream = new FileInputStream(file);
+			InputStream stream = this.getClass().getResourceAsStream("/EclipseDefaultExclusions.txt");
 			scope.setExclusions(new FileOfClasses(stream));
 		}
 	}
