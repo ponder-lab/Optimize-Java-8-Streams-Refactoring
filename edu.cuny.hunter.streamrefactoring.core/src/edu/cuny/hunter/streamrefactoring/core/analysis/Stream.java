@@ -1,12 +1,15 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.BaseStream;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.ICompilationUnit;
@@ -300,41 +303,38 @@ public class Stream {
 		return inferStreamOrdering(binaryName);
 	}
 
+	// TODO: Cache this?
 	public static StreamOrdering inferStreamOrdering(String className) throws NoniterablePossibleStreamSourceException,
 			NoninstantiablePossibleStreamSourceException, CannotDetermineStreamOrderingException {
 		try {
 			Class<?> clazz = Class.forName(className);
 
-			// is it an Iterable?
-			if (Iterable.class.isAssignableFrom(clazz)) {
-				// is it instantiable?
-				if (!clazz.isInterface()) {
-					Iterable<?> instance = createInstance(clazz);
-					boolean ordered;
+			// is it instantiable?
+			if (!clazz.isInterface()) {
+				Object instance = createInstance(clazz);
+				boolean ordered;
 
-					try {
-						ordered = instance.spliterator().hasCharacteristics(Spliterator.ORDERED);
-					} catch (Exception e) {
-						// TODO: Can we use something other than reflection,
-						// like static analysis? Also, it may be an abstract
-						// class.
-						// not able to determine ordering via reflection.
-						throw new CannotDetermineStreamOrderingException(
-								"Cannot determine stream ordering via reflection for: " + clazz + ": " + e, e);
-					}
+				try {
+					Spliterator<?> spliterator = getSpliterator(instance);
+					ordered = spliterator.hasCharacteristics(Spliterator.ORDERED);
+				} catch (Exception e) {
+					// TODO: Can we use something other than reflection,
+					// like static analysis? Also, it may be an abstract
+					// class.
+					// not able to determine ordering via reflection.
+					throw new CannotDetermineStreamOrderingException(
+							"Cannot determine stream ordering via reflection for: " + clazz + ": " + e, e);
+				}
 
-					// FIXME: What if there is something under this that is
-					// ordered?
-					if (!ordered)
-						return StreamOrdering.UNORDERED;
-					else
-						return StreamOrdering.ORDERED;
-				} else
-					throw new NoninstantiablePossibleStreamSourceException(
-							clazz + " cannot be instantiated because it is an interface.");
+				// FIXME: What if there is something under this that is
+				// ordered?
+				if (!ordered)
+					return StreamOrdering.UNORDERED;
+				else
+					return StreamOrdering.ORDERED;
 			} else
-				throw new NoniterablePossibleStreamSourceException(clazz + " does not implement java.util.Iterable.");
-
+				throw new NoninstantiablePossibleStreamSourceException(
+						clazz + " cannot be instantiated because it is an interface.");
 		} catch (ClassNotFoundException e) {
 			// TODO Not sure what we should do in this situation. What if we
 			// can't instantiate the iterable? Is there another way to find out
@@ -346,13 +346,42 @@ public class Stream {
 		}
 	}
 
-	private static Iterable<?> createInstance(Class<?> clazz) throws NoninstantiablePossibleStreamSourceException {
+	private static Spliterator<?> getSpliterator(Object instance) throws CannotExtractSpliteratorException {
+		Spliterator<?> spliterator = null;
+
+		if (instance instanceof Iterable) {
+			spliterator = ((Iterable<?>) instance).spliterator();
+		} else {
+			// try to call the stream() method to get the spliterator.
+			BaseStream<?, ?> baseStream = null;
+			try {
+				Method streamMethod = instance.getClass().getMethod("stream");
+				Object stream = streamMethod.invoke(instance);
+
+				if (stream instanceof BaseStream) {
+					baseStream = (BaseStream<?, ?>) stream;
+					spliterator = baseStream.spliterator();
+				} else
+					throw new CannotExtractSpliteratorException("Returned object doesn't implement BaseStream.");
+			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
+					| InvocationTargetException e) {
+				throw new CannotExtractSpliteratorException(
+						"Cannot extract the spliterator from object of type: " + instance.getClass(), e);
+			} finally {
+				if (baseStream != null)
+					baseStream.close();
+			}
+		}
+		return spliterator;
+	}
+
+	private static Object createInstance(Class<?> clazz) throws NoninstantiablePossibleStreamSourceException {
 		try {
-			return (Iterable<?>) clazz.newInstance();
+			return clazz.newInstance();
 		} catch (InstantiationException | IllegalAccessException e) {
 			ObjectInstantiator<?> instantiator = objenesis.getInstantiatorOf(clazz);
 			try {
-				return (Iterable<?>) instantiator.newInstance();
+				return instantiator.newInstance();
 			} catch (InstantiationError e2) {
 				throw new NoninstantiablePossibleStreamSourceException(
 						clazz + " cannot be instantiated: " + e2.getCause(), e2);
