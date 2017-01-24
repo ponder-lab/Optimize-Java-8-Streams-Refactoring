@@ -20,4 +20,3 @@ org.codehaus.groovy\/.*
 groovyx\/.*
 org\/hamcrest\/.*
 org\/junit\/.*
-rtstubs18.jar
