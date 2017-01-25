@@ -3,6 +3,7 @@ package edu.cuny.hunter.streamrefactoring.core.analysis;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -310,7 +311,7 @@ public class Stream {
 			Class<?> clazz = Class.forName(className);
 
 			// is it instantiable?
-			if (!clazz.isInterface()) {
+			if (!isAbstractType(clazz)) {
 				Object instance = createInstance(clazz);
 				boolean ordered;
 
@@ -342,8 +343,18 @@ public class Stream {
 			// container libraries. Also, what if we don't have the class in the
 			// classpath?
 			e.printStackTrace();
-			throw new RuntimeException(e);
+			throw new RuntimeException("Can't find: " + className, e);
 		}
+	}
+
+	private static boolean isAbstractType(Class<?> clazz) {
+		// if it's an interface.
+		if (clazz.isInterface())
+			return true; // can't instantiate an interface.
+		else if (Modifier.isAbstract(clazz.getModifiers()))
+			return true; // can't instantiate an abstract type.
+		else
+			return false;
 	}
 
 	private static Spliterator<?> getSpliterator(Object instance) throws CannotExtractSpliteratorException {
