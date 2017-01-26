@@ -106,12 +106,13 @@ public class Stream {
 					"Stream: " + streamCreation + " has a non-iterable possible source.");
 		} catch (NoninstantiablePossibleStreamSourceException e) {
 			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
-			addStatusEntry(streamCreation, PreconditionFailure.NON_INSTANTIABLE_POSSIBLE_STREAM_SOURCE,
-					"Stream: " + streamCreation + " has a non-instantiable possible source.");
-		} catch (CannotDetermineStreamOrderingException e) {
+			addStatusEntry(streamCreation, PreconditionFailure.NON_INSTANTIABLE_POSSIBLE_STREAM_SOURCE, "Stream: "
+					+ streamCreation + " has a non-instantiable possible source with type: " + e.getSourceType() + ".");
+		} catch (CannotExtractSpliteratorException e) {
 			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_STREAM_SOURCE_ORDERING,
-					"Cannot determine ordering of source for stream: " + streamCreation + ".");
+					"Cannot extract spliterator from type: " + e.getFromType() + " for stream: " + streamCreation
+							+ ".");
 		}
 	}
 
@@ -134,22 +135,22 @@ public class Stream {
 
 	private void inferOrdering() throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
 			InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException,
-			NoninstantiablePossibleStreamSourceException, CannotDetermineStreamOrderingException {
+			NoninstantiablePossibleStreamSourceException, CannotExtractSpliteratorException {
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
-		IMethodBinding methodBinding = this.getCreation().resolveMethodBinding();
+		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
 
-		if (JdtFlags.isStatic(methodBinding)) {
+		if (JdtFlags.isStatic(calledMethodBinding)) {
 			// static methods returning unordered streams.
 			if (expressionTypeQualifiedName.equals("java.util.stream.Stream")) {
-				String methodIdentifier = getMethodIdentifier(methodBinding);
+				String methodIdentifier = getMethodIdentifier(calledMethodBinding);
 				if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
 					this.setOrdering(StreamOrdering.UNORDERED);
 			} else
 				this.setOrdering(StreamOrdering.ORDERED);
 		} else { // instance method.
-			IJavaElement javaElement = methodBinding.getJavaElement();
-			IJavaProject javaProject = javaElement.getJavaProject();
+			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
+			IJavaProject javaProject = calledMethod.getJavaProject();
 			AbstractAnalysisEngine<InstanceKey> engine = new EclipseProjectAnalysisEngine<InstanceKey>(javaProject);
 			// FIXME: [RK] Inefficient to build this every time, I'd imagine.
 			engine.buildAnalysisScope();
@@ -178,7 +179,7 @@ public class Stream {
 			Set<TypeAbstraction> possibleTypes = getPossibleTypes(valueNumber, inference);
 
 			// Possible types: check each one.
-			StreamOrdering ordering = inferStreamOrdering(possibleTypes);
+			StreamOrdering ordering = inferStreamOrdering(possibleTypes, calledMethod);
 			this.setOrdering(ordering);
 		}
 	}
@@ -275,14 +276,15 @@ public class Stream {
 		return methodIdentifier;
 	}
 
-	private static StreamOrdering inferStreamOrdering(Set<TypeAbstraction> possibleStreamSourceTypes)
+	private static StreamOrdering inferStreamOrdering(Set<TypeAbstraction> possibleStreamSourceTypes,
+			IMethod calledMethod)
 			throws InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException,
-			NoninstantiablePossibleStreamSourceException, CannotDetermineStreamOrderingException {
+			NoninstantiablePossibleStreamSourceException, CannotExtractSpliteratorException {
 		StreamOrdering ret = null;
 
 		for (TypeAbstraction typeAbstraction : possibleStreamSourceTypes) {
 			if (typeAbstraction != TypeAbstraction.TOP) {
-				StreamOrdering ordering = inferStreamOrdering(typeAbstraction);
+				StreamOrdering ordering = inferStreamOrdering(typeAbstraction, calledMethod);
 
 				if (ret == null)
 					ret = ordering;
@@ -295,18 +297,19 @@ public class Stream {
 		return ret;
 	}
 
-	private static StreamOrdering inferStreamOrdering(TypeAbstraction typeAbstraction)
+	private static StreamOrdering inferStreamOrdering(TypeAbstraction typeAbstraction, IMethod calledMethod)
 			throws NoniterablePossibleStreamSourceException, NoninstantiablePossibleStreamSourceException,
-			CannotDetermineStreamOrderingException {
+			CannotExtractSpliteratorException {
 		TypeReference typeReference = typeAbstraction.getTypeReference();
 		String binaryName = getBinaryName(typeReference);
 
-		return inferStreamOrdering(binaryName);
+		return inferStreamOrdering(binaryName, calledMethod);
 	}
 
 	// TODO: Cache this?
-	public static StreamOrdering inferStreamOrdering(String className) throws NoniterablePossibleStreamSourceException,
-			NoninstantiablePossibleStreamSourceException, CannotDetermineStreamOrderingException {
+	private static StreamOrdering inferStreamOrdering(String className, IMethod calledMethod)
+			throws NoniterablePossibleStreamSourceException, NoninstantiablePossibleStreamSourceException,
+			CannotExtractSpliteratorException {
 		try {
 			Class<?> clazz = Class.forName(className);
 
@@ -315,27 +318,22 @@ public class Stream {
 				Object instance = createInstance(clazz);
 				boolean ordered;
 
-				try {
-					Spliterator<?> spliterator = getSpliterator(instance);
-					ordered = spliterator.hasCharacteristics(Spliterator.ORDERED);
-				} catch (Exception e) {
-					// TODO: Can we use something other than reflection,
-					// like static analysis? Also, it may be an abstract
-					// class.
-					// not able to determine ordering via reflection.
-					throw new CannotDetermineStreamOrderingException(
-							"Cannot determine stream ordering via reflection for: " + clazz + ": " + e, e);
-				}
+				Spliterator<?> spliterator = getSpliterator(instance, calledMethod);
+				ordered = spliterator.hasCharacteristics(Spliterator.ORDERED);
+				// TODO: Can we use something other than reflection,
+				// like static analysis? Also, it may be an abstract
+				// class.
 
 				// FIXME: What if there is something under this that is
-				// ordered?
+				// ordered? I guess this applies to both intra and
+				// interprocedural analysis but more for the former.
 				if (!ordered)
 					return StreamOrdering.UNORDERED;
 				else
 					return StreamOrdering.ORDERED;
 			} else
 				throw new NoninstantiablePossibleStreamSourceException(
-						clazz + " cannot be instantiated because it is an interface.");
+						clazz + " cannot be instantiated because it is an interface.", clazz);
 		} catch (ClassNotFoundException e) {
 			// TODO Not sure what we should do in this situation. What if we
 			// can't instantiate the iterable? Is there another way to find out
@@ -357,7 +355,8 @@ public class Stream {
 			return false;
 	}
 
-	private static Spliterator<?> getSpliterator(Object instance) throws CannotExtractSpliteratorException {
+	private static Spliterator<?> getSpliterator(Object instance, IMethod calledMethod)
+			throws CannotExtractSpliteratorException {
 		Spliterator<?> spliterator = null;
 
 		if (instance instanceof Iterable) {
@@ -366,18 +365,21 @@ public class Stream {
 			// try to call the stream() method to get the spliterator.
 			BaseStream<?, ?> baseStream = null;
 			try {
-				Method streamMethod = instance.getClass().getMethod("stream");
-				Object stream = streamMethod.invoke(instance);
+				Method streamCreationMethod = instance.getClass().getMethod(calledMethod.getElementName());
+				Object stream = streamCreationMethod.invoke(instance);
 
 				if (stream instanceof BaseStream) {
 					baseStream = (BaseStream<?, ?>) stream;
 					spliterator = baseStream.spliterator();
 				} else
-					throw new CannotExtractSpliteratorException("Returned object doesn't implement BaseStream.");
+					throw new CannotExtractSpliteratorException(
+							"Returned object of type: " + stream.getClass() + " doesn't implement BaseStream.",
+							stream.getClass());
 			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
 					| InvocationTargetException e) {
 				throw new CannotExtractSpliteratorException(
-						"Cannot extract the spliterator from object of type: " + instance.getClass(), e);
+						"Cannot extract the spliterator from object of type: " + instance.getClass(), e,
+						instance.getClass());
 			} finally {
 				if (baseStream != null)
 					baseStream.close();
@@ -395,7 +397,7 @@ public class Stream {
 				return instantiator.newInstance();
 			} catch (InstantiationError e2) {
 				throw new NoninstantiablePossibleStreamSourceException(
-						clazz + " cannot be instantiated: " + e2.getCause(), e2);
+						clazz + " cannot be instantiated: " + e2.getCause(), e2, clazz);
 			}
 		}
 	}
