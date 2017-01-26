@@ -96,19 +96,19 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 								"#failed preconditions", "time (s)" });
 
 				candidateStreamPrinter = createCSVPrinter("candidate_streams.csv",
-						new String[] { "stream", "method", "type FQN" });
+						new String[] { "stream", "start pos", "length", "method", "type FQN" });
 
 				optimizedStreamPrinter = createCSVPrinter("optimizable_streams.csv",
-						new String[] { "subject", "stream", "method", "type FQN" });
+						new String[] { "subject", "stream", "start pos", "length", "method", "type FQN" });
 
 				nonOptimizedStreamPrinter = createCSVPrinter("unoptimizable_streams.csv",
-						new String[] { "subject", "stream", "method", "type FQN" });
+						new String[] { "subject", "stream", "start pos", "length", "method", "type FQN" });
 
 				errorPrinter = createCSVPrinter("failed_preconditions.csv",
-						new String[] { "stream", "method", "type FQN", "code", "message" });
+						new String[] { "stream", "start pos", "length", "method", "type FQN", "code", "message" });
 
-				streamAttributesPrinter = createCSVPrinter("stream_attributes.csv",
-						new String[] { "stream", "method", "type FQN", "execution mode", "ordering", "status" });
+				streamAttributesPrinter = createCSVPrinter("stream_attributes.csv", new String[] { "stream",
+						"start pos", "length", "method", "type FQN", "execution mode", "ordering", "status" });
 
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
@@ -142,10 +142,12 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					// candidate streams and their attributes.
 					for (Stream stream : processor.getStreamSet()) {
 						candidateStreamPrinter.printRecord(stream.getCreation(),
+								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingMethod()),
 								stream.getEnclosingType().getFullyQualifiedName());
 
 						streamAttributesPrinter.printRecord(stream.getCreation(),
+								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingMethod()),
 								stream.getEnclosingType().getFullyQualifiedName(), stream.getExecutionMode(),
 								stream.getOrdering(), stream.getStatus().isOK() ? 0
@@ -158,6 +160,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 					for (Stream stream : optimizableStreams) {
 						optimizedStreamPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
+								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingMethod()),
 								stream.getEnclosingType().getFullyQualifiedName());
 					}
@@ -165,6 +168,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					// failed streams.
 					for (Stream stream : processor.getUnoptimizableStreams()) {
 						nonOptimizedStreamPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
+								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingMethod()),
 								stream.getEnclosingType().getFullyQualifiedName());
 					}
@@ -185,6 +189,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 							Stream failedStream = (Stream) correspondingElement;
 							errorPrinter.printRecord(failedStream.getCreation(),
+									failedStream.getCreation().getStartPosition(),
+									failedStream.getCreation().getLength(),
 									Util.getMethodIdentifier(failedStream.getEnclosingMethod()),
 									failedStream.getEnclosingType().getFullyQualifiedName(), entry.getCode(),
 									entry.getMessage());
