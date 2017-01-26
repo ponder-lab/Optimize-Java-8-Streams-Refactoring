@@ -249,34 +249,6 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		}
 	}
 
-	@SuppressWarnings("unused")
-	private void printStreamSourceTypeOrderingAttributes(IProgressMonitor pm) throws JavaModelException {
-		for (IJavaProject project : this.getJavaProjects()) {
-			IType type = project.findType("java.lang.Iterable");
-			ITypeHierarchy hierarchy = type.newTypeHierarchy(pm);
-			IType[] subtypes = hierarchy.getAllSubtypes(type);
-			for (IType subtype : subtypes) {
-				Class<?> clazz = null;
-				try {
-					clazz = Class.forName(subtype.getFullyQualifiedName());
-				} catch (ClassNotFoundException e) {
-					System.err.println(e);
-					continue;
-				}
-
-				StreamOrdering ordering;
-				try {
-					ordering = Stream.inferStreamOrdering(subtype.getFullyQualifiedName());
-				} catch (NoniterablePossibleStreamSourceException | NoninstantiablePossibleStreamSourceException
-						| CannotDetermineStreamOrderingException e) {
-					System.err.println(e);
-					continue;
-				}
-				System.out.println(clazz + "," + ordering);
-			}
-		}
-	}
-
 	private RefactoringStatus checkProjectCompliance(IJavaProject destinationProject) throws JavaModelException {
 		RefactoringStatus status = new RefactoringStatus();
 
