@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.logging.Level;
@@ -14,7 +16,6 @@ import java.util.stream.BaseStream;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.ICompilationUnit;
-import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
@@ -72,116 +73,64 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
  */
 @SuppressWarnings("restriction")
 public class Stream {
-	private static final String PLUGIN_ID = FrameworkUtil.getBundle(Stream.class).getSymbolicName();
-
-	private final MethodInvocation creation;
-
-	private final MethodDeclaration enclosingMethodDeclaration;
-
-	private StreamExecutionMode executionMode;
-
-	private StreamOrdering ordering;
-
-	private RefactoringStatus status = new RefactoringStatus();
-
-	private static Objenesis objenesis = new ObjenesisStd();
+	private static Map<IJavaProject, IClassHierarchy> javaProjectToClassHierarchyMap = new HashMap<>();
 
 	private static final Logger logger = Logger.getLogger("edu.cuny.hunter.streamrefactoring");
 
-	public Stream(MethodInvocation streamCreation)
-			throws ClassHierarchyException, IOException, CoreException, InvalidClassFileException {
-		this.creation = streamCreation;
-		this.enclosingMethodDeclaration = (MethodDeclaration) ASTNodes.getParent(this.getCreation(),
-				ASTNode.METHOD_DECLARATION);
-		this.inferExecution();
+	private static Map<MethodDeclaration, IR> methodDeclarationToIRMap = new HashMap<>();
+
+	private static Objenesis objenesis = new ObjenesisStd();
+
+	private static final String PLUGIN_ID = FrameworkUtil.getBundle(Stream.class).getSymbolicName();
+
+	public static void clearCaches() {
+		javaProjectToClassHierarchyMap.clear();
+		methodDeclarationToIRMap.clear();
+	}
+
+	private static Object createInstance(Class<?> clazz) throws NoninstantiablePossibleStreamSourceException {
 		try {
-			this.inferOrdering();
-		} catch (InconsistentPossibleStreamSourceOrderingException e) {
-			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
-			addStatusEntry(streamCreation, PreconditionFailure.INCONSISTENT_POSSIBLE_STREAM_SOURCE_ORDERING,
-					"Stream: " + streamCreation + " has inconsistent possible source orderings.");
-		} catch (NoniterablePossibleStreamSourceException e) {
-			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
-			addStatusEntry(streamCreation, PreconditionFailure.NON_ITERABLE_POSSIBLE_STREAM_SOURCE,
-					"Stream: " + streamCreation + " has a non-iterable possible source.");
-		} catch (NoninstantiablePossibleStreamSourceException e) {
-			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
-			addStatusEntry(streamCreation, PreconditionFailure.NON_INSTANTIABLE_POSSIBLE_STREAM_SOURCE, "Stream: "
-					+ streamCreation + " has a non-instantiable possible source with type: " + e.getSourceType() + ".");
-		} catch (CannotExtractSpliteratorException e) {
-			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
-			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_STREAM_SOURCE_ORDERING,
-					"Cannot extract spliterator from type: " + e.getFromType() + " for stream: " + streamCreation
-							+ ".");
+			return clazz.newInstance();
+		} catch (InstantiationException | IllegalAccessException e) {
+			ObjectInstantiator<?> instantiator = objenesis.getInstantiatorOf(clazz);
+			try {
+				return instantiator.newInstance();
+			} catch (InstantiationError e2) {
+				throw new NoninstantiablePossibleStreamSourceException(
+						clazz + " cannot be instantiated: " + e2.getCause(), e2, clazz);
+			}
 		}
 	}
 
-	private void addStatusEntry(MethodInvocation streamCreation, PreconditionFailure failure, String message) {
-		CompilationUnit compilationUnit = (CompilationUnit) ASTNodes.getParent(streamCreation,
-				ASTNode.COMPILATION_UNIT);
-		ICompilationUnit compilationUnit2 = (ICompilationUnit) compilationUnit.getJavaElement();
-		RefactoringStatusContext context = JavaStatusContext.create(compilationUnit2, streamCreation);
-		this.getStatus().addEntry(RefactoringStatus.ERROR, message, context, PLUGIN_ID, failure.getCode(), this);
+	private static String getBinaryName(TypeReference typeReference) {
+		TypeName name = typeReference.getName();
+		String slashToDot = StringStuff.slashToDot(name.getPackage().toString() + "." + name.getClassName().toString());
+		return slashToDot;
 	}
 
-	private void inferExecution() {
-		String methodIdentifier = getMethodIdentifier(this.getCreation().resolveMethodBinding());
-
-		if (methodIdentifier.equals("parallelStream()"))
-			this.setExecutionMode(StreamExecutionMode.PARALLEL);
-		else
-			this.setExecutionMode(StreamExecutionMode.SEQUENTIAL);
+	private static int getLineNumberFromAST(SimpleName methodName) {
+		CompilationUnit compilationUnit = (CompilationUnit) ASTNodes.getParent(methodName, ASTNode.COMPILATION_UNIT);
+		int lineNumberFromAST = compilationUnit.getLineNumber(methodName.getStartPosition());
+		return lineNumberFromAST;
 	}
 
-	private void inferOrdering() throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
-			InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException,
-			NoninstantiablePossibleStreamSourceException, CannotExtractSpliteratorException {
-		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
-		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
-		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
+	private static int getLineNumberFromIR(IBytecodeMethod method, SSAInstruction instruction)
+			throws InvalidClassFileException {
+		int bytecodeIndex = method.getBytecodeIndex(instruction.iindex);
+		int lineNumberFromIR = method.getLineNumber(bytecodeIndex);
+		return lineNumberFromIR;
+	}
 
-		if (JdtFlags.isStatic(calledMethodBinding)) {
-			// static methods returning unordered streams.
-			if (expressionTypeQualifiedName.equals("java.util.stream.Stream")) {
-				String methodIdentifier = getMethodIdentifier(calledMethodBinding);
-				if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
-					this.setOrdering(StreamOrdering.UNORDERED);
-			} else
-				this.setOrdering(StreamOrdering.ORDERED);
-		} else { // instance method.
-			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
-			IJavaProject javaProject = calledMethod.getJavaProject();
-			AbstractAnalysisEngine<InstanceKey> engine = new EclipseProjectAnalysisEngine<InstanceKey>(javaProject);
-			// FIXME: [RK] Inefficient to build this every time, I'd imagine.
-			engine.buildAnalysisScope();
-			IClassHierarchy classHierarchy = engine.buildClassHierarchy();
-			AnalysisOptions options = new AnalysisOptions();
-			// options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
-			AnalysisCache cache = new AnalysisCache();
+	private static String getMethodIdentifier(IMethodBinding methodBinding) {
+		IMethod method = (IMethod) methodBinding.getJavaElement();
 
-			// get the IR for the enclosing method.
-			JDTIdentityMapper mapper = new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE,
-					getEnclosingMethodDeclaration().getAST());
-			MethodReference methodRef = mapper.getMethodRef(getEnclosingMethodDeclaration().resolveBinding());
-
-			if (methodRef == null)
-				throw new IllegalStateException(
-						"Could not get method reference for: " + getEnclosingMethodDeclaration().getName());
-
-			com.ibm.wala.classLoader.IMethod method = classHierarchy.resolveMethod(methodRef);
-			IR ir = cache.getSSACache().findOrCreateIR(method, Everywhere.EVERYWHERE, options.getSSAOptions());
-
-			if (ir == null)
-				throw new IllegalStateException("IR is null for: " + method);
-
-			int valueNumber = getUseValueNumberForInvocation(this.getCreation(), ir);
-			TypeInference inference = TypeInference.make(ir, false);
-			Set<TypeAbstraction> possibleTypes = getPossibleTypes(valueNumber, inference);
-
-			// Possible types: check each one.
-			StreamOrdering ordering = inferStreamOrdering(possibleTypes, calledMethod);
-			this.setOrdering(ordering);
+		String methodIdentifier = null;
+		try {
+			methodIdentifier = Util.getMethodIdentifier(method);
+		} catch (JavaModelException e) {
+			throw new RuntimeException(e);
 		}
+		return methodIdentifier;
 	}
 
 	private static Set<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
@@ -205,6 +154,39 @@ public class Stream {
 		}
 
 		return ret;
+	}
+
+	private static Spliterator<?> getSpliterator(Object instance, IMethod calledMethod)
+			throws CannotExtractSpliteratorException {
+		Spliterator<?> spliterator = null;
+
+		if (instance instanceof Iterable) {
+			spliterator = ((Iterable<?>) instance).spliterator();
+		} else {
+			// try to call the stream() method to get the spliterator.
+			BaseStream<?, ?> baseStream = null;
+			try {
+				Method streamCreationMethod = instance.getClass().getMethod(calledMethod.getElementName());
+				Object stream = streamCreationMethod.invoke(instance);
+
+				if (stream instanceof BaseStream) {
+					baseStream = (BaseStream<?, ?>) stream;
+					spliterator = baseStream.spliterator();
+				} else
+					throw new CannotExtractSpliteratorException(
+							"Returned object of type: " + stream.getClass() + " doesn't implement BaseStream.",
+							stream.getClass());
+			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
+					| InvocationTargetException e) {
+				throw new CannotExtractSpliteratorException(
+						"Cannot extract the spliterator from object of type: " + instance.getClass(), e,
+						instance.getClass());
+			} finally {
+				if (baseStream != null)
+					baseStream.close();
+			}
+		}
+		return spliterator;
 	}
 
 	private static int getUseValueNumberForInvocation(MethodInvocation node, IR ir) throws InvalidClassFileException {
@@ -245,37 +227,6 @@ public class Stream {
 		return -1;
 	}
 
-	private static int getLineNumberFromAST(SimpleName methodName) {
-		CompilationUnit compilationUnit = (CompilationUnit) ASTNodes.getParent(methodName, ASTNode.COMPILATION_UNIT);
-		int lineNumberFromAST = compilationUnit.getLineNumber(methodName.getStartPosition());
-		return lineNumberFromAST;
-	}
-
-	private static int getLineNumberFromIR(IBytecodeMethod method, SSAInstruction instruction)
-			throws InvalidClassFileException {
-		int bytecodeIndex = method.getBytecodeIndex(instruction.iindex);
-		int lineNumberFromIR = method.getLineNumber(bytecodeIndex);
-		return lineNumberFromIR;
-	}
-
-	private static String getBinaryName(TypeReference typeReference) {
-		TypeName name = typeReference.getName();
-		String slashToDot = StringStuff.slashToDot(name.getPackage().toString() + "." + name.getClassName().toString());
-		return slashToDot;
-	}
-
-	private static String getMethodIdentifier(IMethodBinding methodBinding) {
-		IMethod method = (IMethod) methodBinding.getJavaElement();
-
-		String methodIdentifier = null;
-		try {
-			methodIdentifier = Util.getMethodIdentifier(method);
-		} catch (JavaModelException e) {
-			throw new RuntimeException(e);
-		}
-		return methodIdentifier;
-	}
-
 	private static StreamOrdering inferStreamOrdering(Set<TypeAbstraction> possibleStreamSourceTypes,
 			IMethod calledMethod)
 			throws InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException,
@@ -295,15 +246,6 @@ public class Stream {
 		}
 
 		return ret;
-	}
-
-	private static StreamOrdering inferStreamOrdering(TypeAbstraction typeAbstraction, IMethod calledMethod)
-			throws NoniterablePossibleStreamSourceException, NoninstantiablePossibleStreamSourceException,
-			CannotExtractSpliteratorException {
-		TypeReference typeReference = typeAbstraction.getTypeReference();
-		String binaryName = getBinaryName(typeReference);
-
-		return inferStreamOrdering(binaryName, calledMethod);
 	}
 
 	// TODO: Cache this?
@@ -345,6 +287,15 @@ public class Stream {
 		}
 	}
 
+	private static StreamOrdering inferStreamOrdering(TypeAbstraction typeAbstraction, IMethod calledMethod)
+			throws NoniterablePossibleStreamSourceException, NoninstantiablePossibleStreamSourceException,
+			CannotExtractSpliteratorException {
+		TypeReference typeReference = typeAbstraction.getTypeReference();
+		String binaryName = getBinaryName(typeReference);
+
+		return inferStreamOrdering(binaryName, calledMethod);
+	}
+
 	private static boolean isAbstractType(Class<?> clazz) {
 		// if it's an interface.
 		if (clazz.isInterface())
@@ -355,51 +306,171 @@ public class Stream {
 			return false;
 	}
 
-	private static Spliterator<?> getSpliterator(Object instance, IMethod calledMethod)
-			throws CannotExtractSpliteratorException {
-		Spliterator<?> spliterator = null;
+	private final MethodInvocation creation;
 
-		if (instance instanceof Iterable) {
-			spliterator = ((Iterable<?>) instance).spliterator();
-		} else {
-			// try to call the stream() method to get the spliterator.
-			BaseStream<?, ?> baseStream = null;
-			try {
-				Method streamCreationMethod = instance.getClass().getMethod(calledMethod.getElementName());
-				Object stream = streamCreationMethod.invoke(instance);
+	private final MethodDeclaration enclosingMethodDeclaration;
 
-				if (stream instanceof BaseStream) {
-					baseStream = (BaseStream<?, ?>) stream;
-					spliterator = baseStream.spliterator();
-				} else
-					throw new CannotExtractSpliteratorException(
-							"Returned object of type: " + stream.getClass() + " doesn't implement BaseStream.",
-							stream.getClass());
-			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
-					| InvocationTargetException e) {
-				throw new CannotExtractSpliteratorException(
-						"Cannot extract the spliterator from object of type: " + instance.getClass(), e,
-						instance.getClass());
-			} finally {
-				if (baseStream != null)
-					baseStream.close();
-			}
+	private StreamExecutionMode executionMode;
+
+	private StreamOrdering ordering;
+
+	private RefactoringStatus status = new RefactoringStatus();
+
+	public Stream(MethodInvocation streamCreation)
+			throws ClassHierarchyException, IOException, CoreException, InvalidClassFileException {
+		this.creation = streamCreation;
+		this.enclosingMethodDeclaration = (MethodDeclaration) ASTNodes.getParent(this.getCreation(),
+				ASTNode.METHOD_DECLARATION);
+		this.inferExecution();
+		try {
+			this.inferOrdering();
+		} catch (InconsistentPossibleStreamSourceOrderingException e) {
+			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+			addStatusEntry(streamCreation, PreconditionFailure.INCONSISTENT_POSSIBLE_STREAM_SOURCE_ORDERING,
+					"Stream: " + streamCreation + " has inconsistent possible source orderings.");
+		} catch (NoniterablePossibleStreamSourceException e) {
+			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+			addStatusEntry(streamCreation, PreconditionFailure.NON_ITERABLE_POSSIBLE_STREAM_SOURCE,
+					"Stream: " + streamCreation + " has a non-iterable possible source.");
+		} catch (NoninstantiablePossibleStreamSourceException e) {
+			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+			addStatusEntry(streamCreation, PreconditionFailure.NON_INSTANTIABLE_POSSIBLE_STREAM_SOURCE, "Stream: "
+					+ streamCreation + " has a non-instantiable possible source with type: " + e.getSourceType() + ".");
+		} catch (CannotExtractSpliteratorException e) {
+			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_STREAM_SOURCE_ORDERING,
+					"Cannot extract spliterator from type: " + e.getFromType() + " for stream: " + streamCreation
+							+ ".");
 		}
-		return spliterator;
 	}
 
-	private static Object createInstance(Class<?> clazz) throws NoninstantiablePossibleStreamSourceException {
-		try {
-			return clazz.newInstance();
-		} catch (InstantiationException | IllegalAccessException e) {
-			ObjectInstantiator<?> instantiator = objenesis.getInstantiatorOf(clazz);
-			try {
-				return instantiator.newInstance();
-			} catch (InstantiationError e2) {
-				throw new NoninstantiablePossibleStreamSourceException(
-						clazz + " cannot be instantiated: " + e2.getCause(), e2, clazz);
-			}
+	private void addStatusEntry(MethodInvocation streamCreation, PreconditionFailure failure, String message) {
+		CompilationUnit compilationUnit = (CompilationUnit) ASTNodes.getParent(streamCreation,
+				ASTNode.COMPILATION_UNIT);
+		ICompilationUnit compilationUnit2 = (ICompilationUnit) compilationUnit.getJavaElement();
+		RefactoringStatusContext context = JavaStatusContext.create(compilationUnit2, streamCreation);
+		this.getStatus().addEntry(RefactoringStatus.ERROR, message, context, PLUGIN_ID, failure.getCode(), this);
+	}
+
+	private IClassHierarchy getClassHierarchy() throws IOException, CoreException {
+		IJavaProject javaProject = this.getCreation().resolveMethodBinding().getJavaElement().getJavaProject();
+		IClassHierarchy classHierarchy = javaProjectToClassHierarchyMap.get(javaProject);
+
+		if (classHierarchy == null) {
+			AbstractAnalysisEngine<InstanceKey> engine = new EclipseProjectAnalysisEngine<InstanceKey>(javaProject);
+			engine.buildAnalysisScope();
+			classHierarchy = engine.buildClassHierarchy();
+			javaProjectToClassHierarchyMap.put(javaProject, classHierarchy);
 		}
+
+		return classHierarchy;
+	}
+
+	public MethodInvocation getCreation() {
+		return creation;
+	}
+
+	public IMethod getEnclosingMethod() {
+		return (IMethod) getEnclosingMethodDeclaration().resolveBinding().getJavaElement();
+	}
+
+	public MethodDeclaration getEnclosingMethodDeclaration() {
+		return enclosingMethodDeclaration;
+	}
+
+	private MethodReference getEnclosingMethodReference() {
+		JDTIdentityMapper mapper = new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE,
+				getEnclosingMethodDeclaration().getAST());
+		MethodReference methodRef = mapper.getMethodRef(getEnclosingMethodDeclaration().resolveBinding());
+
+		if (methodRef == null)
+			throw new IllegalStateException(
+					"Could not get method reference for: " + getEnclosingMethodDeclaration().getName());
+		return methodRef;
+	}
+
+	public IType getEnclosingType() {
+		return (IType) getEnclosingMethodDeclaration().resolveBinding().getDeclaringClass().getJavaElement();
+	}
+
+	public StreamExecutionMode getExecutionMode() {
+		return executionMode;
+	}
+
+	private IR getIR() throws IOException, CoreException {
+		IR ir = methodDeclarationToIRMap.get(getEnclosingMethodDeclaration());
+
+		if (ir == null) {
+			IClassHierarchy classHierarchy = getClassHierarchy();
+			AnalysisOptions options = new AnalysisOptions();
+			// options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
+			AnalysisCache cache = new AnalysisCache();
+
+			// get the IR for the enclosing method.
+			MethodReference methodRef = getEnclosingMethodReference();
+			com.ibm.wala.classLoader.IMethod resolvedMethod = classHierarchy.resolveMethod(methodRef);
+			ir = cache.getSSACache().findOrCreateIR(resolvedMethod, Everywhere.EVERYWHERE, options.getSSAOptions());
+
+			if (ir == null)
+				throw new IllegalStateException("IR is null for: " + resolvedMethod);
+
+			methodDeclarationToIRMap.put(getEnclosingMethodDeclaration(), ir);
+		}
+		return ir;
+	}
+
+	public StreamOrdering getOrdering() {
+		return ordering;
+	}
+
+	public RefactoringStatus getStatus() {
+		return status;
+	}
+
+	private void inferExecution() {
+		String methodIdentifier = getMethodIdentifier(this.getCreation().resolveMethodBinding());
+
+		if (methodIdentifier.equals("parallelStream()"))
+			this.setExecutionMode(StreamExecutionMode.PARALLEL);
+		else
+			this.setExecutionMode(StreamExecutionMode.SEQUENTIAL);
+	}
+
+	private void inferOrdering() throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
+			InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException,
+			NoninstantiablePossibleStreamSourceException, CannotExtractSpliteratorException {
+		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
+		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
+		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
+
+		if (JdtFlags.isStatic(calledMethodBinding)) {
+			// static methods returning unordered streams.
+			if (expressionTypeQualifiedName.equals("java.util.stream.Stream")) {
+				String methodIdentifier = getMethodIdentifier(calledMethodBinding);
+				if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
+					this.setOrdering(StreamOrdering.UNORDERED);
+			} else
+				this.setOrdering(StreamOrdering.ORDERED);
+		} else { // instance method.
+			IR ir = getIR();
+
+			int valueNumber = getUseValueNumberForInvocation(this.getCreation(), ir);
+			TypeInference inference = TypeInference.make(ir, false);
+			Set<TypeAbstraction> possibleTypes = getPossibleTypes(valueNumber, inference);
+
+			// Possible types: check each one.
+			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
+			StreamOrdering ordering = inferStreamOrdering(possibleTypes, calledMethod);
+			this.setOrdering(ordering);
+		}
+	}
+
+	protected void setExecutionMode(StreamExecutionMode executionMode) {
+		this.executionMode = executionMode;
+	}
+
+	protected void setOrdering(StreamOrdering ordering) {
+		this.ordering = ordering;
 	}
 
 	@Override
@@ -417,41 +488,5 @@ public class Stream {
 		builder.append(status);
 		builder.append("]");
 		return builder.toString();
-	}
-
-	public StreamExecutionMode getExecutionMode() {
-		return executionMode;
-	}
-
-	protected void setExecutionMode(StreamExecutionMode executionMode) {
-		this.executionMode = executionMode;
-	}
-
-	public StreamOrdering getOrdering() {
-		return ordering;
-	}
-
-	protected void setOrdering(StreamOrdering ordering) {
-		this.ordering = ordering;
-	}
-
-	public MethodInvocation getCreation() {
-		return creation;
-	}
-
-	public MethodDeclaration getEnclosingMethodDeclaration() {
-		return enclosingMethodDeclaration;
-	}
-
-	public RefactoringStatus getStatus() {
-		return status;
-	}
-
-	public IMethod getEnclosingMethod() {
-		return (IMethod) getEnclosingMethodDeclaration().resolveBinding().getJavaElement();
-	}
-
-	public IType getEnclosingType() {
-		return (IType) getEnclosingMethodDeclaration().resolveBinding().getDeclaringClass().getJavaElement();
 	}
 }

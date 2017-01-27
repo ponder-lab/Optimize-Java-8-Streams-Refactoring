@@ -49,13 +49,9 @@ import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
 import org.eclipse.ltk.core.refactoring.participants.SharableParticipants;
 import org.osgi.framework.FrameworkUtil;
 
-import edu.cuny.hunter.streamrefactoring.core.analysis.CannotDetermineStreamOrderingException;
-import edu.cuny.hunter.streamrefactoring.core.analysis.NoninstantiablePossibleStreamSourceException;
-import edu.cuny.hunter.streamrefactoring.core.analysis.NoniterablePossibleStreamSourceException;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalysisVisitor;
-import edu.cuny.hunter.streamrefactoring.core.analysis.StreamOrdering;
 import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
 import edu.cuny.hunter.streamrefactoring.core.messages.Messages;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
@@ -280,6 +276,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	private void clearCaches() {
 		getTypeToTypeHierarchyMap().clear();
 		getCompilationUnitToCompilationUnitRewriteMap().clear();
+		Stream.clearCaches();
 	}
 
 	@Override
