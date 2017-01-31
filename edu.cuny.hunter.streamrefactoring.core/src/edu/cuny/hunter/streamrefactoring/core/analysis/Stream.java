@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -15,6 +16,7 @@ import java.util.logging.Logger;
 import java.util.stream.BaseStream;
 
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IMethod;
@@ -37,14 +39,27 @@ import org.objenesis.ObjenesisStd;
 import org.objenesis.instantiator.ObjectInstantiator;
 import org.osgi.framework.FrameworkUtil;
 
+import com.ibm.safe.controller.ISafeSolver;
+import com.ibm.safe.internal.exceptions.MaxFindingsException;
+import com.ibm.safe.internal.exceptions.PropertiesException;
+import com.ibm.safe.internal.exceptions.SetUpException;
+import com.ibm.safe.internal.exceptions.SolverTimeoutException;
+import com.ibm.safe.properties.PropertiesManager;
+import com.ibm.safe.rules.TypestateRule;
+import com.ibm.safe.typestate.core.BenignOracle;
+import com.ibm.safe.typestate.core.TypestateSolverFactory;
+import com.ibm.safe.typestate.options.TypeStateOptions;
+import com.ibm.safe.typestate.rules.ITypeStateDFA;
 import com.ibm.wala.analysis.typeInference.TypeAbstraction;
 import com.ibm.wala.analysis.typeInference.TypeInference;
 import com.ibm.wala.cast.java.ipa.callgraph.JavaSourceAnalysisScope;
 import com.ibm.wala.cast.java.translator.jdt.JDTIdentityMapper;
 import com.ibm.wala.classLoader.IBytecodeMethod;
-import com.ibm.wala.client.AbstractAnalysisEngine;
+import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
+import com.ibm.wala.ipa.callgraph.Entrypoint;
+import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
 import com.ibm.wala.ipa.callgraph.impl.Everywhere;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
@@ -59,8 +74,11 @@ import com.ibm.wala.ssa.Value;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
+import com.ibm.wala.util.CancelException;
+import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.strings.StringStuff;
 
+import edu.cuny.hunter.streamrefactoring.core.rules.EventTrackingTypeStateProperty;
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
@@ -75,6 +93,8 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 public class Stream {
 	private static Map<IJavaProject, IClassHierarchy> javaProjectToClassHierarchyMap = new HashMap<>();
 
+	private static Map<IJavaProject, EclipseProjectAnalysisEngine<InstanceKey>> javaProjectToAnalysisEngineMap = new HashMap<>();
+
 	private static final Logger logger = Logger.getLogger("edu.cuny.hunter.streamrefactoring");
 
 	private static Map<MethodDeclaration, IR> methodDeclarationToIRMap = new HashMap<>();
@@ -85,6 +105,7 @@ public class Stream {
 
 	public static void clearCaches() {
 		javaProjectToClassHierarchyMap.clear();
+		javaProjectToAnalysisEngineMap.clear();
 		methodDeclarationToIRMap.clear();
 	}
 
@@ -341,6 +362,9 @@ public class Stream {
 			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_STREAM_SOURCE_ORDERING,
 					"Cannot extract spliterator from type: " + e.getFromType() + " for stream: " + streamCreation
 							+ ".");
+		} catch (PropertiesException | CancelException e) {
+			logger.log(Level.SEVERE, "Error while building stream.", e);
+			throw new RuntimeException(e);
 		}
 	}
 
@@ -353,17 +377,34 @@ public class Stream {
 	}
 
 	private IClassHierarchy getClassHierarchy() throws IOException, CoreException {
-		IJavaProject javaProject = this.getCreation().resolveMethodBinding().getJavaElement().getJavaProject();
+		IJavaProject javaProject = getCreationJavaProject();
 		IClassHierarchy classHierarchy = javaProjectToClassHierarchyMap.get(javaProject);
-
 		if (classHierarchy == null) {
-			AbstractAnalysisEngine<InstanceKey> engine = new EclipseProjectAnalysisEngine<InstanceKey>(javaProject);
+			EclipseProjectAnalysisEngine<InstanceKey> engine = getAnalysisEngine();
 			engine.buildAnalysisScope();
 			classHierarchy = engine.buildClassHierarchy();
-			javaProjectToClassHierarchyMap.put(javaProject, classHierarchy);
+
+			if (classHierarchy != null)
+				javaProjectToClassHierarchyMap.put(javaProject, classHierarchy);
 		}
 
 		return classHierarchy;
+	}
+
+	private EclipseProjectAnalysisEngine<InstanceKey> getAnalysisEngine() throws IOException, CoreException {
+		IJavaProject javaProject = this.getCreationJavaProject();
+		EclipseProjectAnalysisEngine<InstanceKey> engine = javaProjectToAnalysisEngineMap.get(javaProject);
+		if (engine == null) {
+			engine = new EclipseProjectAnalysisEngine<InstanceKey>(javaProject);
+
+			if (engine != null)
+				javaProjectToAnalysisEngineMap.put(javaProject, engine);
+		}
+		return engine;
+	}
+
+	private IJavaProject getCreationJavaProject() {
+		return this.getCreation().resolveMethodBinding().getJavaElement().getJavaProject();
 	}
 
 	public MethodInvocation getCreation() {
@@ -378,15 +419,24 @@ public class Stream {
 		return enclosingMethodDeclaration;
 	}
 
+	private TypeReference getTypeReference() {
+		JDTIdentityMapper mapper = getJDTIdentifyMapper(this.getCreation());
+		TypeReference typeRef = mapper.getTypeRef(this.getCreation().resolveTypeBinding());
+		return typeRef;
+	}
+
 	private MethodReference getEnclosingMethodReference() {
-		JDTIdentityMapper mapper = new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE,
-				getEnclosingMethodDeclaration().getAST());
+		JDTIdentityMapper mapper = getJDTIdentifyMapper(getEnclosingMethodDeclaration());
 		MethodReference methodRef = mapper.getMethodRef(getEnclosingMethodDeclaration().resolveBinding());
 
 		if (methodRef == null)
 			throw new IllegalStateException(
 					"Could not get method reference for: " + getEnclosingMethodDeclaration().getName());
 		return methodRef;
+	}
+
+	private static JDTIdentityMapper getJDTIdentifyMapper(ASTNode node) {
+		return new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE, node.getAST());
 	}
 
 	public IType getEnclosingType() {
@@ -397,7 +447,7 @@ public class Stream {
 		return executionMode;
 	}
 
-	private IR getIR() throws IOException, CoreException {
+	private IR getEnclosingMethodIR() throws IOException, CoreException {
 		IR ir = methodDeclarationToIRMap.get(getEnclosingMethodDeclaration());
 
 		if (ir == null) {
@@ -438,7 +488,8 @@ public class Stream {
 
 	private void inferOrdering() throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
 			InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException,
-			NoninstantiablePossibleStreamSourceException, CannotExtractSpliteratorException {
+			NoninstantiablePossibleStreamSourceException, CannotExtractSpliteratorException, PropertiesException,
+			CancelException {
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
@@ -452,7 +503,7 @@ public class Stream {
 			} else
 				this.setOrdering(StreamOrdering.ORDERED);
 		} else { // instance method.
-			IR ir = getIR();
+			IR ir = getEnclosingMethodIR();
 
 			int valueNumber = getUseValueNumberForInvocation(this.getCreation(), ir);
 			TypeInference inference = TypeInference.make(ir, false);
@@ -462,6 +513,38 @@ public class Stream {
 			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
 			StreamOrdering ordering = inferStreamOrdering(possibleTypes, calledMethod);
 			this.setOrdering(ordering);
+		}
+
+		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getAnalysisEngine();
+
+		DefaultEntrypoint entryPoint = new DefaultEntrypoint(this.getEnclosingMethodReference(),
+				this.getClassHierarchy());
+		Set<Entrypoint> entryPoints = Collections.singleton(entryPoint);
+		AnalysisOptions analysisOptions = engine.getDefaultOptions(entryPoints);
+
+		// FIXME: Do we need to build a new call graph for each entry point?
+		// Doesn't make sense. Maybe we need to collect all enclosing methods
+		// and use those as entry points.
+		engine.buildSafeCallGraph(entryPoints);
+		// TODO: Can I slice the graph so that only nodes relevant to the
+		// instance in question are present?
+
+		BenignOracle ora = new BenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
+		PropertiesManager manager = PropertiesManager.initFromMap(Collections.emptyMap());
+		TypeStateOptions typeStateOptions = new TypeStateOptions(manager);
+
+		TypeReference typeReference = this.getTypeReference();
+		IClass streamClass = engine.getClassHierarchy().lookupClass(typeReference);
+		ITypeStateDFA dfa = new EventTrackingTypeStateProperty(engine.getClassHierarchy(),
+				Collections.singleton(streamClass));
+
+		ISafeSolver solver = TypestateSolverFactory.getSolver(analysisOptions, engine.getCallGraph(),
+				engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null, null);
+		try {
+			solver.perform(new NullProgressMonitor());
+		} catch (SolverTimeoutException | MaxFindingsException | SetUpException | WalaException e) {
+			logger.log(Level.SEVERE, "Exception caught during typestate analysis.", e);
+			throw new RuntimeException(e);
 		}
 	}
 

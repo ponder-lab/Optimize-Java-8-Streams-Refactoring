@@ -12,7 +12,14 @@ import org.eclipse.jdt.core.IJavaProject;
 import com.ibm.wala.cast.java.client.JDTJavaSourceAnalysisEngine;
 import com.ibm.wala.ide.util.EclipseProjectPath;
 import com.ibm.wala.ide.util.EclipseProjectPath.AnalysisScopeType;
+import com.ibm.wala.ipa.callgraph.AnalysisOptions;
+import com.ibm.wala.ipa.callgraph.CallGraph;
+import com.ibm.wala.ipa.callgraph.CallGraphBuilder;
+import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
+import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
+import com.ibm.wala.ipa.cha.IClassHierarchy;
+import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.config.FileOfClasses;
 
 /**
@@ -47,5 +54,23 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 			throws IOException, CoreException {
 		project.open(new NullProgressMonitor());
 		return TestableJavaEclipseProjectPath.create(project, AnalysisScopeType.NO_SOURCE);
+	}
+
+	@Override
+	public CallGraph getCallGraph() {
+		return super.getCallGraph();
+	}
+
+	@Override
+	public IClassHierarchy buildClassHierarchy() {
+		IClassHierarchy classHierarchy = super.buildClassHierarchy();
+		this.setClassHierarchy(classHierarchy);
+		return classHierarchy;
+	}
+
+	public CallGraph buildSafeCallGraph(Iterable<Entrypoint> entryPoints)
+			throws IllegalArgumentException, CallGraphBuilderCancelException, CancelException {
+		AnalysisOptions options = getDefaultOptions(entryPoints);
+		return buildCallGraph(this.getClassHierarchy(), options, true, null).makeCallGraph(options, null);
 	}
 }
