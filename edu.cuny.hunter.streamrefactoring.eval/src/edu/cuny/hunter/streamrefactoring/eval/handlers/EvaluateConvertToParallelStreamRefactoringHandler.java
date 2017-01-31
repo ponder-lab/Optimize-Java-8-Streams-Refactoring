@@ -73,7 +73,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	 */
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
-		Job.create("Evaluating Migrate Skeletal Implementation to Interface Refactoring ...", monitor -> {
+		Job.create("Evaluating Convert To Parallel Stream Refactoring ...", monitor -> {
 			CSVPrinter resultsPrinter = null;
 			CSVPrinter candidateStreamPrinter = null;
 			CSVPrinter optimizedStreamPrinter = null;
