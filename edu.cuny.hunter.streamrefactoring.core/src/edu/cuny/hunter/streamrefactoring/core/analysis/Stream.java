@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.logging.Level;
@@ -78,7 +79,7 @@ import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.strings.StringStuff;
 
-import edu.cuny.hunter.streamrefactoring.core.rules.EventTrackingTypeStateProperty;
+import edu.cuny.hunter.streamrefactoring.core.safe.EventTrackingTypeStateProperty;
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
@@ -210,11 +211,16 @@ public class Stream {
 		return spliterator;
 	}
 
-	private static int getUseValueNumberForInvocation(MethodInvocation node, IR ir) throws InvalidClassFileException {
-		IBytecodeMethod method = (IBytecodeMethod) ir.getMethod();
-		SimpleName methodName = node.getName();
+	private int getUseValueNumberForCreation() throws InvalidClassFileException, IOException, CoreException {
+		return getInstructionForCreation().map(i -> i.getUse(0)).orElse(-1);
+	}
 
-		for (Iterator<SSAInstruction> it = ir.iterateNormalInstructions(); it.hasNext();) {
+	private Optional<SSAInvokeInstruction> getInstructionForCreation()
+			throws InvalidClassFileException, IOException, CoreException {
+		IBytecodeMethod method = (IBytecodeMethod) this.getEnclosingMethodIR().getMethod();
+		SimpleName methodName = this.getCreation().getName();
+
+		for (Iterator<SSAInstruction> it = this.getEnclosingMethodIR().iterateNormalInstructions(); it.hasNext();) {
 			SSAInstruction instruction = it.next();
 			System.out.println(instruction);
 
@@ -230,13 +236,13 @@ public class Stream {
 						TypeReference declaredTargetDeclaringClass = invokeInstruction.getDeclaredTarget()
 								.getDeclaringClass();
 						if (getBinaryName(declaredTargetDeclaringClass)
-								.equals(node.getExpression().resolveTypeBinding().getBinaryName())) {
+								.equals(this.getCreation().getExpression().resolveTypeBinding().getBinaryName())) {
 							MethodReference callSiteDeclaredTarget = invokeInstruction.getCallSite()
 									.getDeclaredTarget();
 							// FIXME: This matching needs much work.
 							if (callSiteDeclaredTarget.getName().toString()
-									.equals(node.resolveMethodBinding().getName())) {
-								return invokeInstruction.getUse(0);
+									.equals(this.getCreation().resolveMethodBinding().getName())) {
+								return Optional.of(invokeInstruction);
 							}
 						}
 					} else
@@ -245,7 +251,7 @@ public class Stream {
 					logger.warning("Instruction: " + instruction + " has no definitions.");
 			}
 		}
-		return -1;
+		return Optional.empty();
 	}
 
 	private static StreamOrdering inferStreamOrdering(Set<TypeAbstraction> possibleStreamSourceTypes,
@@ -420,7 +426,7 @@ public class Stream {
 	}
 
 	private TypeReference getTypeReference() {
-		JDTIdentityMapper mapper = getJDTIdentifyMapper(this.getCreation());
+		JDTIdentityMapper mapper = getJDTIdentifyMapperForCreation();
 		TypeReference typeRef = mapper.getTypeRef(this.getCreation().resolveTypeBinding());
 		return typeRef;
 	}
@@ -433,6 +439,10 @@ public class Stream {
 			throw new IllegalStateException(
 					"Could not get method reference for: " + getEnclosingMethodDeclaration().getName());
 		return methodRef;
+	}
+
+	private JDTIdentityMapper getJDTIdentifyMapperForCreation() {
+		return getJDTIdentifyMapper(this.getCreation());
 	}
 
 	private static JDTIdentityMapper getJDTIdentifyMapper(ASTNode node) {
@@ -503,10 +513,8 @@ public class Stream {
 			} else
 				this.setOrdering(StreamOrdering.ORDERED);
 		} else { // instance method.
-			IR ir = getEnclosingMethodIR();
-
-			int valueNumber = getUseValueNumberForInvocation(this.getCreation(), ir);
-			TypeInference inference = TypeInference.make(ir, false);
+			int valueNumber = getUseValueNumberForCreation();
+			TypeInference inference = TypeInference.make(this.getEnclosingMethodIR(), false);
 			Set<TypeAbstraction> possibleTypes = getPossibleTypes(valueNumber, inference);
 
 			// Possible types: check each one.
@@ -517,6 +525,7 @@ public class Stream {
 
 		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getAnalysisEngine();
 
+		// FIXME: Do we want a different entry point?
 		DefaultEntrypoint entryPoint = new DefaultEntrypoint(this.getEnclosingMethodReference(),
 				this.getClassHierarchy());
 		Set<Entrypoint> entryPoints = Collections.singleton(entryPoint);
