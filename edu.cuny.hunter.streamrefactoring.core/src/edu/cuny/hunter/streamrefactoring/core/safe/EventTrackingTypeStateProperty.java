@@ -1,32 +1,38 @@
-package edu.cuny.hunter.streamrefactoring.core.rules;
+package edu.cuny.hunter.streamrefactoring.core.safe;
 
 import java.util.Collection;
 import java.util.Set;
 
+import com.ibm.safe.dfa.DFASpec;
 import com.ibm.safe.dfa.IDFAState;
 import com.ibm.safe.dfa.events.IEvent;
 import com.ibm.safe.rules.TypestateRule;
 import com.ibm.safe.typestate.core.TypeStateProperty;
-import com.ibm.safe.typestate.rules.AbstractTypeStateDFA;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 
 public class EventTrackingTypeStateProperty extends TypeStateProperty {
 
 	public EventTrackingTypeStateProperty(IClassHierarchy cha, Collection<IClass> types) {
-		super(cha);
+		super(getTypeStateRule(types), cha);
 		types.stream().forEach(this::addType);
-		// TODO Auto-generated constructor stub
+	}
+
+	private static TypestateRule getTypeStateRule(Collection<IClass> types) {
+		TypestateRule rule = new TypestateRule();
+		types.stream().map(t -> t.getName()).map(n -> n.toString()).forEach(rule::addType);
+		DFASpec newTypeStateAutomaton = new DFASpec();
+		rule.setTypeStateAutomaton(newTypeStateAutomaton);
+
+		return rule;
 	}
 
 	public EventTrackingTypeStateProperty(TypestateRule aTypeStateRule, IClassHierarchy cha) {
 		super(aTypeStateRule, cha);
-		// TODO Auto-generated constructor stub
 	}
 
 	protected EventTrackingTypeStateProperty(IClassHierarchy cha) {
 		super(cha);
-		// TODO Auto-generated constructor stub
 	}
 
 	@Override
@@ -56,6 +62,7 @@ public class EventTrackingTypeStateProperty extends TypeStateProperty {
 	@Override
 	public IEvent match(Class eventClass, String param) {
 		// TODO Auto-generated method stub
+		System.out.println(eventClass.getClass() + ": " + param);
 		return null;
 	}
 
