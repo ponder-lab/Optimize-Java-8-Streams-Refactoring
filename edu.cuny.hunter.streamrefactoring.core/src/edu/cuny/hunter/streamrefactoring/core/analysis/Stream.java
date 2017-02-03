@@ -80,6 +80,7 @@ import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.strings.StringStuff;
 
 import edu.cuny.hunter.streamrefactoring.core.safe.EventTrackingTypeStateProperty;
+import edu.cuny.hunter.streamrefactoring.core.safe.ModifiedBenignOracle;
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
@@ -538,7 +539,7 @@ public class Stream {
 		// TODO: Can I slice the graph so that only nodes relevant to the
 		// instance in question are present?
 
-		BenignOracle ora = new BenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
+		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
 		PropertiesManager manager = PropertiesManager.initFromMap(Collections.emptyMap());
 		TypeStateOptions typeStateOptions = new TypeStateOptions(manager);
 
