@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Set;
 
 import com.ibm.safe.dfa.DFASpec;
+import com.ibm.safe.dfa.DFAState;
 import com.ibm.safe.dfa.IDFAState;
 import com.ibm.safe.dfa.events.IEvent;
 import com.ibm.safe.rules.TypestateRule;
@@ -49,8 +50,10 @@ public class EventTrackingTypeStateProperty extends TypeStateProperty {
 
 	@Override
 	public IDFAState initial() {
-		// TODO Auto-generated method stub
-		return null;
+		DFAState state = new DFAState();
+		state.setAccepting(true);
+		state.setName("Initial?");
+		return state;
 	}
 
 	@Override
@@ -62,8 +65,8 @@ public class EventTrackingTypeStateProperty extends TypeStateProperty {
 	@Override
 	public IEvent match(Class eventClass, String param) {
 		// TODO Auto-generated method stub
-		System.out.println(eventClass.getClass() + ": " + param);
-		return null;
+		System.out.println("MATCH: " + eventClass + ": " + param);
+		return super.match(eventClass, param);
 	}
 
 	@Override
