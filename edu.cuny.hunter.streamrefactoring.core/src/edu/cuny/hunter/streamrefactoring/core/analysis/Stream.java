@@ -30,6 +30,7 @@ import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SimpleName;
+import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.internal.corext.dom.ASTNodes;
 import org.eclipse.jdt.internal.corext.refactoring.base.JavaStatusContext;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
@@ -45,24 +46,27 @@ import com.ibm.safe.internal.exceptions.MaxFindingsException;
 import com.ibm.safe.internal.exceptions.PropertiesException;
 import com.ibm.safe.internal.exceptions.SetUpException;
 import com.ibm.safe.internal.exceptions.SolverTimeoutException;
+import com.ibm.safe.options.WholeProgramProperties;
 import com.ibm.safe.properties.PropertiesManager;
-import com.ibm.safe.rules.TypestateRule;
 import com.ibm.safe.typestate.core.BenignOracle;
-import com.ibm.safe.typestate.core.TypestateSolverFactory;
+import com.ibm.safe.typestate.core.TypeStateProperty;
 import com.ibm.safe.typestate.options.TypeStateOptions;
-import com.ibm.safe.typestate.rules.ITypeStateDFA;
 import com.ibm.wala.analysis.typeInference.TypeAbstraction;
 import com.ibm.wala.analysis.typeInference.TypeInference;
 import com.ibm.wala.cast.java.ipa.callgraph.JavaSourceAnalysisScope;
 import com.ibm.wala.cast.java.translator.jdt.JDTIdentityMapper;
 import com.ibm.wala.classLoader.IBytecodeMethod;
 import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.NewSiteReference;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
+import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
 import com.ibm.wala.ipa.callgraph.impl.Everywhere;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
+import com.ibm.wala.ipa.callgraph.propagation.PropagationCallGraphBuilder;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
@@ -81,6 +85,7 @@ import com.ibm.wala.util.strings.StringStuff;
 
 import edu.cuny.hunter.streamrefactoring.core.safe.EventTrackingTypeStateProperty;
 import edu.cuny.hunter.streamrefactoring.core.safe.ModifiedBenignOracle;
+import edu.cuny.hunter.streamrefactoring.core.safe.TypestateSolverFactory;
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
@@ -93,9 +98,9 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
  */
 @SuppressWarnings("restriction")
 public class Stream {
-	private static Map<IJavaProject, IClassHierarchy> javaProjectToClassHierarchyMap = new HashMap<>();
-
 	private static Map<IJavaProject, EclipseProjectAnalysisEngine<InstanceKey>> javaProjectToAnalysisEngineMap = new HashMap<>();
+
+	private static Map<IJavaProject, IClassHierarchy> javaProjectToClassHierarchyMap = new HashMap<>();
 
 	private static final Logger logger = Logger.getLogger("edu.cuny.hunter.streamrefactoring");
 
@@ -129,6 +134,10 @@ public class Stream {
 		TypeName name = typeReference.getName();
 		String slashToDot = StringStuff.slashToDot(name.getPackage().toString() + "." + name.getClassName().toString());
 		return slashToDot;
+	}
+
+	private static JDTIdentityMapper getJDTIdentifyMapper(ASTNode node) {
+		return new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE, node.getAST());
 	}
 
 	private static int getLineNumberFromAST(SimpleName methodName) {
@@ -210,49 +219,6 @@ public class Stream {
 			}
 		}
 		return spliterator;
-	}
-
-	private int getUseValueNumberForCreation() throws InvalidClassFileException, IOException, CoreException {
-		return getInstructionForCreation().map(i -> i.getUse(0)).orElse(-1);
-	}
-
-	private Optional<SSAInvokeInstruction> getInstructionForCreation()
-			throws InvalidClassFileException, IOException, CoreException {
-		IBytecodeMethod method = (IBytecodeMethod) this.getEnclosingMethodIR().getMethod();
-		SimpleName methodName = this.getCreation().getName();
-
-		for (Iterator<SSAInstruction> it = this.getEnclosingMethodIR().iterateNormalInstructions(); it.hasNext();) {
-			SSAInstruction instruction = it.next();
-			System.out.println(instruction);
-
-			int lineNumberFromIR = getLineNumberFromIR(method, instruction);
-			int lineNumberFromAST = getLineNumberFromAST(methodName);
-
-			if (lineNumberFromIR == lineNumberFromAST) {
-				// lines from the AST and the IR match. Let's dive a little
-				// deeper to be more confident of the correspondence.
-				if (instruction.hasDef() && instruction.getNumberOfDefs() == 2) {
-					if (instruction instanceof SSAInvokeInstruction) {
-						SSAInvokeInstruction invokeInstruction = (SSAInvokeInstruction) instruction;
-						TypeReference declaredTargetDeclaringClass = invokeInstruction.getDeclaredTarget()
-								.getDeclaringClass();
-						if (getBinaryName(declaredTargetDeclaringClass)
-								.equals(this.getCreation().getExpression().resolveTypeBinding().getBinaryName())) {
-							MethodReference callSiteDeclaredTarget = invokeInstruction.getCallSite()
-									.getDeclaredTarget();
-							// FIXME: This matching needs much work.
-							if (callSiteDeclaredTarget.getName().toString()
-									.equals(this.getCreation().resolveMethodBinding().getName())) {
-								return Optional.of(invokeInstruction);
-							}
-						}
-					} else
-						logger.warning("Instruction: " + instruction + " is not an SSAInstruction.");
-				} else
-					logger.warning("Instruction: " + instruction + " has no definitions.");
-			}
-		}
-		return Optional.empty();
 	}
 
 	private static StreamOrdering inferStreamOrdering(Set<TypeAbstraction> possibleStreamSourceTypes,
@@ -338,6 +304,8 @@ public class Stream {
 
 	private final MethodDeclaration enclosingMethodDeclaration;
 
+	private final TypeDeclaration enclosingTypeDeclaration;
+
 	private StreamExecutionMode executionMode;
 
 	private StreamOrdering ordering;
@@ -347,11 +315,13 @@ public class Stream {
 	public Stream(MethodInvocation streamCreation)
 			throws ClassHierarchyException, IOException, CoreException, InvalidClassFileException {
 		this.creation = streamCreation;
+		this.enclosingTypeDeclaration = (TypeDeclaration) ASTNodes.getParent(this.getCreation(),
+				ASTNode.TYPE_DECLARATION);
 		this.enclosingMethodDeclaration = (MethodDeclaration) ASTNodes.getParent(this.getCreation(),
 				ASTNode.METHOD_DECLARATION);
-		this.inferExecution();
+		this.inferInitialExecution();
 		try {
-			this.inferOrdering();
+			this.inferInitialOrdering();
 		} catch (InconsistentPossibleStreamSourceOrderingException e) {
 			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.INCONSISTENT_POSSIBLE_STREAM_SOURCE_ORDERING,
@@ -369,6 +339,10 @@ public class Stream {
 			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_STREAM_SOURCE_ORDERING,
 					"Cannot extract spliterator from type: " + e.getFromType() + " for stream: " + streamCreation
 							+ ".");
+		} 
+		
+		try {
+			startStateMachine();
 		} catch (PropertiesException | CancelException e) {
 			logger.log(Level.SEVERE, "Error while building stream.", e);
 			throw new RuntimeException(e);
@@ -381,6 +355,18 @@ public class Stream {
 		ICompilationUnit compilationUnit2 = (ICompilationUnit) compilationUnit.getJavaElement();
 		RefactoringStatusContext context = JavaStatusContext.create(compilationUnit2, streamCreation);
 		this.getStatus().addEntry(RefactoringStatus.ERROR, message, context, PLUGIN_ID, failure.getCode(), this);
+	}
+
+	private EclipseProjectAnalysisEngine<InstanceKey> getAnalysisEngine() throws IOException, CoreException {
+		IJavaProject javaProject = this.getCreationJavaProject();
+		EclipseProjectAnalysisEngine<InstanceKey> engine = javaProjectToAnalysisEngineMap.get(javaProject);
+		if (engine == null) {
+			engine = new EclipseProjectAnalysisEngine<InstanceKey>(javaProject);
+
+			if (engine != null)
+				javaProjectToAnalysisEngineMap.put(javaProject, engine);
+		}
+		return engine;
 	}
 
 	private IClassHierarchy getClassHierarchy() throws IOException, CoreException {
@@ -398,24 +384,12 @@ public class Stream {
 		return classHierarchy;
 	}
 
-	private EclipseProjectAnalysisEngine<InstanceKey> getAnalysisEngine() throws IOException, CoreException {
-		IJavaProject javaProject = this.getCreationJavaProject();
-		EclipseProjectAnalysisEngine<InstanceKey> engine = javaProjectToAnalysisEngineMap.get(javaProject);
-		if (engine == null) {
-			engine = new EclipseProjectAnalysisEngine<InstanceKey>(javaProject);
-
-			if (engine != null)
-				javaProjectToAnalysisEngineMap.put(javaProject, engine);
-		}
-		return engine;
+	public MethodInvocation getCreation() {
+		return creation;
 	}
 
 	private IJavaProject getCreationJavaProject() {
 		return this.getCreation().resolveMethodBinding().getJavaElement().getJavaProject();
-	}
-
-	public MethodInvocation getCreation() {
-		return creation;
 	}
 
 	public IMethod getEnclosingMethod() {
@@ -424,38 +398,6 @@ public class Stream {
 
 	public MethodDeclaration getEnclosingMethodDeclaration() {
 		return enclosingMethodDeclaration;
-	}
-
-	private TypeReference getTypeReference() {
-		JDTIdentityMapper mapper = getJDTIdentifyMapperForCreation();
-		TypeReference typeRef = mapper.getTypeRef(this.getCreation().resolveTypeBinding());
-		return typeRef;
-	}
-
-	private MethodReference getEnclosingMethodReference() {
-		JDTIdentityMapper mapper = getJDTIdentifyMapper(getEnclosingMethodDeclaration());
-		MethodReference methodRef = mapper.getMethodRef(getEnclosingMethodDeclaration().resolveBinding());
-
-		if (methodRef == null)
-			throw new IllegalStateException(
-					"Could not get method reference for: " + getEnclosingMethodDeclaration().getName());
-		return methodRef;
-	}
-
-	private JDTIdentityMapper getJDTIdentifyMapperForCreation() {
-		return getJDTIdentifyMapper(this.getCreation());
-	}
-
-	private static JDTIdentityMapper getJDTIdentifyMapper(ASTNode node) {
-		return new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE, node.getAST());
-	}
-
-	public IType getEnclosingType() {
-		return (IType) getEnclosingMethodDeclaration().resolveBinding().getDeclaringClass().getJavaElement();
-	}
-
-	public StreamExecutionMode getExecutionMode() {
-		return executionMode;
 	}
 
 	private IR getEnclosingMethodIR() throws IOException, CoreException {
@@ -480,6 +422,81 @@ public class Stream {
 		return ir;
 	}
 
+	private MethodReference getEnclosingMethodReference() {
+		JDTIdentityMapper mapper = getJDTIdentifyMapper(getEnclosingMethodDeclaration());
+		MethodReference methodRef = mapper.getMethodRef(getEnclosingMethodDeclaration().resolveBinding());
+
+		if (methodRef == null)
+			throw new IllegalStateException(
+					"Could not get method reference for: " + getEnclosingMethodDeclaration().getName());
+		return methodRef;
+	}
+
+	public IType getEnclosingType() {
+		return (IType) getEnclosingMethodDeclaration().resolveBinding().getDeclaringClass().getJavaElement();
+	}
+
+	public TypeDeclaration getEnclosingTypeDeclaration() {
+		return enclosingTypeDeclaration;
+	}
+
+	private TypeReference getEnclosingTypeReference() {
+		JDTIdentityMapper mapper = getJDTIdentifyMapper(getEnclosingTypeDeclaration());
+		TypeReference ref = mapper.getTypeRef(getEnclosingTypeDeclaration().resolveBinding());
+
+		if (ref == null)
+			throw new IllegalStateException(
+					"Could not get type reference for: " + getEnclosingTypeDeclaration().getName());
+		return ref;
+	}
+
+	public StreamExecutionMode getExecutionMode() {
+		return executionMode;
+	}
+
+	private Optional<SSAInvokeInstruction> getInstructionForCreation()
+			throws InvalidClassFileException, IOException, CoreException {
+		IBytecodeMethod method = (IBytecodeMethod) this.getEnclosingMethodIR().getMethod();
+		SimpleName methodName = this.getCreation().getName();
+
+		for (Iterator<SSAInstruction> it = this.getEnclosingMethodIR().iterateNormalInstructions(); it.hasNext();) {
+			SSAInstruction instruction = it.next();
+			System.out.println(instruction);
+
+			int lineNumberFromIR = getLineNumberFromIR(method, instruction);
+			int lineNumberFromAST = getLineNumberFromAST(methodName);
+
+			if (lineNumberFromIR == lineNumberFromAST) {
+				// lines from the AST and the IR match. Let's dive a little
+				// deeper to be more confident of the correspondence.
+				if (instruction.hasDef() && instruction.getNumberOfDefs() == 2) {
+					if (instruction instanceof SSAInvokeInstruction) {
+						SSAInvokeInstruction invokeInstruction = (SSAInvokeInstruction) instruction;
+						TypeReference declaredTargetDeclaringClass = invokeInstruction.getDeclaredTarget()
+								.getDeclaringClass();
+						if (getBinaryName(declaredTargetDeclaringClass)
+								.equals(this.getCreation().getExpression().resolveTypeBinding().getBinaryName())) {
+							MethodReference callSiteDeclaredTarget = invokeInstruction.getCallSite()
+									.getDeclaredTarget();
+							// FIXME: This matching needs much work.
+							if (callSiteDeclaredTarget.getName().toString()
+									.equals(this.getCreation().resolveMethodBinding().getName())) {
+								return Optional.of(invokeInstruction);
+							}
+						}
+					} else
+						logger.warning("Instruction: " + instruction + " is not an SSAInstruction.");
+				} else
+					logger.warning("Instruction: " + instruction + " has no definitions.");
+			}
+		}
+		return Optional.empty();
+	}
+
+	private JDTIdentityMapper getJDTIdentifyMapperForCreation() {
+		return getJDTIdentifyMapper(this.getCreation());
+	}
+
 	public StreamOrdering getOrdering() {
 		return ordering;
 	}
@@ -488,7 +505,17 @@ public class Stream {
 		return status;
 	}
 
-	private void inferExecution() {
+	private TypeReference getTypeReference() {
+		JDTIdentityMapper mapper = getJDTIdentifyMapperForCreation();
+		TypeReference typeRef = mapper.getTypeRef(this.getCreation().resolveTypeBinding());
+		return typeRef;
+	}
+
+	private int getUseValueNumberForCreation() throws InvalidClassFileException, IOException, CoreException {
+		return getInstructionForCreation().map(i -> i.getUse(0)).orElse(-1);
+	}
+
+	private void inferInitialExecution() {
 		String methodIdentifier = getMethodIdentifier(this.getCreation().resolveMethodBinding());
 
 		if (methodIdentifier.equals("parallelStream()"))
@@ -497,10 +524,9 @@ public class Stream {
 			this.setExecutionMode(StreamExecutionMode.SEQUENTIAL);
 	}
 
-	private void inferOrdering() throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
+	private void inferInitialOrdering() throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
 			InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException,
-			NoninstantiablePossibleStreamSourceException, CannotExtractSpliteratorException, PropertiesException,
-			CancelException {
+			NoninstantiablePossibleStreamSourceException, CannotExtractSpliteratorException {
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
@@ -514,6 +540,7 @@ public class Stream {
 			} else
 				this.setOrdering(StreamOrdering.ORDERED);
 		} else { // instance method.
+			// FIXME: This needs to become interprocedural.
 			int valueNumber = getUseValueNumberForCreation();
 			TypeInference inference = TypeInference.make(this.getEnclosingMethodIR(), false);
 			Set<TypeAbstraction> possibleTypes = getPossibleTypes(valueNumber, inference);
@@ -523,7 +550,10 @@ public class Stream {
 			StreamOrdering ordering = inferStreamOrdering(possibleTypes, calledMethod);
 			this.setOrdering(ordering);
 		}
+	}
 
+	private void startStateMachine() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
+			InvalidClassFileException, PropertiesException {
 		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getAnalysisEngine();
 
 		// FIXME: Do we want a different entry point?
@@ -540,16 +570,32 @@ public class Stream {
 		// instance in question are present?
 
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
+		PropagationCallGraphBuilder builder = (PropagationCallGraphBuilder) engine.getCallGraphBuilder();
+		Set<CGNode> nodes = engine.getCallGraph().getNodes(getEnclosingMethodReference());
+
+		if (nodes.size() != 1) {
+			throw new IllegalStateException("Should be only one node for method: " + this.getEnclosingMethodReference()
+					+ ", instead, there was " + nodes.size() + ": " + nodes);
+		}
+
+		int programCounter = this.getInstructionForCreation().get().getProgramCounter();
+		NewSiteReference newSiteReference = NewSiteReference
+				.make(programCounter, this.getEnclosingTypeReference());
+		InstanceKey instanceKeyForAllocation = builder.getInstanceKeyForAllocation(nodes.iterator().next(),
+				newSiteReference);
+
 		PropertiesManager manager = PropertiesManager.initFromMap(Collections.emptyMap());
+		PropertiesManager.registerProperties(new PropertiesManager.IPropertyDescriptor[] {WholeProgramProperties.Props.LIVE_ANALYSIS});
 		TypeStateOptions typeStateOptions = new TypeStateOptions(manager);
+		typeStateOptions.setBooleanValue(WholeProgramProperties.Props.LIVE_ANALYSIS.getName(), true);
 
 		TypeReference typeReference = this.getTypeReference();
 		IClass streamClass = engine.getClassHierarchy().lookupClass(typeReference);
-		ITypeStateDFA dfa = new EventTrackingTypeStateProperty(engine.getClassHierarchy(),
+		TypeStateProperty dfa = new EventTrackingTypeStateProperty(engine.getClassHierarchy(),
 				Collections.singleton(streamClass));
 
-		ISafeSolver solver = TypestateSolverFactory.getSolver(analysisOptions, engine.getCallGraph(),
-				engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null, null);
+		ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getCallGraph(), engine.getPointerAnalysis(),
+				engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null, this.getInstructionForCreation().get());
 		try {
 			solver.perform(new NullProgressMonitor());
 		} catch (SolverTimeoutException | MaxFindingsException | SetUpException | WalaException e) {

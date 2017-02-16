@@ -66,7 +66,7 @@ public class EventTrackingTypeStateProperty extends TypeStateProperty {
 	public IEvent match(Class eventClass, String param) {
 		// TODO Auto-generated method stub
 		System.out.println("MATCH: " + eventClass + ": " + param);
-		return super.match(eventClass, param);
+		return null;//super.match(eventClass, param);
 	}
 
 	@Override
