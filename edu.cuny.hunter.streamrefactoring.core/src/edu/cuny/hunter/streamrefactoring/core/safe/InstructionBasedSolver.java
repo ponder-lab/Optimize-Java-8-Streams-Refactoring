@@ -1,36 +1,37 @@
 package edu.cuny.hunter.streamrefactoring.core.safe;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.logging.Logger;
 
 import com.ibm.safe.internal.exceptions.PropertiesException;
 import com.ibm.safe.reporting.IReporter;
 import com.ibm.safe.typestate.core.BenignOracle;
 import com.ibm.safe.typestate.core.TypeStateProperty;
-import com.ibm.safe.typestate.core.TypeStatePropertyContext;
 import com.ibm.safe.typestate.merge.IMergeFunctionFactory;
 import com.ibm.safe.typestate.metrics.TypeStateMetrics;
 import com.ibm.safe.typestate.mine.TraceReporter;
 import com.ibm.safe.typestate.options.TypeStateOptions;
 import com.ibm.safe.typestate.unique.UniqueSolver;
-import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.NewSiteReference;
 import com.ibm.wala.escape.ILiveObjectAnalysis;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
+import com.ibm.wala.ipa.callgraph.ContextItem;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
-import com.ibm.wala.ssa.IR;
+import com.ibm.wala.ipa.callgraph.propagation.cfa.CallString;
+import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
-import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.util.collections.Pair;
 
-public class InstanceKeyBasedSolver extends UniqueSolver {
+public class InstructionBasedSolver extends UniqueSolver {
 
-	// TODO: Don't we want the instance key here?
 	private SSAInvokeInstruction instruction;
 
-	public InstanceKeyBasedSolver(CallGraph cg, PointerAnalysis<?> pointerAnalysis, TypeStateProperty property,
+	public InstructionBasedSolver(CallGraph cg, PointerAnalysis<?> pointerAnalysis, TypeStateProperty property,
 			TypeStateOptions options, ILiveObjectAnalysis live, BenignOracle ora, TypeStateMetrics metrics,
 			IReporter reporter, TraceReporter traceReporter, IMergeFunctionFactory mergeFactory,
 			SSAInvokeInstruction instruction) {
@@ -40,29 +41,33 @@ public class InstanceKeyBasedSolver extends UniqueSolver {
 
 	@Override
 	protected Collection<InstanceKey> computeTrackedInstances() throws PropertiesException {
-		// TODO: Not quite sure what to do here.
-		for (Iterator<?> iterator = this.getPointerAnalysis().getInstanceKeys().iterator(); iterator.hasNext();) {
-			InstanceKey key = (InstanceKey) iterator.next();
-			IClass concreteType = key.getConcreteType();
-			if (TypeStatePropertyContext.isTrackedType(this.getCallGraph().getClassHierarchy(), this.getDFA().getTypes(), concreteType)) {
-				// here, we know it's the same type.
-				Iterator<Pair<CGNode, NewSiteReference>> creationSites = key.getCreationSites(this.getCallGraph());
-				System.out.println(creationSites);
-				while (creationSites.hasNext()) {
-					Pair<CGNode,NewSiteReference> pair = creationSites.next();
-					System.out.println(pair);
-					CGNode fst = pair.fst;
-					IR ir = fst.getIR();
-					System.out.println(ir);
-					SSANewInstruction ssaNewInstruction = ir.getNew(pair.snd);
-					System.out.println(ssaNewInstruction);
-					
-					NewSiteReference snd = pair.snd;
-					System.out.println(snd);
-				}
+		Collection<InstanceKey> ret = new HashSet<>();
+
+		// compute all instances whose type is tracked by the DFA.
+		Collection<InstanceKey> trackedInstancesByType = this.computeTrackedInstancesByType();
+
+		for (InstanceKey instanceKey : trackedInstancesByType) {
+			Iterator<Pair<CGNode, NewSiteReference>> creationSites = instanceKey.getCreationSites(this.getCallGraph());
+
+			while (creationSites.hasNext()) {
+				Pair<CGNode, NewSiteReference> pair = creationSites.next();
+				ContextItem contextItem = pair.fst.getContext().get(CallStringContextSelector.CALL_STRING);
+				CallString callString = (CallString) contextItem;
+				CallSiteReference[] callSiteRefs = callString.getCallSiteRefs();
+
+				for (CallSiteReference callSiteReference : callSiteRefs)
+					if (callSiteReference.equals(this.getInstruction().getCallSite())) {
+						ret.add(instanceKey);
+						break;
+					}
 			}
 		}
-		return this.computeTrackedInstancesByType();
+
+		if (ret.size() != 1)
+			throw new IllegalStateException("Tracking more or less than one instance: " + ret.size());
+		
+		Logger.getGlobal().info("Tracking: " + ret);
+		return ret;
 	}
 
 	protected SSAInvokeInstruction getInstruction() {

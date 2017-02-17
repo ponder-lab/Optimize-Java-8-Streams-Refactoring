@@ -40,7 +40,7 @@ public final class TypestateSolverFactory {
 		IMergeFunctionFactory mergeFactory = makeMergeFactory(options, kind);
 		ILiveObjectAnalysis live = options.shouldUseLiveAnalysis()
 				? TypeStateSolverCreator.computeLiveObjectAnalysis(cg, hg, false) : null;
-		return new InstanceKeyBasedSolver(cg, pointerAnalysis, dfa, options, live, ora, metrics, reporter,
+		return new InstructionBasedSolver(cg, pointerAnalysis, dfa, options, live, ora, metrics, reporter,
 				traceReporter, mergeFactory, instruction);
 	}
 }
