@@ -9,7 +9,7 @@ import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 
 public class ModifiedBenignOracle extends BenignOracle {
 
-	public ModifiedBenignOracle(CallGraph callGraph, PointerAnalysis pointerAnalysis) {
+	public ModifiedBenignOracle(CallGraph callGraph, PointerAnalysis<?> pointerAnalysis) {
 		super(callGraph, pointerAnalysis);
 	}
 
