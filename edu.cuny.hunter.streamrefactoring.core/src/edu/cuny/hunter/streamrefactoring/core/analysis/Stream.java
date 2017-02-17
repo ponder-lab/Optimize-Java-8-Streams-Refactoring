@@ -573,7 +573,7 @@ public class Stream {
 		PropertiesManager manager = PropertiesManager.initFromMap(Collections.emptyMap());
 		PropertiesManager.registerProperties(new PropertiesManager.IPropertyDescriptor[] {WholeProgramProperties.Props.LIVE_ANALYSIS});
 		TypeStateOptions typeStateOptions = new TypeStateOptions(manager);
-		typeStateOptions.setBooleanValue(WholeProgramProperties.Props.LIVE_ANALYSIS.getName(), true);
+		typeStateOptions.setBooleanValue(WholeProgramProperties.Props.LIVE_ANALYSIS.getName(), false);
 
 		TypeReference typeReference = this.getTypeReference();
 		IClass streamClass = engine.getClassHierarchy().lookupClass(typeReference);
