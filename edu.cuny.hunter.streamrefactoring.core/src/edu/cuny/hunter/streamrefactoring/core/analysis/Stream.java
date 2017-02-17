@@ -221,7 +221,7 @@ public class Stream {
 		return spliterator;
 	}
 
-	private static StreamOrdering inferStreamOrdering(Set<TypeAbstraction> possibleStreamSourceTypes,
+	private static StreamOrdering inferInitialStreamOrdering(Set<TypeAbstraction> possibleStreamSourceTypes,
 			IMethod calledMethod)
 			throws InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException,
 			NoninstantiablePossibleStreamSourceException, CannotExtractSpliteratorException {
@@ -229,7 +229,7 @@ public class Stream {
 
 		for (TypeAbstraction typeAbstraction : possibleStreamSourceTypes) {
 			if (typeAbstraction != TypeAbstraction.TOP) {
-				StreamOrdering ordering = inferStreamOrdering(typeAbstraction, calledMethod);
+				StreamOrdering ordering = inferInitialStreamOrdering(typeAbstraction, calledMethod);
 
 				if (ret == null)
 					ret = ordering;
@@ -243,7 +243,7 @@ public class Stream {
 	}
 
 	// TODO: Cache this?
-	private static StreamOrdering inferStreamOrdering(String className, IMethod calledMethod)
+	private static StreamOrdering inferInitialStreamOrdering(String className, IMethod calledMethod)
 			throws NoniterablePossibleStreamSourceException, NoninstantiablePossibleStreamSourceException,
 			CannotExtractSpliteratorException {
 		try {
@@ -281,13 +281,13 @@ public class Stream {
 		}
 	}
 
-	private static StreamOrdering inferStreamOrdering(TypeAbstraction typeAbstraction, IMethod calledMethod)
+	private static StreamOrdering inferInitialStreamOrdering(TypeAbstraction typeAbstraction, IMethod calledMethod)
 			throws NoniterablePossibleStreamSourceException, NoninstantiablePossibleStreamSourceException,
 			CannotExtractSpliteratorException {
 		TypeReference typeReference = typeAbstraction.getTypeReference();
 		String binaryName = getBinaryName(typeReference);
 
-		return inferStreamOrdering(binaryName, calledMethod);
+		return inferInitialStreamOrdering(binaryName, calledMethod);
 	}
 
 	private static boolean isAbstractType(Class<?> clazz) {
@@ -547,7 +547,7 @@ public class Stream {
 
 			// Possible types: check each one.
 			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
-			StreamOrdering ordering = inferStreamOrdering(possibleTypes, calledMethod);
+			StreamOrdering ordering = inferInitialStreamOrdering(possibleTypes, calledMethod);
 			this.setOrdering(ordering);
 		}
 	}
