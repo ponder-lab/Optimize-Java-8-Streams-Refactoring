@@ -560,7 +560,6 @@ public class Stream {
 		DefaultEntrypoint entryPoint = new DefaultEntrypoint(this.getEnclosingMethodReference(),
 				this.getClassHierarchy());
 		Set<Entrypoint> entryPoints = Collections.singleton(entryPoint);
-		AnalysisOptions analysisOptions = engine.getDefaultOptions(entryPoints);
 
 		// FIXME: Do we need to build a new call graph for each entry point?
 		// Doesn't make sense. Maybe we need to collect all enclosing methods
@@ -570,19 +569,6 @@ public class Stream {
 		// instance in question are present?
 
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
-		PropagationCallGraphBuilder builder = (PropagationCallGraphBuilder) engine.getCallGraphBuilder();
-		Set<CGNode> nodes = engine.getCallGraph().getNodes(getEnclosingMethodReference());
-
-		if (nodes.size() != 1) {
-			throw new IllegalStateException("Should be only one node for method: " + this.getEnclosingMethodReference()
-					+ ", instead, there was " + nodes.size() + ": " + nodes);
-		}
-
-		int programCounter = this.getInstructionForCreation().get().getProgramCounter();
-		NewSiteReference newSiteReference = NewSiteReference
-				.make(programCounter, this.getEnclosingTypeReference());
-		InstanceKey instanceKeyForAllocation = builder.getInstanceKeyForAllocation(nodes.iterator().next(),
-				newSiteReference);
 
 		PropertiesManager manager = PropertiesManager.initFromMap(Collections.emptyMap());
 		PropertiesManager.registerProperties(new PropertiesManager.IPropertyDescriptor[] {WholeProgramProperties.Props.LIVE_ANALYSIS});
