@@ -76,6 +76,7 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
  */
 @SuppressWarnings("restriction")
 public class Stream {
+
 	private static Map<IJavaProject, EclipseProjectAnalysisEngine<InstanceKey>> javaProjectToAnalysisEngineMap = new HashMap<>();
 
 	private static Map<IJavaProject, IClassHierarchy> javaProjectToClassHierarchyMap = new HashMap<>();
@@ -317,8 +318,8 @@ public class Stream {
 			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_STREAM_SOURCE_ORDERING,
 					"Cannot extract spliterator from type: " + e.getFromType() + " for stream: " + streamCreation
 							+ ".");
-		} 
-		
+		}
+
 		try {
 			new StateMachine(this).start();
 		} catch (PropertiesException | CancelException e) {
