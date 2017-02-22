@@ -27,7 +27,7 @@ import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.util.collections.Pair;
 
-public class InstructionBasedSolver extends UniqueSolver {
+public class InstructionBasedSolver extends UniqueSolver { // TODO: Need to change the super class. UniqueSolver isn't sound. 
 
 	private SSAInvokeInstruction instruction;
 
