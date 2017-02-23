@@ -371,7 +371,7 @@ public class Stream {
 		return this.getCreation().resolveMethodBinding().getJavaElement().getJavaProject();
 	}
 
-	public IMethod getEnclosingMethod() {
+	public IMethod getEnclosingEclipseMethod() {
 		return (IMethod) getEnclosingMethodDeclaration().resolveBinding().getJavaElement();
 	}
 

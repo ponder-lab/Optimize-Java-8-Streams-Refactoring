@@ -143,12 +143,12 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					for (Stream stream : processor.getStreamSet()) {
 						candidateStreamPrinter.printRecord(stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
-								Util.getMethodIdentifier(stream.getEnclosingMethod()),
+								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
 								stream.getEnclosingType().getFullyQualifiedName());
 
 						streamAttributesPrinter.printRecord(stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
-								Util.getMethodIdentifier(stream.getEnclosingMethod()),
+								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
 								stream.getEnclosingType().getFullyQualifiedName(), stream.getExecutionMode(),
 								stream.getOrdering(), stream.getStatus().isOK() ? 0
 										: stream.getStatus().getEntryWithHighestSeverity().getSeverity());
@@ -161,7 +161,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					for (Stream stream : optimizableStreams) {
 						optimizedStreamPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
-								Util.getMethodIdentifier(stream.getEnclosingMethod()),
+								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
 								stream.getEnclosingType().getFullyQualifiedName());
 					}
 
@@ -169,7 +169,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					for (Stream stream : processor.getUnoptimizableStreams()) {
 						nonOptimizedStreamPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
-								Util.getMethodIdentifier(stream.getEnclosingMethod()),
+								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
 								stream.getEnclosingType().getFullyQualifiedName());
 					}
 
@@ -191,7 +191,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 							errorPrinter.printRecord(failedStream.getCreation(),
 									failedStream.getCreation().getStartPosition(),
 									failedStream.getCreation().getLength(),
-									Util.getMethodIdentifier(failedStream.getEnclosingMethod()),
+									Util.getMethodIdentifier(failedStream.getEnclosingEclipseMethod()),
 									failedStream.getEnclosingType().getFullyQualifiedName(), entry.getCode(),
 									entry.getMessage());
 						}
