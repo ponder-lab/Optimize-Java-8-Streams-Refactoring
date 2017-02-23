@@ -25,7 +25,7 @@ public final class TypestateSolverFactory {
 	private TypestateSolverFactory() {
 	}
 
-	public static ISafeSolver getSolver(CallGraph cg, PointerAnalysis<?> pointerAnalysis, HeapGraph<?> hg,
+	public static InstructionBasedSolver getSolver(CallGraph cg, PointerAnalysis<?> pointerAnalysis, HeapGraph<?> hg,
 			TypeStateProperty dfa, BenignOracle ora, TypeStateOptions options, TypeStateMetrics metrics,
 			IReporter reporter, TraceReporter traceReporter, SSAInvokeInstruction instruction)
 			throws PropertiesException, CancelException {
@@ -33,7 +33,7 @@ public final class TypestateSolverFactory {
 				reporter, traceReporter, instruction);
 	}
 
-	public static ISafeSolver getSolver(TypeStateSolverKind kind, CallGraph cg, PointerAnalysis<?> pointerAnalysis,
+	public static InstructionBasedSolver getSolver(TypeStateSolverKind kind, CallGraph cg, PointerAnalysis<?> pointerAnalysis,
 			HeapGraph<?> hg, TypeStateProperty dfa, BenignOracle ora, TypeStateOptions options, TypeStateMetrics metrics,
 			IReporter reporter, TraceReporter traceReporter, SSAInvokeInstruction instruction)
 			throws PropertiesException {

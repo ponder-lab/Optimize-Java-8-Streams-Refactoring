@@ -9,7 +9,7 @@ import java.util.logging.Logger;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 
-import com.ibm.safe.controller.ISafeSolver;
+import com.ibm.safe.ICFGSupergraph;
 import com.ibm.safe.dfa.DFASpec;
 import com.ibm.safe.dfa.DFAState;
 import com.ibm.safe.dfa.DFATransition;
@@ -23,20 +23,27 @@ import com.ibm.safe.internal.exceptions.SetUpException;
 import com.ibm.safe.internal.exceptions.SolverTimeoutException;
 import com.ibm.safe.options.WholeProgramProperties;
 import com.ibm.safe.properties.PropertiesManager;
+import com.ibm.safe.reporting.message.AggregateSolverResult;
 import com.ibm.safe.rules.TypestateRule;
 import com.ibm.safe.typestate.core.BenignOracle;
 import com.ibm.safe.typestate.core.TypeStateProperty;
+import com.ibm.safe.typestate.core.TypeStateResult;
 import com.ibm.safe.typestate.options.TypeStateOptions;
 import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
+import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
+import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
+import com.ibm.wala.util.intset.IntSet;
 
+import edu.cuny.hunter.streamrefactoring.core.safe.InstructionBasedSolver;
 import edu.cuny.hunter.streamrefactoring.core.safe.ModifiedBenignOracle;
 import edu.cuny.hunter.streamrefactoring.core.safe.TypestateSolverFactory;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
@@ -94,15 +101,33 @@ class StateMachine {
 
 		TypeStateProperty dfa = new TypeStateProperty(rule, engine.getClassHierarchy());
 
-		ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getCallGraph(), engine.getPointerAnalysis(),
-				engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null,
+		InstructionBasedSolver solver = TypestateSolverFactory.getSolver(engine.getCallGraph(),
+				engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null,
 				this.getStream().getInstructionForCreation().get());
+
+		AggregateSolverResult result;
 		try {
-			solver.perform(new NullProgressMonitor());
+			result = (AggregateSolverResult) solver.perform(new NullProgressMonitor());
 		} catch (SolverTimeoutException | MaxFindingsException | SetUpException | WalaException e) {
 			Logger.getGlobal().log(Level.SEVERE, "Exception caught during typestate analysis.", e);
 			throw new RuntimeException(e);
 		}
+
+		InstanceKey streamInstanceKey = this.getStream().getInstanceKey(solver.getTrackedInstances(),
+				solver.getCallGraph());
+		TypeStateResult instanceResult = (TypeStateResult) result.getInstanceResult(streamInstanceKey);
+
+		ICFGSupergraph supergraph = instanceResult.getSupergraph();
+		Set<CGNode> cgNodes = engine.getCallGraph().getNodes(this.getStream().getEnclosingMethodReference());
+
+		cgNodes.forEach(cgNode -> {
+			BasicBlockInContext<IExplodedBasicBlock> node = supergraph.getLocalBlock(cgNode, 20);
+			IntSet resultIntSet = instanceResult.getResult().getResult(node);
+
+			// print out the facts at the node.
+			resultIntSet.foreach(i -> System.out.println(instanceResult.getDomain().getMappedObject(i)));
+		});
+
 	}
 
 	protected Stream getStream() {
@@ -119,8 +144,12 @@ class StateMachine {
 		IDFAState counted = addState(automaton, "counted");
 
 		IDispatchEvent close = addEvent(automaton, "close", ".*close\\(.*\\).*");
+		IDispatchEvent count = addEvent(automaton, "count", ".*count\\(\\).*");
 
 		addTransition(automaton, bottom, closed, close);
+		addTransition(automaton, bottom, counted, count);
+		addTransition(automaton, counted, counted, count);
+		addTransition(automaton, closed, counted, count);
 
 		rule.setTypeStateAutomaton(automaton);
 	}

@@ -1,9 +1,12 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
+import static edu.cuny.hunter.streamrefactoring.core.safe.Util.instanceKeyCorrespondsWithInstantiationInstruction;
+
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -47,6 +50,7 @@ import com.ibm.wala.cast.java.translator.jdt.JDTIdentityMapper;
 import com.ibm.wala.classLoader.IBytecodeMethod;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
+import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.impl.Everywhere;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
@@ -383,14 +387,13 @@ public class Stream {
 		IR ir = methodDeclarationToIRMap.get(getEnclosingMethodDeclaration());
 
 		if (ir == null) {
-			IClassHierarchy classHierarchy = getClassHierarchy();
+			// get the IR for the enclosing method.
+			com.ibm.wala.classLoader.IMethod resolvedMethod = getEnclosingWalaMethod();
+
 			AnalysisOptions options = new AnalysisOptions();
 			// options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
 			AnalysisCache cache = new AnalysisCache();
 
-			// get the IR for the enclosing method.
-			MethodReference methodRef = getEnclosingMethodReference();
-			com.ibm.wala.classLoader.IMethod resolvedMethod = classHierarchy.resolveMethod(methodRef);
 			ir = cache.getSSACache().findOrCreateIR(resolvedMethod, Everywhere.EVERYWHERE, options.getSSAOptions());
 
 			if (ir == null)
@@ -399,6 +402,13 @@ public class Stream {
 			methodDeclarationToIRMap.put(getEnclosingMethodDeclaration(), ir);
 		}
 		return ir;
+	}
+
+	public com.ibm.wala.classLoader.IMethod getEnclosingWalaMethod() throws IOException, CoreException {
+		IClassHierarchy classHierarchy = getClassHierarchy();
+		MethodReference methodRef = getEnclosingMethodReference();
+		com.ibm.wala.classLoader.IMethod resolvedMethod = classHierarchy.resolveMethod(methodRef);
+		return resolvedMethod;
 	}
 
 	MethodReference getEnclosingMethodReference() {
@@ -503,7 +513,8 @@ public class Stream {
 			this.setExecutionMode(StreamExecutionMode.SEQUENTIAL);
 	}
 
-	private void inferInitialOrdering() throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
+	private void inferInitialOrdering()
+			throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
 			InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException,
 			NoninstantiablePossibleStreamSourceException, CannotExtractSpliteratorException {
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
@@ -554,5 +565,14 @@ public class Stream {
 		builder.append(status);
 		builder.append("]");
 		return builder.toString();
+	}
+
+	public InstanceKey getInstanceKey(Collection<InstanceKey> trackedInstances, CallGraph callGraph)
+			throws InvalidClassFileException, IOException, CoreException {
+		return this.getInstructionForCreation()
+				.flatMap(instruction -> trackedInstances.stream()
+						.filter(ik -> instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction, callGraph)).findFirst())
+				.orElseThrow(() -> new IllegalArgumentException("Can't find instance key for stream: " + this
+						+ " using tracked instances: " + trackedInstances));
 	}
 }
