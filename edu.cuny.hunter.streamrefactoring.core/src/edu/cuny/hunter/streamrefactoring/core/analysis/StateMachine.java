@@ -137,19 +137,22 @@ class StateMachine {
 	private static void addAutomaton(TypestateRule rule) {
 		DFASpec automaton = new DFASpec();
 
-		IDFAState bottom = addState(automaton, "bottom", true);
-		IDFAState sequential = addState(automaton, "sequential");
-		IDFAState parallel = addState(automaton, "parallel");
-		IDFAState closed = addState(automaton, "closed");
-		IDFAState counted = addState(automaton, "counted");
+		// a bottom state result would need to defer to the initial stream
+		// ordering, which is in the field of the stream. TODO: Perhaps we
+		// should rename that to initial ordering.
+		IDFAState bottomState = addState(automaton, "bottom", true);
+		IDFAState sequentialState = addState(automaton, "sequential");
+		IDFAState parallelState = addState(automaton, "parallel");
 
-		IDispatchEvent close = addEvent(automaton, "close", ".*close\\(.*\\).*");
-		IDispatchEvent count = addEvent(automaton, "count", ".*count\\(\\).*");
+		IDispatchEvent parallelEvent = addEvent(automaton, "parallel", ".*parallel\\(\\).*");
+		IDispatchEvent sequentialEvent = addEvent(automaton, "sequential", ".*sequential\\(\\).*");
 
-		addTransition(automaton, bottom, closed, close);
-		addTransition(automaton, bottom, counted, count);
-		addTransition(automaton, counted, counted, count);
-		addTransition(automaton, closed, counted, count);
+		addTransition(automaton, bottomState, parallelState, parallelEvent);
+		addTransition(automaton, bottomState, sequentialState, sequentialEvent);
+		addTransition(automaton, sequentialState, parallelState, parallelEvent);
+		addTransition(automaton, sequentialState, sequentialState, sequentialEvent);
+		addTransition(automaton, parallelState, sequentialState, sequentialEvent);
+		addTransition(automaton, parallelState, parallelState, parallelEvent);
 
 		rule.setTypeStateAutomaton(automaton);
 	}
