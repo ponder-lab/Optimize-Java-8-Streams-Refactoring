@@ -289,9 +289,9 @@ public class Stream {
 
 	private final TypeDeclaration enclosingTypeDeclaration;
 
-	private StreamExecutionMode executionMode;
+	private StreamExecutionMode initialExecutionMode;
 
-	private StreamOrdering ordering;
+	private StreamOrdering initialOrdering;
 
 	private RefactoringStatus status = new RefactoringStatus();
 
@@ -439,8 +439,8 @@ public class Stream {
 		return ref;
 	}
 
-	public StreamExecutionMode getExecutionMode() {
-		return executionMode;
+	public StreamExecutionMode getInitialExecutionMode() {
+		return initialExecutionMode;
 	}
 
 	Optional<SSAInvokeInstruction> getInstructionForCreation()
@@ -486,8 +486,8 @@ public class Stream {
 		return getJDTIdentifyMapper(this.getCreation());
 	}
 
-	public StreamOrdering getOrdering() {
-		return ordering;
+	public StreamOrdering getInitialOrdering() {
+		return initialOrdering;
 	}
 
 	public RefactoringStatus getStatus() {
@@ -508,9 +508,9 @@ public class Stream {
 		String methodIdentifier = getMethodIdentifier(this.getCreation().resolveMethodBinding());
 
 		if (methodIdentifier.equals("parallelStream()"))
-			this.setExecutionMode(StreamExecutionMode.PARALLEL);
+			this.setInitialExecutionMode(StreamExecutionMode.PARALLEL);
 		else
-			this.setExecutionMode(StreamExecutionMode.SEQUENTIAL);
+			this.setInitialExecutionMode(StreamExecutionMode.SEQUENTIAL);
 	}
 
 	private void inferInitialOrdering()
@@ -526,9 +526,9 @@ public class Stream {
 			if (expressionTypeQualifiedName.equals("java.util.stream.Stream")) {
 				String methodIdentifier = getMethodIdentifier(calledMethodBinding);
 				if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
-					this.setOrdering(StreamOrdering.UNORDERED);
+					this.setInitialOrdering(StreamOrdering.UNORDERED);
 			} else
-				this.setOrdering(StreamOrdering.ORDERED);
+				this.setInitialOrdering(StreamOrdering.ORDERED);
 		} else { // instance method.
 			// FIXME: This needs to become interprocedural.
 			int valueNumber = getUseValueNumberForCreation();
@@ -538,16 +538,16 @@ public class Stream {
 			// Possible types: check each one.
 			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
 			StreamOrdering ordering = inferInitialStreamOrdering(possibleTypes, calledMethod);
-			this.setOrdering(ordering);
+			this.setInitialOrdering(ordering);
 		}
 	}
 
-	protected void setExecutionMode(StreamExecutionMode executionMode) {
-		this.executionMode = executionMode;
+	protected void setInitialExecutionMode(StreamExecutionMode executionMode) {
+		this.initialExecutionMode = executionMode;
 	}
 
-	protected void setOrdering(StreamOrdering ordering) {
-		this.ordering = ordering;
+	protected void setInitialOrdering(StreamOrdering ordering) {
+		this.initialOrdering = ordering;
 	}
 
 	@Override
@@ -558,9 +558,9 @@ public class Stream {
 		builder.append(", enclosingMethodDeclaration=");
 		builder.append(enclosingMethodDeclaration);
 		builder.append(", executionMode=");
-		builder.append(executionMode);
+		builder.append(initialExecutionMode);
 		builder.append(", ordering=");
-		builder.append(ordering);
+		builder.append(initialOrdering);
 		builder.append(", status=");
 		builder.append(status);
 		builder.append("]");
