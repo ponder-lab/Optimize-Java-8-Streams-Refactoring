@@ -19,11 +19,8 @@ import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 
-public class InstructionBasedSolver extends UniqueSolver { // TODO: Need to
-															// change the super
-															// class.
-															// UniqueSolver
-															// isn't sound.
+// TODO: Need to change the super class. UniqueSolver isn't sound.
+public class InstructionBasedSolver extends UniqueSolver {
 
 	private SSAInvokeInstruction instruction;
 
@@ -44,6 +41,8 @@ public class InstructionBasedSolver extends UniqueSolver { // TODO: Need to
 		// compute all instances whose type is tracked by the DFA.
 		Collection<InstanceKey> trackedInstancesByType = this.computeTrackedInstancesByType();
 
+		// TODO: Can I track all instances that are related to the instantiation
+		// instruction? I believe this is related to #3.
 		for (InstanceKey instanceKey : trackedInstancesByType) {
 			if (Util.instanceKeyCorrespondsWithInstantiationInstruction(instanceKey, this.getInstruction(), this.getCallGraph()))
 				ret.add(instanceKey);

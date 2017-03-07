@@ -81,6 +81,7 @@ class StateMachine {
 		engine.buildSafeCallGraph(entryPoints);
 		// TODO: Can I slice the graph so that only nodes relevant to the
 		// instance in question are present?
+		// TODO: Don't we already have a call graph?
 
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
 

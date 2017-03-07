@@ -530,7 +530,7 @@ public class Stream {
 			} else
 				this.setInitialOrdering(StreamOrdering.ORDERED);
 		} else { // instance method.
-			// FIXME: This needs to become interprocedural.
+			// FIXME: This needs to become interprocedural #7.
 			int valueNumber = getUseValueNumberForCreation();
 			TypeInference inference = TypeInference.make(this.getEnclosingMethodIR(), false);
 			Set<TypeAbstraction> possibleTypes = getPossibleTypes(valueNumber, inference);
