@@ -96,7 +96,7 @@ class StateMachine {
 
 		TypestateRule rule = new TypestateRule();
 		rule.addType(streamClass.getName().toString());
-		rule.setName("execution mode");
+		rule.setName("execution mode and ordering");
 
 		addAutomaton(rule);
 
@@ -110,8 +110,7 @@ class StateMachine {
 		try {
 			result = (AggregateSolverResult) solver.perform(new NullProgressMonitor());
 		} catch (SolverTimeoutException | MaxFindingsException | SetUpException | WalaException e) {
-			Logger.getGlobal().log(Level.SEVERE, "Exception caught during typestate analysis.", e);
-			throw new RuntimeException(e);
+			throw new RuntimeException("Exception caught during typestate analysis.", e);
 		}
 
 		InstanceKey streamInstanceKey = this.getStream().getInstanceKey(solver.getTrackedInstances(),
@@ -119,6 +118,7 @@ class StateMachine {
 		TypeStateResult instanceResult = (TypeStateResult) result.getInstanceResult(streamInstanceKey);
 
 		ICFGSupergraph supergraph = instanceResult.getSupergraph();
+		// This doesn't make a whole lot of sense. Only looking at the node of where the stream was declared:
 		Set<CGNode> cgNodes = engine.getCallGraph().getNodes(this.getStream().getEnclosingMethodReference());
 
 		cgNodes.forEach(cgNode -> {
