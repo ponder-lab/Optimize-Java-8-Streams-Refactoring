@@ -585,7 +585,8 @@ public class Stream {
 			throws InvalidClassFileException, IOException, CoreException {
 		return this.getInstructionForCreation()
 				.flatMap(instruction -> trackedInstances.stream()
-						.filter(ik -> instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction, callGraph)).findFirst())
+						.filter(ik -> instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction, callGraph))
+						.findFirst())
 				.orElseThrow(() -> new IllegalArgumentException("Can't find instance key for stream: " + this
 						+ " using tracked instances: " + trackedInstances));
 	}
