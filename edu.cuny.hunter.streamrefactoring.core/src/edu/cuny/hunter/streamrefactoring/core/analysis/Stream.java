@@ -33,6 +33,7 @@ import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.internal.corext.dom.ASTNodes;
+import org.eclipse.jdt.internal.corext.dom.Bindings;
 import org.eclipse.jdt.internal.corext.refactoring.base.JavaStatusContext;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
@@ -496,7 +497,20 @@ public class Stream {
 
 	TypeReference getTypeReference() {
 		JDTIdentityMapper mapper = getJDTIdentifyMapperForCreation();
-		TypeReference typeRef = mapper.getTypeRef(this.getCreation().resolveTypeBinding());
+		ITypeBinding typeBinding = this.getCreation().resolveTypeBinding();
+
+		// try to get the top-most type.
+		ITypeBinding[] allSuperTypes = Bindings.getAllSuperTypes(typeBinding);
+
+		for (ITypeBinding supertype : allSuperTypes) {
+			// if it's the top-most interface.
+			if (supertype.isInterface() && supertype.getName().startsWith("BaseStream")) {
+				typeBinding = supertype; // use it.
+				break;
+			}
+		}
+
+		TypeReference typeRef = mapper.getTypeRef(typeBinding);
 		return typeRef;
 	}
 
