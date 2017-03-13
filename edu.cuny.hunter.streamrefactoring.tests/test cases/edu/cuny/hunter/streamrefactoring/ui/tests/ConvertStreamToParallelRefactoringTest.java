@@ -186,10 +186,10 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 		MethodInvocation creation = stream.getCreation();
 		assertEquals(expectedCreation, creation.toString());
 
-		StreamExecutionMode executionMode = stream.getInitialExecutionMode();
+		StreamExecutionMode executionMode = stream.getExecutionMode();
 		assertEquals(expectedExecutionMode, executionMode);
 
-		StreamOrdering ordering = stream.getInitialOrdering();
+		StreamOrdering ordering = stream.getOrdering();
 		assertEquals(expectedOrdering, ordering);
 	}
 }

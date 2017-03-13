@@ -149,8 +149,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						streamAttributesPrinter.printRecord(stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
-								stream.getEnclosingType().getFullyQualifiedName(), stream.getInitialExecutionMode(),
-								stream.getInitialOrdering(), stream.getStatus().isOK() ? 0
+								stream.getEnclosingType().getFullyQualifiedName(), stream.getExecutionMode(),
+								stream.getOrdering(), stream.getStatus().isOK() ? 0
 										: stream.getStatus().getEntryWithHighestSeverity().getSeverity());
 					}
 
