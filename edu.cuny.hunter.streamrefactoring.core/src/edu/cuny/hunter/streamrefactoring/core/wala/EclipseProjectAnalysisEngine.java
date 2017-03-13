@@ -18,6 +18,7 @@ import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilder;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
+import com.ibm.wala.ipa.callgraph.IAnalysisCacheView;
 import com.ibm.wala.ipa.callgraph.impl.Util;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
@@ -84,7 +85,8 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	}
 
 	@Override
-	protected CallGraphBuilder<?> getCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options, AnalysisCache cache) {
-		return Util.makeNCFABuilder(2, options, cache, cha, scope);
+	protected CallGraphBuilder<?> getCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options,
+			IAnalysisCacheView cache) {
+		return Util.makeNCFABuilder(2, options, (AnalysisCache) cache, cha, scope);
 	}
 }

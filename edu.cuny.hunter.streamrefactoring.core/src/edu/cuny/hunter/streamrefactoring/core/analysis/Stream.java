@@ -50,6 +50,7 @@ import com.ibm.wala.cast.java.ipa.callgraph.JavaSourceAnalysisScope;
 import com.ibm.wala.cast.java.translator.jdt.JDTIdentityMapper;
 import com.ibm.wala.classLoader.IBytecodeMethod;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
+import com.ibm.wala.ipa.callgraph.AnalysisCacheImpl;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.impl.Everywhere;
@@ -399,7 +400,7 @@ public class Stream {
 
 			AnalysisOptions options = new AnalysisOptions();
 			// options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
-			AnalysisCache cache = new AnalysisCache();
+			AnalysisCache cache = new AnalysisCacheImpl();
 
 			ir = cache.getSSACache().findOrCreateIR(resolvedMethod, Everywhere.EVERYWHERE, options.getSSAOptions());
 
