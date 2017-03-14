@@ -12,8 +12,9 @@ import com.ibm.wala.classLoader.IClass;
 
 public abstract class StreamAttributeTypestateRule extends TypestateRule {
 
-	public StreamAttributeTypestateRule(IClass streamClass) {
+	public StreamAttributeTypestateRule(IClass streamClass, String name) {
 		this.addType(streamClass.getName().toString());
+		this.setName(name);
 		this.setTypeStateAutomaton(new DFASpec());
 		this.addAutomaton();
 	}

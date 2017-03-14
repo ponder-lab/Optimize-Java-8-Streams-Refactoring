@@ -7,8 +7,7 @@ import com.ibm.wala.classLoader.IClass;
 public class StreamExecutionModeTypeStateRule extends StreamAttributeTypestateRule {
 
 	public StreamExecutionModeTypeStateRule(IClass streamClass) {
-		super(streamClass);
-		this.setName("execution mode");
+		super(streamClass, "execution mode");
 	}
 
 	@Override
