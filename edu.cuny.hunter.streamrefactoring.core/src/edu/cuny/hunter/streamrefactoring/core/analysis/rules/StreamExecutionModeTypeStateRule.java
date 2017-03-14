@@ -1,4 +1,4 @@
-package edu.cuny.hunter.streamrefactoring.core.analysis;
+package edu.cuny.hunter.streamrefactoring.core.analysis.rules;
 
 import com.ibm.safe.dfa.DFASpec;
 import com.ibm.safe.dfa.DFAState;

@@ -43,6 +43,7 @@ import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.intset.IntSet;
 
+import edu.cuny.hunter.streamrefactoring.core.analysis.rules.StreamExecutionModeTypeStateRule;
 import edu.cuny.hunter.streamrefactoring.core.safe.InstructionBasedSolver;
 import edu.cuny.hunter.streamrefactoring.core.safe.ModifiedBenignOracle;
 import edu.cuny.hunter.streamrefactoring.core.safe.TypestateSolverFactory;
