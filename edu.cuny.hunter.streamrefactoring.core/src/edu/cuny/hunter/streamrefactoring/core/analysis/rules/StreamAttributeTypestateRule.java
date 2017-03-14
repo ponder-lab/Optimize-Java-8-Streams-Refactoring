@@ -58,4 +58,8 @@ public abstract class StreamAttributeTypestateRule extends TypestateRule {
 		return addState(stateName, false);
 	}
 
+	protected IDFAState addState(Enum<?> constant) {
+		return this.addState(constant.name().toLowerCase());
+	}
+
 }

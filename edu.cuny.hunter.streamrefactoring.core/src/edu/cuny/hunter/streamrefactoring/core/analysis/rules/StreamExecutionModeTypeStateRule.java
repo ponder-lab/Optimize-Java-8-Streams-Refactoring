@@ -4,6 +4,8 @@ import com.ibm.safe.dfa.IDFAState;
 import com.ibm.safe.dfa.events.IDispatchEvent;
 import com.ibm.wala.classLoader.IClass;
 
+import edu.cuny.hunter.streamrefactoring.core.analysis.StreamExecutionMode;
+
 public class StreamExecutionModeTypeStateRule extends StreamAttributeTypestateRule {
 
 	public StreamExecutionModeTypeStateRule(IClass streamClass) {
@@ -15,8 +17,8 @@ public class StreamExecutionModeTypeStateRule extends StreamAttributeTypestateRu
 		// a bottom state result would need to defer to the initial stream
 		// ordering, which is in the field of the stream.
 		IDFAState bottomState = addState("bottom", true);
-		IDFAState sequentialState = addState("sequential");
-		IDFAState parallelState = addState("parallel");
+		IDFAState sequentialState = addState(StreamExecutionMode.SEQUENTIAL);
+		IDFAState parallelState = addState(StreamExecutionMode.PARALLEL);
 
 		IDispatchEvent parallelEvent = addEvent("parallel", ".*parallel\\(\\).*");
 		IDispatchEvent sequentialEvent = addEvent("sequential", ".*sequential\\(\\).*");

@@ -4,6 +4,8 @@ import com.ibm.safe.dfa.IDFAState;
 import com.ibm.safe.dfa.events.IDispatchEvent;
 import com.ibm.wala.classLoader.IClass;
 
+import edu.cuny.hunter.streamrefactoring.core.analysis.StreamOrdering;
+
 public class StreamOrderingTypeStateRule extends StreamAttributeTypestateRule {
 
 	public StreamOrderingTypeStateRule(IClass streamClass) {
@@ -15,8 +17,8 @@ public class StreamOrderingTypeStateRule extends StreamAttributeTypestateRule {
 		// a bottom state result would need to defer to the initial stream
 		// ordering, which is in the field of the stream.
 		IDFAState bottomState = addState("bottom", true);
-		IDFAState orderedState = addState("ordered");
-		IDFAState unorderedState = addState("unordered");
+		IDFAState orderedState = addState(StreamOrdering.ORDERED);
+		IDFAState unorderedState = addState(StreamOrdering.UNORDERED);
 
 		IDispatchEvent sortedEvent = addEvent("sorted", ".*sorted\\(\\).*");
 		IDispatchEvent unorderedEvent = addEvent("unordered", ".*unordered\\(\\).*");
