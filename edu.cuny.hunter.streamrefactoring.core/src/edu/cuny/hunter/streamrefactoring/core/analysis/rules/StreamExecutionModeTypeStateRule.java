@@ -16,7 +16,7 @@ public class StreamExecutionModeTypeStateRule extends StreamAttributeTypestateRu
 	protected void addAutomaton() {
 		// a bottom state result would need to defer to the initial stream
 		// ordering, which is in the field of the stream.
-		IDFAState bottomState = addState("bottom", true);
+		IDFAState bottomState = addState(BOTTOM_STATE_NAME, true);
 		IDFAState sequentialState = addState(StreamExecutionMode.SEQUENTIAL);
 		IDFAState parallelState = addState(StreamExecutionMode.PARALLEL);
 

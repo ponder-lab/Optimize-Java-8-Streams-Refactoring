@@ -12,6 +12,8 @@ import com.ibm.wala.classLoader.IClass;
 
 public abstract class StreamAttributeTypestateRule extends TypestateRule {
 
+	protected static final String BOTTOM_STATE_NAME = "bottom";
+
 	public StreamAttributeTypestateRule(IClass streamClass, String name) {
 		this.addType(streamClass.getName().toString());
 		this.setName(name);
