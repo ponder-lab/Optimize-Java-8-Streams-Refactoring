@@ -2,7 +2,6 @@ package edu.cuny.hunter.streamrefactoring.core.safe;
 
 import static com.ibm.safe.typestate.core.TypestateSolverFactory.makeMergeFactory;
 
-import com.ibm.safe.controller.ISafeSolver;
 import com.ibm.safe.internal.exceptions.PropertiesException;
 import com.ibm.safe.reporting.IReporter;
 import com.ibm.safe.typestate.controller.TypeStateSolverCreator;
@@ -25,7 +24,14 @@ public final class TypestateSolverFactory {
 	private TypestateSolverFactory() {
 	}
 
-	public static InstructionBasedSolver getSolver(CallGraph cg, PointerAnalysis<?> pointerAnalysis, HeapGraph<?> hg,
+	public static TrackingUniqueSolver getSolver(CallGraph cg, PointerAnalysis<?> pointerAnalysis, HeapGraph<?> hg,
+			TypeStateProperty dfa, BenignOracle ora, TypeStateOptions options, TypeStateMetrics metrics,
+			IReporter reporter, TraceReporter traceReporter) throws PropertiesException, CancelException {
+		return getSolver(options.getTypeStateSolverKind(), cg, pointerAnalysis, hg, dfa, ora, options, metrics,
+				reporter, traceReporter);
+	}
+
+	public static TrackingUniqueSolver getSolver(CallGraph cg, PointerAnalysis<?> pointerAnalysis, HeapGraph<?> hg,
 			TypeStateProperty dfa, BenignOracle ora, TypeStateOptions options, TypeStateMetrics metrics,
 			IReporter reporter, TraceReporter traceReporter, SSAInvokeInstruction instruction)
 			throws PropertiesException, CancelException {
@@ -33,14 +39,30 @@ public final class TypestateSolverFactory {
 				reporter, traceReporter, instruction);
 	}
 
-	public static InstructionBasedSolver getSolver(TypeStateSolverKind kind, CallGraph cg, PointerAnalysis<?> pointerAnalysis,
-			HeapGraph<?> hg, TypeStateProperty dfa, BenignOracle ora, TypeStateOptions options, TypeStateMetrics metrics,
-			IReporter reporter, TraceReporter traceReporter, SSAInvokeInstruction instruction)
-			throws PropertiesException {
+	public static TrackingUniqueSolver getSolver(TypeStateSolverKind kind, CallGraph cg,
+			PointerAnalysis<?> pointerAnalysis, HeapGraph<?> hg, TypeStateProperty dfa, BenignOracle ora,
+			TypeStateOptions options, TypeStateMetrics metrics, IReporter reporter, TraceReporter traceReporter,
+			SSAInvokeInstruction instruction) throws PropertiesException {
 		IMergeFunctionFactory mergeFactory = makeMergeFactory(options, kind);
-		ILiveObjectAnalysis live = options.shouldUseLiveAnalysis()
-				? TypeStateSolverCreator.computeLiveObjectAnalysis(cg, hg, false) : null;
+		ILiveObjectAnalysis live = getLiveObjectAnalysis(cg, hg, options);
 		return new InstructionBasedSolver(cg, pointerAnalysis, dfa, options, live, ora, metrics, reporter,
 				traceReporter, mergeFactory, instruction);
+	}
+
+	public static TrackingUniqueSolver getSolver(TypeStateSolverKind kind, CallGraph cg,
+			PointerAnalysis<?> pointerAnalysis, HeapGraph<?> hg, TypeStateProperty dfa, BenignOracle ora,
+			TypeStateOptions options, TypeStateMetrics metrics, IReporter reporter, TraceReporter traceReporter)
+			throws PropertiesException {
+		IMergeFunctionFactory mergeFactory = makeMergeFactory(options, kind);
+		ILiveObjectAnalysis live = getLiveObjectAnalysis(cg, hg, options);
+		return new TrackingUniqueSolver(cg, pointerAnalysis, dfa, options, live, ora, metrics, reporter, traceReporter,
+				mergeFactory);
+	}
+
+	private static ILiveObjectAnalysis getLiveObjectAnalysis(CallGraph cg, HeapGraph<?> hg, TypeStateOptions options)
+			throws PropertiesException {
+		ILiveObjectAnalysis live = options.shouldUseLiveAnalysis()
+				? TypeStateSolverCreator.computeLiveObjectAnalysis(cg, hg, false) : null;
+		return live;
 	}
 }

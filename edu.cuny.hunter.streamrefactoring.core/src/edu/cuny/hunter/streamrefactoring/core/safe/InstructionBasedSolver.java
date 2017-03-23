@@ -12,19 +12,15 @@ import com.ibm.safe.typestate.merge.IMergeFunctionFactory;
 import com.ibm.safe.typestate.metrics.TypeStateMetrics;
 import com.ibm.safe.typestate.mine.TraceReporter;
 import com.ibm.safe.typestate.options.TypeStateOptions;
-import com.ibm.safe.typestate.unique.UniqueSolver;
 import com.ibm.wala.escape.ILiveObjectAnalysis;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 
-// TODO: Need to change the super class. UniqueSolver isn't sound.
-public class InstructionBasedSolver extends UniqueSolver {
+public class InstructionBasedSolver extends TrackingUniqueSolver {
 
 	private SSAInvokeInstruction instruction;
-
-	private Collection<InstanceKey> trackedInstances;
 
 	public InstructionBasedSolver(CallGraph cg, PointerAnalysis<?> pointerAnalysis, TypeStateProperty property,
 			TypeStateOptions options, ILiveObjectAnalysis live, BenignOracle ora, TypeStateMetrics metrics,
@@ -44,12 +40,20 @@ public class InstructionBasedSolver extends UniqueSolver {
 		// TODO: Can I track all instances that are related to the instantiation
 		// instruction? I believe this is related to #3.
 		for (InstanceKey instanceKey : trackedInstancesByType) {
-			if (Util.instanceKeyCorrespondsWithInstantiationInstruction(instanceKey, this.getInstruction(), this.getCallGraph()))
+			Logger.getGlobal().info("Examining instance: " + instanceKey);
+			if (Util.instanceKeyCorrespondsWithInstantiationInstruction(instanceKey, this.getInstruction(),
+					this.getCallGraph()))
 				ret.add(instanceKey);
 		}
 
 		if (ret.size() != 1)
 			throw new IllegalStateException("Tracking more or less than one instance: " + ret.size());
+
+		// TODO: What does this instruction look like? How do I get the instance
+		// key of the stream created here? How did I get the first one? Seems
+		// inductive because the first one is also from an instruction. How do I
+		// keep track of ordering? Or, can I somehow rewrite the representation?
+		System.out.println(instruction);
 
 		Logger.getGlobal().info("Tracking: " + ret);
 		this.setTrackedInstances(ret);
@@ -58,13 +62,5 @@ public class InstructionBasedSolver extends UniqueSolver {
 
 	protected SSAInvokeInstruction getInstruction() {
 		return this.instruction;
-	}
-
-	public Collection<InstanceKey> getTrackedInstances() {
-		return trackedInstances;
-	}
-
-	protected void setTrackedInstances(Collection<InstanceKey> trackedInstances) {
-		this.trackedInstances = trackedInstances;
 	}
 }
