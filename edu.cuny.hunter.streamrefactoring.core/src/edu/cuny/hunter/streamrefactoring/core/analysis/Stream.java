@@ -333,7 +333,7 @@ public class Stream {
 		}
 
 		try {
-			new StateMachine(this).start();
+			new StreamStateMachine(this).start();
 		} catch (PropertiesException | CancelException e) {
 			logger.log(Level.SEVERE, "Error while building stream.", e);
 			throw new RuntimeException(e);

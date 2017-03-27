@@ -54,7 +54,7 @@ import edu.cuny.hunter.streamrefactoring.core.safe.TypestateSolverFactory;
 import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
-class StateMachine {
+class StreamStateMachine {
 
 	/**
 	 * The stream that this state machine represents.
@@ -62,13 +62,13 @@ class StateMachine {
 	private final Stream stream;
 
 	/**
-	 * Constructs a new {@link StateMachine} given a {@link Stream} to
+	 * Constructs a new {@link StreamStateMachine} given a {@link Stream} to
 	 * represent.
 	 * 
 	 * @param stream
 	 *            The representing stream.
 	 */
-	StateMachine(Stream stream) {
+	StreamStateMachine(Stream stream) {
 		this.stream = stream;
 	}
 
