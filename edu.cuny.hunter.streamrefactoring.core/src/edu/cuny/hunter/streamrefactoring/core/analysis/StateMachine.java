@@ -132,42 +132,12 @@ class StateMachine {
 					CallStringWithReceivers callString = (CallStringWithReceivers) context
 							.get(CallStringContextSelector.CALL_STRING);
 
-					System.out.println(callString);
-					System.out.println(node);
-					System.out.println("Receivers:");
-					callString.getPossibleReceivers().forEach(System.out::println);
-
-					CallSiteReference[] callSiteRefs = callString.getCallSiteRefs();
-					IMethod[] methods = callString.getMethods();
-
-					System.out.println(callSiteRefs[0].getProgramCounter());
-					System.out.println(methods[0]);
-
-					SSAPropagationCallGraphBuilder builder = (SSAPropagationCallGraphBuilder) engine
-							.getCallGraphBuilder();
-					int predNodeCount = engine.getCallGraph().getPredNodeCount(node);
-					System.out.println(predNodeCount);
-					Iterator<CGNode> predNodes = engine.getCallGraph().getPredNodes(node);
-					predNodes.forEachRemaining(n -> {
-						System.out.println(n);
-						Context target = builder.getContextSelector().getCalleeTarget(n, callSiteRefs[0], methods[0],
-								null);
-						System.out.println(target);
-					});
-
-					// ExplicitCallGraph callGraph = (ExplicitCallGraph)
-					// solver.getCallGraph();
-					// callGraph.target
-
 					Logger.getGlobal().info(instance.toString());
 					Logger.getGlobal().info(uniqueFactoid.state.toString());
 				}
 			}
 		}
 
-		// InstanceKey streamInstanceKey =
-		// this.getStream().getInstanceKey(solver.getTrackedInstances(),
-		// solver.getCallGraph());
 		InstanceKey streamInstanceKey = solver.getTrackedInstances().iterator().next();
 		System.out.println("Stream instance key: " + streamInstanceKey);
 
