@@ -99,6 +99,7 @@ public class Stream {
 		javaProjectToClassHierarchyMap.clear();
 		javaProjectToAnalysisEngineMap.clear();
 		methodDeclarationToIRMap.clear();
+		StreamStateMachine.clearCaches();
 	}
 
 	private static Object createInstance(Class<?> clazz) throws NoninstantiablePossibleStreamSourceException {

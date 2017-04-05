@@ -1,16 +1,9 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
-import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.nio.file.Files;
-import java.nio.file.OpenOption;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.logging.Logger;
@@ -18,8 +11,11 @@ import java.util.logging.Logger;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
 import com.ibm.safe.Factoid;
 import com.ibm.safe.ICFGSupergraph;
+import com.ibm.safe.dfa.IDFAState;
 import com.ibm.safe.internal.exceptions.MaxFindingsException;
 import com.ibm.safe.internal.exceptions.PropertiesException;
 import com.ibm.safe.internal.exceptions.SetUpException;
@@ -36,15 +32,12 @@ import com.ibm.safe.typestate.options.TypeStateOptions;
 import com.ibm.safe.typestate.unique.UniqueFactoid;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
-import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
-import com.ibm.wala.ipa.callgraph.Context;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
-import com.ibm.wala.ipa.callgraph.propagation.SSAPropagationCallGraphBuilder;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
@@ -56,8 +49,6 @@ import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
-import com.ibm.wala.util.strings.Atom;
-
 import edu.cuny.hunter.streamrefactoring.core.analysis.rules.StreamExecutionModeTypeStateRule;
 import edu.cuny.hunter.streamrefactoring.core.safe.ModifiedBenignOracle;
 import edu.cuny.hunter.streamrefactoring.core.safe.TrackingUniqueSolver;
@@ -66,6 +57,13 @@ import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 class StreamStateMachine {
+
+	/**
+	 * A table mapping an instance and a block to the instance's possible states
+	 * at that block.
+	 */
+	private static Table<InstanceKey, BasicBlockInContext<IExplodedBasicBlock>, Set<IDFAState>> instanceBlockToStateTable = HashBasedTable
+			.create();
 
 	/**
 	 * The stream that this state machine represents.
@@ -143,7 +141,7 @@ class StreamStateMachine {
 					// is it a terminal operation?
 					if (name.startsWith("java.util.stream.Stream.reduce")) {
 						// FIXME: But, who is the receiver?
-						
+
 						// get the basic block for the call.
 						ISSABasicBlock[] blocksForCall = cgNode.getIR().getBasicBlocksForCall(callSiteReference);
 						assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
@@ -161,7 +159,23 @@ class StreamStateMachine {
 
 								if (factoid instanceof UniqueFactoid) {
 									UniqueFactoid uniqueFactoid = (UniqueFactoid) factoid;
-									System.out.println(uniqueFactoid);
+
+									// retrieve the state set for this instance
+									// and block.
+									Set<IDFAState> stateSet = instanceBlockToStateTable.get(uniqueFactoid.instance,
+											blockInContext);
+
+									// if it does not yet exist.
+									if (stateSet == null) {
+										// allocate a new set.
+										stateSet = new HashSet<>();
+
+										// place it in the table.
+										instanceBlockToStateTable.put(uniqueFactoid.instance, blockInContext, stateSet);
+									}
+
+									// add the encountered state to the set.
+									stateSet.add(uniqueFactoid.state);
 								}
 							}
 						}
@@ -187,9 +201,15 @@ class StreamStateMachine {
 				}
 			}
 		}
+
+		System.out.println(instanceBlockToStateTable);
 	}
 
 	protected Stream getStream() {
 		return stream;
+	}
+
+	public static void clearCaches() {
+		instanceBlockToStateTable.clear();
 	}
 }

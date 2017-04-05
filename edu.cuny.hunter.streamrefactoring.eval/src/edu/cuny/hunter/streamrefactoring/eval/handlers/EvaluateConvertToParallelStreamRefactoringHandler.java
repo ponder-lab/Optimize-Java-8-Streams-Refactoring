@@ -81,6 +81,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter errorPrinter = null;
 			CSVPrinter streamAttributesPrinter = null;
 
+			ConvertToParallelStreamRefactoringProcessor processor = null;
+
 			try {
 				if (BUILD_WORKSPACE) {
 					// build the workspace.
@@ -121,8 +123,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					TimeCollector resultsTimeCollector = new TimeCollector();
 
 					resultsTimeCollector.start();
-					ConvertToParallelStreamRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(
-							new IJavaProject[] { javaProject }, Optional.of(monitor));
+					processor = createConvertToParallelStreamRefactoringProcessor(new IJavaProject[] { javaProject },
+							Optional.of(monitor));
 					resultsTimeCollector.stop();
 					ConvertToParallelStreamRefactoringProcessor.setLoggingLevel(LOGGING_LEVEL);
 
@@ -225,6 +227,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 					// end the record.
 					resultsPrinter.println();
+
+					// clear the cache.
+					processor.clearCaches();
 				}
 			} catch (Exception e) {
 				return new Status(IStatus.ERROR, FrameworkUtil.getBundle(this.getClass()).getSymbolicName(),
@@ -244,6 +249,10 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						errorPrinter.close();
 					if (streamAttributesPrinter != null)
 						streamAttributesPrinter.close();
+
+					// clear cache.
+					if (processor != null)
+						processor.clearCaches();
 				} catch (IOException e) {
 					return new Status(IStatus.ERROR, FrameworkUtil.getBundle(this.getClass()).getSymbolicName(),
 							"Encountered exception during file closing", e);

@@ -273,7 +273,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		return new RefactoringStatus();
 	}
 
-	private void clearCaches() {
+	public void clearCaches() {
 		getTypeToTypeHierarchyMap().clear();
 		getCompilationUnitToCompilationUnitRewriteMap().clear();
 		Stream.clearCaches();
