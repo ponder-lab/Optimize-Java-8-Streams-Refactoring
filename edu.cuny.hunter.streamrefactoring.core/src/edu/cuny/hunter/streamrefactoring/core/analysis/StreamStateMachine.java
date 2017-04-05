@@ -1,6 +1,14 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
+import java.io.BufferedWriter;
+import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.nio.file.Files;
+import java.nio.file.OpenOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
@@ -41,11 +49,14 @@ import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
+import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
+import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
+import com.ibm.wala.util.strings.Atom;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.rules.StreamExecutionModeTypeStateRule;
 import edu.cuny.hunter.streamrefactoring.core.safe.ModifiedBenignOracle;
@@ -103,7 +114,8 @@ class StreamStateMachine {
 		TypestateRule rule = new StreamExecutionModeTypeStateRule(streamClass);
 		TypeStateProperty dfa = new TypeStateProperty(rule, engine.getClassHierarchy());
 
-		// this gets a solver that tracks all streams.
+		// this gets a solver that tracks all streams. TODO may need to do some
+		// caching at some point here.
 		TrackingUniqueSolver solver = TypestateSolverFactory.getSolver(engine.getCallGraph(),
 				engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null);
 
@@ -116,9 +128,47 @@ class StreamStateMachine {
 
 		for (Iterator<InstanceKey> iterator = result.iterateInstances(); iterator.hasNext();) {
 			InstanceKey instanceKey = iterator.next();
-			Logger.getGlobal().info("Getting results for: " + instanceKey);
-
 			TypeStateResult instanceResult = (TypeStateResult) result.getInstanceResult(instanceKey);
+			ICFGSupergraph supergraph = instanceResult.getSupergraph();
+			// FIXME This doesn't make a whole lot of sense. Only looking at the
+			// node of where the stream was declared:
+			Set<CGNode> cgNodes = engine.getCallGraph().getNodes(this.getStream().getEnclosingMethodReference());
+			assert cgNodes.size() == 1 : "Expecting only a single CG node.";
+
+			for (CGNode cgNode : cgNodes) {
+				for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
+					CallSiteReference callSiteReference = callSites.next();
+					String name = callSiteReference.getDeclaredTarget().getSignature();
+
+					// is it a terminal operation?
+					if (name.startsWith("java.util.stream.Stream.reduce")) {
+						// FIXME: But, who is the receiver?
+						
+						// get the basic block for the call.
+						ISSABasicBlock[] blocksForCall = cgNode.getIR().getBasicBlocksForCall(callSiteReference);
+						assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
+								+ callSiteReference;
+
+						for (int i = 0; i < blocksForCall.length; i++) {
+							ISSABasicBlock block = blocksForCall[i];
+							BasicBlockInContext<IExplodedBasicBlock> blockInContext = supergraph.getLocalBlock(cgNode,
+									block.getNumber());
+
+							IntSet intSet = instanceResult.getResult().getResult(blockInContext);
+							for (IntIterator it = intSet.intIterator(); it.hasNext();) {
+								int nextInt = it.next();
+								Factoid factoid = instanceResult.getDomain().getMappedObject(nextInt);
+
+								if (factoid instanceof UniqueFactoid) {
+									UniqueFactoid uniqueFactoid = (UniqueFactoid) factoid;
+									System.out.println(uniqueFactoid);
+								}
+							}
+						}
+					}
+				}
+			}
+
 			TypeStateDomain domain = instanceResult.getDomain();
 			Collection<Factoid> objects = domain.getObjects();
 			for (Factoid factoid : objects) {
@@ -137,26 +187,6 @@ class StreamStateMachine {
 				}
 			}
 		}
-
-		InstanceKey streamInstanceKey = solver.getTrackedInstances().iterator().next();
-		System.out.println("Stream instance key: " + streamInstanceKey);
-
-		TypeStateResult instanceResult = (TypeStateResult) result.getInstanceResult(streamInstanceKey);
-
-		ICFGSupergraph supergraph = instanceResult.getSupergraph();
-		// FIXME This doesn't make a whole lot of sense. Only looking at the
-		// node of where the stream was declared:
-		Set<CGNode> cgNodes = engine.getCallGraph().getNodes(this.getStream().getEnclosingMethodReference());
-
-		// TODO: Derive state at point of consumption?
-		cgNodes.forEach(cgNode -> {
-			BasicBlockInContext<IExplodedBasicBlock> block = supergraph.getLocalBlock(cgNode, 10);
-			IntSet resultIntSet = instanceResult.getResult().getResult(block);
-
-			// print out the facts at the node.
-			resultIntSet.foreach(i -> System.out.println(instanceResult.getDomain().getMappedObject(i)));
-		});
-
 	}
 
 	protected Stream getStream() {
