@@ -1,6 +1,7 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -57,6 +58,10 @@ import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 class StreamStateMachine {
+
+	private static final String JAVA_UTIL_STREAM_STREAM_REDUCE = "java.util.stream.Stream.reduce";
+
+	private static final String[] TERMINAL_OPERATIONS = { JAVA_UTIL_STREAM_STREAM_REDUCE };
 
 	/**
 	 * A table mapping an instance and a block to the instance's possible states
@@ -136,10 +141,10 @@ class StreamStateMachine {
 			for (CGNode cgNode : cgNodes) {
 				for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
 					CallSiteReference callSiteReference = callSites.next();
-					String name = callSiteReference.getDeclaredTarget().getSignature();
+					String calledMethodSignature = callSiteReference.getDeclaredTarget().getSignature();
 
 					// is it a terminal operation?
-					if (name.startsWith("java.util.stream.Stream.reduce")) {
+					if (isTerminalOperation(calledMethodSignature)) {
 						// FIXME: But, who is the receiver?
 
 						// get the basic block for the call.
@@ -203,6 +208,10 @@ class StreamStateMachine {
 		}
 
 		System.out.println(instanceBlockToStateTable);
+	}
+
+	private boolean isTerminalOperation(String calledMethodSignature) {
+		return Arrays.stream(TERMINAL_OPERATIONS).anyMatch(to -> calledMethodSignature.startsWith(to));
 	}
 
 	protected Stream getStream() {
