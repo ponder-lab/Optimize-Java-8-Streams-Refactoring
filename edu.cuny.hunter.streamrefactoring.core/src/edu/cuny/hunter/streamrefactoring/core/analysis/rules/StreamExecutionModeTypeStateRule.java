@@ -16,13 +16,13 @@ public class StreamExecutionModeTypeStateRule extends StreamAttributeTypestateRu
 	protected void addAutomaton() {
 		// a bottom state result would need to defer to the initial stream
 		// ordering, which is in the field of the stream.
-		IDFAState bottomState = addState(BOTTOM_STATE_NAME, true);
+		bottomState = addState(BOTTOM_STATE_NAME, true);
 		IDFAState sequentialState = addState(StreamExecutionMode.SEQUENTIAL);
 		IDFAState parallelState = addState(StreamExecutionMode.PARALLEL);
 
 		IDispatchEvent parallelEvent = addEvent("parallel", ".*parallel\\(\\).*");
 		IDispatchEvent sequentialEvent = addEvent("sequential", ".*sequential\\(\\).*");
-		
+
 		// TODO: Need to add concat().
 		addTransition(bottomState, parallelState, parallelEvent);
 		addTransition(bottomState, sequentialState, sequentialEvent);

@@ -14,6 +14,8 @@ public abstract class StreamAttributeTypestateRule extends TypestateRule {
 
 	protected static final String BOTTOM_STATE_NAME = "bottom";
 
+	protected IDFAState bottomState;
+
 	public StreamAttributeTypestateRule(IClass streamClass, String name) {
 		this.addType(streamClass.getName().toString());
 		this.setName(name);
@@ -37,21 +39,21 @@ public abstract class StreamAttributeTypestateRule extends TypestateRule {
 
 	protected IDFATransition addTransition(IDFAState source, IDFAState destination, IDispatchEvent event) {
 		IDFATransition transition = new DFATransition();
-	
+
 		transition.setSource(source);
 		transition.setEvent(event);
 		transition.setDestination(destination);
-	
+
 		this.getTypeStateAutomaton().addTransition(transition);
 		return transition;
 	}
 
 	protected IDispatchEvent addEvent(String eventName, String eventPattern) {
 		IDispatchEventImpl event = new IDispatchEventImpl();
-	
+
 		event.setName(eventName);
 		event.setPattern(eventPattern);
-	
+
 		this.getTypeStateAutomaton().addEvent(event);
 		return event;
 	}
@@ -64,4 +66,7 @@ public abstract class StreamAttributeTypestateRule extends TypestateRule {
 		return this.addState(constant.name().toLowerCase());
 	}
 
+	public IDFAState getBottomState() {
+		return bottomState;
+	}
 }
