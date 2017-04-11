@@ -250,18 +250,38 @@ class StreamStateMachine {
 			});
 		}
 
+		// TODO: This should be cached for all class instances.
+		Map<InstanceKey, Collection<IDFAState>> originStreamToMergedTypeStateMap = new HashMap<>();
+
 		// for each terminal operation call, I think?
 		for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 			OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
 			// for each possible receiver of the terminal operation call.
 			for (InstanceKey instanceKey : possibleReceivers) {
 				Set<IDFAState> possibleStates = computeMergedTypeState(instanceKey, block, rule);
-				System.out.println(instanceKey + ": " + possibleStates);
+				Collection<InstanceKey> possibleOriginStreams = computePossibleOriginStreams(instanceKey);
+				possibleOriginStreams.forEach(
+						os -> originStreamToMergedTypeStateMap.merge(os, new HashSet<>(possibleStates), (x, y) -> {
+							x.addAll(y);
+							return x;
+						}));
+
 				// TODO: But how do we integrate this? Do we fill out a map or
 				// something? We need to know if this impacts the original
 				// stream, right? Is the receiver tied to the original stream?
 			}
 		}
+
+		InstanceKey streamInQuestionInstanceKey = this.getStream().getInstanceKey(instanceToPredecessorMap.keySet(),
+				engine.getCallGraph());
+		Collection<IDFAState> states = originStreamToMergedTypeStateMap.get(streamInQuestionInstanceKey);
+		// TODO: Need to map IDFAState to StreamExecutionMode, etc.
+//		this.getStream().addPossibleExecutionModeCollection(states.stream().map(StreamAttributeTypestateRule::getStateEnum).filter(e -> e instanceof StreamExecutionMode).map().collect(Collectors.toSet()));
+	}
+
+	private Collection<InstanceKey> computePossibleOriginStreams(InstanceKey instanceKey) {
+		// TODO Should use the predecessor map here?
+		return null;
 	}
 
 	private static Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
