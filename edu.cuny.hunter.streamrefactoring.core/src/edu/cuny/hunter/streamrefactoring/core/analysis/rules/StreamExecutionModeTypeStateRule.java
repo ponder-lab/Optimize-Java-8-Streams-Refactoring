@@ -8,6 +8,9 @@ import edu.cuny.hunter.streamrefactoring.core.analysis.StreamExecutionMode;
 
 public class StreamExecutionModeTypeStateRule extends StreamAttributeTypestateRule {
 
+	private IDFAState sequentialState;
+	private IDFAState parallelState;
+
 	public StreamExecutionModeTypeStateRule(IClass streamClass) {
 		super(streamClass, "execution mode");
 	}
@@ -17,8 +20,8 @@ public class StreamExecutionModeTypeStateRule extends StreamAttributeTypestateRu
 		// a bottom state result would need to defer to the initial stream
 		// ordering, which is in the field of the stream.
 		bottomState = addState(BOTTOM_STATE_NAME, true);
-		IDFAState sequentialState = addState(StreamExecutionMode.SEQUENTIAL);
-		IDFAState parallelState = addState(StreamExecutionMode.PARALLEL);
+		sequentialState = addState(StreamExecutionMode.SEQUENTIAL);
+		parallelState = addState(StreamExecutionMode.PARALLEL);
 
 		IDispatchEvent parallelEvent = addEvent("parallel", ".*parallel\\(\\).*");
 		IDispatchEvent sequentialEvent = addEvent("sequential", ".*sequential\\(\\).*");
@@ -30,5 +33,13 @@ public class StreamExecutionModeTypeStateRule extends StreamAttributeTypestateRu
 		addTransition(sequentialState, sequentialState, sequentialEvent);
 		addTransition(parallelState, sequentialState, sequentialEvent);
 		addTransition(parallelState, parallelState, parallelEvent);
+	}
+
+	public IDFAState getSequentialState() {
+		return sequentialState;
+	}
+
+	public IDFAState getParallelState() {
+		return parallelState;
 	}
 }
