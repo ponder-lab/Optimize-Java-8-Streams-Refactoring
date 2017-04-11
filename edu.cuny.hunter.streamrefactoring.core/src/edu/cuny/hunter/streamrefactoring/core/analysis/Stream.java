@@ -293,12 +293,14 @@ public class Stream {
 	private final TypeDeclaration enclosingTypeDeclaration;
 
 	/**
-	 * This should be the execution mode when the stream is consumed by a terminal operation.
+	 * This should be the possible execution modes when the stream is consumed
+	 * by a terminal operation.
 	 */
-	private StreamExecutionMode executionMode;
+	private Set<StreamExecutionMode> possibleExecutionModes = new HashSet<>();
 
 	/**
-	 * This should be the ordering of the stream when it is consumed by a terimal operation.
+	 * This should be the ordering of the stream when it is consumed by a
+	 * terimal operation.
 	 */
 	private StreamOrdering ordering;
 
@@ -448,8 +450,8 @@ public class Stream {
 		return ref;
 	}
 
-	public StreamExecutionMode getExecutionMode() {
-		return executionMode;
+	public Set<StreamExecutionMode> getPossibleExecutionModes() {
+		return possibleExecutionModes;
 	}
 
 	Optional<SSAInvokeInstruction> getInstructionForCreation()
@@ -530,9 +532,9 @@ public class Stream {
 		String methodIdentifier = getMethodIdentifier(this.getCreation().resolveMethodBinding());
 
 		if (methodIdentifier.equals("parallelStream()"))
-			this.setExecutionMode(StreamExecutionMode.PARALLEL);
+			this.addPossibleExecutionMode(StreamExecutionMode.PARALLEL);
 		else
-			this.setExecutionMode(StreamExecutionMode.SEQUENTIAL);
+			this.addPossibleExecutionMode(StreamExecutionMode.SEQUENTIAL);
 	}
 
 	private void inferInitialOrdering()
@@ -564,8 +566,13 @@ public class Stream {
 		}
 	}
 
-	protected void setExecutionMode(StreamExecutionMode executionMode) {
-		this.executionMode = executionMode;
+	protected void addPossibleExecutionMode(StreamExecutionMode executionMode) {
+		this.possibleExecutionModes.add(executionMode);
+	}
+
+	protected void addPossibleExecutionModeCollection(
+			Collection<? extends StreamExecutionMode> executionModeCollection) {
+		this.possibleExecutionModes.addAll(executionModeCollection);
 	}
 
 	protected void setOrdering(StreamOrdering ordering) {
@@ -579,8 +586,8 @@ public class Stream {
 		builder.append(creation);
 		builder.append(", enclosingMethodDeclaration=");
 		builder.append(enclosingMethodDeclaration);
-		builder.append(", executionMode=");
-		builder.append(executionMode);
+		builder.append(", possibleExecutionModes=");
+		builder.append(possibleExecutionModes);
 		builder.append(", ordering=");
 		builder.append(ordering);
 		builder.append(", status=");
@@ -589,6 +596,7 @@ public class Stream {
 		return builder.toString();
 	}
 
+	// TODO: Cache this with a table?
 	public InstanceKey getInstanceKey(Collection<InstanceKey> trackedInstances, CallGraph callGraph)
 			throws InvalidClassFileException, IOException, CoreException {
 		return this.getInstructionForCreation()
