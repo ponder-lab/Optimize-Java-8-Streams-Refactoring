@@ -11,6 +11,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 
@@ -122,7 +124,7 @@ class StreamStateMachine {
 		TypeReference typeReference = this.getStream().getTypeReference();
 		IClass streamClass = engine.getClassHierarchy().lookupClass(typeReference);
 
-		StreamAttributeTypestateRule rule = new StreamExecutionModeTypeStateRule(streamClass);
+		StreamExecutionModeTypeStateRule rule = new StreamExecutionModeTypeStateRule(streamClass);
 		TypeStateProperty dfa = new TypeStateProperty(rule, engine.getClassHierarchy());
 
 		// this gets a solver that tracks all streams. TODO may need to do some
@@ -259,7 +261,7 @@ class StreamStateMachine {
 			// for each possible receiver of the terminal operation call.
 			for (InstanceKey instanceKey : possibleReceivers) {
 				Set<IDFAState> possibleStates = computeMergedTypeState(instanceKey, block, rule);
-				Collection<InstanceKey> possibleOriginStreams = computePossibleOriginStreams(instanceKey);
+				Set<InstanceKey> possibleOriginStreams = computePossibleOriginStreams(instanceKey);
 				possibleOriginStreams.forEach(
 						os -> originStreamToMergedTypeStateMap.merge(os, new HashSet<>(possibleStates), (x, y) -> {
 							x.addAll(y);
@@ -272,16 +274,40 @@ class StreamStateMachine {
 			}
 		}
 
+		// TODO: Also need to cache this.
 		InstanceKey streamInQuestionInstanceKey = this.getStream().getInstanceKey(instanceToPredecessorMap.keySet(),
 				engine.getCallGraph());
 		Collection<IDFAState> states = originStreamToMergedTypeStateMap.get(streamInQuestionInstanceKey);
-		// TODO: Need to map IDFAState to StreamExecutionMode, etc.
-//		this.getStream().addPossibleExecutionModeCollection(states.stream().map(StreamAttributeTypestateRule::getStateEnum).filter(e -> e instanceof StreamExecutionMode).map().collect(Collectors.toSet()));
+		// Map IDFAState to StreamExecutionMode, etc., and add them to the
+		// possible stream states but only if they're not bottom (for those, we
+		// fall back to the initial state).
+		this.getStream().addPossibleExecutionModeCollection(states.stream().filter(s -> s != rule.getBottomState())
+				.map(rule::getStreamExecutionMode).collect(Collectors.toSet()));
+
+		System.out.println(this.getStream().getPossibleExecutionModes());
 	}
 
-	private Collection<InstanceKey> computePossibleOriginStreams(InstanceKey instanceKey) {
-		// TODO Should use the predecessor map here?
-		return null;
+	// TODO: This should probably be cached.
+	private static Set<InstanceKey> computePossibleOriginStreams(InstanceKey instanceKey) {
+		// if there is no instance.
+		if (instanceKey == null)
+			// there are no origins.
+			return Collections.emptySet();
+
+		// otherwise, retrieve the predecessors of the instance.
+		Set<InstanceKey> predecessors = instanceToPredecessorMap.get(instanceKey);
+
+		// if there are no predecessors for this instance.
+		if (predecessors.isEmpty())
+			// then this instance must be its own origin.
+			return Collections.singleton(instanceKey);
+
+		// otherwise, we have a situation where the instance in question has one
+		// or more predecessors.
+		// In this case, the possible origins of the given instance are the
+		// possible origins of each of its predecessors.
+		return predecessors.stream().map(StreamStateMachine::computePossibleOriginStreams).flatMap(os -> os.stream())
+				.collect(Collectors.toSet());
 	}
 
 	private static Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
