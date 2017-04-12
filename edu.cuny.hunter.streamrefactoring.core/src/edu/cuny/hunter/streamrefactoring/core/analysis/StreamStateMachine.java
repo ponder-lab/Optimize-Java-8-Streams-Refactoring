@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -48,6 +49,7 @@ import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.ssa.SSAPhiInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeReference;
@@ -164,7 +166,9 @@ class StreamStateMachine {
 					CallSiteReference callSiteReference = callSites.next();
 					MethodReference calledMethod = callSiteReference.getDeclaredTarget();
 
-					// is it a terminal operation?
+					// is it a terminal operation? TODO: Should this be cached
+					// somehow? Collection of all terminal operation
+					// invocations?
 					if (isTerminalOperation(calledMethod)) {
 						// get the basic block for the call.
 						ISSABasicBlock[] blocksForCall = cgNode.getIR().getBasicBlocksForCall(callSiteReference);
@@ -173,17 +177,24 @@ class StreamStateMachine {
 
 						for (int i = 0; i < blocksForCall.length; i++) {
 							ISSABasicBlock block = blocksForCall[i];
-							BasicBlockInContext<IExplodedBasicBlock> blockInContext = supergraph.getLocalBlock(cgNode,
-									block.getNumber());
+							Optional<BasicBlockInContext<IExplodedBasicBlock>> blockInContext = getBasicBlockInContextForBlock(
+									block, supergraph);
+							BasicBlockInContext<IExplodedBasicBlock> basicBlockInContext = blockInContext.orElseThrow(
+									() -> new IllegalStateException("No basic block in context for block: " + block));
 
-							if (!terminalBlockToPossibleReceivers.containsKey(blockInContext)) {
+							if (!terminalBlockToPossibleReceivers.containsKey(basicBlockInContext)) {
 								// associate possible receivers with the
 								// blockInContext.
 								// search through each instruction in the block.
+								int processedInstructions = 0;
 								for (Iterator<SSAInstruction> it = block.iterator(); it.hasNext();) {
 									SSAInstruction instruction = it.next();
-									assert !it.hasNext() : "Expecting only a single instruction for the block: "
-											+ block;
+
+									// if it's a phi instruction.
+									if (instruction instanceof SSAPhiInstruction)
+										// skip it. The pointer analysis below
+										// will handle it.
+										continue;
 
 									// Get the possible receivers.
 									// This number corresponds to the value
@@ -200,18 +211,29 @@ class StreamStateMachine {
 									// that the receiver reference points to.
 									OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis()
 											.getPointsToSet(pointerKey);
+									assert pointsToSet != null : "The points-to set (I think) should not be null for pointer: "
+											+ pointerKey;
 
-									terminalBlockToPossibleReceivers.put(blockInContext, pointsToSet);
+									OrdinalSet<InstanceKey> previousReceivers = terminalBlockToPossibleReceivers
+											.put(basicBlockInContext, pointsToSet);
+									assert previousReceivers == null : "Reassociating a blockInContext: "
+											+ basicBlockInContext + " with a new points-to set: " + pointsToSet
+											+ " that was originally: " + previousReceivers;
+
+									++processedInstructions;
 								}
+
+								assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
 							}
 
-							IntSet intSet = instanceResult.getResult().getResult(blockInContext);
+							IntSet intSet = instanceResult.getResult().getResult(basicBlockInContext);
 							for (IntIterator it = intSet.intIterator(); it.hasNext();) {
 								int nextInt = it.next();
 
 								// retrieve the state set for this instance
 								// and block.
-								Set<IDFAState> stateSet = instanceBlockToStateTable.get(instanceKey, blockInContext);
+								Set<IDFAState> stateSet = instanceBlockToStateTable.get(instanceKey,
+										basicBlockInContext);
 
 								// if it does not yet exist.
 								if (stateSet == null) {
@@ -219,7 +241,7 @@ class StreamStateMachine {
 									stateSet = new HashSet<>();
 
 									// place it in the table.
-									instanceBlockToStateTable.put(instanceKey, blockInContext, stateSet);
+									instanceBlockToStateTable.put(instanceKey, basicBlockInContext, stateSet);
 								}
 
 								// get the facts.
@@ -285,6 +307,27 @@ class StreamStateMachine {
 				.map(rule::getStreamExecutionMode).collect(Collectors.toSet()));
 
 		System.out.println(this.getStream().getPossibleExecutionModes());
+	}
+
+	// FIXME: The performance of this method is not good. We should build a map
+	// between block numbers and the corresponding basicBlockInContext. But,
+	// when do we populate the map? In other words, we need a map of block
+	// numbers to BasicBlockInContexts whose delegate's original block number
+	// matches the key for a given supergraph. Should it be a table? Or, maybe
+	// it's just a collection of maps, one for each supergraph? ICFGSupergraph
+	// -> Map. Then, Integer -> BasicBlockInContext.
+	private static Optional<BasicBlockInContext<IExplodedBasicBlock>> getBasicBlockInContextForBlock(
+			ISSABasicBlock block, ICFGSupergraph supergraph) {
+		// can we search the supergraph for the corresponding block? Do I need
+		// to search the entire graph?
+		// TODO: For #20, this will probably need to change.
+		for (BasicBlockInContext<IExplodedBasicBlock> basicBlockInContext : supergraph) {
+			IExplodedBasicBlock delegate = basicBlockInContext.getDelegate();
+			if (!delegate.isEntryBlock() && !delegate.isExitBlock()
+					&& delegate.getOriginalNumber() == block.getNumber())
+				return Optional.of(basicBlockInContext);
+		}
+		return Optional.empty();
 	}
 
 	// TODO: This should probably be cached.
