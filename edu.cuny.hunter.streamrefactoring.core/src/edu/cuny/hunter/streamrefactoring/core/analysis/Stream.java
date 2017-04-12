@@ -7,6 +7,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -293,8 +294,13 @@ public class Stream {
 	private final TypeDeclaration enclosingTypeDeclaration;
 
 	/**
+	 * The execution mode derived from the declaration of the stream.
+	 */
+	private StreamExecutionMode initialExecutionMode;
+
+	/**
 	 * This should be the possible execution modes when the stream is consumed
-	 * by a terminal operation.
+	 * by a terminal operation. Does not include the initial mode.
 	 */
 	private Set<StreamExecutionMode> possibleExecutionModes = new HashSet<>();
 
@@ -451,7 +457,8 @@ public class Stream {
 	}
 
 	public Set<StreamExecutionMode> getPossibleExecutionModes() {
-		return possibleExecutionModes;
+		return possibleExecutionModes.isEmpty() ? Collections.singleton(this.getInitialExecutionMode())
+				: possibleExecutionModes;
 	}
 
 	Optional<SSAInvokeInstruction> getInstructionForCreation()
@@ -532,9 +539,9 @@ public class Stream {
 		String methodIdentifier = getMethodIdentifier(this.getCreation().resolveMethodBinding());
 
 		if (methodIdentifier.equals("parallelStream()"))
-			this.addPossibleExecutionMode(StreamExecutionMode.PARALLEL);
+			this.setInitialExecutionMode(StreamExecutionMode.PARALLEL);
 		else
-			this.addPossibleExecutionMode(StreamExecutionMode.SEQUENTIAL);
+			this.setInitialExecutionMode(StreamExecutionMode.SEQUENTIAL);
 	}
 
 	private void inferInitialOrdering()
@@ -583,15 +590,15 @@ public class Stream {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append("Stream [streamCreation=");
-		builder.append(creation);
+		builder.append(this.getCreation());
 		builder.append(", enclosingMethodDeclaration=");
-		builder.append(enclosingMethodDeclaration);
+		builder.append(this.getEnclosingMethodDeclaration());
 		builder.append(", possibleExecutionModes=");
-		builder.append(possibleExecutionModes);
+		builder.append(this.getPossibleExecutionModes());
 		builder.append(", ordering=");
-		builder.append(ordering);
+		builder.append(this.getOrdering());
 		builder.append(", status=");
-		builder.append(status);
+		builder.append(this.getStatus());
 		builder.append("]");
 		return builder.toString();
 	}
@@ -605,5 +612,13 @@ public class Stream {
 						.findFirst())
 				.orElseThrow(() -> new IllegalArgumentException("Can't find instance key for stream: " + this
 						+ " using tracked instances: " + trackedInstances));
+	}
+
+	protected StreamExecutionMode getInitialExecutionMode() {
+		return initialExecutionMode;
+	}
+
+	protected void setInitialExecutionMode(StreamExecutionMode initialExecutionMode) {
+		this.initialExecutionMode = initialExecutionMode;
 	}
 }
