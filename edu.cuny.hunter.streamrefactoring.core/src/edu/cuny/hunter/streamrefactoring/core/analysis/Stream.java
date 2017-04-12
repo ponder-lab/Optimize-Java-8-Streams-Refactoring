@@ -156,6 +156,8 @@ public class Stream {
 		Set<TypeAbstraction> ret = new HashSet<>();
 		Value value = inference.getIR().getSymbolTable().getValue(valueNumber);
 
+		// TODO: Should really be using a pointer analysis here rather than
+		// reimplementing one using PhiValue.
 		if (value instanceof PhiValue) {
 			// multiple possible types.
 			PhiValue phiValue = (PhiValue) value;
