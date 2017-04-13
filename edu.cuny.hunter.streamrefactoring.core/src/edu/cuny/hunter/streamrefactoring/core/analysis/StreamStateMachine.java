@@ -177,12 +177,12 @@ class StreamStateMachine {
 
 						for (int i = 0; i < blocksForCall.length; i++) {
 							ISSABasicBlock block = blocksForCall[i];
-							Optional<BasicBlockInContext<IExplodedBasicBlock>> blockInContext = getBasicBlockInContextForBlock(
-									block, cgNode, supergraph);
-							BasicBlockInContext<IExplodedBasicBlock> basicBlockInContext = blockInContext.orElseThrow(
-									() -> new IllegalStateException("No basic block in context for block: " + block));
+							BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
+									block, cgNode, supergraph)
+											.orElseThrow(() -> new IllegalStateException(
+													"No basic block in context for block: " + block));
 
-							if (!terminalBlockToPossibleReceivers.containsKey(basicBlockInContext)) {
+							if (!terminalBlockToPossibleReceivers.containsKey(blockInContext)) {
 								// associate possible receivers with the
 								// blockInContext.
 								// search through each instruction in the block.
@@ -215,9 +215,9 @@ class StreamStateMachine {
 											+ pointerKey;
 
 									OrdinalSet<InstanceKey> previousReceivers = terminalBlockToPossibleReceivers
-											.put(basicBlockInContext, pointsToSet);
+											.put(blockInContext, pointsToSet);
 									assert previousReceivers == null : "Reassociating a blockInContext: "
-											+ basicBlockInContext + " with a new points-to set: " + pointsToSet
+											+ blockInContext + " with a new points-to set: " + pointsToSet
 											+ " that was originally: " + previousReceivers;
 
 									++processedInstructions;
@@ -226,14 +226,14 @@ class StreamStateMachine {
 								assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
 							}
 
-							IntSet intSet = instanceResult.getResult().getResult(basicBlockInContext);
+							IntSet intSet = instanceResult.getResult().getResult(blockInContext);
 							for (IntIterator it = intSet.intIterator(); it.hasNext();) {
 								int nextInt = it.next();
 
 								// retrieve the state set for this instance
 								// and block.
 								Set<IDFAState> stateSet = instanceBlockToStateTable.get(instanceKey,
-										basicBlockInContext);
+										blockInContext);
 
 								// if it does not yet exist.
 								if (stateSet == null) {
@@ -241,7 +241,7 @@ class StreamStateMachine {
 									stateSet = new HashSet<>();
 
 									// place it in the table.
-									instanceBlockToStateTable.put(instanceKey, basicBlockInContext, stateSet);
+									instanceBlockToStateTable.put(instanceKey, blockInContext, stateSet);
 								}
 
 								// get the facts.
