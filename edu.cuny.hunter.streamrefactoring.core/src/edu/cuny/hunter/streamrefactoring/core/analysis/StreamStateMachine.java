@@ -178,7 +178,7 @@ class StreamStateMachine {
 						for (int i = 0; i < blocksForCall.length; i++) {
 							ISSABasicBlock block = blocksForCall[i];
 							Optional<BasicBlockInContext<IExplodedBasicBlock>> blockInContext = getBasicBlockInContextForBlock(
-									block, supergraph);
+									block, cgNode, supergraph);
 							BasicBlockInContext<IExplodedBasicBlock> basicBlockInContext = blockInContext.orElseThrow(
 									() -> new IllegalStateException("No basic block in context for block: " + block));
 
@@ -316,16 +316,36 @@ class StreamStateMachine {
 	// matches the key for a given supergraph. Should it be a table? Or, maybe
 	// it's just a collection of maps, one for each supergraph? ICFGSupergraph
 	// -> Map. Then, Integer -> BasicBlockInContext.
+	/**
+	 * Return the basic block in context for the given block in the procedure
+	 * represented by the given call graph node in the given supergraph.
+	 * 
+	 * @param block
+	 *            The block in which to find the corresponding block in context
+	 *            in the supergraph.
+	 * @param cgNode
+	 *            The call graph node representing the procedure that contains
+	 *            the block.
+	 * @param supergraph
+	 *            The supergraph in which to look up the corresponding block in
+	 *            context.
+	 * @return The block in context in the given supergraph that corresponds to
+	 *         the given block with the procedure represented by the given call
+	 *         graph node.
+	 */
 	private static Optional<BasicBlockInContext<IExplodedBasicBlock>> getBasicBlockInContextForBlock(
-			ISSABasicBlock block, ICFGSupergraph supergraph) {
+			ISSABasicBlock block, CGNode cgNode, ICFGSupergraph supergraph) {
 		// can we search the supergraph for the corresponding block? Do I need
 		// to search the entire graph?
 		// TODO: For #20, this will probably need to change.
 		for (BasicBlockInContext<IExplodedBasicBlock> basicBlockInContext : supergraph) {
-			IExplodedBasicBlock delegate = basicBlockInContext.getDelegate();
-			if (!delegate.isEntryBlock() && !delegate.isExitBlock()
-					&& delegate.getOriginalNumber() == block.getNumber())
-				return Optional.of(basicBlockInContext);
+			CGNode blockInContextProcedure = supergraph.getProcOf(basicBlockInContext);
+			if (blockInContextProcedure == cgNode) {
+				IExplodedBasicBlock delegate = basicBlockInContext.getDelegate();
+				if (!delegate.isEntryBlock() && !delegate.isExitBlock()
+						&& delegate.getOriginalNumber() == block.getNumber())
+					return Optional.of(basicBlockInContext);
+			}
 		}
 		return Optional.empty();
 	}
