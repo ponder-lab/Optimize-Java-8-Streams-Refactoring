@@ -315,7 +315,8 @@ class StreamStateMachine {
 	// numbers to BasicBlockInContexts whose delegate's original block number
 	// matches the key for a given supergraph. Should it be a table? Or, maybe
 	// it's just a collection of maps, one for each supergraph? ICFGSupergraph
-	// -> Map. Then, Integer -> BasicBlockInContext.
+	// -> Map. Then, Integer -> BasicBlockInContext. But, now must also consider
+	// the cgNode. #21.
 	/**
 	 * Return the basic block in context for the given block in the procedure
 	 * represented by the given call graph node in the given supergraph.
