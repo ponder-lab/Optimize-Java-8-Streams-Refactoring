@@ -288,10 +288,6 @@ class StreamStateMachine {
 							x.addAll(y);
 							return x;
 						}));
-
-				// TODO: But how do we integrate this? Do we fill out a map or
-				// something? We need to know if this impacts the original
-				// stream, right? Is the receiver tied to the original stream?
 			}
 		}
 
