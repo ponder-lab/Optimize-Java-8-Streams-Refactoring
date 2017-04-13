@@ -18,6 +18,7 @@ import java.util.Spliterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.BaseStream;
+import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.ICompilationUnit;
@@ -459,8 +460,15 @@ public class Stream {
 	}
 
 	public Set<StreamExecutionMode> getPossibleExecutionModes() {
-		return possibleExecutionModes.isEmpty() ? Collections.singleton(this.getInitialExecutionMode())
-				: possibleExecutionModes;
+		// if no other possible execution modes exist.
+		if (possibleExecutionModes.isEmpty())
+			// default to the initial execution mode.
+			return Collections.singleton(this.getInitialExecutionMode());
+
+		// otherwise, return the internal possible execution modes but with the
+		// null value (bottom state) replaced by the initial state.
+		return possibleExecutionModes.stream().map(e -> e == null ? this.getInitialExecutionMode() : e)
+				.collect(Collectors.toSet());
 	}
 
 	Optional<SSAInvokeInstruction> getInstructionForCreation()

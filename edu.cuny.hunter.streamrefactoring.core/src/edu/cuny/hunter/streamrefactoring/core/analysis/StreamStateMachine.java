@@ -232,8 +232,7 @@ class StreamStateMachine {
 
 								// retrieve the state set for this instance
 								// and block.
-								Set<IDFAState> stateSet = instanceBlockToStateTable.get(instanceKey,
-										blockInContext);
+								Set<IDFAState> stateSet = instanceBlockToStateTable.get(instanceKey, blockInContext);
 
 								// if it does not yet exist.
 								if (stateSet == null) {
@@ -303,8 +302,8 @@ class StreamStateMachine {
 		// Map IDFAState to StreamExecutionMode, etc., and add them to the
 		// possible stream states but only if they're not bottom (for those, we
 		// fall back to the initial state).
-		this.getStream().addPossibleExecutionModeCollection(states.stream().filter(s -> s != rule.getBottomState())
-				.map(rule::getStreamExecutionMode).collect(Collectors.toSet()));
+		this.getStream().addPossibleExecutionModeCollection(
+				states.stream().map(rule::getStreamExecutionMode).collect(Collectors.toSet()));
 
 		System.out.println(this.getStream().getPossibleExecutionModes());
 	}
