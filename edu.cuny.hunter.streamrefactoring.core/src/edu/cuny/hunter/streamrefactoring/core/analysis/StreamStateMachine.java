@@ -69,9 +69,74 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 class StreamStateMachine {
 
-	private static final String JAVA_UTIL_STREAM_STREAM_REDUCE = "java.util.stream.Stream.reduce";
-
-	private static final String[] TERMINAL_OPERATIONS = { JAVA_UTIL_STREAM_STREAM_REDUCE };
+	/**
+	 * A list of supported terminal operation signatures.
+	 */
+	// @formatter:off
+	private static final String[] TERMINAL_OPERATIONS = { 
+			"java.util.stream.Stream.reduce",
+			"java.util.stream.DoubleStream.forEach",
+			"java.util.stream.DoubleStream.forEachOrdered",
+			"java.util.stream.DoubleStream.toArray",
+			"java.util.stream.DoubleStream.reduce", 
+			"java.util.stream.DoubleStream.collect",
+			"java.util.stream.DoubleStream.sum",
+			"java.util.stream.DoubleStream.min",
+			"java.util.stream.DoubleStream.max",
+			"java.util.stream.DoubleStream.count",
+			"java.util.stream.DoubleStream.average",
+			"java.util.stream.DoubleStream.summaryStatistics",
+			"java.util.stream.DoubleStream.anyMatch",
+			"java.util.stream.DoubleStream.allMatch",
+			"java.util.stream.DoubleStream.noneMatch",
+			"java.util.stream.DoubleStream.findFirst",
+			"java.util.stream.DoubleStream.findAny",
+			"java.util.stream.IntStream.forEach",
+			"java.util.stream.IntStream.forEachOrdered",
+			"java.util.stream.IntStream.toArray",
+			"java.util.stream.IntStream.reduce", 
+			"java.util.stream.IntStream.collect",
+			"java.util.stream.IntStream.sum",
+			"java.util.stream.IntStream.min",
+			"java.util.stream.IntStream.max",
+			"java.util.stream.IntStream.count",
+			"java.util.stream.IntStream.average",
+			"java.util.stream.IntStream.summaryStatistics",
+			"java.util.stream.IntStream.anyMatch",
+			"java.util.stream.IntStream.allMatch",
+			"java.util.stream.IntStream.noneMatch",
+			"java.util.stream.IntStream.findFirst",
+			"java.util.stream.IntStream.findAny",
+			"java.util.stream.LongStream.forEach",
+			"java.util.stream.LongStream.forEachOrdered",
+			"java.util.stream.LongStream.toArray",
+			"java.util.stream.LongStream.reduce", 
+			"java.util.stream.LongStream.collect",
+			"java.util.stream.LongStream.sum",
+			"java.util.stream.LongStream.min",
+			"java.util.stream.LongStream.max",
+			"java.util.stream.LongStream.count",
+			"java.util.stream.LongStream.average",
+			"java.util.stream.LongStream.summaryStatistics",
+			"java.util.stream.LongStream.anyMatch",
+			"java.util.stream.LongStream.allMatch",
+			"java.util.stream.LongStream.noneMatch",
+			"java.util.stream.LongStream.findFirst",
+			"java.util.stream.LongStream.findAny",
+			"java.util.stream.Stream.forEach",
+			"java.util.stream.Stream.forEachOrdered",
+			"java.util.stream.Stream.toArray",
+			"java.util.stream.Stream.reduce", 
+			"java.util.stream.Stream.collect",
+			"java.util.stream.Stream.min",
+			"java.util.stream.Stream.max",
+			"java.util.stream.Stream.count",
+			"java.util.stream.Stream.anyMatch",
+			"java.util.stream.Stream.allMatch",
+			"java.util.stream.Stream.noneMatch",
+			"java.util.stream.Stream.findFirst",
+			"java.util.stream.Stream.findAny"};
+	// @formatter:off
 
 	/**
 	 * A table mapping an instance and a block to the instance's possible states
@@ -411,7 +476,8 @@ class StreamStateMachine {
 	}
 
 	private static boolean isTerminalOperation(MethodReference calledMethod) {
-		return Arrays.stream(TERMINAL_OPERATIONS).anyMatch(to -> calledMethod.getSignature().startsWith(to));
+		String signature = calledMethod.getSignature();
+		return Arrays.stream(TERMINAL_OPERATIONS).anyMatch(to -> signature.startsWith(to));
 	}
 
 	protected Stream getStream() {
