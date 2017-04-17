@@ -20,6 +20,7 @@ import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.IAnalysisCacheView;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
+import com.ibm.wala.ipa.callgraph.propagation.cfa.nCFABuilder;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.config.FileOfClasses;
@@ -31,6 +32,11 @@ import com.ibm.wala.util.config.FileOfClasses;
  * 
  */
 public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJavaSourceAnalysisEngine<I> {
+
+	/**
+	 * The N value used to create the {@link nCFABuilder}.
+	 */
+	private static final int N = 2;
 
 	private CallGraphBuilder<?> callGraphBuilder;
 
@@ -86,6 +92,6 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	@Override
 	protected CallGraphBuilder<?> getCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options,
 			IAnalysisCacheView cache) {
-		return Util.makeNCFABuilder(2, options, (AnalysisCache) cache, cha, scope);
+		return Util.makeNCFABuilder(N, options, (AnalysisCache) cache, cha, scope);
 	}
 }
