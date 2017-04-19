@@ -21,6 +21,7 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import com.ibm.safe.Factoid;
 import com.ibm.safe.ICFGSupergraph;
+import com.ibm.safe.controller.ISafeSolver;
 import com.ibm.safe.dfa.IDFAState;
 import com.ibm.safe.internal.exceptions.MaxFindingsException;
 import com.ibm.safe.internal.exceptions.PropertiesException;
@@ -62,7 +63,6 @@ import com.ibm.wala.util.intset.OrdinalSet;
 import edu.cuny.hunter.streamrefactoring.core.analysis.rules.StreamAttributeTypestateRule;
 import edu.cuny.hunter.streamrefactoring.core.analysis.rules.StreamExecutionModeTypeStateRule;
 import edu.cuny.hunter.streamrefactoring.core.safe.ModifiedBenignOracle;
-import edu.cuny.hunter.streamrefactoring.core.safe.TrackingUniqueSolver;
 import edu.cuny.hunter.streamrefactoring.core.safe.TypestateSolverFactory;
 import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
@@ -196,7 +196,7 @@ class StreamStateMachine {
 
 		// this gets a solver that tracks all streams. TODO may need to do some
 		// caching at some point here.
-		TrackingUniqueSolver solver = TypestateSolverFactory.getSolver(engine.getCallGraph(),
+		ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getOptions(), engine.getCallGraph(),
 				engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null);
 
 		AggregateSolverResult result;
@@ -312,7 +312,7 @@ class StreamStateMachine {
 								Factoid factoid = instanceResult.getDomain().getMappedObject(nextInt);
 								if (factoid != DUMMY_ZERO) {
 									BaseFactoid baseFactoid = (BaseFactoid) factoid;
-									assert baseFactoid.instance == instanceKey : "Sanity check that the fact instance should be the same as the instance being examined.";
+									assert baseFactoid.instance.equals(instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
 
 									// add the encountered state to the set.
 									stateSet.add(baseFactoid.state);
