@@ -71,70 +71,36 @@ class StreamStateMachine {
 	 * A list of supported terminal operation signatures.
 	 */
 	// @formatter:off
-	private static final String[] TERMINAL_OPERATIONS = { 
-			"java.util.stream.Stream.reduce",
-			"java.util.stream.DoubleStream.forEach",
-			"java.util.stream.DoubleStream.forEachOrdered",
-			"java.util.stream.DoubleStream.toArray",
-			"java.util.stream.DoubleStream.reduce", 
-			"java.util.stream.DoubleStream.collect",
-			"java.util.stream.DoubleStream.sum",
-			"java.util.stream.DoubleStream.min",
-			"java.util.stream.DoubleStream.max",
-			"java.util.stream.DoubleStream.count",
-			"java.util.stream.DoubleStream.average",
-			"java.util.stream.DoubleStream.summaryStatistics",
-			"java.util.stream.DoubleStream.anyMatch",
-			"java.util.stream.DoubleStream.allMatch",
-			"java.util.stream.DoubleStream.noneMatch",
-			"java.util.stream.DoubleStream.findFirst",
-			"java.util.stream.DoubleStream.findAny",
-			"java.util.stream.IntStream.forEach",
-			"java.util.stream.IntStream.forEachOrdered",
-			"java.util.stream.IntStream.toArray",
-			"java.util.stream.IntStream.reduce", 
-			"java.util.stream.IntStream.collect",
-			"java.util.stream.IntStream.sum",
-			"java.util.stream.IntStream.min",
-			"java.util.stream.IntStream.max",
-			"java.util.stream.IntStream.count",
-			"java.util.stream.IntStream.average",
-			"java.util.stream.IntStream.summaryStatistics",
-			"java.util.stream.IntStream.anyMatch",
-			"java.util.stream.IntStream.allMatch",
-			"java.util.stream.IntStream.noneMatch",
-			"java.util.stream.IntStream.findFirst",
-			"java.util.stream.IntStream.findAny",
-			"java.util.stream.LongStream.forEach",
-			"java.util.stream.LongStream.forEachOrdered",
-			"java.util.stream.LongStream.toArray",
-			"java.util.stream.LongStream.reduce", 
-			"java.util.stream.LongStream.collect",
-			"java.util.stream.LongStream.sum",
-			"java.util.stream.LongStream.min",
-			"java.util.stream.LongStream.max",
-			"java.util.stream.LongStream.count",
-			"java.util.stream.LongStream.average",
-			"java.util.stream.LongStream.summaryStatistics",
-			"java.util.stream.LongStream.anyMatch",
-			"java.util.stream.LongStream.allMatch",
-			"java.util.stream.LongStream.noneMatch",
-			"java.util.stream.LongStream.findFirst",
-			"java.util.stream.LongStream.findAny",
-			"java.util.stream.Stream.forEach",
-			"java.util.stream.Stream.forEachOrdered",
-			"java.util.stream.Stream.toArray",
-			"java.util.stream.Stream.reduce", 
-			"java.util.stream.Stream.collect",
-			"java.util.stream.Stream.min",
-			"java.util.stream.Stream.max",
-			"java.util.stream.Stream.count",
-			"java.util.stream.Stream.anyMatch",
-			"java.util.stream.Stream.allMatch",
-			"java.util.stream.Stream.noneMatch",
-			"java.util.stream.Stream.findFirst",
-			"java.util.stream.Stream.findAny"};
-	// @formatter:off
+	private static final String[] TERMINAL_OPERATIONS = { "java.util.stream.Stream.reduce",
+			"java.util.stream.DoubleStream.forEach", "java.util.stream.DoubleStream.forEachOrdered",
+			"java.util.stream.DoubleStream.toArray", "java.util.stream.DoubleStream.reduce",
+			"java.util.stream.DoubleStream.collect", "java.util.stream.DoubleStream.sum",
+			"java.util.stream.DoubleStream.min", "java.util.stream.DoubleStream.max",
+			"java.util.stream.DoubleStream.count", "java.util.stream.DoubleStream.average",
+			"java.util.stream.DoubleStream.summaryStatistics", "java.util.stream.DoubleStream.anyMatch",
+			"java.util.stream.DoubleStream.allMatch", "java.util.stream.DoubleStream.noneMatch",
+			"java.util.stream.DoubleStream.findFirst", "java.util.stream.DoubleStream.findAny",
+			"java.util.stream.IntStream.forEach", "java.util.stream.IntStream.forEachOrdered",
+			"java.util.stream.IntStream.toArray", "java.util.stream.IntStream.reduce",
+			"java.util.stream.IntStream.collect", "java.util.stream.IntStream.sum", "java.util.stream.IntStream.min",
+			"java.util.stream.IntStream.max", "java.util.stream.IntStream.count", "java.util.stream.IntStream.average",
+			"java.util.stream.IntStream.summaryStatistics", "java.util.stream.IntStream.anyMatch",
+			"java.util.stream.IntStream.allMatch", "java.util.stream.IntStream.noneMatch",
+			"java.util.stream.IntStream.findFirst", "java.util.stream.IntStream.findAny",
+			"java.util.stream.LongStream.forEach", "java.util.stream.LongStream.forEachOrdered",
+			"java.util.stream.LongStream.toArray", "java.util.stream.LongStream.reduce",
+			"java.util.stream.LongStream.collect", "java.util.stream.LongStream.sum", "java.util.stream.LongStream.min",
+			"java.util.stream.LongStream.max", "java.util.stream.LongStream.count",
+			"java.util.stream.LongStream.average", "java.util.stream.LongStream.summaryStatistics",
+			"java.util.stream.LongStream.anyMatch", "java.util.stream.LongStream.allMatch",
+			"java.util.stream.LongStream.noneMatch", "java.util.stream.LongStream.findFirst",
+			"java.util.stream.LongStream.findAny", "java.util.stream.Stream.forEach",
+			"java.util.stream.Stream.forEachOrdered", "java.util.stream.Stream.toArray",
+			"java.util.stream.Stream.reduce", "java.util.stream.Stream.collect", "java.util.stream.Stream.min",
+			"java.util.stream.Stream.max", "java.util.stream.Stream.count", "java.util.stream.Stream.anyMatch",
+			"java.util.stream.Stream.allMatch", "java.util.stream.Stream.noneMatch",
+			"java.util.stream.Stream.findFirst", "java.util.stream.Stream.findAny" };
+	// @formatter:on
 
 	/**
 	 * A table mapping an instance and a block to the instance's possible states
@@ -171,8 +137,8 @@ class StreamStateMachine {
 		Set<Entrypoint> entryPoints = Collections.singleton(entryPoint);
 
 		// FIXME: Do we need to build a new call graph for each entry point?
-		// Doesn't make sense. Maybe we need to collect all enclosing
-		// methods and use those as entry points.
+		// Doesn't make sense. Maybe we need to collect all enclosing methods
+		// and use those as entry points.
 		engine.buildSafeCallGraph(entryPoints);
 		// TODO: Can I slice the graph so that only nodes relevant to the
 		// instance in question are present?
@@ -188,183 +154,202 @@ class StreamStateMachine {
 
 		TypeReference typeReference = this.getStream().getTypeReference();
 		IClass streamClass = engine.getClassHierarchy().lookupClass(typeReference);
+		StreamAttributeTypestateRule[] ruleArray = createStreamAttributeTypestateRules(streamClass);
 
-		StreamAttributeTypestateRule rule = new StreamExecutionModeTypeStateRule(streamClass);
-		TypeStateProperty dfa = new TypeStateProperty(rule, engine.getClassHierarchy());
+		// for each rule.
+		for (StreamAttributeTypestateRule rule : ruleArray) {
+			// create a DFA based on the rule.
+			TypeStateProperty dfa = new TypeStateProperty(rule, engine.getClassHierarchy());
 
-		// this gets a solver that tracks all streams. TODO may need to do some
-		// caching at some point here.
-		ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getOptions(), engine.getCallGraph(),
-				engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null);
+			// this gets a solver that tracks all streams. TODO may need to do
+			// some caching at some point here.
+			ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getOptions(), engine.getCallGraph(),
+					engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null);
 
-		AggregateSolverResult result;
-		try {
-			result = (AggregateSolverResult) solver.perform(new NullProgressMonitor());
-		} catch (SolverTimeoutException | MaxFindingsException | SetUpException | WalaException e) {
-			throw new RuntimeException("Exception caught during typestate analysis.", e);
-		}
+			AggregateSolverResult result;
+			try {
+				result = (AggregateSolverResult) solver.perform(new NullProgressMonitor());
+			} catch (SolverTimeoutException | MaxFindingsException | SetUpException | WalaException e) {
+				throw new RuntimeException("Exception caught during typestate analysis.", e);
+			}
 
-		Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers = new HashMap<>();
+			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers = new HashMap<>();
 
-		// for each instance in the typestate analysis result.
-		for (Iterator<InstanceKey> iterator = result.iterateInstances(); iterator.hasNext();) {
-			// get the instance's key.
-			InstanceKey instanceKey = iterator.next();
+			// for each instance in the typestate analysis result.
+			for (Iterator<InstanceKey> iterator = result.iterateInstances(); iterator.hasNext();) {
+				// get the instance's key.
+				InstanceKey instanceKey = iterator.next();
 
-			// get the result for that instance.
-			TypeStateResult instanceResult = (TypeStateResult) result.getInstanceResult(instanceKey);
+				// get the result for that instance.
+				TypeStateResult instanceResult = (TypeStateResult) result.getInstanceResult(instanceKey);
 
-			// get the supergraph for the instance result.
-			ICFGSupergraph supergraph = instanceResult.getSupergraph();
+				// get the supergraph for the instance result.
+				ICFGSupergraph supergraph = instanceResult.getSupergraph();
 
-			// FIXME This doesn't make a whole lot of sense. Only looking at the
-			// node of where the stream was declared:
-			// TODO: Can this be somehow rewritten to get blocks corresponding
-			// to terminal operations?
-			Set<CGNode> cgNodes = engine.getCallGraph().getNodes(this.getStream().getEnclosingMethodReference());
-			assert cgNodes.size() == 1 : "Expecting only a single CG node.";
+				// FIXME This doesn't make a whole lot of sense. Only looking at
+				// the node of where the stream was declared: TODO: Can this be
+				// somehow rewritten to get blocks corresponding to terminal
+				// operations?
+				Set<CGNode> cgNodes = engine.getCallGraph().getNodes(this.getStream().getEnclosingMethodReference());
+				assert cgNodes.size() == 1 : "Expecting only a single CG node.";
 
-			for (CGNode cgNode : cgNodes) {
-				for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
-					CallSiteReference callSiteReference = callSites.next();
-					MethodReference calledMethod = callSiteReference.getDeclaredTarget();
+				for (CGNode cgNode : cgNodes) {
+					for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
+						CallSiteReference callSiteReference = callSites.next();
+						MethodReference calledMethod = callSiteReference.getDeclaredTarget();
 
-					// is it a terminal operation? TODO: Should this be cached
-					// somehow? Collection of all terminal operation
-					// invocations?
-					if (isTerminalOperation(calledMethod)) {
-						// get the basic block for the call.
-						ISSABasicBlock[] blocksForCall = cgNode.getIR().getBasicBlocksForCall(callSiteReference);
-						assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
-								+ callSiteReference;
+						// is it a terminal operation? TODO: Should this be
+						// cached somehow? Collection of all terminal operation
+						// invocations?
+						if (isTerminalOperation(calledMethod)) {
+							// get the basic block for the call.
+							ISSABasicBlock[] blocksForCall = cgNode.getIR().getBasicBlocksForCall(callSiteReference);
+							assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
+									+ callSiteReference;
 
-						for (int i = 0; i < blocksForCall.length; i++) {
-							ISSABasicBlock block = blocksForCall[i];
-							BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
-									block, cgNode, supergraph)
-											.orElseThrow(() -> new IllegalStateException(
-													"No basic block in context for block: " + block));
+							for (int i = 0; i < blocksForCall.length; i++) {
+								ISSABasicBlock block = blocksForCall[i];
+								BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
+										block, cgNode, supergraph)
+												.orElseThrow(() -> new IllegalStateException(
+														"No basic block in context for block: " + block));
 
-							if (!terminalBlockToPossibleReceivers.containsKey(blockInContext)) {
-								// associate possible receivers with the
-								// blockInContext.
-								// search through each instruction in the block.
-								int processedInstructions = 0;
-								for (Iterator<SSAInstruction> it = block.iterator(); it.hasNext();) {
-									SSAInstruction instruction = it.next();
+								if (!terminalBlockToPossibleReceivers.containsKey(blockInContext)) {
+									// associate possible receivers with the
+									// blockInContext.
+									// search through each instruction in the
+									// block.
+									int processedInstructions = 0;
+									for (Iterator<SSAInstruction> it = block.iterator(); it.hasNext();) {
+										SSAInstruction instruction = it.next();
 
-									// if it's a phi instruction.
-									if (instruction instanceof SSAPhiInstruction)
-										// skip it. The pointer analysis below
-										// will handle it.
-										continue;
+										// if it's a phi instruction.
+										if (instruction instanceof SSAPhiInstruction)
+											// skip it. The pointer analysis
+											// below will handle it.
+											continue;
 
-									// Get the possible receivers.
-									// This number corresponds to the value
-									// number of the receiver of the method.
-									int valueNumberForReceiver = instruction.getUse(0);
+										// Get the possible receivers. This
+										// number corresponds to the value
+										// number of the receiver of the method.
+										int valueNumberForReceiver = instruction.getUse(0);
 
-									// it should be represented by a pointer
-									// key.
-									PointerKey pointerKey = engine.getHeapGraph().getHeapModel()
-											.getPointerKeyForLocal(cgNode, valueNumberForReceiver);
+										// it should be represented by a pointer
+										// key.
+										PointerKey pointerKey = engine.getHeapGraph().getHeapModel()
+												.getPointerKeyForLocal(cgNode, valueNumberForReceiver);
 
-									// get the points to set for the receiver.
-									// This will give us all object instances
-									// that the receiver reference points to.
-									OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis()
-											.getPointsToSet(pointerKey);
-									assert pointsToSet != null : "The points-to set (I think) should not be null for pointer: "
-											+ pointerKey;
+										// get the points to set for the
+										// receiver. This will give us all
+										// object instances that the receiver
+										// reference points to.
+										OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis()
+												.getPointsToSet(pointerKey);
+										assert pointsToSet != null : "The points-to set (I think) should not be null for pointer: "
+												+ pointerKey;
 
-									OrdinalSet<InstanceKey> previousReceivers = terminalBlockToPossibleReceivers
-											.put(blockInContext, pointsToSet);
-									assert previousReceivers == null : "Reassociating a blockInContext: "
-											+ blockInContext + " with a new points-to set: " + pointsToSet
-											+ " that was originally: " + previousReceivers;
+										OrdinalSet<InstanceKey> previousReceivers = terminalBlockToPossibleReceivers
+												.put(blockInContext, pointsToSet);
+										assert previousReceivers == null : "Reassociating a blockInContext: "
+												+ blockInContext + " with a new points-to set: " + pointsToSet
+												+ " that was originally: " + previousReceivers;
 
-									++processedInstructions;
+										++processedInstructions;
+									}
+
+									assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
 								}
 
-								assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
-							}
+								IntSet intSet = instanceResult.getResult().getResult(blockInContext);
+								for (IntIterator it = intSet.intIterator(); it.hasNext();) {
+									int nextInt = it.next();
 
-							IntSet intSet = instanceResult.getResult().getResult(blockInContext);
-							for (IntIterator it = intSet.intIterator(); it.hasNext();) {
-								int nextInt = it.next();
+									// retrieve the state set for this instance
+									// and block.
+									Set<IDFAState> stateSet = instanceBlockToStateTable.get(instanceKey,
+											blockInContext);
 
-								// retrieve the state set for this instance
-								// and block.
-								Set<IDFAState> stateSet = instanceBlockToStateTable.get(instanceKey, blockInContext);
+									// if it does not yet exist.
+									if (stateSet == null) {
+										// allocate a new set.
+										stateSet = new HashSet<>();
 
-								// if it does not yet exist.
-								if (stateSet == null) {
-									// allocate a new set.
-									stateSet = new HashSet<>();
+										// place it in the table.
+										instanceBlockToStateTable.put(instanceKey, blockInContext, stateSet);
+									}
 
-									// place it in the table.
-									instanceBlockToStateTable.put(instanceKey, blockInContext, stateSet);
-								}
+									// get the facts.
+									Factoid factoid = instanceResult.getDomain().getMappedObject(nextInt);
+									if (factoid != DUMMY_ZERO) {
+										BaseFactoid baseFactoid = (BaseFactoid) factoid;
+										assert baseFactoid.instance.equals(
+												instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
 
-								// get the facts.
-								Factoid factoid = instanceResult.getDomain().getMappedObject(nextInt);
-								if (factoid != DUMMY_ZERO) {
-									BaseFactoid baseFactoid = (BaseFactoid) factoid;
-									assert baseFactoid.instance.equals(instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
-
-									// add the encountered state to the set.
-									stateSet.add(baseFactoid.state);
+										// add the encountered state to the set.
+										stateSet.add(baseFactoid.state);
+									}
 								}
 							}
 						}
 					}
 				}
 			}
-		}
 
-		// fill the instance to predecessor map.
-		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
-			InstanceKey instance = it.next();
-			NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
-			CGNode node = allocationInNode.getNode();
-			CallStringContext context = (CallStringContext) node.getContext();
-			CallStringWithReceivers callString = (CallStringWithReceivers) context
-					.get(CallStringContextSelector.CALL_STRING);
-			instanceToPredecessorMap.merge(instance, callString.getPossibleReceivers(), (x, y) -> {
-				x.addAll(y);
-				return x;
-			});
-		}
-
-		// TODO: This should be cached for all class instances.
-		Map<InstanceKey, Collection<IDFAState>> originStreamToMergedTypeStateMap = new HashMap<>();
-
-		// for each terminal operation call, I think?
-		for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
-			OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
-			// for each possible receiver of the terminal operation call.
-			for (InstanceKey instanceKey : possibleReceivers) {
-				Set<IDFAState> possibleStates = computeMergedTypeState(instanceKey, block, rule);
-				Set<InstanceKey> possibleOriginStreams = computePossibleOriginStreams(instanceKey);
-				possibleOriginStreams.forEach(
-						os -> originStreamToMergedTypeStateMap.merge(os, new HashSet<>(possibleStates), (x, y) -> {
-							x.addAll(y);
-							return x;
-						}));
+			// fill the instance to predecessor map.
+			for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
+				InstanceKey instance = it.next();
+				NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
+				CGNode node = allocationInNode.getNode();
+				CallStringContext context = (CallStringContext) node.getContext();
+				CallStringWithReceivers callString = (CallStringWithReceivers) context
+						.get(CallStringContextSelector.CALL_STRING);
+				instanceToPredecessorMap.merge(instance, callString.getPossibleReceivers(), (x, y) -> {
+					x.addAll(y);
+					return x;
+				});
 			}
-		}
 
-		// TODO: Also need to cache this.
-		InstanceKey streamInQuestionInstanceKey = this.getStream().getInstanceKey(instanceToPredecessorMap.keySet(),
-				engine.getCallGraph());
-		Collection<IDFAState> states = originStreamToMergedTypeStateMap.get(streamInQuestionInstanceKey);
-		// Map IDFAState to StreamExecutionMode, etc., and add them to the
-		// possible stream states but only if they're not bottom (for those, we
-		// fall back to the initial state).
-		rule.addPossibleAttributes(this.getStream(), states);
+			// TODO: This should be cached for all class instances.
+			Map<InstanceKey, Collection<IDFAState>> originStreamToMergedTypeStateMap = new HashMap<>();
+
+			// for each terminal operation call, I think?
+			for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
+				OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
+				// for each possible receiver of the terminal operation call.
+				for (InstanceKey instanceKey : possibleReceivers) {
+					Set<IDFAState> possibleStates = computeMergedTypeState(instanceKey, block, rule);
+					Set<InstanceKey> possibleOriginStreams = computePossibleOriginStreams(instanceKey);
+					possibleOriginStreams.forEach(
+							os -> originStreamToMergedTypeStateMap.merge(os, new HashSet<>(possibleStates), (x, y) -> {
+								x.addAll(y);
+								return x;
+							}));
+				}
+			}
+
+			// TODO: Also need to cache this.
+			InstanceKey streamInQuestionInstanceKey = this.getStream().getInstanceKey(instanceToPredecessorMap.keySet(),
+					engine.getCallGraph());
+			Collection<IDFAState> states = originStreamToMergedTypeStateMap.get(streamInQuestionInstanceKey);
+			// Map IDFAState to StreamExecutionMode, etc., and add them to the
+			// possible stream states but only if they're not bottom (for those,
+			// we fall back to the initial state).
+			rule.addPossibleAttributes(this.getStream(), states);
+		}
 
 		System.out.println("Execution modes: " + this.getStream().getPossibleExecutionModes());
 		System.out.println("Orderings: " + this.getStream().getPossibleOrderings());
+	}
+
+	/**
+	 * The typestate rules to use.
+	 */
+	protected static StreamAttributeTypestateRule[] createStreamAttributeTypestateRules(IClass streamClass) {
+		// @formatter:off
+		return new StreamAttributeTypestateRule[] {
+				new StreamExecutionModeTypeStateRule(streamClass),
+				new StreamOrderingTypeStateRule(streamClass)};
+		// @formatter:on
 	}
 
 	// FIXME: The performance of this method is not good. We should build a map
