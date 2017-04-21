@@ -308,10 +308,15 @@ public class Stream {
 	private Set<StreamExecutionMode> possibleExecutionModes = new HashSet<>();
 
 	/**
+	 * The ordering derived from the declaration of the stream.
+	 */
+	private StreamOrdering initialOrdering;
+
+	/**
 	 * This should be the ordering of the stream when it is consumed by a
 	 * terimal operation.
 	 */
-	private StreamOrdering ordering;
+	private Set<StreamOrdering> possibleOrderings = new HashSet<>();
 
 	private RefactoringStatus status = new RefactoringStatus();
 
@@ -471,6 +476,18 @@ public class Stream {
 				.collect(Collectors.toSet());
 	}
 
+	public Set<StreamOrdering> getPossibleOrderings() {
+		// if no other possible orderings exist.
+		if (possibleOrderings.isEmpty())
+			// default to the initial ordering.
+			return Collections.singleton(this.getInitialOrdering());
+
+		// otherwise, return the internal possible orderings but with the null
+		// value (bottom state) replaced by the initial state.
+		return possibleOrderings.stream().map(e -> e == null ? this.getInitialOrdering() : e)
+				.collect(Collectors.toSet());
+	}
+
 	Optional<SSAInvokeInstruction> getInstructionForCreation()
 			throws InvalidClassFileException, IOException, CoreException {
 		IBytecodeMethod method = (IBytecodeMethod) this.getEnclosingMethodIR().getMethod();
@@ -512,10 +529,6 @@ public class Stream {
 
 	private JDTIdentityMapper getJDTIdentifyMapperForCreation() {
 		return getJDTIdentifyMapper(this.getCreation());
-	}
-
-	public StreamOrdering getOrdering() {
-		return ordering;
 	}
 
 	public RefactoringStatus getStatus() {
@@ -567,9 +580,9 @@ public class Stream {
 			if (expressionTypeQualifiedName.equals("java.util.stream.Stream")) {
 				String methodIdentifier = getMethodIdentifier(calledMethodBinding);
 				if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
-					this.setOrdering(StreamOrdering.UNORDERED);
+					this.setInitialOrdering(StreamOrdering.UNORDERED);
 			} else
-				this.setOrdering(StreamOrdering.ORDERED);
+				this.setInitialOrdering(StreamOrdering.ORDERED);
 		} else { // instance method.
 			// FIXME: This needs to become interprocedural #7.
 			int valueNumber = getUseValueNumberForCreation();
@@ -579,7 +592,7 @@ public class Stream {
 			// Possible types: check each one.
 			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
 			StreamOrdering ordering = inferInitialStreamOrdering(possibleTypes, calledMethod);
-			this.setOrdering(ordering);
+			this.setInitialOrdering(ordering);
 		}
 	}
 
@@ -592,8 +605,8 @@ public class Stream {
 		this.possibleExecutionModes.addAll(executionModeCollection);
 	}
 
-	protected void setOrdering(StreamOrdering ordering) {
-		this.ordering = ordering;
+	protected void addPossibleOrderingCollection(Collection<? extends StreamOrdering> orderingCollection) {
+		this.possibleOrderings.addAll(orderingCollection);
 	}
 
 	@Override
@@ -605,8 +618,8 @@ public class Stream {
 		builder.append(this.getEnclosingMethodDeclaration());
 		builder.append(", possibleExecutionModes=");
 		builder.append(this.getPossibleExecutionModes());
-		builder.append(", ordering=");
-		builder.append(this.getOrdering());
+		builder.append(", possibleOrderings=");
+		builder.append(this.getPossibleOrderings());
 		builder.append(", status=");
 		builder.append(this.getStatus());
 		builder.append("]");
@@ -630,5 +643,13 @@ public class Stream {
 
 	protected void setInitialExecutionMode(StreamExecutionMode initialExecutionMode) {
 		this.initialExecutionMode = initialExecutionMode;
+	}
+
+	protected StreamOrdering getInitialOrdering() {
+		return initialOrdering;
+	}
+
+	protected void setInitialOrdering(StreamOrdering initialOrdering) {
+		this.initialOrdering = initialOrdering;
 	}
 }

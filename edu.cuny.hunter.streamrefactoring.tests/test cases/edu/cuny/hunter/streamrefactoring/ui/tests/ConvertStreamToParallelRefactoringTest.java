@@ -190,7 +190,8 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 		assertTrue(executionModes.size() == 1);
 		assertTrue(executionModes.contains(expectedExecutionMode));
 
-		StreamOrdering ordering = stream.getOrdering();
-		assertEquals(expectedOrdering, ordering);
+		Set<StreamOrdering> orderings = stream.getPossibleOrderings();
+		assertTrue(orderings.size() == 1);
+		assertTrue(orderings.contains(expectedOrdering));
 	}
 }

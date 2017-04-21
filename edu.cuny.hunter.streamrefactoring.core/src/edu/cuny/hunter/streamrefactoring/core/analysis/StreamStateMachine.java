@@ -60,8 +60,6 @@ import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.OrdinalSet;
 
-import edu.cuny.hunter.streamrefactoring.core.analysis.rules.StreamAttributeTypestateRule;
-import edu.cuny.hunter.streamrefactoring.core.analysis.rules.StreamExecutionModeTypeStateRule;
 import edu.cuny.hunter.streamrefactoring.core.safe.ModifiedBenignOracle;
 import edu.cuny.hunter.streamrefactoring.core.safe.TypestateSolverFactory;
 import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
@@ -191,7 +189,7 @@ class StreamStateMachine {
 		TypeReference typeReference = this.getStream().getTypeReference();
 		IClass streamClass = engine.getClassHierarchy().lookupClass(typeReference);
 
-		StreamExecutionModeTypeStateRule rule = new StreamExecutionModeTypeStateRule(streamClass);
+		StreamAttributeTypestateRule rule = new StreamExecutionModeTypeStateRule(streamClass);
 		TypeStateProperty dfa = new TypeStateProperty(rule, engine.getClassHierarchy());
 
 		// this gets a solver that tracks all streams. TODO may need to do some
@@ -363,10 +361,10 @@ class StreamStateMachine {
 		// Map IDFAState to StreamExecutionMode, etc., and add them to the
 		// possible stream states but only if they're not bottom (for those, we
 		// fall back to the initial state).
-		this.getStream().addPossibleExecutionModeCollection(
-				states.stream().map(rule::getStreamExecutionMode).collect(Collectors.toSet()));
+		rule.addPossibleAttributes(this.getStream(), states);
 
-		System.out.println(this.getStream().getPossibleExecutionModes());
+		System.out.println("Execution modes: " + this.getStream().getPossibleExecutionModes());
+		System.out.println("Orderings: " + this.getStream().getPossibleOrderings());
 	}
 
 	// FIXME: The performance of this method is not good. We should build a map

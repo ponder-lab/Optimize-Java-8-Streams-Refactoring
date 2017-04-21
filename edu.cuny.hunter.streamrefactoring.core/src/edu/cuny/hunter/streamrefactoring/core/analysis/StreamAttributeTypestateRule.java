@@ -1,4 +1,9 @@
-package edu.cuny.hunter.streamrefactoring.core.analysis.rules;
+package edu.cuny.hunter.streamrefactoring.core.analysis;
+
+import java.util.Collection;
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 import com.ibm.safe.dfa.DFASpec;
 import com.ibm.safe.dfa.DFAState;
@@ -23,7 +28,11 @@ public abstract class StreamAttributeTypestateRule extends TypestateRule {
 		this.addAutomaton();
 	}
 
-	protected abstract void addAutomaton();
+	protected void addAutomaton() {
+		// a bottom state result would need to defer to the initial stream
+		// ordering, which is in the field of the stream.
+		bottomState = addState(BOTTOM_STATE_NAME, true);
+	}
 
 	protected IDFAState addState(String stateName, boolean initialState) {
 		IDFAState state = new DFAState();
@@ -68,5 +77,10 @@ public abstract class StreamAttributeTypestateRule extends TypestateRule {
 
 	public IDFAState getBottomState() {
 		return bottomState;
+	}
+
+	protected void addPossibleAttributes(Stream stream, Collection<IDFAState> states) {
+		Objects.requireNonNull(stream);
+		Objects.requireNonNull(states);
 	}
 }
