@@ -145,6 +145,8 @@ class StreamStateMachine {
 
 	private static Map<InstanceKey, Set<InstanceKey>> instanceToPredecessorMap = new HashMap<>();
 
+	private static Map<InstanceKey, Collection<IDFAState>> originStreamToMergedTypeStateMap = new HashMap<>();
+
 	/**
 	 * The stream that this state machine represents.
 	 */
@@ -344,9 +346,6 @@ class StreamStateMachine {
 				});
 			}
 
-			// TODO: This should be cached for all class instances.
-			Map<InstanceKey, Collection<IDFAState>> originStreamToMergedTypeStateMap = new HashMap<>();
-
 			// for each terminal operation call, I think?
 			for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 				OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
@@ -505,5 +504,6 @@ class StreamStateMachine {
 	public static void clearCaches() {
 		instanceBlockToStateTable.clear();
 		instanceToPredecessorMap.clear();
+		originStreamToMergedTypeStateMap.clear();
 	}
 }
