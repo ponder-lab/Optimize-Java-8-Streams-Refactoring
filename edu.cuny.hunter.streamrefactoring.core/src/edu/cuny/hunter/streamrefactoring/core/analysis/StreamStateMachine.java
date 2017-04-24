@@ -140,7 +140,7 @@ class StreamStateMachine {
 	 * A table mapping an instance and a block to the instance's possible states
 	 * at that block.
 	 */
-	private static Table<InstanceKey, BasicBlockInContext<IExplodedBasicBlock>, Set<IDFAState>> instanceBlockToStateTable = HashBasedTable
+	private static Table<InstanceKey, BasicBlockInContext<IExplodedBasicBlock>, Set<IDFAState>> instanceBlockStateTable = HashBasedTable
 			.create();
 
 	private static Map<InstanceKey, Set<InstanceKey>> instanceToPredecessorMap = new HashMap<>();
@@ -302,7 +302,7 @@ class StreamStateMachine {
 
 									// retrieve the state set for this instance
 									// and block.
-									Set<IDFAState> stateSet = instanceBlockToStateTable.get(instanceKey,
+									Set<IDFAState> stateSet = instanceBlockStateTable.get(instanceKey,
 											blockInContext);
 
 									// if it does not yet exist.
@@ -311,7 +311,7 @@ class StreamStateMachine {
 										stateSet = new HashSet<>();
 
 										// place it in the table.
-										instanceBlockToStateTable.put(instanceKey, blockInContext, stateSet);
+										instanceBlockStateTable.put(instanceKey, blockInContext, stateSet);
 									}
 
 									// get the facts.
@@ -452,7 +452,7 @@ class StreamStateMachine {
 	private static Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
 			BasicBlockInContext<IExplodedBasicBlock> block, StreamAttributeTypestateRule rule) {
 		Set<InstanceKey> predecessors = instanceToPredecessorMap.get(instanceKey);
-		Set<IDFAState> possibleInstanceStates = instanceBlockToStateTable.get(instanceKey, block);
+		Set<IDFAState> possibleInstanceStates = instanceBlockStateTable.get(instanceKey, block);
 
 		if (predecessors.isEmpty())
 			return possibleInstanceStates;
@@ -500,7 +500,7 @@ class StreamStateMachine {
 	}
 
 	public static void clearCaches() {
-		instanceBlockToStateTable.clear();
+		instanceBlockStateTable.clear();
 		instanceToPredecessorMap.clear();
 		originStreamToMergedTypeStateMap.clear();
 	}
