@@ -129,6 +129,7 @@ class StreamStateMachine {
 
 	public void start() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
 			InvalidClassFileException, PropertiesException {
+		// get the analysis engine.
 		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
 
 		// FIXME: Do we want a different entry point?
