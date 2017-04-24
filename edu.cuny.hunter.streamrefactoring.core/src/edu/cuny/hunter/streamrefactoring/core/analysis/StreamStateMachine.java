@@ -47,6 +47,7 @@ import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
+import com.ibm.wala.ipa.modref.ModRef;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSAInstruction;
@@ -179,6 +180,9 @@ class StreamStateMachine {
 		engine.buildSafeCallGraph(entryPoints);
 		// TODO: Can I slice the graph so that only nodes relevant to the
 		// instance in question are present?
+		
+		ModRef<InstanceKey> modRef = ModRef.make();
+		modRef.computeMod(engine.getCallGraph(), engine.getPointerAnalysis());
 
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
 
