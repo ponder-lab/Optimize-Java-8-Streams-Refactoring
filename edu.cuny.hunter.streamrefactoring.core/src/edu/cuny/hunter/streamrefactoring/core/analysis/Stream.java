@@ -351,6 +351,7 @@ public class Stream {
 							+ ".");
 		}
 
+		// start the state machine.
 		try {
 			new StreamStateMachine(this).start();
 		} catch (PropertiesException | CancelException e) {

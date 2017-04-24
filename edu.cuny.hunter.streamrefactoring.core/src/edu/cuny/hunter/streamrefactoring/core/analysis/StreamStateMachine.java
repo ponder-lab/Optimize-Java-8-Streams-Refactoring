@@ -179,7 +179,6 @@ class StreamStateMachine {
 		engine.buildSafeCallGraph(entryPoints);
 		// TODO: Can I slice the graph so that only nodes relevant to the
 		// instance in question are present?
-		// TODO: Don't we already have a call graph?
 
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
 
@@ -361,7 +360,6 @@ class StreamStateMachine {
 				}
 			}
 
-			// TODO: Also need to cache this.
 			InstanceKey streamInQuestionInstanceKey = this.getStream().getInstanceKey(instanceToPredecessorMap.keySet(),
 					engine.getCallGraph());
 			Collection<IDFAState> states = originStreamToMergedTypeStateMap.get(streamInQuestionInstanceKey);
