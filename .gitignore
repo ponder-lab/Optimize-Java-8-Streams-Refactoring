@@ -6,3 +6,5 @@ target
 *.class
 myimport.cfg
 mysql_backup.cfg
+edu\.cuny\.hunter\.streamrefactoring\.core/\.settings/org\.eclipse\.jdt\.core\.prefs
+edu\.cuny\.hunter\.streamrefactoring\.eval/Stream Refactoring Evaluation\.launch
