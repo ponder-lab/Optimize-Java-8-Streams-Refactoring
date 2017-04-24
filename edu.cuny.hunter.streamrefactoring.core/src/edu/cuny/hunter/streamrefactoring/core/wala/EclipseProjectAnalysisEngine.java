@@ -78,11 +78,15 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 		return classHierarchy;
 	}
 
-	public CallGraph buildSafeCallGraph(Iterable<Entrypoint> entryPoints)
+	public CallGraph buildSafeCallGraph(AnalysisOptions options)
 			throws IllegalArgumentException, CallGraphBuilderCancelException, CancelException {
-		AnalysisOptions options = getDefaultOptions(entryPoints);
 		callGraphBuilder = buildCallGraph(this.getClassHierarchy(), options, true, null);
 		return callGraphBuilder.makeCallGraph(options, null);
+	}
+
+	public CallGraph buildSafeCallGraph(Iterable<Entrypoint> entryPoints)
+			throws IllegalArgumentException, CallGraphBuilderCancelException, CancelException {
+		return this.buildSafeCallGraph(getDefaultOptions(entryPoints));
 	}
 
 	public CallGraphBuilder<?> getCallGraphBuilder() {
