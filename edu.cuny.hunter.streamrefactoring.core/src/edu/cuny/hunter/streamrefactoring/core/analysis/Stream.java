@@ -324,7 +324,9 @@ public class Stream {
 				ASTNode.TYPE_DECLARATION);
 		this.enclosingMethodDeclaration = (MethodDeclaration) ASTNodes.getParent(this.getCreation(),
 				ASTNode.METHOD_DECLARATION);
+
 		this.inferInitialExecution();
+
 		try {
 			this.inferInitialOrdering();
 		} catch (InconsistentPossibleStreamSourceOrderingException e) {
