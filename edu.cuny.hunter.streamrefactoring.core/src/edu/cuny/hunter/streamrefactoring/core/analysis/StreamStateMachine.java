@@ -182,7 +182,7 @@ class StreamStateMachine {
 		// instance in question are present?
 		
 		ModRef<InstanceKey> modRef = ModRef.make();
-		modRef.computeMod(engine.getCallGraph(), engine.getPointerAnalysis());
+		Map<CGNode, OrdinalSet<PointerKey>> mod = modRef.computeMod(engine.getCallGraph(), engine.getPointerAnalysis());
 
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
 
@@ -244,11 +244,19 @@ class StreamStateMachine {
 						if (isTerminalOperation(calledMethod)) {
 							// get the basic block for the call.
 							ISSABasicBlock[] blocksForCall = cgNode.getIR().getBasicBlocksForCall(callSiteReference);
+							
 							assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
 									+ callSiteReference;
 
 							for (int i = 0; i < blocksForCall.length; i++) {
 								ISSABasicBlock block = blocksForCall[i];
+								
+								CGNode node = engine.getCallGraph().getNode(block.getGraphNodeId());
+								System.out.println(node);
+								
+								OrdinalSet<PointerKey> ordinalSet = mod.get(node);
+								System.out.println(ordinalSet);
+								
 								BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
 										block, cgNode, supergraph)
 												.orElseThrow(() -> new IllegalStateException(

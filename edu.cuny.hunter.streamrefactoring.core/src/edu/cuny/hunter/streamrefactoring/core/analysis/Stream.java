@@ -360,9 +360,9 @@ public class Stream {
 		}
 		
 		// find out if there are any side-effects.
-		this.determineBehavioralParameterSideEffects() {
-			
-		}
+//		this.determineBehavioralParameterSideEffects() {
+//			
+//		}
 	}
 
 	private void addStatusEntry(MethodInvocation streamCreation, PreconditionFailure failure, String message) {
@@ -501,9 +501,9 @@ public class Stream {
 	 * TODO: What if one path has side-effects and the other doesn't?  
 	 * @return true iff any behavioral parameters (λ-expressions) associated with any operations in the stream’s pipeline has side-effects on any possible path.
 	 */
-	public boolean hasPossibleSideEffects() {
-		
-	}
+//	public boolean hasPossibleSideEffects() {
+//		
+//	}
 
 	Optional<SSAInvokeInstruction> getInstructionForCreation()
 			throws InvalidClassFileException, IOException, CoreException {
