@@ -346,11 +346,7 @@ class StreamStateMachine {
 			// fill the instance to predecessor map.
 			for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
 				InstanceKey instance = it.next();
-				NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
-				CGNode node = allocationInNode.getNode();
-				CallStringContext context = (CallStringContext) node.getContext();
-				CallStringWithReceivers callString = (CallStringWithReceivers) context
-						.get(CallStringContextSelector.CALL_STRING);
+				CallStringWithReceivers callString = getCallString(instance);
 				instanceToPredecessorMap.merge(instance, callString.getPossibleReceivers(), (x, y) -> {
 					x.addAll(y);
 					return x;
@@ -383,6 +379,15 @@ class StreamStateMachine {
 
 		System.out.println("Execution modes: " + this.getStream().getPossibleExecutionModes());
 		System.out.println("Orderings: " + this.getStream().getPossibleOrderings());
+	}
+
+	private static CallStringWithReceivers getCallString(InstanceKey instance) {
+		NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
+		CGNode node = allocationInNode.getNode();
+		CallStringContext context = (CallStringContext) node.getContext();
+		CallStringWithReceivers callString = (CallStringWithReceivers) context
+				.get(CallStringContextSelector.CALL_STRING);
+		return callString;
 	}
 
 	/**
