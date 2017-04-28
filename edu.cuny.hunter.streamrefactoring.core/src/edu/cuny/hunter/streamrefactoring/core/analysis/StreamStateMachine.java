@@ -251,12 +251,6 @@ class StreamStateMachine {
 							for (int i = 0; i < blocksForCall.length; i++) {
 								ISSABasicBlock block = blocksForCall[i];
 								
-								CGNode node = engine.getCallGraph().getNode(block.getGraphNodeId());
-								System.out.println(node);
-								
-								OrdinalSet<PointerKey> ordinalSet = mod.get(node);
-								System.out.println(ordinalSet);
-								
 								BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
 										block, cgNode, supergraph)
 												.orElseThrow(() -> new IllegalStateException(
