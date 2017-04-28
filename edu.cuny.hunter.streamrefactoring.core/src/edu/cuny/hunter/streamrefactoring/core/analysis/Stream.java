@@ -158,7 +158,7 @@ public class Stream {
 		Value value = inference.getIR().getSymbolTable().getValue(valueNumber);
 
 		// TODO: Should really be using a pointer analysis here rather than
-		// reimplementing one using PhiValue.
+		// re-implementing one using PhiValue.
 		if (value instanceof PhiValue) {
 			// multiple possible types.
 			PhiValue phiValue = (PhiValue) value;
