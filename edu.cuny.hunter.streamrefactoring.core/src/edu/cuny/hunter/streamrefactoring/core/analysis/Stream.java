@@ -317,6 +317,8 @@ public class Stream {
 	 * terimal operation.
 	 */
 	private Set<StreamOrdering> possibleOrderings = new HashSet<>();
+	
+	private boolean hasPossibleSideEffects;
 
 	private RefactoringStatus status = new RefactoringStatus();
 
@@ -358,11 +360,6 @@ public class Stream {
 			logger.log(Level.SEVERE, "Error while building stream.", e);
 			throw new RuntimeException(e);
 		}
-		
-		// find out if there are any side-effects.
-//		this.determineBehavioralParameterSideEffects() {
-//			
-//		}
 	}
 
 	private void addStatusEntry(MethodInvocation streamCreation, PreconditionFailure failure, String message) {
@@ -495,15 +492,6 @@ public class Stream {
 		return possibleOrderings.stream().map(e -> e == null ? this.getInitialOrdering() : e)
 				.collect(Collectors.toSet());
 	}
-	
-	/**
-	 * Returns true iff any behavioral parameters (λ-expressions) associated with any operations in the stream’s pipeline has side-effects on any possible path.
-	 * TODO: What if one path has side-effects and the other doesn't?  
-	 * @return true iff any behavioral parameters (λ-expressions) associated with any operations in the stream’s pipeline has side-effects on any possible path.
-	 */
-//	public boolean hasPossibleSideEffects() {
-//		
-//	}
 
 	Optional<SSAInvokeInstruction> getInstructionForCreation()
 			throws InvalidClassFileException, IOException, CoreException {
@@ -668,5 +656,19 @@ public class Stream {
 
 	protected void setInitialOrdering(StreamOrdering initialOrdering) {
 		this.initialOrdering = initialOrdering;
+	}
+
+	/**
+	 * Returns true iff any behavioral parameters (λ-expressions) associated with any operations in the stream’s pipeline has side-effects on any possible path.
+	 * TODO: What if one path has side-effects and the other doesn't?  
+	 * @return true iff any behavioral parameters (λ-expressions) associated with any operations in the stream’s pipeline has side-effects on any possible path.
+	 */
+	public boolean hasPossibleSideEffects() {
+		return hasPossibleSideEffects;
+	}
+
+
+	protected void setHasPossibleSideEffects(boolean hasPossibleSideEffects) {
+		this.hasPossibleSideEffects = hasPossibleSideEffects;
 	}
 }
