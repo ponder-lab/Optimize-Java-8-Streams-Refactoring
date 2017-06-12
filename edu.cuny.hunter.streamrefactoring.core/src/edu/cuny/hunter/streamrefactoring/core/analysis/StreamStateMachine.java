@@ -141,7 +141,7 @@ class StreamStateMachine {
 			"java.util.stream.Stream.noneMatch",
 			"java.util.stream.Stream.findFirst",
 			"java.util.stream.Stream.findAny"};
-	// @formatter:off
+	// @formatter:on
 
 	/**
 	 * A table mapping an instance and a block to the instance's possible states
