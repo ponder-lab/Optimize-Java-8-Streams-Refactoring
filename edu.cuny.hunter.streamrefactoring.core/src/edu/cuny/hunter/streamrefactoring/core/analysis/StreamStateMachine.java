@@ -450,14 +450,24 @@ class StreamStateMachine {
 							if (callSiteReference.equals(def.getCallSite())) {
 								// look up the possible target nodes of the call site from the caller.
 								Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode, callSiteReference);
+								Logger.getGlobal().info("# possible targets: " + possibleTargets.size());
+								
+								if (!possibleTargets.isEmpty()) {
+									Logger.getGlobal().info("Possible targets:");
+									possibleTargets.forEach(t -> Logger.getGlobal().info(() -> t.toString()));
+								}
 								
 								// for each possible target node.
 								for (CGNode target : possibleTargets) {
 									// get the set of pointers (locations) it may modify
 									OrdinalSet<PointerKey> modSet = mod.get(target);
+									Logger.getGlobal().info("# modified locations: " + modSet.size());
 									
 									// if it's non-empty.
 									if (!modSet.isEmpty()) {
+										Logger.getGlobal().info("Modified locations:");
+										modSet.forEach(pk -> Logger.getGlobal().info(() -> pk.toString()));
+										
 										// mark the instance whose pipeline may have side-effects.
 										instancesWithSideEffects.add(instance);
 									}
