@@ -150,7 +150,15 @@ class StreamStateMachine {
 	private static Table<InstanceKey, BasicBlockInContext<IExplodedBasicBlock>, Set<IDFAState>> instanceBlockStateTable = HashBasedTable
 			.create();
 
-	private static Map<InstanceKey, Set<InstanceKey>> instanceToPredecessorMap = new HashMap<>();
+	/**
+	 * A stream's immediate predecessor.
+	 */
+	private static Map<InstanceKey, Set<InstanceKey>> instanceToPredecessorsMap = new HashMap<>();
+
+	/**
+	 * All of the stream's predecessors.
+	 */
+	private static Map<InstanceKey, Set<InstanceKey>> instanceToAllPredecessorsMap = new HashMap<>();
 
 	private static Map<InstanceKey, Collection<IDFAState>> originStreamToMergedTypeStateMap = new HashMap<>();
 
@@ -348,12 +356,12 @@ class StreamStateMachine {
 			// fill the instance side-effect set.
 			discoverPossibleSideEffects(result);
 
-			// fill the instance to predecessor map.
+			// fill the instance to predecessors map.
 			for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
 				InstanceKey instance = it.next();
 				CallStringWithReceivers callString = getCallString(instance);
 
-				instanceToPredecessorMap.merge(instance, callString.getPossibleReceivers(), (x, y) -> {
+				instanceToPredecessorsMap.merge(instance, callString.getPossibleReceivers(), (x, y) -> {
 					x.addAll(y);
 					return x;
 				});
@@ -374,8 +382,8 @@ class StreamStateMachine {
 				}
 			}
 
-			InstanceKey streamInQuestionInstanceKey = this.getStream().getInstanceKey(instanceToPredecessorMap.keySet(),
-					engine.getCallGraph());
+			InstanceKey streamInQuestionInstanceKey = this.getStream()
+					.getInstanceKey(instanceToPredecessorsMap.keySet(), engine.getCallGraph());
 			Collection<IDFAState> states = originStreamToMergedTypeStateMap.get(streamInQuestionInstanceKey);
 			// Map IDFAState to StreamExecutionMode, etc., and add them to the
 			// possible stream states but only if they're not bottom (for those,
@@ -383,9 +391,34 @@ class StreamStateMachine {
 			rule.addPossibleAttributes(this.getStream(), states);
 		}
 
+		// propagate the instances with side-effects.
+		instancesWithSideEffects.addAll(instancesWithSideEffects.stream().flatMap(ik -> getAllPredecessors(ik).stream())
+				.collect(Collectors.toSet()));
+
+		// determine if this stream has possible side-effects.
+		this.getStream().setHasPossibleSideEffects((instancesWithSideEffects
+				.contains(this.getStream().getInstanceKey(instanceToPredecessorsMap.keySet(), engine.getCallGraph()))));
+
 		System.out.println("Execution modes: " + this.getStream().getPossibleExecutionModes());
 		System.out.println("Orderings: " + this.getStream().getPossibleOrderings());
 		System.out.println("Side-effects: " + this.getStream().hasPossibleSideEffects());
+	}
+
+	private static Set<InstanceKey> getAllPredecessors(InstanceKey instanceKey) {
+		if (!instanceToAllPredecessorsMap.containsKey(instanceKey)) {
+			Set<InstanceKey> ret = new HashSet<>();
+
+			// add the instance's predecessors.
+			ret.addAll(instanceToPredecessorsMap.get(instanceKey));
+
+			// add their predecessors.
+			ret.addAll(instanceToPredecessorsMap.get(instanceKey).stream()
+					.flatMap(ik -> getAllPredecessors(ik).stream()).collect(Collectors.toSet()));
+
+			instanceToAllPredecessorsMap.put(instanceKey, ret);
+			return ret;
+		} else
+			return instanceToAllPredecessorsMap.get(instanceKey);
 	}
 
 	private void discoverPossibleSideEffects(AggregateSolverResult result) throws IOException, CoreException {
@@ -579,7 +612,7 @@ class StreamStateMachine {
 			return Collections.emptySet();
 
 		// otherwise, retrieve the predecessors of the instance.
-		Set<InstanceKey> predecessors = instanceToPredecessorMap.get(instanceKey);
+		Set<InstanceKey> predecessors = instanceToPredecessorsMap.get(instanceKey);
 
 		// if there are no predecessors for this instance.
 		if (predecessors.isEmpty())
@@ -596,7 +629,7 @@ class StreamStateMachine {
 
 	private static Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
 			BasicBlockInContext<IExplodedBasicBlock> block, StreamAttributeTypestateRule rule) {
-		Set<InstanceKey> predecessors = instanceToPredecessorMap.get(instanceKey);
+		Set<InstanceKey> predecessors = instanceToPredecessorsMap.get(instanceKey);
 		Set<IDFAState> possibleInstanceStates = instanceBlockStateTable.get(instanceKey, block);
 
 		if (predecessors.isEmpty())
@@ -646,7 +679,8 @@ class StreamStateMachine {
 
 	public static void clearCaches() {
 		instanceBlockStateTable.clear();
-		instanceToPredecessorMap.clear();
+		instanceToPredecessorsMap.clear();
+		instanceToAllPredecessorsMap.clear();
 		originStreamToMergedTypeStateMap.clear();
 		instancesWithSideEffects.clear();
 	}
