@@ -163,7 +163,8 @@ class StreamStateMachine {
 	private static Map<InstanceKey, Collection<IDFAState>> originStreamToMergedTypeStateMap = new HashMap<>();
 
 	/**
-	 * A set of instances whose pipelines contain behavioral parameters that may have side-effects.
+	 * A set of instances whose pipelines contain behavioral parameters that may
+	 * have side-effects.
 	 */
 	private static Set<InstanceKey> instancesWithSideEffects = new HashSet<>();
 
@@ -199,7 +200,7 @@ class StreamStateMachine {
 		engine.buildSafeCallGraph(entryPoints);
 		// TODO: Can I slice the graph so that only nodes relevant to the
 		// instance in question are present?
-		
+
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
 
 		PropertiesManager manager = PropertiesManager.initFromMap(Collections.emptyMap());
@@ -324,8 +325,7 @@ class StreamStateMachine {
 
 									// retrieve the state set for this instance
 									// and block.
-									Set<IDFAState> stateSet = instanceBlockStateTable.get(instanceKey,
-											blockInContext);
+									Set<IDFAState> stateSet = instanceBlockStateTable.get(instanceKey, blockInContext);
 
 									// if it does not yet exist.
 									if (stateSet == null) {
@@ -423,19 +423,21 @@ class StreamStateMachine {
 
 	private void discoverPossibleSideEffects(AggregateSolverResult result) throws IOException, CoreException {
 		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
-		
+
 		// create the ModRef analysis.
 		ModRef<InstanceKey> modRef = ModRef.make();
 
 		// compute modifications over the call graph.
-		// TODO: Should this be cached? Didn't have luck caching the call graph. Perhaps this will be similar.
+		// TODO: Should this be cached? Didn't have luck caching the call graph.
+		// Perhaps this will be similar.
 		Map<CGNode, OrdinalSet<PointerKey>> mod = modRef.computeMod(engine.getCallGraph(), engine.getPointerAnalysis());
 
 		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
 			InstanceKey instance = it.next();
 			CallStringWithReceivers callString = getCallString(instance);
-			
-			// make sure that the stream is the result of an intermediate operation.
+
+			// make sure that the stream is the result of an intermediate
+			// operation.
 			if (!isStreamCreatedFromIntermediateOperation(callString))
 				continue;
 
@@ -447,7 +449,7 @@ class StreamStateMachine {
 			// get it's IR.
 			IMethod targetMethod = engine.getClassHierarchy().resolveMethod(declaredTarget);
 			IR ir = engine.getCache().getIR(targetMethod);
-			
+
 			if (ir == null) {
 				Logger.getGlobal().warning(() -> "Can't find IR for target: " + targetMethod);
 				continue; // next instance.
@@ -457,7 +459,8 @@ class StreamStateMachine {
 			SSAAbstractInvokeInstruction[] calls = ir.getCalls(callSiteRefs[0]);
 			assert calls.length == 1 : "Are we only expecting one call here?";
 
-			// I guess we're only interested in ones with a single behavioral parameter (the first parameter is implicit).
+			// I guess we're only interested in ones with a single behavioral
+			// parameter (the first parameter is implicit).
 			if (calls[0].getNumberOfUses() == 2) {
 				// get the use of the first parameter.
 				int use = calls[0].getUse(1);
@@ -472,40 +475,48 @@ class StreamStateMachine {
 					// take a look at the nodes in the caller.
 					Set<CGNode> nodes = engine.getCallGraph().getNodes(declaredTarget);
 					assert nodes.size() == 1 : "Expecting only one node here for now (context-sensitivity?.";
-					
+
 					// for each caller node.
 					for (CGNode cgNode : nodes) {
 						// for each call site.
-						for (Iterator<CallSiteReference> callSiteIt = cgNode.iterateCallSites(); callSiteIt.hasNext();) {
+						for (Iterator<CallSiteReference> callSiteIt = cgNode.iterateCallSites(); callSiteIt
+								.hasNext();) {
 							CallSiteReference callSiteReference = callSiteIt.next();
-							
-							// if the call site is the as the one in the behavioral parameter definition.
+
+							// if the call site is the as the one in the
+							// behavioral parameter definition.
 							if (callSiteReference.equals(def.getCallSite())) {
-								// look up the possible target nodes of the call site from the caller.
-								Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode, callSiteReference);
+								// look up the possible target nodes of the call
+								// site from the caller.
+								Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode,
+										callSiteReference);
 								Logger.getGlobal().info("# possible targets: " + possibleTargets.size());
-								
+
 								if (!possibleTargets.isEmpty()) {
 									Logger.getGlobal().info("Possible targets:");
 									possibleTargets.forEach(t -> Logger.getGlobal().info(() -> t.toString()));
 								}
-								
+
 								// for each possible target node.
 								for (CGNode target : possibleTargets) {
-									// get the set of pointers (locations) it may modify
+									// get the set of pointers (locations) it
+									// may modify
 									OrdinalSet<PointerKey> modSet = mod.get(target);
 									Logger.getGlobal().info("# modified locations: " + modSet.size());
-									
+
 									// if it's non-empty.
 									if (!modSet.isEmpty()) {
 										Logger.getGlobal().info("Modified locations:");
 										modSet.forEach(pk -> Logger.getGlobal().info(() -> pk.toString()));
-										
-										// mark the instance whose pipeline may have side-effects.
+
+										// mark the instance whose pipeline may
+										// have side-effects.
 										instancesWithSideEffects.add(instance);
 									}
 								}
-								// we found a match between the graph call site and the one in the definition. No need to continue.
+								// we found a match between the graph call site
+								// and the one in the definition. No need to
+								// continue.
 								break;
 							}
 						}
@@ -517,14 +528,15 @@ class StreamStateMachine {
 
 	private boolean isStreamCreatedFromIntermediateOperation(CallStringWithReceivers callString) {
 		Set<InstanceKey> receivers = callString.getPossibleReceivers();
-		
+
 		if (receivers.isEmpty())
 			return false;
-		
+
 		// each receiver must be a stream.
 		return receivers.stream().allMatch(r -> {
 			IClass type = r.getConcreteType();
-			return isBaseStream(type) || type.getAllImplementedInterfaces().stream().anyMatch(StreamStateMachine::isBaseStream);
+			return isBaseStream(type)
+					|| type.getAllImplementedInterfaces().stream().anyMatch(StreamStateMachine::isBaseStream);
 		});
 	}
 
@@ -558,7 +570,7 @@ class StreamStateMachine {
 		// @formatter:off
 		return new StreamAttributeTypestateRule[] {
 				new StreamExecutionModeTypeStateRule(streamClass),
-				new StreamOrderingTypeStateRule(streamClass)};
+				new StreamOrderingTypeStateRule(streamClass) };
 		// @formatter:on
 	}
 
