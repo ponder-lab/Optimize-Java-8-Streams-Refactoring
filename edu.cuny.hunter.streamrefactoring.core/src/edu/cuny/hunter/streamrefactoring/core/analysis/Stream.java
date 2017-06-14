@@ -320,6 +320,8 @@ public class Stream {
 	
 	private boolean hasPossibleSideEffects;
 
+	private boolean hasPossibleStatefulIntermediateOperations;
+
 	private RefactoringStatus status = new RefactoringStatus();
 
 	public Stream(MethodInvocation streamCreation)
@@ -670,5 +672,13 @@ public class Stream {
 
 	protected void setHasPossibleSideEffects(boolean hasPossibleSideEffects) {
 		this.hasPossibleSideEffects = hasPossibleSideEffects;
+	}
+
+	public boolean hasPossibleStatefulIntermediateOperations() {
+		return hasPossibleStatefulIntermediateOperations;
+	}
+
+	protected void setHasPossibleStatefulIntermediateOperations(boolean hasPossibleStatefulIntermediateOperations) {
+		this.hasPossibleStatefulIntermediateOperations = hasPossibleStatefulIntermediateOperations;
 	}
 }

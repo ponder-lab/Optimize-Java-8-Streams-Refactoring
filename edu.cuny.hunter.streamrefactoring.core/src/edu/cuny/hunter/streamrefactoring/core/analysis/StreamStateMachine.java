@@ -10,8 +10,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -74,6 +76,29 @@ import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 class StreamStateMachine {
+
+	/**
+	 * A list of stateful intermediate operation signatures.
+	 */
+	// @formatter:off
+	private static final String[] STATEFUL_INTERMEDIATE_OPERATIONS = { 
+			"java.util.stream.Stream.distinct",
+			"java.util.stream.Stream.sorted", 
+			"java.util.stream.Stream.limit", 
+			"java.util.stream.Stream.skip",
+			"java.util.stream.DoubleStream.distinct", 
+			"java.util.stream.DoubleStream.sorted",
+			"java.util.stream.DoubleStream.limit", 
+			"java.util.stream.DoubleStream.skip",
+			"java.util.stream.IntStream.distinct", 
+			"java.util.stream.IntStream.sorted",
+			"java.util.stream.IntStream.limit", 
+			"java.util.stream.IntStream.skip",
+			"java.util.stream.LongStream.distinct", 
+			"java.util.stream.LongStream.sorted",
+			"java.util.stream.LongStream.limit", 
+			"java.util.stream.LongStream.skip" };
+	// @formatter:on
 
 	/**
 	 * A list of supported terminal operation signatures.
@@ -168,6 +193,11 @@ class StreamStateMachine {
 	 * have side-effects.
 	 */
 	private static Set<InstanceKey> instancesWithSideEffects = new HashSet<>();
+
+	/**
+	 * Instances whose pipelines may contain stateful intermediate operations.
+	 */
+	private static Map<InstanceKey, Boolean> instanceToStatefulIntermediateOperationContainment = new HashMap<>();
 
 	/**
 	 * The stream that this state machine represents.
@@ -357,6 +387,10 @@ class StreamStateMachine {
 			// fill the instance side-effect set.
 			discoverPossibleSideEffects(result, terminalBlockToPossibleReceivers);
 
+			// discover whether any stateful intermediate operations are
+			// present.
+			discoverPossibleStatefulIntermediateOperations(result);
+
 			// fill the instance to predecessors map.
 			for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
 				InstanceKey instance = it.next();
@@ -392,17 +426,32 @@ class StreamStateMachine {
 			rule.addPossibleAttributes(this.getStream(), states);
 		}
 
+		InstanceKey streamInstanceKey = this.getStream().getInstanceKey(instanceToPredecessorsMap.keySet(),
+				engine.getCallGraph());
+
 		// propagate the instances with side-effects.
 		instancesWithSideEffects.addAll(instancesWithSideEffects.stream().flatMap(ik -> getAllPredecessors(ik).stream())
 				.collect(Collectors.toSet()));
 
+		// propagate the instances with stateful intermediate operations.
+		instanceToStatefulIntermediateOperationContainment
+				.putAll(instanceToStatefulIntermediateOperationContainment.entrySet().stream().filter(Entry::getValue)
+						.map(Entry::getKey).flatMap(ik -> getAllPredecessors(ik).stream())
+						.collect(Collectors.toMap(Function.identity(), v -> true)));
+
 		// determine if this stream has possible side-effects.
-		this.getStream().setHasPossibleSideEffects(instancesWithSideEffects
-				.contains(this.getStream().getInstanceKey(instanceToPredecessorsMap.keySet(), engine.getCallGraph())));
+		this.getStream().setHasPossibleSideEffects(instancesWithSideEffects.contains(streamInstanceKey));
+
+		// determine if this stream has possible stateful intermediate
+		// operations.
+		this.getStream().setHasPossibleStatefulIntermediateOperations(
+				instanceToStatefulIntermediateOperationContainment.getOrDefault(streamInstanceKey, false));
 
 		System.out.println("Execution modes: " + this.getStream().getPossibleExecutionModes());
 		System.out.println("Orderings: " + this.getStream().getPossibleOrderings());
 		System.out.println("Side-effects: " + this.getStream().hasPossibleSideEffects());
+		System.out.println(
+				"Stateful intermediate operations: " + this.getStream().hasPossibleStatefulIntermediateOperations());
 	}
 
 	private static Set<InstanceKey> getAllPredecessors(InstanceKey instanceKey) {
@@ -420,6 +469,29 @@ class StreamStateMachine {
 			return ret;
 		} else
 			return instanceToAllPredecessorsMap.get(instanceKey);
+	}
+
+	private static void discoverPossibleStatefulIntermediateOperations(AggregateSolverResult result)
+			throws IOException, CoreException {
+		// for each instance in the analysis result (these should be the
+		// "intermediate" streams).
+		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
+			InstanceKey instance = it.next();
+
+			if (!instanceToStatefulIntermediateOperationContainment.containsKey(instance)) {
+				CallStringWithReceivers callString = getCallString(instance);
+
+				// make sure that the stream is the result of an intermediate
+				// operation.
+				if (!isStreamCreatedFromIntermediateOperation(callString))
+					continue;
+
+				NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
+				MethodReference reference = allocationInNode.getNode().getMethod().getReference();
+				boolean statefulIntermediateOperation = isStatefulIntermediateOperation(reference);
+				instanceToStatefulIntermediateOperationContainment.put(instance, statefulIntermediateOperation);
+			}
+		}
 	}
 
 	private void discoverPossibleSideEffects(AggregateSolverResult result,
@@ -571,7 +643,7 @@ class StreamStateMachine {
 		}
 	}
 
-	private boolean isStreamCreatedFromIntermediateOperation(CallStringWithReceivers callString) {
+	private static boolean isStreamCreatedFromIntermediateOperation(CallStringWithReceivers callString) {
 		Set<InstanceKey> receivers = callString.getPossibleReceivers();
 
 		if (receivers.isEmpty())
@@ -730,6 +802,11 @@ class StreamStateMachine {
 		return Arrays.stream(TERMINAL_OPERATIONS).anyMatch(to -> signature.startsWith(to));
 	}
 
+	private static boolean isStatefulIntermediateOperation(MethodReference method) {
+		String signature = method.getSignature();
+		return Arrays.stream(STATEFUL_INTERMEDIATE_OPERATIONS).anyMatch(signature::startsWith);
+	}
+
 	protected Stream getStream() {
 		return stream;
 	}
@@ -740,5 +817,6 @@ class StreamStateMachine {
 		instanceToAllPredecessorsMap.clear();
 		originStreamToMergedTypeStateMap.clear();
 		instancesWithSideEffects.clear();
+		instanceToStatefulIntermediateOperationContainment.clear();
 	}
 }
