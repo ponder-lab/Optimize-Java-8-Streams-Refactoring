@@ -12,6 +12,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.CoreException;
@@ -37,6 +38,7 @@ import com.ibm.safe.typestate.core.TypeStateResult;
 import com.ibm.safe.typestate.options.TypeStateOptions;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
@@ -47,9 +49,14 @@ import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
+import com.ibm.wala.ipa.modref.ModRef;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
+import com.ibm.wala.ssa.DefUse;
+import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.ISSABasicBlock;
+import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSAPhiInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.MethodReference;
@@ -59,6 +66,7 @@ import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.OrdinalSet;
+import com.ibm.wala.util.strings.Atom;
 
 import edu.cuny.hunter.streamrefactoring.core.safe.ModifiedBenignOracle;
 import edu.cuny.hunter.streamrefactoring.core.safe.TypestateSolverFactory;
@@ -134,7 +142,7 @@ class StreamStateMachine {
 			"java.util.stream.Stream.noneMatch",
 			"java.util.stream.Stream.findFirst",
 			"java.util.stream.Stream.findAny"};
-	// @formatter:off
+	// @formatter:on
 
 	/**
 	 * A table mapping an instance and a block to the instance's possible states
@@ -143,9 +151,23 @@ class StreamStateMachine {
 	private static Table<InstanceKey, BasicBlockInContext<IExplodedBasicBlock>, Set<IDFAState>> instanceBlockStateTable = HashBasedTable
 			.create();
 
-	private static Map<InstanceKey, Set<InstanceKey>> instanceToPredecessorMap = new HashMap<>();
+	/**
+	 * A stream's immediate predecessor.
+	 */
+	private static Map<InstanceKey, Set<InstanceKey>> instanceToPredecessorsMap = new HashMap<>();
+
+	/**
+	 * All of the stream's predecessors.
+	 */
+	private static Map<InstanceKey, Set<InstanceKey>> instanceToAllPredecessorsMap = new HashMap<>();
 
 	private static Map<InstanceKey, Collection<IDFAState>> originStreamToMergedTypeStateMap = new HashMap<>();
+
+	/**
+	 * A set of instances whose pipelines contain behavioral parameters that may
+	 * have side-effects.
+	 */
+	private static Set<InstanceKey> instancesWithSideEffects = new HashSet<>();
 
 	/**
 	 * The stream that this state machine represents.
@@ -240,11 +262,13 @@ class StreamStateMachine {
 						if (isTerminalOperation(calledMethod)) {
 							// get the basic block for the call.
 							ISSABasicBlock[] blocksForCall = cgNode.getIR().getBasicBlocksForCall(callSiteReference);
+
 							assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
 									+ callSiteReference;
 
 							for (int i = 0; i < blocksForCall.length; i++) {
 								ISSABasicBlock block = blocksForCall[i];
+
 								BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
 										block, cgNode, supergraph)
 												.orElseThrow(() -> new IllegalStateException(
@@ -302,8 +326,7 @@ class StreamStateMachine {
 
 									// retrieve the state set for this instance
 									// and block.
-									Set<IDFAState> stateSet = instanceBlockStateTable.get(instanceKey,
-											blockInContext);
+									Set<IDFAState> stateSet = instanceBlockStateTable.get(instanceKey, blockInContext);
 
 									// if it does not yet exist.
 									if (stateSet == null) {
@@ -331,15 +354,15 @@ class StreamStateMachine {
 				}
 			}
 
-			// fill the instance to predecessor map.
+			// fill the instance side-effect set.
+			discoverPossibleSideEffects(result, terminalBlockToPossibleReceivers);
+
+			// fill the instance to predecessors map.
 			for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
 				InstanceKey instance = it.next();
-				NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
-				CGNode node = allocationInNode.getNode();
-				CallStringContext context = (CallStringContext) node.getContext();
-				CallStringWithReceivers callString = (CallStringWithReceivers) context
-						.get(CallStringContextSelector.CALL_STRING);
-				instanceToPredecessorMap.merge(instance, callString.getPossibleReceivers(), (x, y) -> {
+				CallStringWithReceivers callString = getCallString(instance);
+
+				instanceToPredecessorsMap.merge(instance, callString.getPossibleReceivers(), (x, y) -> {
 					x.addAll(y);
 					return x;
 				});
@@ -360,8 +383,8 @@ class StreamStateMachine {
 				}
 			}
 
-			InstanceKey streamInQuestionInstanceKey = this.getStream().getInstanceKey(instanceToPredecessorMap.keySet(),
-					engine.getCallGraph());
+			InstanceKey streamInQuestionInstanceKey = this.getStream()
+					.getInstanceKey(instanceToPredecessorsMap.keySet(), engine.getCallGraph());
 			Collection<IDFAState> states = originStreamToMergedTypeStateMap.get(streamInQuestionInstanceKey);
 			// Map IDFAState to StreamExecutionMode, etc., and add them to the
 			// possible stream states but only if they're not bottom (for those,
@@ -369,8 +392,219 @@ class StreamStateMachine {
 			rule.addPossibleAttributes(this.getStream(), states);
 		}
 
+		// propagate the instances with side-effects.
+		instancesWithSideEffects.addAll(instancesWithSideEffects.stream().flatMap(ik -> getAllPredecessors(ik).stream())
+				.collect(Collectors.toSet()));
+
+		// determine if this stream has possible side-effects.
+		this.getStream().setHasPossibleSideEffects(instancesWithSideEffects
+				.contains(this.getStream().getInstanceKey(instanceToPredecessorsMap.keySet(), engine.getCallGraph())));
+
 		System.out.println("Execution modes: " + this.getStream().getPossibleExecutionModes());
 		System.out.println("Orderings: " + this.getStream().getPossibleOrderings());
+		System.out.println("Side-effects: " + this.getStream().hasPossibleSideEffects());
+	}
+
+	private static Set<InstanceKey> getAllPredecessors(InstanceKey instanceKey) {
+		if (!instanceToAllPredecessorsMap.containsKey(instanceKey)) {
+			Set<InstanceKey> ret = new HashSet<>();
+
+			// add the instance's predecessors.
+			ret.addAll(instanceToPredecessorsMap.get(instanceKey));
+
+			// add their predecessors.
+			ret.addAll(instanceToPredecessorsMap.get(instanceKey).stream()
+					.flatMap(ik -> getAllPredecessors(ik).stream()).collect(Collectors.toSet()));
+
+			instanceToAllPredecessorsMap.put(instanceKey, ret);
+			return ret;
+		} else
+			return instanceToAllPredecessorsMap.get(instanceKey);
+	}
+
+	private void discoverPossibleSideEffects(AggregateSolverResult result,
+			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers)
+			throws IOException, CoreException {
+		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
+
+		// create the ModRef analysis.
+		ModRef<InstanceKey> modRef = ModRef.make();
+
+		// compute modifications over the call graph.
+		// TODO: Should this be cached? Didn't have luck caching the call graph.
+		// Perhaps this will be similar.
+		Map<CGNode, OrdinalSet<PointerKey>> mod = modRef.computeMod(engine.getCallGraph(), engine.getPointerAnalysis());
+
+		// for each terminal operation call, I think?
+		for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
+			int processedInstructions = 0;
+			for (Iterator<SSAInstruction> it = block.iterator(); it.hasNext();) {
+				SSAInstruction instruction = it.next();
+
+				// if it's a phi instruction.
+				if (instruction instanceof SSAPhiInstruction)
+					continue;
+
+				// number of uses should be 2 for a single explicit param.
+				int numberOfUses = instruction.getNumberOfUses();
+
+				if (numberOfUses > 1) {
+					// we have a param. Make sure it's no more than one.
+					assert numberOfUses == 2 : "Can't handle case where number of uses is: " + numberOfUses;
+
+					// get the first explicit parameter use.
+					int paramUse = instruction.getUse(1);
+					IR ir = engine.getCache().getIR(block.getMethod());
+
+					// expecting an invoke instruction here.
+					assert instruction instanceof SSAInvokeInstruction : "Expecting invoke instruction.";
+
+					// get a reference to the calling method.
+					MethodReference declaredTarget = block.getMethod().getReference();
+
+					discoverSideEffectsOfLambda(engine, mod, terminalBlockToPossibleReceivers.get(block),
+							declaredTarget, ir, paramUse);
+				}
+				++processedInstructions;
+			}
+
+			assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
+		}
+
+		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
+			InstanceKey instance = it.next();
+			CallStringWithReceivers callString = getCallString(instance);
+
+			// make sure that the stream is the result of an intermediate
+			// operation.
+			if (!isStreamCreatedFromIntermediateOperation(callString))
+				continue;
+
+			CallSiteReference[] callSiteRefs = callString.getCallSiteRefs();
+			assert callSiteRefs.length == 2 : "Expecting call sites two-deep.";
+
+			// get the target of the caller.
+			MethodReference declaredTarget = callSiteRefs[1].getDeclaredTarget();
+			// get it's IR.
+			IMethod targetMethod = engine.getClassHierarchy().resolveMethod(declaredTarget);
+			IR ir = engine.getCache().getIR(targetMethod);
+
+			if (ir == null) {
+				Logger.getGlobal().warning(() -> "Can't find IR for target: " + targetMethod);
+				continue; // next instance.
+			}
+
+			// get calls to the target.
+			SSAAbstractInvokeInstruction[] calls = ir.getCalls(callSiteRefs[0]);
+			assert calls.length == 1 : "Are we only expecting one call here?";
+
+			// I guess we're only interested in ones with a single behavioral
+			// parameter (the first parameter is implicit).
+			if (calls[0].getNumberOfUses() == 2) {
+				// get the use of the first parameter.
+				int use = calls[0].getUse(1);
+				discoverSideEffectsOfLambda(engine, mod, Collections.singleton(instance), declaredTarget, ir, use);
+			}
+		}
+	}
+
+	private static void discoverSideEffectsOfLambda(EclipseProjectAnalysisEngine<InstanceKey> engine,
+			Map<CGNode, OrdinalSet<PointerKey>> mod, Iterable<InstanceKey> instances,
+			MethodReference declaredTargetOfCaller, IR ir, int use) {
+		// look up it's definition.
+		DefUse defUse = engine.getCache().getDefUse(ir);
+		// it should be a call.
+		SSAAbstractInvokeInstruction def = (SSAAbstractInvokeInstruction) defUse.getDef(use);
+
+		// if we found it.
+		if (def != null) {
+			// take a look at the nodes in the caller.
+			Set<CGNode> nodes = engine.getCallGraph().getNodes(declaredTargetOfCaller);
+			assert nodes.size() == 1 : "Expecting only one node here for now (context-sensitivity?). Was: "
+					+ nodes.size();
+
+			// for each caller node.
+			for (CGNode cgNode : nodes) {
+				// for each call site.
+				for (Iterator<CallSiteReference> callSiteIt = cgNode.iterateCallSites(); callSiteIt.hasNext();) {
+					CallSiteReference callSiteReference = callSiteIt.next();
+
+					// if the call site is the as the one in the
+					// behavioral parameter definition.
+					if (callSiteReference.equals(def.getCallSite())) {
+						// look up the possible target nodes of the call
+						// site from the caller.
+						Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode,
+								callSiteReference);
+						Logger.getGlobal().info("# possible targets: " + possibleTargets.size());
+
+						if (!possibleTargets.isEmpty()) {
+							Logger.getGlobal().info("Possible targets:");
+							possibleTargets.forEach(t -> Logger.getGlobal().info(() -> t.toString()));
+						}
+
+						// for each possible target node.
+						for (CGNode target : possibleTargets) {
+							// get the set of pointers (locations) it
+							// may modify
+							OrdinalSet<PointerKey> modSet = mod.get(target);
+							Logger.getGlobal().info("# modified locations: " + modSet.size());
+
+							// if it's non-empty.
+							if (!modSet.isEmpty()) {
+								Logger.getGlobal().info("Modified locations:");
+								modSet.forEach(pk -> Logger.getGlobal().info(() -> pk.toString()));
+
+								// mark the instances whose pipeline may
+								// have side-effects.
+								instances.forEach(instancesWithSideEffects::add);
+							}
+						}
+						// we found a match between the graph call site
+						// and the one in the definition. No need to
+						// continue.
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	private boolean isStreamCreatedFromIntermediateOperation(CallStringWithReceivers callString) {
+		Set<InstanceKey> receivers = callString.getPossibleReceivers();
+
+		if (receivers.isEmpty())
+			return false;
+
+		// each receiver must be a stream.
+		return receivers.stream().allMatch(r -> {
+			IClass type = r.getConcreteType();
+			return isBaseStream(type)
+					|| type.getAllImplementedInterfaces().stream().anyMatch(StreamStateMachine::isBaseStream);
+		});
+	}
+
+	private static boolean isBaseStream(IClass type) {
+		if (type.isInterface()) {
+			Atom typePackage = type.getName().getPackage();
+			Atom streamPackage = Atom.findOrCreateUnicodeAtom("java/util/stream");
+			if (typePackage.equals(streamPackage)) {
+				Atom className = type.getName().getClassName();
+				Atom baseStream = Atom.findOrCreateUnicodeAtom("BaseStream");
+				if (className.equals(baseStream))
+					return true;
+			}
+		}
+		return false;
+	}
+
+	private static CallStringWithReceivers getCallString(InstanceKey instance) {
+		NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
+		CGNode node = allocationInNode.getNode();
+		CallStringContext context = (CallStringContext) node.getContext();
+		CallStringWithReceivers callString = (CallStringWithReceivers) context
+				.get(CallStringContextSelector.CALL_STRING);
+		return callString;
 	}
 
 	/**
@@ -380,7 +614,7 @@ class StreamStateMachine {
 		// @formatter:off
 		return new StreamAttributeTypestateRule[] {
 				new StreamExecutionModeTypeStateRule(streamClass),
-				new StreamOrderingTypeStateRule(streamClass)};
+				new StreamOrderingTypeStateRule(streamClass) };
 		// @formatter:on
 	}
 
@@ -434,7 +668,7 @@ class StreamStateMachine {
 			return Collections.emptySet();
 
 		// otherwise, retrieve the predecessors of the instance.
-		Set<InstanceKey> predecessors = instanceToPredecessorMap.get(instanceKey);
+		Set<InstanceKey> predecessors = instanceToPredecessorsMap.get(instanceKey);
 
 		// if there are no predecessors for this instance.
 		if (predecessors.isEmpty())
@@ -451,7 +685,7 @@ class StreamStateMachine {
 
 	private static Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
 			BasicBlockInContext<IExplodedBasicBlock> block, StreamAttributeTypestateRule rule) {
-		Set<InstanceKey> predecessors = instanceToPredecessorMap.get(instanceKey);
+		Set<InstanceKey> predecessors = instanceToPredecessorsMap.get(instanceKey);
 		Set<IDFAState> possibleInstanceStates = instanceBlockStateTable.get(instanceKey, block);
 
 		if (predecessors.isEmpty())
@@ -501,7 +735,9 @@ class StreamStateMachine {
 
 	public static void clearCaches() {
 		instanceBlockStateTable.clear();
-		instanceToPredecessorMap.clear();
+		instanceToPredecessorsMap.clear();
+		instanceToAllPredecessorsMap.clear();
 		originStreamToMergedTypeStateMap.clear();
+		instancesWithSideEffects.clear();
 	}
 }

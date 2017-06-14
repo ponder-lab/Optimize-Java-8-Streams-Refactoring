@@ -158,7 +158,7 @@ public class Stream {
 		Value value = inference.getIR().getSymbolTable().getValue(valueNumber);
 
 		// TODO: Should really be using a pointer analysis here rather than
-		// reimplementing one using PhiValue.
+		// re-implementing one using PhiValue.
 		if (value instanceof PhiValue) {
 			// multiple possible types.
 			PhiValue phiValue = (PhiValue) value;
@@ -317,6 +317,8 @@ public class Stream {
 	 * terimal operation.
 	 */
 	private Set<StreamOrdering> possibleOrderings = new HashSet<>();
+	
+	private boolean hasPossibleSideEffects;
 
 	private RefactoringStatus status = new RefactoringStatus();
 
@@ -654,5 +656,19 @@ public class Stream {
 
 	protected void setInitialOrdering(StreamOrdering initialOrdering) {
 		this.initialOrdering = initialOrdering;
+	}
+
+	/**
+	 * Returns true iff any behavioral parameters (λ-expressions) associated with any operations in the stream’s pipeline has side-effects on any possible path.
+	 * TODO: What if one path has side-effects and the other doesn't?  
+	 * @return true iff any behavioral parameters (λ-expressions) associated with any operations in the stream’s pipeline has side-effects on any possible path.
+	 */
+	public boolean hasPossibleSideEffects() {
+		return hasPossibleSideEffects;
+	}
+
+
+	protected void setHasPossibleSideEffects(boolean hasPossibleSideEffects) {
+		this.hasPossibleSideEffects = hasPossibleSideEffects;
 	}
 }
