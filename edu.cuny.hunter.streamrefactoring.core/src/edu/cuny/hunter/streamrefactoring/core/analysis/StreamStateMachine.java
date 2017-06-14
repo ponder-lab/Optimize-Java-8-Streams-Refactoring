@@ -56,6 +56,7 @@ import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSAPhiInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.MethodReference;
@@ -354,7 +355,7 @@ class StreamStateMachine {
 			}
 
 			// fill the instance side-effect set.
-			discoverPossibleSideEffects(result);
+			discoverPossibleSideEffects(result, terminalBlockToPossibleReceivers);
 
 			// fill the instance to predecessors map.
 			for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
@@ -396,8 +397,8 @@ class StreamStateMachine {
 				.collect(Collectors.toSet()));
 
 		// determine if this stream has possible side-effects.
-		this.getStream().setHasPossibleSideEffects((instancesWithSideEffects
-				.contains(this.getStream().getInstanceKey(instanceToPredecessorsMap.keySet(), engine.getCallGraph()))));
+		this.getStream().setHasPossibleSideEffects(instancesWithSideEffects
+				.contains(this.getStream().getInstanceKey(instanceToPredecessorsMap.keySet(), engine.getCallGraph())));
 
 		System.out.println("Execution modes: " + this.getStream().getPossibleExecutionModes());
 		System.out.println("Orderings: " + this.getStream().getPossibleOrderings());
@@ -421,7 +422,9 @@ class StreamStateMachine {
 			return instanceToAllPredecessorsMap.get(instanceKey);
 	}
 
-	private void discoverPossibleSideEffects(AggregateSolverResult result) throws IOException, CoreException {
+	private void discoverPossibleSideEffects(AggregateSolverResult result,
+			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers)
+			throws IOException, CoreException {
 		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
 
 		// create the ModRef analysis.
@@ -431,6 +434,42 @@ class StreamStateMachine {
 		// TODO: Should this be cached? Didn't have luck caching the call graph.
 		// Perhaps this will be similar.
 		Map<CGNode, OrdinalSet<PointerKey>> mod = modRef.computeMod(engine.getCallGraph(), engine.getPointerAnalysis());
+
+		// for each terminal operation call, I think?
+		for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
+			int processedInstructions = 0;
+			for (Iterator<SSAInstruction> it = block.iterator(); it.hasNext();) {
+				SSAInstruction instruction = it.next();
+
+				// if it's a phi instruction.
+				if (instruction instanceof SSAPhiInstruction)
+					continue;
+
+				// number of uses should be 2 for a single explicit param.
+				int numberOfUses = instruction.getNumberOfUses();
+
+				if (numberOfUses > 1) {
+					// we have a param. Make sure it's no more than one.
+					assert numberOfUses == 2 : "Can't handle case where number of uses is: " + numberOfUses;
+
+					// get the first explicit parameter use.
+					int paramUse = instruction.getUse(1);
+					IR ir = engine.getCache().getIR(block.getMethod());
+
+					// expecting an invoke instruction here.
+					assert instruction instanceof SSAInvokeInstruction : "Expecting invoke instruction.";
+
+					// get a reference to the calling method.
+					MethodReference declaredTarget = block.getMethod().getReference();
+
+					discoverSideEffectsOfLambda(engine, mod, terminalBlockToPossibleReceivers.get(block),
+							declaredTarget, ir, paramUse);
+				}
+				++processedInstructions;
+			}
+
+			assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
+		}
 
 		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
 			InstanceKey instance = it.next();
@@ -464,62 +503,67 @@ class StreamStateMachine {
 			if (calls[0].getNumberOfUses() == 2) {
 				// get the use of the first parameter.
 				int use = calls[0].getUse(1);
+				discoverSideEffectsOfLambda(engine, mod, Collections.singleton(instance), declaredTarget, ir, use);
+			}
+		}
+	}
 
-				// look up it's definition.
-				DefUse defUse = engine.getCache().getDefUse(ir);
-				// it should be a call.
-				SSAAbstractInvokeInstruction def = (SSAAbstractInvokeInstruction) defUse.getDef(use);
+	private static void discoverSideEffectsOfLambda(EclipseProjectAnalysisEngine<InstanceKey> engine,
+			Map<CGNode, OrdinalSet<PointerKey>> mod, Iterable<InstanceKey> instances,
+			MethodReference declaredTargetOfCaller, IR ir, int use) {
+		// look up it's definition.
+		DefUse defUse = engine.getCache().getDefUse(ir);
+		// it should be a call.
+		SSAAbstractInvokeInstruction def = (SSAAbstractInvokeInstruction) defUse.getDef(use);
 
-				// if we found it.
-				if (def != null) {
-					// take a look at the nodes in the caller.
-					Set<CGNode> nodes = engine.getCallGraph().getNodes(declaredTarget);
-					assert nodes.size() == 1 : "Expecting only one node here for now (context-sensitivity?.";
+		// if we found it.
+		if (def != null) {
+			// take a look at the nodes in the caller.
+			Set<CGNode> nodes = engine.getCallGraph().getNodes(declaredTargetOfCaller);
+			assert nodes.size() == 1 : "Expecting only one node here for now (context-sensitivity?). Was: "
+					+ nodes.size();
 
-					// for each caller node.
-					for (CGNode cgNode : nodes) {
-						// for each call site.
-						for (Iterator<CallSiteReference> callSiteIt = cgNode.iterateCallSites(); callSiteIt
-								.hasNext();) {
-							CallSiteReference callSiteReference = callSiteIt.next();
+			// for each caller node.
+			for (CGNode cgNode : nodes) {
+				// for each call site.
+				for (Iterator<CallSiteReference> callSiteIt = cgNode.iterateCallSites(); callSiteIt.hasNext();) {
+					CallSiteReference callSiteReference = callSiteIt.next();
 
-							// if the call site is the as the one in the
-							// behavioral parameter definition.
-							if (callSiteReference.equals(def.getCallSite())) {
-								// look up the possible target nodes of the call
-								// site from the caller.
-								Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode,
-										callSiteReference);
-								Logger.getGlobal().info("# possible targets: " + possibleTargets.size());
+					// if the call site is the as the one in the
+					// behavioral parameter definition.
+					if (callSiteReference.equals(def.getCallSite())) {
+						// look up the possible target nodes of the call
+						// site from the caller.
+						Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode,
+								callSiteReference);
+						Logger.getGlobal().info("# possible targets: " + possibleTargets.size());
 
-								if (!possibleTargets.isEmpty()) {
-									Logger.getGlobal().info("Possible targets:");
-									possibleTargets.forEach(t -> Logger.getGlobal().info(() -> t.toString()));
-								}
+						if (!possibleTargets.isEmpty()) {
+							Logger.getGlobal().info("Possible targets:");
+							possibleTargets.forEach(t -> Logger.getGlobal().info(() -> t.toString()));
+						}
 
-								// for each possible target node.
-								for (CGNode target : possibleTargets) {
-									// get the set of pointers (locations) it
-									// may modify
-									OrdinalSet<PointerKey> modSet = mod.get(target);
-									Logger.getGlobal().info("# modified locations: " + modSet.size());
+						// for each possible target node.
+						for (CGNode target : possibleTargets) {
+							// get the set of pointers (locations) it
+							// may modify
+							OrdinalSet<PointerKey> modSet = mod.get(target);
+							Logger.getGlobal().info("# modified locations: " + modSet.size());
 
-									// if it's non-empty.
-									if (!modSet.isEmpty()) {
-										Logger.getGlobal().info("Modified locations:");
-										modSet.forEach(pk -> Logger.getGlobal().info(() -> pk.toString()));
+							// if it's non-empty.
+							if (!modSet.isEmpty()) {
+								Logger.getGlobal().info("Modified locations:");
+								modSet.forEach(pk -> Logger.getGlobal().info(() -> pk.toString()));
 
-										// mark the instance whose pipeline may
-										// have side-effects.
-										instancesWithSideEffects.add(instance);
-									}
-								}
-								// we found a match between the graph call site
-								// and the one in the definition. No need to
-								// continue.
-								break;
+								// mark the instances whose pipeline may
+								// have side-effects.
+								instances.forEach(instancesWithSideEffects::add);
 							}
 						}
+						// we found a match between the graph call site
+						// and the one in the definition. No need to
+						// continue.
+						break;
 					}
 				}
 			}
