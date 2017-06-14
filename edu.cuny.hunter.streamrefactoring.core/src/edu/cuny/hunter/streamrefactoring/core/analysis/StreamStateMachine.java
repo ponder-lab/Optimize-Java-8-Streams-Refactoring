@@ -534,8 +534,8 @@ class StreamStateMachine {
 					// get a reference to the calling method.
 					MethodReference declaredTarget = block.getMethod().getReference();
 
-					discoverLambdaSideEffects(engine, mod, terminalBlockToPossibleReceivers.get(block),
-							declaredTarget, ir, paramUse);
+					discoverLambdaSideEffects(engine, mod, terminalBlockToPossibleReceivers.get(block), declaredTarget,
+							ir, paramUse);
 				}
 				++processedInstructions;
 			}
@@ -543,7 +543,8 @@ class StreamStateMachine {
 			assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
 		}
 
-		// for each instance in the analysis result (these should be the "intermediate" streams).
+		// for each instance in the analysis result (these should be the
+		// "intermediate" streams).
 		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
 			InstanceKey instance = it.next();
 			CallStringWithReceivers callString = getCallString(instance);

@@ -317,7 +317,7 @@ public class Stream {
 	 * terimal operation.
 	 */
 	private Set<StreamOrdering> possibleOrderings = new HashSet<>();
-	
+
 	private boolean hasPossibleSideEffects;
 
 	private boolean hasPossibleStatefulIntermediateOperations;
@@ -661,14 +661,18 @@ public class Stream {
 	}
 
 	/**
-	 * Returns true iff any behavioral parameters (λ-expressions) associated with any operations in the stream’s pipeline has side-effects on any possible path.
-	 * TODO: What if one path has side-effects and the other doesn't?  
-	 * @return true iff any behavioral parameters (λ-expressions) associated with any operations in the stream’s pipeline has side-effects on any possible path.
+	 * Returns true iff any behavioral parameters (λ-expressions) associated
+	 * with any operations in the stream’s pipeline has side-effects on any
+	 * possible path. TODO: What if one path has side-effects and the other
+	 * doesn't?
+	 * 
+	 * @return true iff any behavioral parameters (λ-expressions) associated
+	 *         with any operations in the stream’s pipeline has side-effects on
+	 *         any possible path.
 	 */
 	public boolean hasPossibleSideEffects() {
 		return hasPossibleSideEffects;
 	}
-
 
 	protected void setHasPossibleSideEffects(boolean hasPossibleSideEffects) {
 		this.hasPossibleSideEffects = hasPossibleSideEffects;
