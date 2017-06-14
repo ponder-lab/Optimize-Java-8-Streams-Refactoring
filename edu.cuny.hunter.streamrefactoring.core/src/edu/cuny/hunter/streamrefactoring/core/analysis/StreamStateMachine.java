@@ -462,7 +462,7 @@ class StreamStateMachine {
 					// get a reference to the calling method.
 					MethodReference declaredTarget = block.getMethod().getReference();
 
-					discoverSideEffectsOfLambda(engine, mod, terminalBlockToPossibleReceivers.get(block),
+					discoverLambdaSideEffects(engine, mod, terminalBlockToPossibleReceivers.get(block),
 							declaredTarget, ir, paramUse);
 				}
 				++processedInstructions;
@@ -471,6 +471,7 @@ class StreamStateMachine {
 			assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
 		}
 
+		// for each instance in the analysis result (these should be the "intermediate" streams).
 		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
 			InstanceKey instance = it.next();
 			CallStringWithReceivers callString = getCallString(instance);
@@ -484,17 +485,17 @@ class StreamStateMachine {
 			assert callSiteRefs.length == 2 : "Expecting call sites two-deep.";
 
 			// get the target of the caller.
-			MethodReference declaredTarget = callSiteRefs[1].getDeclaredTarget();
+			MethodReference callerDeclaredTarget = callSiteRefs[1].getDeclaredTarget();
 			// get it's IR.
-			IMethod targetMethod = engine.getClassHierarchy().resolveMethod(declaredTarget);
-			IR ir = engine.getCache().getIR(targetMethod);
+			IMethod callerTargetMethod = engine.getClassHierarchy().resolveMethod(callerDeclaredTarget);
+			IR ir = engine.getCache().getIR(callerTargetMethod);
 
 			if (ir == null) {
-				Logger.getGlobal().warning(() -> "Can't find IR for target: " + targetMethod);
+				Logger.getGlobal().warning(() -> "Can't find IR for target: " + callerTargetMethod);
 				continue; // next instance.
 			}
 
-			// get calls to the target.
+			// get calls to the caller target.
 			SSAAbstractInvokeInstruction[] calls = ir.getCalls(callSiteRefs[0]);
 			assert calls.length == 1 : "Are we only expecting one call here?";
 
@@ -503,12 +504,12 @@ class StreamStateMachine {
 			if (calls[0].getNumberOfUses() == 2) {
 				// get the use of the first parameter.
 				int use = calls[0].getUse(1);
-				discoverSideEffectsOfLambda(engine, mod, Collections.singleton(instance), declaredTarget, ir, use);
+				discoverLambdaSideEffects(engine, mod, Collections.singleton(instance), callerDeclaredTarget, ir, use);
 			}
 		}
 	}
 
-	private static void discoverSideEffectsOfLambda(EclipseProjectAnalysisEngine<InstanceKey> engine,
+	private static void discoverLambdaSideEffects(EclipseProjectAnalysisEngine<InstanceKey> engine,
 			Map<CGNode, OrdinalSet<PointerKey>> mod, Iterable<InstanceKey> instances,
 			MethodReference declaredTargetOfCaller, IR ir, int use) {
 		// look up it's definition.
