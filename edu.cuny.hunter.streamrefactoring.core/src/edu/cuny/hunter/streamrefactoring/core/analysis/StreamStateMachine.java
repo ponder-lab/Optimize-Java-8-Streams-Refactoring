@@ -798,9 +798,9 @@ class StreamStateMachine {
 			return state1;
 	}
 
-	private static boolean isTerminalOperation(MethodReference calledMethod) {
-		String signature = calledMethod.getSignature();
-		return Arrays.stream(TERMINAL_OPERATIONS).anyMatch(to -> signature.startsWith(to));
+	private static boolean isTerminalOperation(MethodReference method) {
+		String signature = method.getSignature();
+		return Arrays.stream(TERMINAL_OPERATIONS).anyMatch(signature::startsWith);
 	}
 
 	private static boolean isStatefulIntermediateOperation(MethodReference method) {
