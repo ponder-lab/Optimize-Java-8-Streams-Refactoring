@@ -1,6 +1,6 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
-public enum StreamOrdering {
+public enum Ordering {
 	ORDERED,
-	UNORDERED
+	UNORDERED;
 }

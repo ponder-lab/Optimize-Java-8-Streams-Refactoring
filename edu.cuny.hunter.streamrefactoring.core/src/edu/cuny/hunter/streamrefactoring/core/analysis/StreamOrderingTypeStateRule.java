@@ -12,7 +12,7 @@ import com.ibm.wala.classLoader.IClass;
 
 public class StreamOrderingTypeStateRule extends StreamAttributeTypestateRule {
 
-	protected Map<IDFAState, StreamOrdering> dfaStateToOrderingMap;
+	protected Map<IDFAState, Ordering> dfaStateToOrderingMap;
 
 	public StreamOrderingTypeStateRule(IClass streamClass) {
 		super(streamClass, "ordering");
@@ -22,15 +22,15 @@ public class StreamOrderingTypeStateRule extends StreamAttributeTypestateRule {
 	protected void addAutomaton() {
 		super.addAutomaton();
 
-		IDFAState orderedState = addState(StreamOrdering.ORDERED);
+		IDFAState orderedState = addState(Ordering.ORDERED);
 		
 		if (this.getDFAStateToOrderingMap() == null)
 			this.setDFAStateToOrderingMap(new HashMap<>(2));
 		
-		this.getDFAStateToOrderingMap().put(orderedState, StreamOrdering.ORDERED);
+		this.getDFAStateToOrderingMap().put(orderedState, Ordering.ORDERED);
 		
-		IDFAState unorderedState = addState(StreamOrdering.UNORDERED);
-		this.getDFAStateToOrderingMap().put(unorderedState, StreamOrdering.UNORDERED);
+		IDFAState unorderedState = addState(Ordering.UNORDERED);
+		this.getDFAStateToOrderingMap().put(unorderedState, Ordering.UNORDERED);
 
 		IDispatchEvent sortedEvent = addEvent("sorted", ".*sorted\\(\\).*");
 		IDispatchEvent unorderedEvent = addEvent("unordered", ".*unordered\\(\\).*");
@@ -48,19 +48,19 @@ public class StreamOrderingTypeStateRule extends StreamAttributeTypestateRule {
 	protected void addPossibleAttributes(Stream stream, Collection<IDFAState> states) {
 		super.addPossibleAttributes(stream, states);
 
-		Set<StreamOrdering> set = states.stream().map(this::getStreamOrdering).collect(Collectors.toSet());
+		Set<Ordering> set = states.stream().map(this::getOrdering).collect(Collectors.toSet());
 		stream.addPossibleOrderingCollection(set);
 	}
 
-	public StreamOrdering getStreamOrdering(IDFAState state) {
+	public Ordering getOrdering(IDFAState state) {
 		return this.getDFAStateToOrderingMap().get(state);
 	}
 
-	protected Map<IDFAState, StreamOrdering> getDFAStateToOrderingMap() {
+	protected Map<IDFAState, Ordering> getDFAStateToOrderingMap() {
 		return dfaStateToOrderingMap;
 	}
 
-	protected void setDFAStateToOrderingMap(Map<IDFAState, StreamOrdering> dfaStateToOrderingMap) {
+	protected void setDFAStateToOrderingMap(Map<IDFAState, Ordering> dfaStateToOrderingMap) {
 		this.dfaStateToOrderingMap = dfaStateToOrderingMap;
 	}
 }

@@ -38,6 +38,8 @@ import com.ibm.safe.typestate.core.BenignOracle;
 import com.ibm.safe.typestate.core.TypeStateProperty;
 import com.ibm.safe.typestate.core.TypeStateResult;
 import com.ibm.safe.typestate.options.TypeStateOptions;
+import com.ibm.wala.analysis.typeInference.TypeAbstraction;
+import com.ibm.wala.analysis.typeInference.TypeInference;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
@@ -81,92 +83,49 @@ class StreamStateMachine {
 	 * A list of stateful intermediate operation signatures.
 	 */
 	// @formatter:off
-	private static final String[] STATEFUL_INTERMEDIATE_OPERATIONS = { 
-			"java.util.stream.Stream.distinct",
-			"java.util.stream.Stream.sorted", 
-			"java.util.stream.Stream.limit", 
-			"java.util.stream.Stream.skip",
-			"java.util.stream.DoubleStream.distinct", 
-			"java.util.stream.DoubleStream.sorted",
-			"java.util.stream.DoubleStream.limit", 
-			"java.util.stream.DoubleStream.skip",
-			"java.util.stream.IntStream.distinct", 
-			"java.util.stream.IntStream.sorted",
-			"java.util.stream.IntStream.limit", 
-			"java.util.stream.IntStream.skip",
-			"java.util.stream.LongStream.distinct", 
-			"java.util.stream.LongStream.sorted",
-			"java.util.stream.LongStream.limit", 
-			"java.util.stream.LongStream.skip" };
+	private static final String[] STATEFUL_INTERMEDIATE_OPERATIONS = { "java.util.stream.Stream.distinct",
+			"java.util.stream.Stream.sorted", "java.util.stream.Stream.limit", "java.util.stream.Stream.skip",
+			"java.util.stream.DoubleStream.distinct", "java.util.stream.DoubleStream.sorted",
+			"java.util.stream.DoubleStream.limit", "java.util.stream.DoubleStream.skip",
+			"java.util.stream.IntStream.distinct", "java.util.stream.IntStream.sorted",
+			"java.util.stream.IntStream.limit", "java.util.stream.IntStream.skip",
+			"java.util.stream.LongStream.distinct", "java.util.stream.LongStream.sorted",
+			"java.util.stream.LongStream.limit", "java.util.stream.LongStream.skip" };
 	// @formatter:on
 
 	/**
 	 * A list of supported terminal operation signatures.
 	 */
 	// @formatter:off
-	private static final String[] TERMINAL_OPERATIONS = { 
-			"java.util.stream.Stream.reduce",
-			"java.util.stream.DoubleStream.forEach",
-			"java.util.stream.DoubleStream.forEachOrdered",
-			"java.util.stream.DoubleStream.toArray",
-			"java.util.stream.DoubleStream.reduce", 
-			"java.util.stream.DoubleStream.collect",
-			"java.util.stream.DoubleStream.sum",
-			"java.util.stream.DoubleStream.min",
-			"java.util.stream.DoubleStream.max",
-			"java.util.stream.DoubleStream.count",
-			"java.util.stream.DoubleStream.average",
-			"java.util.stream.DoubleStream.summaryStatistics",
-			"java.util.stream.DoubleStream.anyMatch",
-			"java.util.stream.DoubleStream.allMatch",
-			"java.util.stream.DoubleStream.noneMatch",
-			"java.util.stream.DoubleStream.findFirst",
-			"java.util.stream.DoubleStream.findAny",
-			"java.util.stream.IntStream.forEach",
-			"java.util.stream.IntStream.forEachOrdered",
-			"java.util.stream.IntStream.toArray",
-			"java.util.stream.IntStream.reduce", 
-			"java.util.stream.IntStream.collect",
-			"java.util.stream.IntStream.sum",
-			"java.util.stream.IntStream.min",
-			"java.util.stream.IntStream.max",
-			"java.util.stream.IntStream.count",
-			"java.util.stream.IntStream.average",
-			"java.util.stream.IntStream.summaryStatistics",
-			"java.util.stream.IntStream.anyMatch",
-			"java.util.stream.IntStream.allMatch",
-			"java.util.stream.IntStream.noneMatch",
-			"java.util.stream.IntStream.findFirst",
-			"java.util.stream.IntStream.findAny",
-			"java.util.stream.LongStream.forEach",
-			"java.util.stream.LongStream.forEachOrdered",
-			"java.util.stream.LongStream.toArray",
-			"java.util.stream.LongStream.reduce", 
-			"java.util.stream.LongStream.collect",
-			"java.util.stream.LongStream.sum",
-			"java.util.stream.LongStream.min",
-			"java.util.stream.LongStream.max",
-			"java.util.stream.LongStream.count",
-			"java.util.stream.LongStream.average",
-			"java.util.stream.LongStream.summaryStatistics",
-			"java.util.stream.LongStream.anyMatch",
-			"java.util.stream.LongStream.allMatch",
-			"java.util.stream.LongStream.noneMatch",
-			"java.util.stream.LongStream.findFirst",
-			"java.util.stream.LongStream.findAny",
-			"java.util.stream.Stream.forEach",
-			"java.util.stream.Stream.forEachOrdered",
-			"java.util.stream.Stream.toArray",
-			"java.util.stream.Stream.reduce", 
-			"java.util.stream.Stream.collect",
-			"java.util.stream.Stream.min",
-			"java.util.stream.Stream.max",
-			"java.util.stream.Stream.count",
-			"java.util.stream.Stream.anyMatch",
-			"java.util.stream.Stream.allMatch",
-			"java.util.stream.Stream.noneMatch",
-			"java.util.stream.Stream.findFirst",
-			"java.util.stream.Stream.findAny"};
+	private static final String[] TERMINAL_OPERATIONS = { "java.util.stream.Stream.reduce",
+			"java.util.stream.DoubleStream.forEach", "java.util.stream.DoubleStream.forEachOrdered",
+			"java.util.stream.DoubleStream.toArray", "java.util.stream.DoubleStream.reduce",
+			"java.util.stream.DoubleStream.collect", "java.util.stream.DoubleStream.sum",
+			"java.util.stream.DoubleStream.min", "java.util.stream.DoubleStream.max",
+			"java.util.stream.DoubleStream.count", "java.util.stream.DoubleStream.average",
+			"java.util.stream.DoubleStream.summaryStatistics", "java.util.stream.DoubleStream.anyMatch",
+			"java.util.stream.DoubleStream.allMatch", "java.util.stream.DoubleStream.noneMatch",
+			"java.util.stream.DoubleStream.findFirst", "java.util.stream.DoubleStream.findAny",
+			"java.util.stream.IntStream.forEach", "java.util.stream.IntStream.forEachOrdered",
+			"java.util.stream.IntStream.toArray", "java.util.stream.IntStream.reduce",
+			"java.util.stream.IntStream.collect", "java.util.stream.IntStream.sum", "java.util.stream.IntStream.min",
+			"java.util.stream.IntStream.max", "java.util.stream.IntStream.count", "java.util.stream.IntStream.average",
+			"java.util.stream.IntStream.summaryStatistics", "java.util.stream.IntStream.anyMatch",
+			"java.util.stream.IntStream.allMatch", "java.util.stream.IntStream.noneMatch",
+			"java.util.stream.IntStream.findFirst", "java.util.stream.IntStream.findAny",
+			"java.util.stream.LongStream.forEach", "java.util.stream.LongStream.forEachOrdered",
+			"java.util.stream.LongStream.toArray", "java.util.stream.LongStream.reduce",
+			"java.util.stream.LongStream.collect", "java.util.stream.LongStream.sum", "java.util.stream.LongStream.min",
+			"java.util.stream.LongStream.max", "java.util.stream.LongStream.count",
+			"java.util.stream.LongStream.average", "java.util.stream.LongStream.summaryStatistics",
+			"java.util.stream.LongStream.anyMatch", "java.util.stream.LongStream.allMatch",
+			"java.util.stream.LongStream.noneMatch", "java.util.stream.LongStream.findFirst",
+			"java.util.stream.LongStream.findAny", "java.util.stream.Stream.forEach",
+			"java.util.stream.Stream.forEachOrdered", "java.util.stream.Stream.toArray",
+			"java.util.stream.Stream.reduce", "java.util.stream.Stream.collect", "java.util.stream.Stream.min",
+			"java.util.stream.Stream.max", "java.util.stream.Stream.count", "java.util.stream.Stream.anyMatch",
+			"java.util.stream.Stream.allMatch", "java.util.stream.Stream.noneMatch",
+			"java.util.stream.Stream.findFirst", "java.util.stream.Stream.findAny" };
 	// @formatter:on
 
 	/**
@@ -385,11 +344,16 @@ class StreamStateMachine {
 			}
 
 			// fill the instance side-effect set.
+			// FIXME: I don't think that this belongs in the typestate rule
+			// loop.
 			discoverPossibleSideEffects(result, terminalBlockToPossibleReceivers);
 
 			// discover whether any stateful intermediate operations are
 			// present.
 			discoverPossibleStatefulIntermediateOperations(result);
+
+			// does reduction order matter?
+			discoverIfReduceOrderingPossiblyMatters(terminalBlockToPossibleReceivers);
 
 			// fill the instance to predecessors map.
 			for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
@@ -494,6 +458,42 @@ class StreamStateMachine {
 		}
 	}
 
+	private void discoverIfReduceOrderingPossiblyMatters(
+			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers)
+			throws IOException, CoreException {
+		// for each terminal operation call, I think?
+		for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
+			int processedInstructions = 0;
+			for (Iterator<SSAInstruction> it = block.iterator(); it.hasNext();) {
+				SSAInstruction instruction = it.next();
+
+				// if it's a phi instruction.
+				if (instruction instanceof SSAPhiInstruction)
+					continue;
+
+				assert instruction instanceof SSAInvokeInstruction : "Expecting SSAInvokeInstruction, was: "
+						+ instruction.getClass();
+				SSAInvokeInstruction invokeInstruction = (SSAInvokeInstruction) instruction;
+
+				int numOfRetVals = invokeInstruction.getNumberOfReturnValues();
+				assert numOfRetVals <= 1 : "How could you possibly return " + numOfRetVals + " values?";
+
+				// Can I base my decision on the return type? Declared type or
+				// actual? Generics actually give a pretty good approx.
+				int returnValue = invokeInstruction.getReturnValue(0);
+
+				IR ir = this.getStream().getAnalysisEngine().getCache().getIR(block.getMethod());
+				TypeInference inference = TypeInference.make(ir, true);
+				TypeAbstraction type = inference.getType(returnValue);
+				System.out.println(type);
+
+				++processedInstructions;
+			}
+			assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
+		}
+
+	}
+
 	private void discoverPossibleSideEffects(AggregateSolverResult result,
 			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers)
 			throws IOException, CoreException {
@@ -520,12 +520,9 @@ class StreamStateMachine {
 				// number of uses should be 2 for a single explicit param.
 				int numberOfUses = instruction.getNumberOfUses();
 
-				if (numberOfUses > 1) {
-					// we have a param. Make sure it's no more than one.
-					assert numberOfUses == 2 : "Can't handle case where number of uses is: " + numberOfUses;
-
-					// get the first explicit parameter use.
-					int paramUse = instruction.getUse(1);
+				for (int i = 1; i < numberOfUses; i++) {
+					// get an explicit parameter use.
+					int paramUse = instruction.getUse(i);
 					IR ir = engine.getCache().getIR(block.getMethod());
 
 					// expecting an invoke instruction here.
@@ -588,59 +585,64 @@ class StreamStateMachine {
 		// look up it's definition.
 		DefUse defUse = engine.getCache().getDefUse(ir);
 		// it should be a call.
-		SSAAbstractInvokeInstruction def = (SSAAbstractInvokeInstruction) defUse.getDef(use);
+		SSAInstruction def = defUse.getDef(use);
 
 		// if we found it.
 		if (def != null) {
-			// take a look at the nodes in the caller.
-			Set<CGNode> nodes = engine.getCallGraph().getNodes(declaredTargetOfCaller);
-			assert nodes.size() == 1 : "Expecting only one node here for now (context-sensitivity?). Was: "
-					+ nodes.size();
+			if (def instanceof SSAAbstractInvokeInstruction) {
+				SSAAbstractInvokeInstruction instruction = (SSAAbstractInvokeInstruction) def;
 
-			// for each caller node.
-			for (CGNode cgNode : nodes) {
-				// for each call site.
-				for (Iterator<CallSiteReference> callSiteIt = cgNode.iterateCallSites(); callSiteIt.hasNext();) {
-					CallSiteReference callSiteReference = callSiteIt.next();
+				// take a look at the nodes in the caller.
+				Set<CGNode> nodes = engine.getCallGraph().getNodes(declaredTargetOfCaller);
+				assert nodes.size() == 1 : "Expecting only one node here for now (context-sensitivity?). Was: "
+						+ nodes.size();
 
-					// if the call site is the as the one in the
-					// behavioral parameter definition.
-					if (callSiteReference.equals(def.getCallSite())) {
-						// look up the possible target nodes of the call
-						// site from the caller.
-						Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode,
-								callSiteReference);
-						Logger.getGlobal().info("# possible targets: " + possibleTargets.size());
+				// for each caller node.
+				for (CGNode cgNode : nodes) {
+					// for each call site.
+					for (Iterator<CallSiteReference> callSiteIt = cgNode.iterateCallSites(); callSiteIt.hasNext();) {
+						CallSiteReference callSiteReference = callSiteIt.next();
 
-						if (!possibleTargets.isEmpty()) {
-							Logger.getGlobal().info("Possible targets:");
-							possibleTargets.forEach(t -> Logger.getGlobal().info(() -> t.toString()));
-						}
+						// if the call site is the as the one in the
+						// behavioral parameter definition.
+						if (callSiteReference.equals(instruction.getCallSite())) {
+							// look up the possible target nodes of the call
+							// site from the caller.
+							Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode,
+									callSiteReference);
+							Logger.getGlobal().info("# possible targets: " + possibleTargets.size());
 
-						// for each possible target node.
-						for (CGNode target : possibleTargets) {
-							// get the set of pointers (locations) it
-							// may modify
-							OrdinalSet<PointerKey> modSet = mod.get(target);
-							Logger.getGlobal().info("# modified locations: " + modSet.size());
-
-							// if it's non-empty.
-							if (!modSet.isEmpty()) {
-								Logger.getGlobal().info("Modified locations:");
-								modSet.forEach(pk -> Logger.getGlobal().info(() -> pk.toString()));
-
-								// mark the instances whose pipeline may
-								// have side-effects.
-								instances.forEach(instancesWithSideEffects::add);
+							if (!possibleTargets.isEmpty()) {
+								Logger.getGlobal().info("Possible targets:");
+								possibleTargets.forEach(t -> Logger.getGlobal().info(() -> t.toString()));
 							}
+
+							// for each possible target node.
+							for (CGNode target : possibleTargets) {
+								// get the set of pointers (locations) it
+								// may modify
+								OrdinalSet<PointerKey> modSet = mod.get(target);
+								Logger.getGlobal().info("# modified locations: " + modSet.size());
+
+								// if it's non-empty.
+								if (!modSet.isEmpty()) {
+									Logger.getGlobal().info("Modified locations:");
+									modSet.forEach(pk -> Logger.getGlobal().info(() -> pk.toString()));
+
+									// mark the instances whose pipeline may
+									// have side-effects.
+									instances.forEach(instancesWithSideEffects::add);
+								}
+							}
+							// we found a match between the graph call site
+							// and the one in the definition. No need to
+							// continue.
+							break;
 						}
-						// we found a match between the graph call site
-						// and the one in the definition. No need to
-						// continue.
-						break;
 					}
 				}
-			}
+			} else
+				Logger.getGlobal().warning("Def was an instance of a: " + def.getClass());
 		}
 	}
 
@@ -686,8 +688,7 @@ class StreamStateMachine {
 	 */
 	protected static StreamAttributeTypestateRule[] createStreamAttributeTypestateRules(IClass streamClass) {
 		// @formatter:off
-		return new StreamAttributeTypestateRule[] {
-				new StreamExecutionModeTypeStateRule(streamClass),
+		return new StreamAttributeTypestateRule[] { new StreamExecutionModeTypeStateRule(streamClass),
 				new StreamOrderingTypeStateRule(streamClass) };
 		// @formatter:on
 	}

@@ -28,7 +28,7 @@ import org.eclipse.jdt.ui.tests.refactoring.Java18Setup;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalysisVisitor;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamExecutionMode;
-import edu.cuny.hunter.streamrefactoring.core.analysis.StreamOrdering;
+import edu.cuny.hunter.streamrefactoring.core.analysis.Ordering;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
@@ -135,35 +135,35 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 	}
 
 	public void testArraysAsList() throws Exception {
-		helper("Arrays.asList().stream()", StreamExecutionMode.SEQUENTIAL, StreamOrdering.ORDERED);
+		helper("Arrays.asList().stream()", StreamExecutionMode.SEQUENTIAL, Ordering.ORDERED);
 	}
 
 	public void testHashSetParallelStream() throws Exception {
-		helper("new HashSet<>().parallelStream()", StreamExecutionMode.PARALLEL, StreamOrdering.UNORDERED);
+		helper("new HashSet<>().parallelStream()", StreamExecutionMode.PARALLEL, Ordering.UNORDERED);
 	}
 
 	public void testArraysStream() throws Exception {
-		helper("Arrays.stream(new Object[1])", StreamExecutionMode.SEQUENTIAL, StreamOrdering.ORDERED);
+		helper("Arrays.stream(new Object[1])", StreamExecutionMode.SEQUENTIAL, Ordering.ORDERED);
 	}
 
 	public void testBitSet() throws Exception {
-		helper("set.stream()", StreamExecutionMode.SEQUENTIAL, StreamOrdering.ORDERED);
+		helper("set.stream()", StreamExecutionMode.SEQUENTIAL, Ordering.ORDERED);
 	}
 
 	public void testIntermediateOperations() throws Exception {
-		helper("set.stream()", StreamExecutionMode.SEQUENTIAL, StreamOrdering.ORDERED);
+		helper("set.stream()", StreamExecutionMode.SEQUENTIAL, Ordering.ORDERED);
 	}
 
 	public void testGenerate() throws Exception {
-		helper("Stream.generate(() -> 1)", StreamExecutionMode.SEQUENTIAL, StreamOrdering.UNORDERED);
+		helper("Stream.generate(() -> 1)", StreamExecutionMode.SEQUENTIAL, Ordering.UNORDERED);
 	}
 
 	public void testTypeResolution() throws Exception {
-		helper("anotherSet.parallelStream()", StreamExecutionMode.PARALLEL, StreamOrdering.UNORDERED);
+		helper("anotherSet.parallelStream()", StreamExecutionMode.PARALLEL, Ordering.UNORDERED);
 	}
 
 	private void helper(String expectedCreation, StreamExecutionMode expectedExecutionMode,
-			StreamOrdering expectedOrdering) throws Exception {
+			Ordering expectedOrdering) throws Exception {
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
 		assertTrue("Input should compile.", compiles(cu.getSource()));
 
@@ -190,7 +190,7 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 		assertTrue(executionModes.size() == 1);
 		assertTrue(executionModes.contains(expectedExecutionMode));
 
-		Set<StreamOrdering> orderings = stream.getPossibleOrderings();
+		Set<Ordering> orderings = stream.getPossibleOrderings();
 		assertTrue(orderings.size() == 1);
 		assertTrue(orderings.contains(expectedOrdering));
 	}

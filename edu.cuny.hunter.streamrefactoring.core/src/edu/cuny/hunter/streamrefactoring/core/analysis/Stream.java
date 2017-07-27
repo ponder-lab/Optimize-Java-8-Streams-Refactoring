@@ -5,7 +5,6 @@ import static edu.cuny.hunter.streamrefactoring.core.safe.Util.instanceKeyCorres
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -34,6 +33,7 @@ import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.jdt.internal.codeassist.impl.Engine;
 import org.eclipse.jdt.internal.corext.dom.ASTNodes;
 import org.eclipse.jdt.internal.corext.dom.Bindings;
 import org.eclipse.jdt.internal.corext.refactoring.base.JavaStatusContext;
@@ -104,7 +104,7 @@ public class Stream {
 		StreamStateMachine.clearCaches();
 	}
 
-	private static Object createInstance(Class<?> clazz) throws NoninstantiablePossibleStreamSourceException {
+	static Object createInstance(Class<?> clazz) throws NoninstantiableException {
 		try {
 			return clazz.newInstance();
 		} catch (InstantiationException | IllegalAccessException e) {
@@ -112,13 +112,12 @@ public class Stream {
 			try {
 				return instantiator.newInstance();
 			} catch (InstantiationError e2) {
-				throw new NoninstantiablePossibleStreamSourceException(
-						clazz + " cannot be instantiated: " + e2.getCause(), e2, clazz);
+				throw new NoninstantiableException(clazz + " cannot be instantiated: " + e2.getCause(), e2, clazz);
 			}
 		}
 	}
 
-	private static String getBinaryName(TypeReference typeReference) {
+	static String getBinaryName(TypeReference typeReference) {
 		TypeName name = typeReference.getName();
 		String slashToDot = StringStuff.slashToDot(name.getPackage().toString() + "." + name.getClassName().toString());
 		return slashToDot;
@@ -211,85 +210,6 @@ public class Stream {
 		return spliterator;
 	}
 
-	private static StreamOrdering inferInitialStreamOrdering(Set<TypeAbstraction> possibleStreamSourceTypes,
-			IMethod calledMethod)
-			throws InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException,
-			NoninstantiablePossibleStreamSourceException, CannotExtractSpliteratorException {
-		StreamOrdering ret = null;
-
-		for (TypeAbstraction typeAbstraction : possibleStreamSourceTypes) {
-			if (typeAbstraction != TypeAbstraction.TOP) {
-				StreamOrdering ordering = inferInitialStreamOrdering(typeAbstraction, calledMethod);
-
-				if (ret == null)
-					ret = ordering;
-				else if (ret != ordering)
-					throw new InconsistentPossibleStreamSourceOrderingException(
-							ret + " does not match " + ordering + " for type: " + typeAbstraction + ".");
-			}
-		}
-
-		return ret;
-	}
-
-	// TODO: Cache this?
-	private static StreamOrdering inferInitialStreamOrdering(String className, IMethod calledMethod)
-			throws NoniterablePossibleStreamSourceException, NoninstantiablePossibleStreamSourceException,
-			CannotExtractSpliteratorException {
-		try {
-			Class<?> clazz = Class.forName(className);
-
-			// is it instantiable?
-			if (!isAbstractType(clazz)) {
-				Object instance = createInstance(clazz);
-				boolean ordered;
-
-				Spliterator<?> spliterator = getSpliterator(instance, calledMethod);
-				ordered = spliterator.hasCharacteristics(Spliterator.ORDERED);
-				// TODO: Can we use something other than reflection,
-				// like static analysis? Also, it may be an abstract
-				// class.
-
-				// FIXME: What if there is something under this that is
-				// ordered? I guess this applies to both intra and
-				// interprocedural analysis but more for the former.
-				if (!ordered)
-					return StreamOrdering.UNORDERED;
-				else
-					return StreamOrdering.ORDERED;
-			} else
-				throw new NoninstantiablePossibleStreamSourceException(
-						clazz + " cannot be instantiated because it is an interface.", clazz);
-		} catch (ClassNotFoundException e) {
-			// TODO Not sure what we should do in this situation. What if we
-			// can't instantiate the iterable? Is there another way to find out
-			// this information? This could be a problem in third-party
-			// container libraries. Also, what if we don't have the class in the
-			// classpath?
-			e.printStackTrace();
-			throw new RuntimeException("Can't find: " + className, e);
-		}
-	}
-
-	private static StreamOrdering inferInitialStreamOrdering(TypeAbstraction typeAbstraction, IMethod calledMethod)
-			throws NoniterablePossibleStreamSourceException, NoninstantiablePossibleStreamSourceException,
-			CannotExtractSpliteratorException {
-		TypeReference typeReference = typeAbstraction.getTypeReference();
-		String binaryName = getBinaryName(typeReference);
-
-		return inferInitialStreamOrdering(binaryName, calledMethod);
-	}
-
-	private static boolean isAbstractType(Class<?> clazz) {
-		// if it's an interface.
-		if (clazz.isInterface())
-			return true; // can't instantiate an interface.
-		else if (Modifier.isAbstract(clazz.getModifiers()))
-			return true; // can't instantiate an abstract type.
-		else
-			return false;
-	}
-
 	private final MethodInvocation creation;
 
 	private final MethodDeclaration enclosingMethodDeclaration;
@@ -310,13 +230,13 @@ public class Stream {
 	/**
 	 * The ordering derived from the declaration of the stream.
 	 */
-	private StreamOrdering initialOrdering;
+	private Ordering initialOrdering;
 
 	/**
 	 * This should be the ordering of the stream when it is consumed by a
 	 * terimal operation.
 	 */
-	private Set<StreamOrdering> possibleOrderings = new HashSet<>();
+	private Set<Ordering> possibleOrderings = new HashSet<>();
 
 	private boolean hasPossibleSideEffects;
 
@@ -336,15 +256,15 @@ public class Stream {
 
 		try {
 			this.inferInitialOrdering();
-		} catch (InconsistentPossibleStreamSourceOrderingException e) {
+		} catch (InconsistentPossibleOrderingException e) {
 			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.INCONSISTENT_POSSIBLE_STREAM_SOURCE_ORDERING,
 					"Stream: " + streamCreation + " has inconsistent possible source orderings.");
-		} catch (NoniterablePossibleStreamSourceException e) {
+		} catch (NoniterableException e) {
 			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.NON_ITERABLE_POSSIBLE_STREAM_SOURCE,
 					"Stream: " + streamCreation + " has a non-iterable possible source.");
-		} catch (NoninstantiablePossibleStreamSourceException e) {
+		} catch (NoninstantiableException e) {
 			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.NON_INSTANTIABLE_POSSIBLE_STREAM_SOURCE, "Stream: "
 					+ streamCreation + " has a non-instantiable possible source with type: " + e.getSourceType() + ".");
@@ -422,11 +342,9 @@ public class Stream {
 			// get the IR for the enclosing method.
 			com.ibm.wala.classLoader.IMethod resolvedMethod = getEnclosingWalaMethod();
 
-			AnalysisOptions options = new AnalysisOptions();
+			// TODO:
 			// options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
-			AnalysisCache cache = new AnalysisCacheImpl();
-
-			ir = cache.getSSACache().findOrCreateIR(resolvedMethod, Everywhere.EVERYWHERE, options.getSSAOptions());
+			ir = this.getAnalysisEngine().getCache().getIR(resolvedMethod);
 
 			if (ir == null)
 				throw new IllegalStateException("IR is null for: " + resolvedMethod);
@@ -483,7 +401,7 @@ public class Stream {
 				.collect(Collectors.toSet());
 	}
 
-	public Set<StreamOrdering> getPossibleOrderings() {
+	public Set<Ordering> getPossibleOrderings() {
 		// if no other possible orderings exist.
 		if (possibleOrderings.isEmpty())
 			// default to the initial ordering.
@@ -574,10 +492,9 @@ public class Stream {
 			this.setInitialExecutionMode(StreamExecutionMode.SEQUENTIAL);
 	}
 
-	private void inferInitialOrdering()
-			throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
-			InconsistentPossibleStreamSourceOrderingException, NoniterablePossibleStreamSourceException,
-			NoninstantiablePossibleStreamSourceException, CannotExtractSpliteratorException {
+	private void inferInitialOrdering() throws IOException, CoreException, ClassHierarchyException,
+			InvalidClassFileException, InconsistentPossibleOrderingException, NoniterableException,
+			NoninstantiableException, CannotExtractSpliteratorException {
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
@@ -587,18 +504,18 @@ public class Stream {
 			if (expressionTypeQualifiedName.equals("java.util.stream.Stream")) {
 				String methodIdentifier = getMethodIdentifier(calledMethodBinding);
 				if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
-					this.setInitialOrdering(StreamOrdering.UNORDERED);
+					this.setInitialOrdering(Ordering.UNORDERED);
 			} else
-				this.setInitialOrdering(StreamOrdering.ORDERED);
+				this.setInitialOrdering(Ordering.ORDERED);
 		} else { // instance method.
-			// FIXME: This needs to become interprocedural #7.
+			// FIXME: this needs to become interprocedural #7.
 			int valueNumber = getUseValueNumberForCreation();
 			TypeInference inference = TypeInference.make(this.getEnclosingMethodIR(), false);
 			Set<TypeAbstraction> possibleTypes = getPossibleTypes(valueNumber, inference);
 
 			// Possible types: check each one.
 			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
-			StreamOrdering ordering = inferInitialStreamOrdering(possibleTypes, calledMethod);
+			Ordering ordering = OrderingInference.inferOrdering(possibleTypes, calledMethod);
 			this.setInitialOrdering(ordering);
 		}
 	}
@@ -612,7 +529,7 @@ public class Stream {
 		this.possibleExecutionModes.addAll(executionModeCollection);
 	}
 
-	protected void addPossibleOrderingCollection(Collection<? extends StreamOrdering> orderingCollection) {
+	protected void addPossibleOrderingCollection(Collection<? extends Ordering> orderingCollection) {
 		this.possibleOrderings.addAll(orderingCollection);
 	}
 
@@ -652,11 +569,11 @@ public class Stream {
 		this.initialExecutionMode = initialExecutionMode;
 	}
 
-	protected StreamOrdering getInitialOrdering() {
+	protected Ordering getInitialOrdering() {
 		return initialOrdering;
 	}
 
-	protected void setInitialOrdering(StreamOrdering initialOrdering) {
+	protected void setInitialOrdering(Ordering initialOrdering) {
 		this.initialOrdering = initialOrdering;
 	}
 
