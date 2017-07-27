@@ -1,22 +1,20 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
+import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getPossibleTypes;
 import static edu.cuny.hunter.streamrefactoring.core.safe.Util.instanceKeyCorrespondsWithInstantiationInstruction;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.Spliterator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.BaseStream;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.CoreException;
@@ -33,16 +31,12 @@ import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
-import org.eclipse.jdt.internal.codeassist.impl.Engine;
 import org.eclipse.jdt.internal.corext.dom.ASTNodes;
 import org.eclipse.jdt.internal.corext.dom.Bindings;
 import org.eclipse.jdt.internal.corext.refactoring.base.JavaStatusContext;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.RefactoringStatusContext;
-import org.objenesis.Objenesis;
-import org.objenesis.ObjenesisStd;
-import org.objenesis.instantiator.ObjectInstantiator;
 import org.osgi.framework.FrameworkUtil;
 
 import com.ibm.safe.internal.exceptions.PropertiesException;
@@ -51,26 +45,17 @@ import com.ibm.wala.analysis.typeInference.TypeInference;
 import com.ibm.wala.cast.java.ipa.callgraph.JavaSourceAnalysisScope;
 import com.ibm.wala.cast.java.translator.jdt.JDTIdentityMapper;
 import com.ibm.wala.classLoader.IBytecodeMethod;
-import com.ibm.wala.ipa.callgraph.AnalysisCache;
-import com.ibm.wala.ipa.callgraph.AnalysisCacheImpl;
-import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.CallGraph;
-import com.ibm.wala.ipa.callgraph.impl.Everywhere;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.IR;
-import com.ibm.wala.ssa.PhiValue;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
-import com.ibm.wala.ssa.SSAPhiInstruction;
-import com.ibm.wala.ssa.Value;
 import com.ibm.wala.types.MethodReference;
-import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
-import com.ibm.wala.util.strings.StringStuff;
 
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
@@ -93,8 +78,6 @@ public class Stream {
 
 	private static Map<MethodDeclaration, IR> methodDeclarationToIRMap = new HashMap<>();
 
-	private static Objenesis objenesis = new ObjenesisStd();
-
 	private static final String PLUGIN_ID = FrameworkUtil.getBundle(Stream.class).getSymbolicName();
 
 	public static void clearCaches() {
@@ -102,25 +85,6 @@ public class Stream {
 		javaProjectToAnalysisEngineMap.clear();
 		methodDeclarationToIRMap.clear();
 		StreamStateMachine.clearCaches();
-	}
-
-	static Object createInstance(Class<?> clazz) throws NoninstantiableException {
-		try {
-			return clazz.newInstance();
-		} catch (InstantiationException | IllegalAccessException e) {
-			ObjectInstantiator<?> instantiator = objenesis.getInstantiatorOf(clazz);
-			try {
-				return instantiator.newInstance();
-			} catch (InstantiationError e2) {
-				throw new NoninstantiableException(clazz + " cannot be instantiated: " + e2.getCause(), e2, clazz);
-			}
-		}
-	}
-
-	static String getBinaryName(TypeReference typeReference) {
-		TypeName name = typeReference.getName();
-		String slashToDot = StringStuff.slashToDot(name.getPackage().toString() + "." + name.getClassName().toString());
-		return slashToDot;
 	}
 
 	private static JDTIdentityMapper getJDTIdentifyMapper(ASTNode node) {
@@ -152,64 +116,6 @@ public class Stream {
 		return methodIdentifier;
 	}
 
-	private static Set<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
-		Set<TypeAbstraction> ret = new HashSet<>();
-		Value value = inference.getIR().getSymbolTable().getValue(valueNumber);
-
-		// TODO: Should really be using a pointer analysis here rather than
-		// re-implementing one using PhiValue.
-		if (value instanceof PhiValue) {
-			// multiple possible types.
-			PhiValue phiValue = (PhiValue) value;
-			SSAPhiInstruction phiInstruction = phiValue.getPhiInstruction();
-			int numberOfUses = phiInstruction.getNumberOfUses();
-			// get the possible types for each use.
-			for (int i = 0; i < numberOfUses; i++) {
-				int use = phiInstruction.getUse(i);
-				Set<TypeAbstraction> possibleTypes = getPossibleTypes(use, inference);
-				ret.addAll(possibleTypes);
-			}
-		} else {
-			// one one possible type.
-			ret.add(inference.getType(valueNumber));
-		}
-
-		return ret;
-	}
-
-	private static Spliterator<?> getSpliterator(Object instance, IMethod calledMethod)
-			throws CannotExtractSpliteratorException {
-		Spliterator<?> spliterator = null;
-
-		if (instance instanceof Iterable) {
-			spliterator = ((Iterable<?>) instance).spliterator();
-		} else {
-			// try to call the stream() method to get the spliterator.
-			BaseStream<?, ?> baseStream = null;
-			try {
-				Method streamCreationMethod = instance.getClass().getMethod(calledMethod.getElementName());
-				Object stream = streamCreationMethod.invoke(instance);
-
-				if (stream instanceof BaseStream) {
-					baseStream = (BaseStream<?, ?>) stream;
-					spliterator = baseStream.spliterator();
-				} else
-					throw new CannotExtractSpliteratorException(
-							"Returned object of type: " + stream.getClass() + " doesn't implement BaseStream.",
-							stream.getClass());
-			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
-					| InvocationTargetException e) {
-				throw new CannotExtractSpliteratorException(
-						"Cannot extract the spliterator from object of type: " + instance.getClass(), e,
-						instance.getClass());
-			} finally {
-				if (baseStream != null)
-					baseStream.close();
-			}
-		}
-		return spliterator;
-	}
-
 	private final MethodInvocation creation;
 
 	private final MethodDeclaration enclosingMethodDeclaration;
@@ -219,13 +125,15 @@ public class Stream {
 	/**
 	 * The execution mode derived from the declaration of the stream.
 	 */
-	private StreamExecutionMode initialExecutionMode;
+	private ExecutionMode initialExecutionMode;
 
 	/**
 	 * This should be the possible execution modes when the stream is consumed
 	 * by a terminal operation. Does not include the initial mode.
 	 */
-	private Set<StreamExecutionMode> possibleExecutionModes = new HashSet<>();
+	private Set<ExecutionMode> possibleExecutionModes = new HashSet<>();
+
+	private OrderingInference orderingInference;
 
 	/**
 	 * The ordering derived from the declaration of the stream.
@@ -251,6 +159,8 @@ public class Stream {
 				ASTNode.TYPE_DECLARATION);
 		this.enclosingMethodDeclaration = (MethodDeclaration) ASTNodes.getParent(this.getCreation(),
 				ASTNode.METHOD_DECLARATION);
+
+		this.orderingInference = new OrderingInference(this.getClassHierarchy());
 
 		this.inferInitialExecution();
 
@@ -278,7 +188,7 @@ public class Stream {
 		// start the state machine.
 		try {
 			new StreamStateMachine(this).start();
-		} catch (PropertiesException | CancelException e) {
+		} catch (PropertiesException | CancelException | InconsistentPossibleOrderingException e) {
 			logger.log(Level.SEVERE, "Error while building stream.", e);
 			throw new RuntimeException(e);
 		}
@@ -389,7 +299,7 @@ public class Stream {
 		return ref;
 	}
 
-	public Set<StreamExecutionMode> getPossibleExecutionModes() {
+	public Set<ExecutionMode> getPossibleExecutionModes() {
 		// if no other possible execution modes exist.
 		if (possibleExecutionModes.isEmpty())
 			// default to the initial execution mode.
@@ -433,7 +343,8 @@ public class Stream {
 						SSAInvokeInstruction invokeInstruction = (SSAInvokeInstruction) instruction;
 						TypeReference declaredTargetDeclaringClass = invokeInstruction.getDeclaredTarget()
 								.getDeclaringClass();
-						if (getBinaryName(declaredTargetDeclaringClass)
+						if (edu.cuny.hunter.streamrefactoring.core.analysis.Util
+								.getBinaryName(declaredTargetDeclaringClass)
 								.equals(this.getCreation().getExpression().resolveTypeBinding().getBinaryName())) {
 							MethodReference callSiteDeclaredTarget = invokeInstruction.getCallSite()
 									.getDeclaredTarget();
@@ -460,7 +371,7 @@ public class Stream {
 		return status;
 	}
 
-	TypeReference getTypeReference() {
+	public TypeReference getTypeReference() {
 		JDTIdentityMapper mapper = getJDTIdentifyMapperForCreation();
 		ITypeBinding typeBinding = this.getCreation().resolveTypeBinding();
 
@@ -487,9 +398,9 @@ public class Stream {
 		String methodIdentifier = getMethodIdentifier(this.getCreation().resolveMethodBinding());
 
 		if (methodIdentifier.equals("parallelStream()"))
-			this.setInitialExecutionMode(StreamExecutionMode.PARALLEL);
+			this.setInitialExecutionMode(ExecutionMode.PARALLEL);
 		else
-			this.setInitialExecutionMode(StreamExecutionMode.SEQUENTIAL);
+			this.setInitialExecutionMode(ExecutionMode.SEQUENTIAL);
 	}
 
 	private void inferInitialOrdering() throws IOException, CoreException, ClassHierarchyException,
@@ -515,17 +426,16 @@ public class Stream {
 
 			// Possible types: check each one.
 			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
-			Ordering ordering = OrderingInference.inferOrdering(possibleTypes, calledMethod);
+			Ordering ordering = this.getOrderingInference().inferOrdering(possibleTypes, calledMethod);
 			this.setInitialOrdering(ordering);
 		}
 	}
 
-	protected void addPossibleExecutionMode(StreamExecutionMode executionMode) {
+	protected void addPossibleExecutionMode(ExecutionMode executionMode) {
 		this.possibleExecutionModes.add(executionMode);
 	}
 
-	protected void addPossibleExecutionModeCollection(
-			Collection<? extends StreamExecutionMode> executionModeCollection) {
+	protected void addPossibleExecutionModeCollection(Collection<? extends ExecutionMode> executionModeCollection) {
 		this.possibleExecutionModes.addAll(executionModeCollection);
 	}
 
@@ -561,11 +471,12 @@ public class Stream {
 						+ " using tracked instances: " + trackedInstances));
 	}
 
-	protected StreamExecutionMode getInitialExecutionMode() {
+	protected ExecutionMode getInitialExecutionMode() {
 		return initialExecutionMode;
 	}
 
-	protected void setInitialExecutionMode(StreamExecutionMode initialExecutionMode) {
+	protected void setInitialExecutionMode(ExecutionMode initialExecutionMode) {
+		Objects.requireNonNull(initialExecutionMode);
 		this.initialExecutionMode = initialExecutionMode;
 	}
 
@@ -574,6 +485,7 @@ public class Stream {
 	}
 
 	protected void setInitialOrdering(Ordering initialOrdering) {
+		Objects.requireNonNull(initialOrdering);
 		this.initialOrdering = initialOrdering;
 	}
 
@@ -602,4 +514,9 @@ public class Stream {
 	protected void setHasPossibleStatefulIntermediateOperations(boolean hasPossibleStatefulIntermediateOperations) {
 		this.hasPossibleStatefulIntermediateOperations = hasPossibleStatefulIntermediateOperations;
 	}
+
+	protected OrderingInference getOrderingInference() {
+		return orderingInference;
+	}
+
 }

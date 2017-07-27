@@ -62,6 +62,7 @@ public class EventTrackingTypeStateProperty extends TypeStateProperty {
 		return null;
 	}
 
+	@SuppressWarnings("rawtypes")
 	@Override
 	public IEvent match(Class eventClass, String param) {
 		// TODO Auto-generated method stub

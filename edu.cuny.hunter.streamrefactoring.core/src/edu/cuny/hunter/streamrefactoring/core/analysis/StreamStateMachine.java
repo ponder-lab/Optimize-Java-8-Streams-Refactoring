@@ -70,7 +70,6 @@ import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.OrdinalSet;
-import com.ibm.wala.util.strings.Atom;
 
 import edu.cuny.hunter.streamrefactoring.core.safe.ModifiedBenignOracle;
 import edu.cuny.hunter.streamrefactoring.core.safe.TypestateSolverFactory;
@@ -175,7 +174,7 @@ class StreamStateMachine {
 	}
 
 	public void start() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
-			InvalidClassFileException, PropertiesException {
+			InvalidClassFileException, PropertiesException, InconsistentPossibleOrderingException {
 		// get the analysis engine.
 		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
 
@@ -366,7 +365,8 @@ class StreamStateMachine {
 				});
 			}
 
-			// for each terminal operation call, I think?
+			// for each terminal operation call, I think? FIXME: Do streams that
+			// don't terminate have a state?
 			for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 				OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
 				// for each possible receiver of the terminal operation call.
@@ -460,7 +460,7 @@ class StreamStateMachine {
 
 	private void discoverIfReduceOrderingPossiblyMatters(
 			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers)
-			throws IOException, CoreException {
+			throws IOException, CoreException, InconsistentPossibleOrderingException {
 		// for each terminal operation call, I think?
 		for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 			int processedInstructions = 0;
@@ -484,14 +484,19 @@ class StreamStateMachine {
 
 				IR ir = this.getStream().getAnalysisEngine().getCache().getIR(block.getMethod());
 				TypeInference inference = TypeInference.make(ir, true);
-				TypeAbstraction type = inference.getType(returnValue);
-				System.out.println(type);
+				Set<TypeAbstraction> possibleTypes = Util.getPossibleTypes(returnValue, inference);
+				Logger.getGlobal().info("Possible reduce types are: " + possibleTypes);
+
+				try {
+					this.getStream().getOrderingInference().inferOrdering(possibleTypes);
+				} catch (NoniterableException | NoninstantiableException | CannotExtractSpliteratorException e) {
+					throw new RuntimeException("Current method to deduce ordering failed.", e);
+				}
 
 				++processedInstructions;
 			}
 			assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
 		}
-
 	}
 
 	private void discoverPossibleSideEffects(AggregateSolverResult result,
@@ -655,23 +660,8 @@ class StreamStateMachine {
 		// each receiver must be a stream.
 		return receivers.stream().allMatch(r -> {
 			IClass type = r.getConcreteType();
-			return isBaseStream(type)
-					|| type.getAllImplementedInterfaces().stream().anyMatch(StreamStateMachine::isBaseStream);
+			return Util.isBaseStream(type) || type.getAllImplementedInterfaces().stream().anyMatch(Util::isBaseStream);
 		});
-	}
-
-	private static boolean isBaseStream(IClass type) {
-		if (type.isInterface()) {
-			Atom typePackage = type.getName().getPackage();
-			Atom streamPackage = Atom.findOrCreateUnicodeAtom("java/util/stream");
-			if (typePackage.equals(streamPackage)) {
-				Atom className = type.getName().getClassName();
-				Atom baseStream = Atom.findOrCreateUnicodeAtom("BaseStream");
-				if (className.equals(baseStream))
-					return true;
-			}
-		}
-		return false;
 	}
 
 	private static CallStringWithReceivers getCallString(InstanceKey instance) {
