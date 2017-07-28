@@ -478,8 +478,8 @@ class StreamStateMachine {
 				int numOfRetVals = invokeInstruction.getNumberOfReturnValues();
 				assert numOfRetVals <= 1 : "How could you possibly return " + numOfRetVals + " values?";
 
-				// Can I base my decision on the return type? Declared type or
-				// actual? Generics actually give a pretty good approx.
+				// TODO: Can I base my decision on the return type? Declared
+				// type or actual? Generics actually give a pretty good approx.
 				int returnValue = invokeInstruction.getReturnValue(0);
 
 				IR ir = this.getStream().getAnalysisEngine().getCache().getIR(block.getMethod());
@@ -488,7 +488,8 @@ class StreamStateMachine {
 				Logger.getGlobal().info("Possible reduce types are: " + possibleTypes);
 
 				try {
-					this.getStream().getOrderingInference().inferOrdering(possibleTypes);
+					Ordering ordering = this.getStream().getOrderingInference().inferOrdering(possibleTypes);
+					Logger.getGlobal().info("Ordering of reduction type is: " + ordering);
 				} catch (NoniterableException | NoninstantiableException | CannotExtractSpliteratorException e) {
 					throw new RuntimeException("Current method to deduce ordering failed.", e);
 				}
