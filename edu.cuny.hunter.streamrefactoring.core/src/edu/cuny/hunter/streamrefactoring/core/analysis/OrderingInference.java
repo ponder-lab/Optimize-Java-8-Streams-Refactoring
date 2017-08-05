@@ -69,7 +69,7 @@ class OrderingInference {
 		for (com.ibm.wala.classLoader.IMethod method : allMethods) {
 			TypeReference returnType = method.getReturnType();
 			// find the first one that returns a stream.
-			if (Util.isBaseStream(returnType, this.getClassHierarchy()))
+			if (Util.implementsBaseStream(returnType, this.getClassHierarchy()))
 				return method.getName().toString();
 		}
 

@@ -4,6 +4,7 @@ import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.BaseStream;
 
 import com.ibm.wala.analysis.typeInference.TypeAbstraction;
 import com.ibm.wala.analysis.typeInference.TypeInference;
@@ -58,26 +59,37 @@ final class Util {
 	}
 
 	static boolean isBaseStream(IClass clazz) {
+		return isType(clazz, "java/util/stream", "BaseStream");
+	}
+	
+	static boolean isIterable(IClass clazz) {
+		return isType(clazz, "java/lang", "Iterable");
+	}
+	
+	static boolean isType(IClass clazz, String packagePath, String typeName) {
 		if (clazz.isInterface()) {
 			Atom typePackage = clazz.getName().getPackage();
-			Atom streamPackage = Atom.findOrCreateUnicodeAtom("java/util/stream");
-			if (typePackage.equals(streamPackage)) {
+			Atom compareToPackage = Atom.findOrCreateUnicodeAtom(packagePath);
+			if (typePackage.equals(compareToPackage)) {
 				Atom className = clazz.getName().getClassName();
-				Atom baseStream = Atom.findOrCreateUnicodeAtom("BaseStream");
-				if (className.equals(baseStream))
+				Atom compareToClass = Atom.findOrCreateUnicodeAtom(typeName);
+				if (className.equals(compareToClass))
 					return true;
 			}
 		}
 		return false;
 	}
 
-	static boolean isBaseStream(TypeReference returnType, IClassHierarchy classHierarchy) {
-		IClass clazz = classHierarchy.lookupClass(returnType);
+	/**
+	 * Returns true iff typeReference is a type that implements {@link BaseStream}.
+	 */
+	static boolean implementsBaseStream(TypeReference typeReference, IClassHierarchy classHierarchy) {
+		IClass clazz = classHierarchy.lookupClass(typeReference);
 		
 		if (clazz == null)
 			return false;
 		else
-			return isBaseStream(clazz);
+			return isBaseStream(clazz) || clazz.getAllImplementedInterfaces().stream().anyMatch(Util::isBaseStream);
 	}
 
 	static String getBinaryName(TypeReference typeReference) {
