@@ -484,8 +484,8 @@ class StreamStateMachine {
 
 				IR ir = this.getStream().getAnalysisEngine().getCache().getIR(block.getMethod());
 				TypeInference inference = TypeInference.make(ir, true);
-				Set<TypeAbstraction> possibleTypes = Util.getPossibleTypes(returnValue, inference);
-				Logger.getGlobal().info("Possible reduce types are: " + possibleTypes);
+				Collection<TypeAbstraction> possibleReturnTypes = Util.getPossibleTypes(returnValue, inference);
+				Logger.getGlobal().info("Possible reduce types are: " + possibleReturnTypes);
 
 				try {
 					Ordering ordering = this.getStream().getOrderingInference().inferOrdering(possibleTypes);

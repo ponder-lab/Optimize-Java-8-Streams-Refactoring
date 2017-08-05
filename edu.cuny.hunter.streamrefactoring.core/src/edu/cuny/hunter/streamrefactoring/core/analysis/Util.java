@@ -1,6 +1,7 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import java.lang.reflect.Modifier;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -31,7 +32,7 @@ final class Util {
 			return false;
 	}
 
-	static Set<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
+	static Collection<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
 		Set<TypeAbstraction> ret = new HashSet<>();
 		Value value = inference.getIR().getSymbolTable().getValue(valueNumber);
 
@@ -45,7 +46,7 @@ final class Util {
 			// get the possible types for each use.
 			for (int i = 0; i < numberOfUses; i++) {
 				int use = phiInstruction.getUse(i);
-				Set<TypeAbstraction> possibleTypes = getPossibleTypes(use, inference);
+				Collection<TypeAbstraction> possibleTypes = getPossibleTypes(use, inference);
 				ret.addAll(possibleTypes);
 			}
 		} else {

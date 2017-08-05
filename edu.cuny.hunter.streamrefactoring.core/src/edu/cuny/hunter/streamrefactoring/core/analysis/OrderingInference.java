@@ -3,7 +3,6 @@ package edu.cuny.hunter.streamrefactoring.core.analysis;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collection;
-import java.util.Set;
 import java.util.Spliterator;
 import java.util.stream.BaseStream;
 
@@ -26,13 +25,13 @@ class OrderingInference {
 		this.classHierarchy = classHierarchy;
 	}
 
-	Ordering inferOrdering(Set<TypeAbstraction> possibleTypes, IMethod calledMethod)
+	Ordering inferOrdering(Collection<TypeAbstraction> possibleTypes, IMethod calledMethod)
 			throws InconsistentPossibleOrderingException, NoniterableException, NoninstantiableException,
 			CannotExtractSpliteratorException {
 		return inferOrdering(possibleTypes, calledMethod.getElementName());
 	}
 
-	private Ordering inferOrdering(Set<TypeAbstraction> possibleTypes, String calledMethodName)
+	private Ordering inferOrdering(Collection<TypeAbstraction> possibleTypes, String calledMethodName)
 			throws InconsistentPossibleOrderingException, NoniterableException, NoninstantiableException,
 			CannotExtractSpliteratorException {
 		Ordering ret = null;
@@ -52,7 +51,7 @@ class OrderingInference {
 		return ret;
 	}
 
-	Ordering inferOrdering(Set<TypeAbstraction> possibleTypes) throws InconsistentPossibleOrderingException,
+	Ordering inferOrdering(Collection<TypeAbstraction> possibleTypes) throws InconsistentPossibleOrderingException,
 			NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
 		if (possibleTypes.isEmpty())
 			return null;

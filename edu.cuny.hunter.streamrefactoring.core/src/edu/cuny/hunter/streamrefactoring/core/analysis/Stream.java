@@ -422,7 +422,7 @@ public class Stream {
 			// FIXME: this needs to become interprocedural #7.
 			int valueNumber = getUseValueNumberForCreation();
 			TypeInference inference = TypeInference.make(this.getEnclosingMethodIR(), false);
-			Set<TypeAbstraction> possibleTypes = getPossibleTypes(valueNumber, inference);
+			Collection<TypeAbstraction> possibleTypes = getPossibleTypes(valueNumber, inference);
 
 			// Possible types: check each one.
 			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
