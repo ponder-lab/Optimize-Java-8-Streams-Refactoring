@@ -64,7 +64,6 @@ class OrderingInference {
 	}
 
 	private String findStreamCreationMethod(TypeAbstraction typeAbstraction) {
-		// TODO Auto-generated method stub
 		Collection<com.ibm.wala.classLoader.IMethod> allMethods = typeAbstraction.getType().getAllMethods();
 		for (com.ibm.wala.classLoader.IMethod method : allMethods) {
 			TypeReference returnType = method.getReturnType();
