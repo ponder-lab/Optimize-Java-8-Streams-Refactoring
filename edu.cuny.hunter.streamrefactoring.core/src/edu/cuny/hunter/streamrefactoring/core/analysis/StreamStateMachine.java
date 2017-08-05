@@ -794,13 +794,16 @@ class StreamStateMachine {
 	}
 
 	private static boolean isTerminalOperation(MethodReference method) {
+		return signatureMatches(TERMINAL_OPERATIONS, method);
+	}
+
+	private static boolean signatureMatches(String[] operations, MethodReference method) {
 		String signature = method.getSignature();
-		return Arrays.stream(TERMINAL_OPERATIONS).anyMatch(signature::startsWith);
+		return Arrays.stream(operations).map(o -> o + "(").anyMatch(signature::startsWith);
 	}
 
 	private static boolean isStatefulIntermediateOperation(MethodReference method) {
-		String signature = method.getSignature();
-		return Arrays.stream(STATEFUL_INTERMEDIATE_OPERATIONS).anyMatch(signature::startsWith);
+		return signatureMatches(STATEFUL_INTERMEDIATE_OPERATIONS, method);
 	}
 
 	protected Stream getStream() {
