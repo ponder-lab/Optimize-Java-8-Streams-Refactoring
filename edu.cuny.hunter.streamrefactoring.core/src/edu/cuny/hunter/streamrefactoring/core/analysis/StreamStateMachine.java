@@ -126,6 +126,44 @@ class StreamStateMachine {
 			"java.util.stream.Stream.findFirst", "java.util.stream.Stream.findAny" };
 	// @formatter:on
 
+	// @formatter:off
+	private static final String[] TERMINAL_OPERATIONS_WERE_REDUCE_ORDERING_MATTERS = {
+			"java.util.stream.DoubleStream.forEachOrdered", "java.util.stream.IntStream.forEachOrdered",
+			"java.util.stream.LongStream.forEachOrdered", "java.util.stream.Stream.forEachOrdered",
+			"java.util.stream.DoubleStream.findFirst", "java.util.stream.IntStream.findFirst",
+			"java.util.stream.LongStream.findFirst", "java.util.stream.Stream.findFirst" };
+	// @formatter:on
+
+	// @formatter:off
+	private static final String[] TERMINAL_OPERATIONS_WHERE_REDUCE_ORDERING_DOES_NOT_MATTER = {
+			"java.util.stream.DoubleStream.forEach", "java.util.stream.IntStream.forEach",
+			"java.util.stream.LongStream.forEach", "java.util.stream.Stream.forEach",
+			"java.util.stream.DoubleStream.sum", "java.util.stream.IntStream.sum", "java.util.stream.LongStream.sum",
+			"java.util.stream.IntStream.min", "java.util.stream.DoubleStream.min", "java.util.stream.LongStream.min",
+			"java.util.stream.Stream.min", "java.util.stream.DoubleStream.max", "java.util.stream.IntStream.max",
+			"java.util.stream.LongStream.max", "java.util.stream.Stream.max", "java.util.stream.DoubleStream.count",
+			"java.util.stream.IntStream.count", "java.util.stream.LongStream.count", "java.util.stream.Stream.count",
+			"java.util.stream.DoubleStream.average", "java.util.stream.IntStream.average",
+			"java.util.stream.LongStream.average", "java.util.stream.DoubleStream.summaryStatistics",
+			"java.util.stream.IntStream.summaryStatistics", "java.util.stream.LongStream.summaryStatistics",
+			"java.util.stream.DoubleStream.anyMatch", "java.util.stream.IntStream.anyMatch",
+			"java.util.stream.LongStream.anyMatch", "java.util.stream.Stream.anyMatch",
+			"java.util.stream.DoubleStream.allMatch", "java.util.stream.IntStream.allMatch",
+			"java.util.stream.LongStream.allMatch", "java.util.stream.Stream.allMatch",
+			"java.util.stream.DoubleStream.noneMatch", "java.util.stream.IntStream.noneMatch",
+			"java.util.stream.LongStream.noneMatch", "java.util.stream.Stream.noneMatch",
+			"java.util.stream.DoubleStream.findAny", "java.util.stream.IntStream.findAny",
+			"java.util.stream.LongStream.findAny", "java.util.stream.Stream.findAny" };
+	// @formatter:on
+
+	// @formatter:off
+	private static final String[] TERMINAL_OPERATIONS_WHERE_REDUCE_ORDERING_MATTERS_IS_UNKNOWN = {
+			"java.util.stream.DoubleStream.reduce", "java.util.stream.IntStream.reduce",
+			"java.util.stream.LongStream.reduce", "java.util.stream.Stream.reduce",
+			"java.util.stream.DoubleStream.collect", "java.util.stream.IntStream.collect",
+			"java.util.stream.LongStream.collect", "java.util.stream.Stream.collect", };
+	// @formatter:on
+
 	/**
 	 * A table mapping an instance and a block to the instance's possible states
 	 * at that block.
@@ -157,6 +195,11 @@ class StreamStateMachine {
 	private static Map<InstanceKey, Boolean> instanceToStatefulIntermediateOperationContainment = new HashMap<>();
 
 	/**
+	 * A set of instances whose reduce ordering may matter.
+	 */
+	private static Set<InstanceKey> instancesWhoseReduceOrderingPossiblyMatters = new HashSet<>();
+
+	/**
 	 * The stream that this state machine represents.
 	 */
 	private final Stream stream;
@@ -173,7 +216,9 @@ class StreamStateMachine {
 	}
 
 	public void start() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
-			InvalidClassFileException, PropertiesException, InconsistentPossibleOrderingException {
+			InvalidClassFileException, PropertiesException, InconsistentPossibleOrderingException,
+			UnknownIfReduceOrderMattersException, NoniterableException, NoninstantiableException,
+			CannotExtractSpliteratorException {
 		// get the analysis engine.
 		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
 
@@ -401,6 +446,9 @@ class StreamStateMachine {
 						.map(Entry::getKey).flatMap(ik -> getAllPredecessors(ik).stream())
 						.collect(Collectors.toMap(Function.identity(), v -> true)));
 
+		// propagate the instances whose reduce ordering possibly matters.
+		propagateStreamInstanceProperty(instancesWhoseReduceOrderingPossiblyMatters);
+
 		// determine if this stream has possible side-effects.
 		this.getStream().setHasPossibleSideEffects(instancesWithSideEffects.contains(streamInstanceKey));
 
@@ -409,13 +457,18 @@ class StreamStateMachine {
 		this.getStream().setHasPossibleStatefulIntermediateOperations(
 				instanceToStatefulIntermediateOperationContainment.getOrDefault(streamInstanceKey, false));
 
+		// determine if this stream reduce ordering possibly matters
+		this.getStream().setReduceOrderingPossiblyMatters(
+				instancesWhoseReduceOrderingPossiblyMatters.contains(streamInstanceKey));
+
 		Logger.getGlobal().info("Execution modes: " + this.getStream().getPossibleExecutionModes());
 		Logger.getGlobal().info("Orderings: " + this.getStream().getPossibleOrderings());
 		Logger.getGlobal().info("Side-effects: " + this.getStream().hasPossibleSideEffects());
 		Logger.getGlobal().info(
 				"Stateful intermediate operations: " + this.getStream().hasPossibleStatefulIntermediateOperations());
+		Logger.getGlobal().info("Reduce ordering matters: " + this.getStream().reduceOrderingPossiblyMatters());
 	}
-	
+
 	private static void propagateStreamInstanceProperty(Collection<InstanceKey> streamInstancesWithProperty) {
 		streamInstancesWithProperty.addAll(streamInstancesWithProperty.stream()
 				.flatMap(ik -> getAllPredecessors(ik).stream()).collect(Collectors.toSet()));
@@ -463,7 +516,9 @@ class StreamStateMachine {
 
 	private void discoverIfReduceOrderingPossiblyMatters(
 			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers)
-			throws IOException, CoreException, InconsistentPossibleOrderingException {
+			throws IOException, CoreException, UnknownIfReduceOrderMattersException,
+			InconsistentPossibleOrderingException, NoniterableException, NoninstantiableException,
+			CannotExtractSpliteratorException {
 		// for each terminal operation call, I think?
 		for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 			int processedInstructions = 0;
@@ -490,17 +545,103 @@ class StreamStateMachine {
 				Collection<TypeAbstraction> possibleReturnTypes = Util.getPossibleTypes(returnValue, inference);
 				Logger.getGlobal().info("Possible reduce types are: " + possibleReturnTypes);
 
-				try {
-					Ordering ordering = this.getStream().getOrderingInference().inferOrdering(possibleTypes);
-					Logger.getGlobal().info("Ordering of reduction type is: " + ordering);
-				} catch (NoniterableException | NoninstantiableException | CannotExtractSpliteratorException e) {
-					throw new RuntimeException("Current method to deduce ordering failed.", e);
-				}
+				boolean rom = false;
+
+				if (isVoid(possibleReturnTypes)) {
+					rom = deriveRomForVoidMethod(invokeInstruction);
+				} else if (isScalar(possibleReturnTypes)) {
+					rom = deriveRomForScalarMethod(invokeInstruction);
+				} else if (!isScalar(possibleReturnTypes)) {
+					rom = deriveRomForNonScalarMethod(possibleReturnTypes);
+				} else
+					throw new IllegalStateException(
+							"Can't derive ROM for possible return types: " + possibleReturnTypes);
+
+				if (rom) {
+					Logger.getGlobal().info(() -> "Reduce ordering matters for: " + invokeInstruction);
+					OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
+					possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
+				} else
+					Logger.getGlobal().info(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
 
 				++processedInstructions;
 			}
 			assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
 		}
+	}
+
+	private boolean deriveRomForNonScalarMethod(Collection<TypeAbstraction> possibleReturnTypes)
+			throws InconsistentPossibleOrderingException, NoniterableException, NoninstantiableException,
+			CannotExtractSpliteratorException {
+		Ordering ordering = this.getStream().getOrderingInference().inferOrdering(possibleReturnTypes);
+		Logger.getGlobal().info("Ordering of reduction type is: " + ordering);
+
+		switch (ordering) {
+		case UNORDERED:
+			return false;
+		case ORDERED:
+			return true;
+		default:
+			throw new IllegalStateException("Logic missing ordering.");
+		}
+	}
+
+	private static boolean deriveRomForVoidMethod(SSAInvokeInstruction invokeInstruction) {
+		MethodReference declaredTarget = invokeInstruction.getCallSite().getDeclaredTarget();
+
+		if (isTerminalOperationWhereReduceOrderMatters(declaredTarget))
+			return true;
+		else if (isTerminalOperationWhereReduceOrderDoesNotMatter(declaredTarget))
+			return false;
+		else
+			throw new IllegalStateException("Can't decipher ROM for method: " + declaredTarget);
+	}
+
+	private static boolean deriveRomForScalarMethod(SSAInvokeInstruction invokeInstruction)
+			throws UnknownIfReduceOrderMattersException {
+		MethodReference declaredTarget = invokeInstruction.getCallSite().getDeclaredTarget();
+
+		if (isTerminalOperationWhereReduceOrderMattersIsUnknown(declaredTarget))
+			throw new UnknownIfReduceOrderMattersException(
+					"Cannot decifer whether ordering matters for method: " + declaredTarget);
+		else
+			// otherwise, it's the same as the void case.
+			return deriveRomForVoidMethod(invokeInstruction);
+	}
+
+	private static boolean isScalar(Collection<TypeAbstraction> types) {
+		Boolean ret = null;
+
+		for (TypeAbstraction typeAbstraction : types) {
+			boolean scalar = isScalar(typeAbstraction);
+
+			if (ret == null)
+				ret = scalar;
+			else if (ret != scalar)
+				throw new IllegalArgumentException("Inconsistent types: " + types);
+		}
+
+		return ret;
+	}
+
+	private static boolean isScalar(TypeAbstraction typeAbstraction) {
+		TypeReference typeReference = typeAbstraction.getTypeReference();
+
+		if (typeReference.isArrayType())
+			return false;
+		else if (typeReference.equals(TypeReference.Void))
+			throw new IllegalArgumentException("Void is neither scalar or nonscalar.");
+		else if (typeReference.isPrimitiveType())
+			return true;
+		else if (typeReference.isReferenceType()) {
+			IClass type = typeAbstraction.getType();
+			return !Util.isIterable(type) && type.getAllImplementedInterfaces().stream().noneMatch(Util::isIterable);
+		} else
+			throw new IllegalArgumentException("Can't tell if type is scalar: " + typeAbstraction);
+	}
+
+	private static boolean isVoid(Collection<TypeAbstraction> types) {
+		return types.stream().map(TypeAbstraction::getTypeReference).allMatch(tr -> tr.equals(TypeReference.Void));
 	}
 
 	private void discoverPossibleSideEffects(AggregateSolverResult result,
@@ -802,6 +943,18 @@ class StreamStateMachine {
 		return Arrays.stream(operations).map(o -> o + "(").anyMatch(signature::startsWith);
 	}
 
+	private static boolean isTerminalOperationWhereReduceOrderMatters(MethodReference method) {
+		return signatureMatches(TERMINAL_OPERATIONS_WERE_REDUCE_ORDERING_MATTERS, method);
+	}
+
+	private static boolean isTerminalOperationWhereReduceOrderDoesNotMatter(MethodReference method) {
+		return signatureMatches(TERMINAL_OPERATIONS_WHERE_REDUCE_ORDERING_DOES_NOT_MATTER, method);
+	}
+
+	private static boolean isTerminalOperationWhereReduceOrderMattersIsUnknown(MethodReference method) {
+		return signatureMatches(TERMINAL_OPERATIONS_WHERE_REDUCE_ORDERING_MATTERS_IS_UNKNOWN, method);
+	}
+
 	private static boolean isStatefulIntermediateOperation(MethodReference method) {
 		return signatureMatches(STATEFUL_INTERMEDIATE_OPERATIONS, method);
 	}
@@ -817,5 +970,6 @@ class StreamStateMachine {
 		originStreamToMergedTypeStateMap.clear();
 		instancesWithSideEffects.clear();
 		instanceToStatefulIntermediateOperationContainment.clear();
+		instancesWhoseReduceOrderingPossiblyMatters.clear();
 	}
 }

@@ -150,6 +150,8 @@ public class Stream {
 
 	private boolean hasPossibleStatefulIntermediateOperations;
 
+	private boolean reduceOrderingPossiblyMatters;
+
 	private RefactoringStatus status = new RefactoringStatus();
 
 	public Stream(MethodInvocation streamCreation)
@@ -188,9 +190,14 @@ public class Stream {
 		// start the state machine.
 		try {
 			new StreamStateMachine(this).start();
-		} catch (PropertiesException | CancelException | InconsistentPossibleOrderingException e) {
+		} catch (PropertiesException | CancelException | InconsistentPossibleOrderingException | NoniterableException
+				| NoninstantiableException | CannotExtractSpliteratorException e) {
 			logger.log(Level.SEVERE, "Error while building stream.", e);
 			throw new RuntimeException(e);
+		} catch (UnknownIfReduceOrderMattersException e) {
+			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
+					"Cannot extract derive reduction ordering for stream: " + streamCreation + ".");
 		}
 	}
 
@@ -515,8 +522,15 @@ public class Stream {
 		this.hasPossibleStatefulIntermediateOperations = hasPossibleStatefulIntermediateOperations;
 	}
 
+	public boolean reduceOrderingPossiblyMatters() {
+		return this.reduceOrderingPossiblyMatters;
+	}
+
+	protected void setReduceOrderingPossiblyMatters(boolean reduceOrderingPossiblyMatters) {
+		this.reduceOrderingPossiblyMatters = reduceOrderingPossiblyMatters;
+	}
+
 	protected OrderingInference getOrderingInference() {
 		return orderingInference;
 	}
-
 }
