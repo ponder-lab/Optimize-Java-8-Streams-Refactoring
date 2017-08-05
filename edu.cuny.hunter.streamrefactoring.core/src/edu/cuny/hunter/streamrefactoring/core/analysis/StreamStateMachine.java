@@ -409,10 +409,10 @@ class StreamStateMachine {
 		this.getStream().setHasPossibleStatefulIntermediateOperations(
 				instanceToStatefulIntermediateOperationContainment.getOrDefault(streamInstanceKey, false));
 
-		System.out.println("Execution modes: " + this.getStream().getPossibleExecutionModes());
-		System.out.println("Orderings: " + this.getStream().getPossibleOrderings());
-		System.out.println("Side-effects: " + this.getStream().hasPossibleSideEffects());
-		System.out.println(
+		Logger.getGlobal().info("Execution modes: " + this.getStream().getPossibleExecutionModes());
+		Logger.getGlobal().info("Orderings: " + this.getStream().getPossibleOrderings());
+		Logger.getGlobal().info("Side-effects: " + this.getStream().hasPossibleSideEffects());
+		Logger.getGlobal().info(
 				"Stateful intermediate operations: " + this.getStream().hasPossibleStatefulIntermediateOperations());
 	}
 	
