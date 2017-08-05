@@ -393,8 +393,7 @@ class StreamStateMachine {
 				engine.getCallGraph());
 
 		// propagate the instances with side-effects.
-		instancesWithSideEffects.addAll(instancesWithSideEffects.stream().flatMap(ik -> getAllPredecessors(ik).stream())
-				.collect(Collectors.toSet()));
+		propagateStreamInstanceProperty(instancesWithSideEffects);
 
 		// propagate the instances with stateful intermediate operations.
 		instanceToStatefulIntermediateOperationContainment
@@ -415,6 +414,11 @@ class StreamStateMachine {
 		System.out.println("Side-effects: " + this.getStream().hasPossibleSideEffects());
 		System.out.println(
 				"Stateful intermediate operations: " + this.getStream().hasPossibleStatefulIntermediateOperations());
+	}
+	
+	private static void propagateStreamInstanceProperty(Collection<InstanceKey> streamInstancesWithProperty) {
+		streamInstancesWithProperty.addAll(streamInstancesWithProperty.stream()
+				.flatMap(ik -> getAllPredecessors(ik).stream()).collect(Collectors.toSet()));
 	}
 
 	private static Set<InstanceKey> getAllPredecessors(InstanceKey instanceKey) {
