@@ -43,6 +43,8 @@ import com.ibm.wala.analysis.typeInference.TypeInference;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
+import com.ibm.wala.ipa.callgraph.AnalysisOptions;
+import com.ibm.wala.ipa.callgraph.AnalysisOptions.ReflectionOptions;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
@@ -227,10 +229,14 @@ class StreamStateMachine {
 				this.getStream().getClassHierarchy());
 		Set<Entrypoint> entryPoints = Collections.singleton(entryPoint);
 
+		// turn off reflection analysis for now.
+		AnalysisOptions options = engine.getDefaultOptions(entryPoints);
+		options.setReflectionOptions(ReflectionOptions.NONE);
+
 		// FIXME: Do we need to build a new call graph for each entry point?
 		// Doesn't make sense. Maybe we need to collect all enclosing methods
 		// and use those as entry points.
-		engine.buildSafeCallGraph(entryPoints);
+		engine.buildSafeCallGraph(options);
 		// TODO: Can I slice the graph so that only nodes relevant to the
 		// instance in question are present?
 
