@@ -3,6 +3,7 @@ package edu.cuny.hunter.streamrefactoring.core.analysis;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collection;
+import java.util.Objects;
 import java.util.Spliterator;
 import java.util.stream.BaseStream;
 
@@ -128,6 +129,9 @@ class OrderingInference {
 
 	private Spliterator<?> getSpliterator(Object instance, String calledMethodName)
 			throws CannotExtractSpliteratorException {
+		Objects.requireNonNull(instance);
+		Objects.requireNonNull(calledMethodName);
+		
 		Spliterator<?> spliterator = null;
 
 		if (instance instanceof Iterable) {
@@ -162,6 +166,11 @@ class OrderingInference {
 	private Ordering inferOrdering(TypeAbstraction type, String calledMethodName)
 			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
 		TypeReference typeReference = type.getTypeReference();
+
+		// special case. Arrays are always ordered.
+		if (typeReference.isArrayType())
+			return Ordering.ORDERED;
+		
 		String binaryName = Util.getBinaryName(typeReference);
 		return inferOrdering(binaryName, calledMethodName);
 	}

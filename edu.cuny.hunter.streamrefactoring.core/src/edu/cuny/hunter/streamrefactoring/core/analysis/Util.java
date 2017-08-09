@@ -18,7 +18,7 @@ import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.strings.Atom;
 import com.ibm.wala.util.strings.StringStuff;
 
-final class Util {
+public final class Util {
 
 	private Util() {
 	}
@@ -61,11 +61,11 @@ final class Util {
 	static boolean isBaseStream(IClass clazz) {
 		return isType(clazz, "java/util/stream", "BaseStream");
 	}
-	
+
 	static boolean isIterable(IClass clazz) {
 		return isType(clazz, "java/lang", "Iterable");
 	}
-	
+
 	static boolean isType(IClass clazz, String packagePath, String typeName) {
 		if (clazz.isInterface()) {
 			Atom typePackage = clazz.getName().getPackage();
@@ -81,11 +81,12 @@ final class Util {
 	}
 
 	/**
-	 * Returns true iff typeReference is a type that implements {@link BaseStream}.
+	 * @return true iff typeReference is a type that implements
+	 *         {@link BaseStream}.
 	 */
-	static boolean implementsBaseStream(TypeReference typeReference, IClassHierarchy classHierarchy) {
+	public static boolean implementsBaseStream(TypeReference typeReference, IClassHierarchy classHierarchy) {
 		IClass clazz = classHierarchy.lookupClass(typeReference);
-		
+
 		if (clazz == null)
 			return false;
 		else

@@ -36,7 +36,7 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	/**
 	 * The N value used to create the {@link nCFABuilder}.
 	 */
-	private static final int N = 2;
+	private static final int N = 1;
 
 	private CallGraphBuilder<?> callGraphBuilder;
 

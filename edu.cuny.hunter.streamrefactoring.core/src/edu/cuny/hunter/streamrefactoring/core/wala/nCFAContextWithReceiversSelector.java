@@ -2,6 +2,7 @@ package edu.cuny.hunter.streamrefactoring.core.wala;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.BaseStream;
 
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IMethod;
@@ -13,6 +14,8 @@ import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallString;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.nCFAContextSelector;
+
+import edu.cuny.hunter.streamrefactoring.core.analysis.Util;
 
 public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 
@@ -110,5 +113,21 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 
 	protected Map<CallStringTriple, CallStringWithReceivers> getCallStringWithReceiversMap() {
 		return callStringWithReceiversMap;
+	}
+
+	/**
+	 * {@inheritDoc}
+	 * 
+	 * @return 2 if the target's return type implements {@link BaseStream},
+	 *         otherwise, return the original value.
+	 */
+	@Override
+	protected int getLength(CGNode caller, CallSiteReference site, IMethod target) {
+		boolean implementsBaseStream = Util.implementsBaseStream(target.getReturnType(), target.getClassHierarchy());
+
+		if (implementsBaseStream)
+			return 2;
+		else
+			return super.getLength(caller, site, target);
 	}
 }
