@@ -555,13 +555,16 @@ class StreamStateMachine {
 
 				if (isVoid(possibleReturnTypes)) {
 					rom = deriveRomForVoidMethod(invokeInstruction);
-				} else if (isScalar(possibleReturnTypes)) {
-					rom = deriveRomForScalarMethod(invokeInstruction);
-				} else if (!isScalar(possibleReturnTypes)) {
-					rom = deriveRomForNonScalarMethod(possibleReturnTypes);
+				} else {
+					boolean scalar = isScalar(possibleReturnTypes);
+					if (scalar) {
+						rom = deriveRomForScalarMethod(invokeInstruction);
+					} else if (!scalar) {
+						rom = deriveRomForNonScalarMethod(possibleReturnTypes);
 				} else
 					throw new IllegalStateException(
 							"Can't derive ROM for possible return types: " + possibleReturnTypes);
+				}
 
 				if (rom) {
 					Logger.getGlobal().info(() -> "Reduce ordering matters for: " + invokeInstruction);
