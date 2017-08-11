@@ -543,13 +543,23 @@ class StreamStateMachine {
 				assert numOfRetVals <= 1 : "How could you possibly return " + numOfRetVals + " values?";
 
 				// TODO: Can I base my decision on the return type? Declared
-				// type or actual? Generics actually give a pretty good approx.
+				// type or actual? Generics actually give a pretty good
+				// approximation, however, it's not captured in the IR
+				// (erasure?)
 				int returnValue = invokeInstruction.getReturnValue(0);
 
-				IR ir = this.getStream().getAnalysisEngine().getCache().getIR(block.getMethod());
-				TypeInference inference = TypeInference.make(ir, true);
-				Collection<TypeAbstraction> possibleReturnTypes = Util.getPossibleTypes(returnValue, inference);
+				Collection<TypeAbstraction> possibleReturnTypes = Util.getPossibleTypesInterprocedurally(
+						block.getNode(), returnValue,
+						this.getStream().getAnalysisEngine().getHeapGraph().getHeapModel(),
+						this.getStream().getAnalysisEngine().getPointerAnalysis());
+
 				Logger.getGlobal().info("Possible reduce types are: " + possibleReturnTypes);
+
+				// for now, let's ensure that they're all the same.
+				boolean allEqualReturnTypes = Util.allEqual(possibleReturnTypes);
+				if (!allEqualReturnTypes)
+					throw new IllegalStateException(
+							"Not sure yet what to do when possible reduce return types are not equal.");
 
 				boolean rom = false;
 
@@ -561,9 +571,9 @@ class StreamStateMachine {
 						rom = deriveRomForScalarMethod(invokeInstruction);
 					} else if (!scalar) {
 						rom = deriveRomForNonScalarMethod(possibleReturnTypes);
-				} else
-					throw new IllegalStateException(
-							"Can't derive ROM for possible return types: " + possibleReturnTypes);
+					} else
+						throw new IllegalStateException(
+								"Can't derive ROM for possible return types: " + possibleReturnTypes);
 				}
 
 				if (rom) {

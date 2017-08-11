@@ -4,17 +4,26 @@ import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.stream.BaseStream;
 
+import com.ibm.wala.analysis.typeInference.PointType;
 import com.ibm.wala.analysis.typeInference.TypeAbstraction;
 import com.ibm.wala.analysis.typeInference.TypeInference;
 import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.SyntheticClass;
+import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ipa.callgraph.propagation.HeapModel;
+import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
+import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
+import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.ssa.PhiValue;
 import com.ibm.wala.ssa.SSAPhiInstruction;
 import com.ibm.wala.ssa.Value;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
+import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.util.strings.Atom;
 import com.ibm.wala.util.strings.StringStuff;
 
@@ -97,5 +106,43 @@ public final class Util {
 		TypeName name = typeReference.getName();
 		String slashToDot = StringStuff.slashToDot(name.getPackage().toString() + "." + name.getClassName().toString());
 		return slashToDot;
+	}
+
+	public static Collection<TypeAbstraction> getPossibleTypesInterprocedurally(CGNode node, int valueNumber,
+			HeapModel heapModel, PointerAnalysis<InstanceKey> pointerAnalysis) {
+		Collection<TypeAbstraction> ret = new HashSet<>();
+
+		PointerKey valueKey = heapModel.getPointerKeyForLocal(node, valueNumber);
+		Logger.getGlobal().info(() -> "Value pointer key is: " + valueKey);
+
+		OrdinalSet<InstanceKey> pointsToSet = pointerAnalysis.getPointsToSet(valueKey);
+		assert pointsToSet != null;
+		Logger.getGlobal().info(() -> "PointsTo set is: " + pointsToSet);
+
+		for (InstanceKey instanceKey : pointsToSet) {
+			IClass concreteType = instanceKey.getConcreteType();
+			if (!(concreteType instanceof SyntheticClass)) {
+				Logger.getGlobal().info(() -> "Found non-synthetic concrete type: " + concreteType);
+				PointType pointType = new PointType(concreteType);
+				ret.add(pointType);
+			}
+		}
+
+		return ret;
+	}
+
+	public static boolean allEqual(Collection<?> collection) {
+		if (collection.isEmpty())
+			return true;
+		else {
+			Object last = null;
+			for (Object object : collection) {
+				if (last == null)
+					last = object;
+				else if (!object.equals(last))
+					return false;
+			}
+			return true;
+		}
 	}
 }
