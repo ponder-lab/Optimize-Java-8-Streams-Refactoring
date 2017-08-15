@@ -1,6 +1,6 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
-import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getPossibleTypes;
+import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getPossibleTypesInterprocedurally;
 import static edu.cuny.hunter.streamrefactoring.core.safe.Util.instanceKeyCorrespondsWithInstantiationInstruction;
 
 import java.io.IOException;
@@ -41,11 +41,16 @@ import org.osgi.framework.FrameworkUtil;
 
 import com.ibm.safe.internal.exceptions.PropertiesException;
 import com.ibm.wala.analysis.typeInference.TypeAbstraction;
-import com.ibm.wala.analysis.typeInference.TypeInference;
 import com.ibm.wala.cast.java.ipa.callgraph.JavaSourceAnalysisScope;
 import com.ibm.wala.cast.java.translator.jdt.JDTIdentityMapper;
 import com.ibm.wala.classLoader.IBytecodeMethod;
+import com.ibm.wala.ipa.callgraph.AnalysisOptions;
+import com.ibm.wala.ipa.callgraph.AnalysisOptions.ReflectionOptions;
+import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
+import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
+import com.ibm.wala.ipa.callgraph.Entrypoint;
+import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
@@ -154,8 +159,10 @@ public class Stream {
 
 	private RefactoringStatus status = new RefactoringStatus();
 
-	public Stream(MethodInvocation streamCreation)
-			throws ClassHierarchyException, IOException, CoreException, InvalidClassFileException {
+	private boolean callGraphBuilt;
+
+	public Stream(MethodInvocation streamCreation) throws ClassHierarchyException, IOException, CoreException,
+			InvalidClassFileException, CallGraphBuilderCancelException, CancelException {
 		this.creation = streamCreation;
 		this.enclosingTypeDeclaration = (TypeDeclaration) ASTNodes.getParent(this.getCreation(),
 				ASTNode.TYPE_DECLARATION);
@@ -410,9 +417,10 @@ public class Stream {
 			this.setInitialExecutionMode(ExecutionMode.SEQUENTIAL);
 	}
 
-	private void inferInitialOrdering() throws IOException, CoreException, ClassHierarchyException,
-			InvalidClassFileException, InconsistentPossibleOrderingException, NoniterableException,
-			NoninstantiableException, CannotExtractSpliteratorException {
+	private void inferInitialOrdering()
+			throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
+			InconsistentPossibleOrderingException, NoniterableException, NoninstantiableException,
+			CannotExtractSpliteratorException, CallGraphBuilderCancelException, CancelException {
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
@@ -426,16 +434,31 @@ public class Stream {
 			} else
 				this.setInitialOrdering(Ordering.ORDERED);
 		} else { // instance method.
-			// FIXME: this needs to become interprocedural #7.
 			int valueNumber = getUseValueNumberForCreation();
-			TypeInference inference = TypeInference.make(this.getEnclosingMethodIR(), false);
-			Collection<TypeAbstraction> possibleTypes = getPossibleTypes(valueNumber, inference);
+
+			// get the enclosing method node.
+			this.buildCallGraph();
+			CGNode node = this.getEnclosingMethodNode();
+
+			Collection<TypeAbstraction> possibleTypes = getPossibleTypesInterprocedurally(node, valueNumber,
+					this.getAnalysisEngine().getHeapGraph().getHeapModel(),
+					this.getAnalysisEngine().getPointerAnalysis());
 
 			// Possible types: check each one.
 			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
 			Ordering ordering = this.getOrderingInference().inferOrdering(possibleTypes, calledMethod);
 			this.setInitialOrdering(ordering);
 		}
+	}
+
+	/**
+	 * @return The {@link CGNode} representing the enclosing method of this
+	 *         stream.
+	 */
+	private CGNode getEnclosingMethodNode() throws IOException, CoreException {
+		Set<CGNode> nodes = this.getAnalysisEngine().getCallGraph().getNodes(this.getEnclosingMethodReference());
+		assert nodes.size() == 1 : "Not expecting more than one node.";
+		return nodes.iterator().next();
 	}
 
 	protected void addPossibleExecutionMode(ExecutionMode executionMode) {
@@ -532,5 +555,36 @@ public class Stream {
 
 	protected OrderingInference getOrderingInference() {
 		return orderingInference;
+	}
+
+	protected void buildCallGraph()
+			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
+		if (!this.isCallGraphBuilt()) {
+			// FIXME: Do we want a different entry point?
+			DefaultEntrypoint entryPoint = new DefaultEntrypoint(getEnclosingMethodReference(), getClassHierarchy());
+			Set<Entrypoint> entryPoints = Collections.singleton(entryPoint);
+
+			// turn off reflection analysis for now.
+			AnalysisOptions options = getAnalysisEngine().getDefaultOptions(entryPoints);
+			options.setReflectionOptions(ReflectionOptions.NONE);
+
+			// FIXME: Do we need to build a new call graph for each entry point?
+			// Doesn't make sense. Maybe we need to collect all enclosing
+			// methods
+			// and use those as entry points.
+			getAnalysisEngine().buildSafeCallGraph(options);
+			// TODO: Can I slice the graph so that only nodes relevant to the
+			// instance in question are present?
+
+			this.setCallGraphBuilt(true);
+		}
+	}
+
+	protected boolean isCallGraphBuilt() {
+		return callGraphBuilt;
+	}
+
+	protected void setCallGraphBuilt(boolean callGraphBuilt) {
+		this.callGraphBuilt = callGraphBuilt;
 	}
 }

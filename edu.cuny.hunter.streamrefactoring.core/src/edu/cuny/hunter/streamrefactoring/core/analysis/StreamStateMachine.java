@@ -39,16 +39,11 @@ import com.ibm.safe.typestate.core.TypeStateProperty;
 import com.ibm.safe.typestate.core.TypeStateResult;
 import com.ibm.safe.typestate.options.TypeStateOptions;
 import com.ibm.wala.analysis.typeInference.TypeAbstraction;
-import com.ibm.wala.analysis.typeInference.TypeInference;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
-import com.ibm.wala.ipa.callgraph.AnalysisOptions;
-import com.ibm.wala.ipa.callgraph.AnalysisOptions.ReflectionOptions;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
-import com.ibm.wala.ipa.callgraph.Entrypoint;
-import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
@@ -223,23 +218,6 @@ class StreamStateMachine {
 			CannotExtractSpliteratorException {
 		// get the analysis engine.
 		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
-
-		// FIXME: Do we want a different entry point?
-		DefaultEntrypoint entryPoint = new DefaultEntrypoint(this.getStream().getEnclosingMethodReference(),
-				this.getStream().getClassHierarchy());
-		Set<Entrypoint> entryPoints = Collections.singleton(entryPoint);
-
-		// turn off reflection analysis for now.
-		AnalysisOptions options = engine.getDefaultOptions(entryPoints);
-		options.setReflectionOptions(ReflectionOptions.NONE);
-
-		// FIXME: Do we need to build a new call graph for each entry point?
-		// Doesn't make sense. Maybe we need to collect all enclosing methods
-		// and use those as entry points.
-		engine.buildSafeCallGraph(options);
-		// TODO: Can I slice the graph so that only nodes relevant to the
-		// instance in question are present?
-
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
 
 		PropertiesManager manager = PropertiesManager.initFromMap(Collections.emptyMap());

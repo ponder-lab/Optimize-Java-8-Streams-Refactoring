@@ -16,6 +16,7 @@ import org.eclipse.jdt.internal.corext.util.JdtFlags;
 
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
+import com.ibm.wala.util.CancelException;
 
 @SuppressWarnings("restriction")
 public class StreamAnalysisVisitor extends ASTVisitor {
@@ -46,7 +47,7 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 			Stream stream = null;
 			try {
 				stream = new Stream(node);
-			} catch (ClassHierarchyException | IOException | CoreException | InvalidClassFileException e) {
+			} catch (ClassHierarchyException | IOException | CoreException | InvalidClassFileException | CancelException e) {
 				logger.log(Level.SEVERE, "Encountered exception while processing: " + node, e);
 				throw new RuntimeException(e);
 			}
