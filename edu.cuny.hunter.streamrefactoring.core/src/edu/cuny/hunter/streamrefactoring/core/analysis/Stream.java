@@ -485,7 +485,7 @@ public class Stream {
 		builder.append(", possibleOrderings=");
 		builder.append(this.getPossibleOrderings());
 		builder.append(", status=");
-		builder.append(this.getStatus());
+		builder.append(this.getStatus().getSeverity());
 		builder.append("]");
 		return builder.toString();
 	}
