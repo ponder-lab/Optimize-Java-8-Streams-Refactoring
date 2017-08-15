@@ -1,5 +1,6 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
+import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getBinaryName;
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getPossibleTypesInterprocedurally;
 import static edu.cuny.hunter.streamrefactoring.core.safe.Util.instanceKeyCorrespondsWithInstantiationInstruction;
 
@@ -357,8 +358,7 @@ public class Stream {
 						SSAInvokeInstruction invokeInstruction = (SSAInvokeInstruction) instruction;
 						TypeReference declaredTargetDeclaringClass = invokeInstruction.getDeclaredTarget()
 								.getDeclaringClass();
-						if (edu.cuny.hunter.streamrefactoring.core.analysis.Util
-								.getBinaryName(declaredTargetDeclaringClass)
+						if (getBinaryName(declaredTargetDeclaringClass)
 								.equals(this.getCreation().getExpression().resolveTypeBinding().getBinaryName())) {
 							MethodReference callSiteDeclaredTarget = invokeInstruction.getCallSite()
 									.getDeclaredTarget();
