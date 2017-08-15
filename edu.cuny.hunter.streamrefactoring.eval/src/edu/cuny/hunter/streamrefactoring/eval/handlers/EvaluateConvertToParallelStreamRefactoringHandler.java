@@ -137,9 +137,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					// #streams.
 					resultsPrinter.print(processor.getStreamSet().size());
 
-					// #optimization available streams. TODO: There's no
-					// filtering at the moment.
-					resultsPrinter.print(processor.getStreamSet().size());
+					// #optimization available streams. 
+					resultsPrinter.print(processor.getOptimizableStreams().size());
 
 					// candidate streams and their attributes.
 					for (Stream stream : processor.getStreamSet()) {
