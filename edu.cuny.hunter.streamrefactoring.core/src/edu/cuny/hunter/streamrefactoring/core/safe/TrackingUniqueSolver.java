@@ -16,7 +16,7 @@ import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 
-// TODO: Need to change the super class. UniqueSolver isn't sound.
+// NOTE: UniqueSolver isn't sound.
 public class TrackingUniqueSolver extends UniqueSolver {
 
 	private Collection<InstanceKey> trackedInstances;

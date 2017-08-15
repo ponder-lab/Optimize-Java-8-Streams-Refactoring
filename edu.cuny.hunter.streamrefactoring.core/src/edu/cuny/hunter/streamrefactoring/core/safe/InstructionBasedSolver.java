@@ -37,8 +37,6 @@ public class InstructionBasedSolver extends TrackingUniqueSolver {
 		// compute all instances whose type is tracked by the DFA.
 		Collection<InstanceKey> trackedInstancesByType = this.computeTrackedInstancesByType();
 
-		// TODO: Can I track all instances that are related to the instantiation
-		// instruction? I believe this is related to #3.
 		for (InstanceKey instanceKey : trackedInstancesByType) {
 			Logger.getGlobal().info("Examining instance: " + instanceKey);
 			if (Util.instanceKeyCorrespondsWithInstantiationInstruction(instanceKey, this.getInstruction(),
@@ -48,12 +46,6 @@ public class InstructionBasedSolver extends TrackingUniqueSolver {
 
 		if (ret.size() != 1)
 			throw new IllegalStateException("Tracking more or less than one instance: " + ret.size());
-
-		// TODO: What does this instruction look like? How do I get the instance
-		// key of the stream created here? How did I get the first one? Seems
-		// inductive because the first one is also from an instruction. How do I
-		// keep track of ordering? Or, can I somehow rewrite the representation?
-		System.out.println(instruction);
 
 		Logger.getGlobal().info("Tracking: " + ret);
 		this.setTrackedInstances(ret);
