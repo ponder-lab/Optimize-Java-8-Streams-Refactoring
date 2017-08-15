@@ -5,6 +5,7 @@ package edu.cuny.hunter.streamrefactoring.core.wala;
 
 import java.io.IOException;
 import java.io.InputStream;
+
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.IJavaProject;

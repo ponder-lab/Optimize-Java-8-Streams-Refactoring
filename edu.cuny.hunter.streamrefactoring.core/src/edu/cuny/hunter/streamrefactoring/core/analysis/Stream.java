@@ -497,8 +497,8 @@ public class Stream {
 				.flatMap(instruction -> trackedInstances.stream()
 						.filter(ik -> instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction, callGraph))
 						.findFirst())
-				.orElseThrow(() -> new IllegalArgumentException("Can't find instance key for: " + this
-						+ " using tracked instances: " + trackedInstances));
+				.orElseThrow(() -> new IllegalArgumentException(
+						"Can't find instance key for: " + this + " using tracked instances: " + trackedInstances));
 	}
 
 	protected ExecutionMode getInitialExecutionMode() {
