@@ -207,6 +207,7 @@ public class Stream {
 			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
 					"Cannot extract derive reduction ordering for stream: " + streamCreation + ".");
 		}
+
 	}
 
 	private void addStatusEntry(MethodInvocation streamCreation, PreconditionFailure failure, String message) {
