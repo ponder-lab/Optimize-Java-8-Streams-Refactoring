@@ -2,8 +2,6 @@ package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import java.util.Collection;
 import java.util.Objects;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 import com.ibm.safe.dfa.DFASpec;
 import com.ibm.safe.dfa.DFAState;
