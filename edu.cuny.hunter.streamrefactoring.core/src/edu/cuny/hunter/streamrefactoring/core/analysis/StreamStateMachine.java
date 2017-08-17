@@ -533,12 +533,6 @@ class StreamStateMachine {
 
 				Logger.getGlobal().info("Possible reduce types are: " + possibleReturnTypes);
 
-				// for now, let's ensure that they're all the same.
-				boolean allEqualReturnTypes = Util.allEqual(possibleReturnTypes);
-				if (!allEqualReturnTypes)
-					throw new IllegalStateException(
-							"Not sure yet what to do when possible reduce return types are not equal.");
-
 				boolean rom = false;
 
 				if (isVoid(possibleReturnTypes)) {
@@ -757,7 +751,7 @@ class StreamStateMachine {
 							// site from the caller.
 							Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode,
 									callSiteReference);
-							Logger.getGlobal().info("# possible targets: " + possibleTargets.size());
+							Logger.getGlobal().info("#possible targets: " + possibleTargets.size());
 
 							if (!possibleTargets.isEmpty())
 								possibleTargets.forEach(t -> Logger.getGlobal().info(() -> "Possible target: " + t));
@@ -767,7 +761,7 @@ class StreamStateMachine {
 								// get the set of pointers (locations) it
 								// may modify
 								OrdinalSet<PointerKey> modSet = mod.get(target);
-								Logger.getGlobal().info("# modified locations: " + modSet.size());
+								Logger.getGlobal().info("#modified locations: " + modSet.size());
 
 								// if it's non-empty.
 								if (!modSet.isEmpty()) {
