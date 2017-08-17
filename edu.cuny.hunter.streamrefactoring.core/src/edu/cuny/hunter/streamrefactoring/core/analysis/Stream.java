@@ -208,6 +208,12 @@ public class Stream {
 					"Cannot extract derive reduction ordering for stream: " + streamCreation + ".");
 		}
 
+		logger.info("Execution modes: " + this.getPossibleExecutionModes());
+		logger.info("Orderings: " + this.getPossibleOrderings());
+		logger.info("Side-effects: " + this.hasPossibleSideEffects());
+		logger.info("Stateful intermediate operations: " + this.hasPossibleStatefulIntermediateOperations());
+		logger.info("Reduce ordering matters: " + this.reduceOrderingPossiblyMatters());
+
 	}
 
 	private void addStatusEntry(MethodInvocation streamCreation, PreconditionFailure failure, String message) {

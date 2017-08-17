@@ -444,13 +444,6 @@ class StreamStateMachine {
 		// determine if this stream reduce ordering possibly matters
 		this.getStream().setReduceOrderingPossiblyMatters(
 				instancesWhoseReduceOrderingPossiblyMatters.contains(streamInstanceKey));
-
-		Logger.getGlobal().info("Execution modes: " + this.getStream().getPossibleExecutionModes());
-		Logger.getGlobal().info("Orderings: " + this.getStream().getPossibleOrderings());
-		Logger.getGlobal().info("Side-effects: " + this.getStream().hasPossibleSideEffects());
-		Logger.getGlobal().info(
-				"Stateful intermediate operations: " + this.getStream().hasPossibleStatefulIntermediateOperations());
-		Logger.getGlobal().info("Reduce ordering matters: " + this.getStream().reduceOrderingPossiblyMatters());
 	}
 
 	private static void propagateStreamInstanceProperty(Collection<InstanceKey> streamInstancesWithProperty) {
