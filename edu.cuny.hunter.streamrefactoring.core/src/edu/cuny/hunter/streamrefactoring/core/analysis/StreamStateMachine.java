@@ -759,10 +759,8 @@ class StreamStateMachine {
 									callSiteReference);
 							Logger.getGlobal().info("# possible targets: " + possibleTargets.size());
 
-							if (!possibleTargets.isEmpty()) {
-								Logger.getGlobal().info("Possible targets:");
-								possibleTargets.forEach(t -> Logger.getGlobal().info(() -> t.toString()));
-							}
+							if (!possibleTargets.isEmpty())
+								possibleTargets.forEach(t -> Logger.getGlobal().info(() -> "Possible target: " + t));
 
 							// for each possible target node.
 							for (CGNode target : possibleTargets) {
@@ -773,8 +771,7 @@ class StreamStateMachine {
 
 								// if it's non-empty.
 								if (!modSet.isEmpty()) {
-									Logger.getGlobal().info("Modified locations:");
-									modSet.forEach(pk -> Logger.getGlobal().info(() -> pk.toString()));
+									modSet.forEach(pk -> Logger.getGlobal().info(() -> "Modified location: " + pk));
 
 									// mark the instances whose pipeline may
 									// have side-effects.
