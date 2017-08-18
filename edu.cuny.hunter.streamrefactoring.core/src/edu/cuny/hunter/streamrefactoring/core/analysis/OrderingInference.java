@@ -21,7 +21,7 @@ class OrderingInference {
 	private Objenesis objenesis = new ObjenesisStd();
 
 	private IClassHierarchy classHierarchy;
-
+	
 	public OrderingInference(IClassHierarchy classHierarchy) {
 		this.classHierarchy = classHierarchy;
 	}
@@ -60,10 +60,6 @@ class OrderingInference {
 			// just process the first one.
 			TypeAbstraction typeAbstraction = possibleTypes.iterator().next();
 			String methodName = findStreamCreationMethod(typeAbstraction);
-
-			if (methodName == null)
-				throw new IllegalArgumentException("Can't derive stream creation method from type: " + typeAbstraction);
-
 			return inferOrdering(possibleTypes, methodName);
 		}
 	}
@@ -135,7 +131,7 @@ class OrderingInference {
 			throws CannotExtractSpliteratorException {
 		Objects.requireNonNull(instance);
 		Objects.requireNonNull(calledMethodName);
-
+		
 		Spliterator<?> spliterator = null;
 
 		if (instance instanceof Iterable) {
@@ -174,7 +170,7 @@ class OrderingInference {
 		// special case. Arrays are always ordered.
 		if (typeReference.isArrayType())
 			return Ordering.ORDERED;
-
+		
 		String binaryName = Util.getBinaryName(typeReference);
 		return inferOrdering(binaryName, calledMethodName);
 	}
