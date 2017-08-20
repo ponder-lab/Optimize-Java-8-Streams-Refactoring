@@ -27,5 +27,4 @@ public class CallStringWithReceivers extends CallString {
 	public Set<InstanceKey> getPossibleReceivers() {
 		return this.possibleReceivers;
 	}
-
 }
