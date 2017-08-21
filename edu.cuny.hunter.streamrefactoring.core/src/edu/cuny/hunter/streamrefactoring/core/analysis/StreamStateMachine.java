@@ -75,6 +75,8 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 class StreamStateMachine {
 
+	private static final Logger LOGGER = Logger.getGlobal();
+
 	/**
 	 * A list of stateful intermediate operation signatures.
 	 */
@@ -386,8 +388,12 @@ class StreamStateMachine {
 			for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
 				InstanceKey instance = it.next();
 				CallStringWithReceivers callString = getCallString(instance);
+				Set<InstanceKey> possibleReceivers = new HashSet<>(callString.getPossibleReceivers());
 
-				instanceToPredecessorsMap.merge(instance, callString.getPossibleReceivers(), (x, y) -> {
+				// get any additional receivers if necessary #36.
+				possibleReceivers.addAll(getAdditionalNecessaryReceiversFromPredecessors(instance, callString));
+
+				instanceToPredecessorsMap.merge(instance, possibleReceivers, (x, y) -> {
 					x.addAll(y);
 					return x;
 				});
@@ -444,6 +450,53 @@ class StreamStateMachine {
 		// determine if this stream reduce ordering possibly matters
 		this.getStream().setReduceOrderingPossiblyMatters(
 				instancesWhoseReduceOrderingPossiblyMatters.contains(streamInstanceKey));
+	}
+
+	private Collection<? extends InstanceKey> getAdditionalNecessaryReceiversFromPredecessors(InstanceKey instance,
+			CallStringWithReceivers callString) throws IOException, CoreException {
+		Collection<InstanceKey> ret = new HashSet<>();
+
+		LOGGER.fine("Instance is: " + instance);
+
+		// for each method in the call string.
+		for (IMethod calledMethod : callString.getMethods()) {
+			// who's the caller?
+			LOGGER.fine("Called method is: " + calledMethod);
+
+			TypeReference returnType = calledMethod.getReturnType();
+			LOGGER.fine("Return type is: " + returnType);
+
+			boolean implementsBaseStream = Util.implementsBaseStream(returnType, this.getStream().getClassHierarchy());
+			LOGGER.fine("Is it a stream? " + implementsBaseStream);
+
+			if (implementsBaseStream) {
+				// look up the call string for this method.
+				Set<CGNode> nodes = this.getStream().getAnalysisEngine().getCallGraph()
+						.getNodes(calledMethod.getReference());
+				assert nodes.size() == 1 : "Only expecting one node here.";
+
+				for (CGNode cgNode : nodes) {
+					LOGGER.fine("Found node: " + cgNode);
+
+					// try to get its CallStringWithReceivers.
+					CallStringWithReceivers calledMethodCallString = getCallString(cgNode);
+
+					// what are its receivers?
+					Set<InstanceKey> possibleReceivers = calledMethodCallString.getPossibleReceivers();
+					LOGGER.fine(() -> "It's receivers are: " + possibleReceivers);
+
+					// filter out ones that aren't streams.
+					for (InstanceKey receiver : possibleReceivers) {
+						if (Util.implementsBaseStream(receiver.getConcreteType().getReference(),
+								this.getStream().getClassHierarchy()))
+							ret.add(receiver);
+					}
+				}
+			}
+		}
+
+		LOGGER.info(() -> "Adding additional receivers: " + ret);
+		return ret;
 	}
 
 	private static void propagateStreamInstanceProperty(Collection<InstanceKey> streamInstancesWithProperty) {
@@ -524,7 +577,7 @@ class StreamStateMachine {
 						this.getStream().getAnalysisEngine().getHeapGraph().getHeapModel(),
 						this.getStream().getAnalysisEngine().getPointerAnalysis());
 
-				Logger.getGlobal().info("Possible reduce types are: " + possibleReturnTypes);
+				LOGGER.info("Possible reduce types are: " + possibleReturnTypes);
 
 				boolean rom = false;
 
@@ -542,11 +595,11 @@ class StreamStateMachine {
 				}
 
 				if (rom) {
-					Logger.getGlobal().info(() -> "Reduce ordering matters for: " + invokeInstruction);
+					LOGGER.info(() -> "Reduce ordering matters for: " + invokeInstruction);
 					OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
 					possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
 				} else
-					Logger.getGlobal().info(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
+					LOGGER.info(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
 
 				++processedInstructions;
 			}
@@ -558,7 +611,7 @@ class StreamStateMachine {
 			throws InconsistentPossibleOrderingException, NoniterableException, NoninstantiableException,
 			CannotExtractSpliteratorException {
 		Ordering ordering = this.getStream().getOrderingInference().inferOrdering(possibleReturnTypes);
-		Logger.getGlobal().info("Ordering of reduction type is: " + ordering);
+		LOGGER.info("Ordering of reduction type is: " + ordering);
 
 		switch (ordering) {
 		case UNORDERED:
@@ -695,7 +748,7 @@ class StreamStateMachine {
 			IR ir = engine.getCache().getIR(callerTargetMethod);
 
 			if (ir == null) {
-				Logger.getGlobal().warning(() -> "Can't find IR for target: " + callerTargetMethod);
+				LOGGER.warning(() -> "Can't find IR for target: " + callerTargetMethod);
 				continue; // next instance.
 			}
 
@@ -744,21 +797,21 @@ class StreamStateMachine {
 							// site from the caller.
 							Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode,
 									callSiteReference);
-							Logger.getGlobal().info("#possible targets: " + possibleTargets.size());
+							LOGGER.info("#possible targets: " + possibleTargets.size());
 
 							if (!possibleTargets.isEmpty())
-								possibleTargets.forEach(t -> Logger.getGlobal().info(() -> "Possible target: " + t));
+								possibleTargets.forEach(t -> LOGGER.info(() -> "Possible target: " + t));
 
 							// for each possible target node.
 							for (CGNode target : possibleTargets) {
 								// get the set of pointers (locations) it
 								// may modify
 								OrdinalSet<PointerKey> modSet = mod.get(target);
-								Logger.getGlobal().info("#modified locations: " + modSet.size());
+								LOGGER.info("#modified locations: " + modSet.size());
 
 								// if it's non-empty.
 								if (!modSet.isEmpty()) {
-									modSet.forEach(pk -> Logger.getGlobal().info(() -> "Modified location: " + pk));
+									modSet.forEach(pk -> LOGGER.info(() -> "Modified location: " + pk));
 
 									// mark the instances whose pipeline may
 									// have side-effects.
@@ -773,7 +826,7 @@ class StreamStateMachine {
 					}
 				}
 			} else
-				Logger.getGlobal().warning("Def was an instance of a: " + def.getClass());
+				LOGGER.warning("Def was an instance of a: " + def.getClass());
 		}
 	}
 
@@ -792,7 +845,15 @@ class StreamStateMachine {
 
 	private static CallStringWithReceivers getCallString(InstanceKey instance) {
 		NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
+		return getCallString(allocationInNode);
+	}
+
+	private static CallStringWithReceivers getCallString(NormalAllocationInNode allocationInNode) {
 		CGNode node = allocationInNode.getNode();
+		return getCallString(node);
+	}
+
+	private static CallStringWithReceivers getCallString(CGNode node) {
 		CallStringContext context = (CallStringContext) node.getContext();
 		CallStringWithReceivers callString = (CallStringWithReceivers) context
 				.get(CallStringContextSelector.CALL_STRING);
