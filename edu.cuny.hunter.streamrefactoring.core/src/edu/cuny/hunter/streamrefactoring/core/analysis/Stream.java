@@ -281,6 +281,8 @@ public class Stream {
 			if (ir == null)
 				throw new IllegalStateException("IR is null for: " + resolvedMethod);
 
+			LOGGER.info("IR is: " + ir.toString());
+
 			methodDeclarationToIRMap.put(getEnclosingMethodDeclaration(), ir);
 		}
 		return ir;
