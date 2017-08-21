@@ -214,6 +214,12 @@ public class Stream {
 		LOGGER.info("Stateful intermediate operations: " + this.hasPossibleStatefulIntermediateOperations());
 		LOGGER.info("Reduce ordering matters: " + this.reduceOrderingPossiblyMatters());
 
+		// basically implement the tables.
+
+		// TODO first, let's check that execution modes are consistent.
+		// Otherwise, we'll fail.
+		// if (this.getPossibleExecutionModes().)
+
 	}
 
 	private void addStatusEntry(MethodInvocation streamCreation, PreconditionFailure failure, String message) {
