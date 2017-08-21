@@ -80,7 +80,7 @@ public class Stream {
 
 	private static Map<IJavaProject, IClassHierarchy> javaProjectToClassHierarchyMap = new HashMap<>();
 
-	private static final Logger logger = Logger.getLogger("edu.cuny.hunter.streamrefactoring");
+	private static final Logger LOGGER = Logger.getLogger("edu.cuny.hunter.streamrefactoring");
 
 	private static Map<MethodDeclaration, IR> methodDeclarationToIRMap = new HashMap<>();
 
@@ -177,19 +177,19 @@ public class Stream {
 		try {
 			this.inferInitialOrdering();
 		} catch (InconsistentPossibleOrderingException e) {
-			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.INCONSISTENT_POSSIBLE_STREAM_SOURCE_ORDERING,
 					"Stream: " + streamCreation + " has inconsistent possible source orderings.");
 		} catch (NoniterableException e) {
-			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.NON_ITERABLE_POSSIBLE_STREAM_SOURCE,
 					"Stream: " + streamCreation + " has a non-iterable possible source.");
 		} catch (NoninstantiableException e) {
-			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.NON_INSTANTIABLE_POSSIBLE_STREAM_SOURCE, "Stream: "
 					+ streamCreation + " has a non-instantiable possible source with type: " + e.getSourceType() + ".");
 		} catch (CannotExtractSpliteratorException e) {
-			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_STREAM_SOURCE_ORDERING,
 					"Cannot extract spliterator from type: " + e.getFromType() + " for stream: " + streamCreation
 							+ ".");
@@ -200,19 +200,19 @@ public class Stream {
 			new StreamStateMachine(this).start();
 		} catch (PropertiesException | CancelException | InconsistentPossibleOrderingException | NoniterableException
 				| NoninstantiableException | CannotExtractSpliteratorException e) {
-			logger.log(Level.SEVERE, "Error while building stream.", e);
+			LOGGER.log(Level.SEVERE, "Error while building stream.", e);
 			throw new RuntimeException(e);
 		} catch (UnknownIfReduceOrderMattersException e) {
-			logger.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
 					"Cannot extract derive reduction ordering for stream: " + streamCreation + ".");
 		}
 
-		logger.info("Execution modes: " + this.getPossibleExecutionModes());
-		logger.info("Orderings: " + this.getPossibleOrderings());
-		logger.info("Side-effects: " + this.hasPossibleSideEffects());
-		logger.info("Stateful intermediate operations: " + this.hasPossibleStatefulIntermediateOperations());
-		logger.info("Reduce ordering matters: " + this.reduceOrderingPossiblyMatters());
+		LOGGER.info("Execution modes: " + this.getPossibleExecutionModes());
+		LOGGER.info("Orderings: " + this.getPossibleOrderings());
+		LOGGER.info("Side-effects: " + this.hasPossibleSideEffects());
+		LOGGER.info("Stateful intermediate operations: " + this.hasPossibleStatefulIntermediateOperations());
+		LOGGER.info("Reduce ordering matters: " + this.reduceOrderingPossiblyMatters());
 
 	}
 
@@ -376,9 +376,9 @@ public class Stream {
 							}
 						}
 					} else
-						logger.warning("Instruction: " + instruction + " is not an SSAInstruction.");
+						LOGGER.warning("Instruction: " + instruction + " is not an SSAInstruction.");
 				} else
-					logger.warning("Instruction: " + instruction + " has no definitions.");
+					LOGGER.warning("Instruction: " + instruction + " has no definitions.");
 			}
 		}
 		return Optional.empty();
