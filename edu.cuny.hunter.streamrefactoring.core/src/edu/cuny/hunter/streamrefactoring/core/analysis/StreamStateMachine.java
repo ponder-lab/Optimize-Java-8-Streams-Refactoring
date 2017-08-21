@@ -577,7 +577,7 @@ class StreamStateMachine {
 						this.getStream().getAnalysisEngine().getHeapGraph().getHeapModel(),
 						this.getStream().getAnalysisEngine().getPointerAnalysis());
 
-				Logger.getGlobal().info("Possible reduce types are: " + possibleReturnTypes);
+				LOGGER.info("Possible reduce types are: " + possibleReturnTypes);
 
 				boolean rom = false;
 
@@ -595,11 +595,11 @@ class StreamStateMachine {
 				}
 
 				if (rom) {
-					Logger.getGlobal().info(() -> "Reduce ordering matters for: " + invokeInstruction);
+					LOGGER.info(() -> "Reduce ordering matters for: " + invokeInstruction);
 					OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
 					possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
 				} else
-					Logger.getGlobal().info(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
+					LOGGER.info(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
 
 				++processedInstructions;
 			}
@@ -611,7 +611,7 @@ class StreamStateMachine {
 			throws InconsistentPossibleOrderingException, NoniterableException, NoninstantiableException,
 			CannotExtractSpliteratorException {
 		Ordering ordering = this.getStream().getOrderingInference().inferOrdering(possibleReturnTypes);
-		Logger.getGlobal().info("Ordering of reduction type is: " + ordering);
+		LOGGER.info("Ordering of reduction type is: " + ordering);
 
 		switch (ordering) {
 		case UNORDERED:
@@ -748,7 +748,7 @@ class StreamStateMachine {
 			IR ir = engine.getCache().getIR(callerTargetMethod);
 
 			if (ir == null) {
-				Logger.getGlobal().warning(() -> "Can't find IR for target: " + callerTargetMethod);
+				LOGGER.warning(() -> "Can't find IR for target: " + callerTargetMethod);
 				continue; // next instance.
 			}
 
@@ -797,21 +797,21 @@ class StreamStateMachine {
 							// site from the caller.
 							Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode,
 									callSiteReference);
-							Logger.getGlobal().info("#possible targets: " + possibleTargets.size());
+							LOGGER.info("#possible targets: " + possibleTargets.size());
 
 							if (!possibleTargets.isEmpty())
-								possibleTargets.forEach(t -> Logger.getGlobal().info(() -> "Possible target: " + t));
+								possibleTargets.forEach(t -> LOGGER.info(() -> "Possible target: " + t));
 
 							// for each possible target node.
 							for (CGNode target : possibleTargets) {
 								// get the set of pointers (locations) it
 								// may modify
 								OrdinalSet<PointerKey> modSet = mod.get(target);
-								Logger.getGlobal().info("#modified locations: " + modSet.size());
+								LOGGER.info("#modified locations: " + modSet.size());
 
 								// if it's non-empty.
 								if (!modSet.isEmpty()) {
-									modSet.forEach(pk -> Logger.getGlobal().info(() -> "Modified location: " + pk));
+									modSet.forEach(pk -> LOGGER.info(() -> "Modified location: " + pk));
 
 									// mark the instances whose pipeline may
 									// have side-effects.
@@ -826,7 +826,7 @@ class StreamStateMachine {
 					}
 				}
 			} else
-				Logger.getGlobal().warning("Def was an instance of a: " + def.getClass());
+				LOGGER.warning("Def was an instance of a: " + def.getClass());
 		}
 	}
 
