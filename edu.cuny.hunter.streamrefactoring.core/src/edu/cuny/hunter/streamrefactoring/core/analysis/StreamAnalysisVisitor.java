@@ -52,6 +52,8 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 				throw new RuntimeException(e);
 			}
 			this.getStreamSet().add(stream);
+			
+			stream.check();
 		}
 
 		return super.visit(node);

@@ -163,6 +163,10 @@ public class Stream {
 
 	private boolean callGraphBuilt;
 
+	private Refactoring refactoring;
+
+	private TransformationAction action;
+
 	public Stream(MethodInvocation streamCreation) throws ClassHierarchyException, IOException, CoreException,
 			InvalidClassFileException, CallGraphBuilderCancelException, CancelException {
 		this.creation = streamCreation;
@@ -208,37 +212,89 @@ public class Stream {
 			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
 					"Cannot extract derive reduction ordering for stream: " + streamCreation + ".");
 		}
+	}
 
+	public void check() {
 		Set<ExecutionMode> possibleExecutionModes = this.getPossibleExecutionModes();
+		Set<Ordering> possibleOrderings = this.getPossibleOrderings();
+		boolean hasPossibleSideEffects = this.hasPossibleSideEffects();
+		boolean hasPossibleStatefulIntermediateOperations = this.hasPossibleStatefulIntermediateOperations();
+		boolean reduceOrderingPossiblyMatters = this.reduceOrderingPossiblyMatters();
 
 		LOGGER.info("Execution modes: " + possibleExecutionModes);
-		LOGGER.info("Orderings: " + this.getPossibleOrderings());
-		LOGGER.info("Side-effects: " + this.hasPossibleSideEffects());
-		LOGGER.info("Stateful intermediate operations: " + this.hasPossibleStatefulIntermediateOperations());
-		LOGGER.info("Reduce ordering matters: " + this.reduceOrderingPossiblyMatters());
+		LOGGER.info("Orderings: " + possibleOrderings);
+		LOGGER.info("Side-effects: " + hasPossibleSideEffects);
+		LOGGER.info("Stateful intermediate operations: " + hasPossibleStatefulIntermediateOperations);
+		LOGGER.info("Reduce ordering matters: " + reduceOrderingPossiblyMatters);
 
 		// basically implement the tables.
 
-		// first, let's check that execution modes are consistent. Otherwise,
-		// we'll fail.
-		if (!allEqual(possibleExecutionModes))
-			addStatusEntry(streamCreation, PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES,
-					"Stream: " + streamCreation + " has inconsitent possible execution modes.");
-		else {
-			// we have consistent execution modes.
-			ExecutionMode executionMode = possibleExecutionModes.iterator().next();
-			
-			switch (executionMode) {
-			case SEQUENTIAL:
-				
-				
-				
-				break;
-			case PARALLEL:
-				break;
-			} 
-			
+		// first, let's check that execution modes are consistent.
+		MethodInvocation creation = this.getCreation();
+
+		if (isConsistent(possibleExecutionModes, PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES,
+				"Stream: " + creation + " has inconsitent possible execution modes.", creation)) {
+			// do we have consistent ordering?
+			if (isConsistent(possibleOrderings, PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS,
+					"Stream: " + creation + " has inconsitent possible orderings.", creation)) {
+				ExecutionMode executionMode = possibleExecutionModes.iterator().next();
+				Ordering ordering = possibleOrderings.iterator().next();
+
+				switch (executionMode) {
+				case SEQUENTIAL:
+					switch (ordering) {
+					case UNORDERED:
+						if (hasPossibleSideEffects)
+							addStatusEntry(creation, PreconditionFailure.HAS_SIDE_EFFECTS, "Stream: " + creation
+									+ " is associated with a behavioral parameter containing possible side-effects");
+						else {
+							// it passed P1.
+							this.setRefactoring(Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL);
+							this.setTransformationAction(TransformationAction.CONVERT_TO_PARALLEL);
+						}
+						break;
+					case ORDERED:
+						if (hasPossibleSideEffects)
+							addStatusEntry(creation, PreconditionFailure.HAS_SIDE_EFFECTS2, "Stream: " + creation
+									+ " is associated with a behavioral parameter containing possible side-effects");
+						else {
+							// check SIO.
+							if (!hasPossibleStatefulIntermediateOperations) {
+								// it passed P2.
+								this.setRefactoring(Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL);
+								this.setTransformationAction(TransformationAction.CONVERT_TO_PARALLEL);
+							} else {
+								// check ROM.
+							}
+
+						}
+
+						break;
+					}
+
+					break;
+				case PARALLEL:
+					break;
+				}
+			}
 		}
+	}
+
+	protected void setTransformationAction(TransformationAction action) {
+		this.action = action;
+	}
+
+	protected void setRefactoring(Refactoring refactoring) {
+		this.refactoring = refactoring;
+	}
+
+	private boolean isConsistent(Collection<?> collection, PreconditionFailure failure, String failureMessage,
+			MethodInvocation streamCreation) {
+		if (!allEqual(collection)) {
+			addStatusEntry(streamCreation, failure, failureMessage);
+			return false;
+		} else
+			return true;
 	}
 
 	private void addStatusEntry(MethodInvocation streamCreation, PreconditionFailure failure, String message) {
@@ -519,7 +575,7 @@ public class Stream {
 		builder.append(", possibleOrderings=");
 		builder.append(this.getPossibleOrderings());
 		builder.append(", status=");
-		builder.append(this.getStatus().getSeverity());
+		builder.append(this.getStatus());
 		builder.append("]");
 		return builder.toString();
 	}
