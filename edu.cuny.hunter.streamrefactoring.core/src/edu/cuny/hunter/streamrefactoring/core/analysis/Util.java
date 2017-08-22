@@ -113,16 +113,16 @@ public final class Util {
 		Collection<TypeAbstraction> ret = new HashSet<>();
 
 		PointerKey valueKey = heapModel.getPointerKeyForLocal(node, valueNumber);
-		Logger.getGlobal().info(() -> "Value pointer key is: " + valueKey);
+		Logger.getGlobal().fine(() -> "Value pointer key is: " + valueKey);
 
 		OrdinalSet<InstanceKey> pointsToSet = pointerAnalysis.getPointsToSet(valueKey);
 		assert pointsToSet != null;
-		Logger.getGlobal().info(() -> "PointsTo set is: " + pointsToSet);
+		Logger.getGlobal().fine(() -> "PointsTo set is: " + pointsToSet);
 
 		for (InstanceKey instanceKey : pointsToSet) {
 			IClass concreteType = instanceKey.getConcreteType();
 			if (!(concreteType instanceof SyntheticClass)) {
-				Logger.getGlobal().info(() -> "Found non-synthetic concrete type: " + concreteType);
+				Logger.getGlobal().fine(() -> "Found non-synthetic concrete type: " + concreteType);
 				PointType pointType = new PointType(concreteType);
 				ret.add(pointType);
 			}
