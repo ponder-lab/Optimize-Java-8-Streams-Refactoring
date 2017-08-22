@@ -745,6 +745,7 @@ class StreamStateMachine {
 			MethodReference callerDeclaredTarget = callSiteRefs[1].getDeclaredTarget();
 			// get it's IR.
 			IMethod callerTargetMethod = engine.getClassHierarchy().resolveMethod(callerDeclaredTarget);
+			assert callerTargetMethod != null : "Cannot resolve caller declared target method: " + callerDeclaredTarget;
 			IR ir = engine.getCache().getIR(callerTargetMethod);
 
 			if (ir == null) {
