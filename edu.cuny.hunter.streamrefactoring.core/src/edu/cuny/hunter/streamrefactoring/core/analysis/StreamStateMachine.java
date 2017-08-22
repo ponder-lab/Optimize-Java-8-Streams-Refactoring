@@ -743,18 +743,32 @@ class StreamStateMachine {
 
 			// get the target of the caller.
 			MethodReference callerDeclaredTarget = callSiteRefs[1].getDeclaredTarget();
+
 			// get it's IR.
 			IMethod callerTargetMethod = engine.getClassHierarchy().resolveMethod(callerDeclaredTarget);
-			assert callerTargetMethod != null : "Cannot resolve caller declared target method: " + callerDeclaredTarget;
+			boolean fallback = false;
+
+			if (callerTargetMethod == null) {
+				LOGGER.warning("Cannot resolve caller declared target method: " + callerDeclaredTarget);
+
+				// fall back.
+				callerTargetMethod = callString.getMethods()[1];
+				LOGGER.warning("Falling back to method: " + callerTargetMethod);
+				fallback = true;
+			}
+
 			IR ir = engine.getCache().getIR(callerTargetMethod);
 
 			if (ir == null) {
-				LOGGER.warning(() -> "Can't find IR for target: " + callerTargetMethod);
+				LOGGER.warning("Can't find IR for target: " + callerTargetMethod);
 				continue; // next instance.
 			}
 
 			// get calls to the caller target.
-			SSAAbstractInvokeInstruction[] calls = ir.getCalls(callSiteRefs[0]);
+			// if we are falling back, use index 1, otherwise stick with index
+			// 0.
+			int callSiteRefsInx = fallback ? 1 : 0;
+			SSAAbstractInvokeInstruction[] calls = ir.getCalls(callSiteRefs[callSiteRefsInx]);
 			assert calls.length == 1 : "Are we only expecting one call here?";
 
 			// I guess we're only interested in ones with a single behavioral
