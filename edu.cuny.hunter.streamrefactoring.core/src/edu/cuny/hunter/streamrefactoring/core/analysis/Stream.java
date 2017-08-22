@@ -203,10 +203,14 @@ public class Stream {
 		// start the state machine.
 		try {
 			new StreamStateMachine(this).start();
-		} catch (PropertiesException | CancelException | InconsistentPossibleOrderingException | NoniterableException
-				| NoninstantiableException | CannotExtractSpliteratorException e) {
+		} catch (PropertiesException | CancelException | NoniterableException | NoninstantiableException
+				| CannotExtractSpliteratorException e) {
 			LOGGER.log(Level.SEVERE, "Error while building stream.", e);
 			throw new RuntimeException(e);
+		} catch (InconsistentPossibleOrderingException e) {
+			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+			addStatusEntry(streamCreation, PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS,
+					"Inconsistent ordering for stream: " + streamCreation + ".");
 		} catch (UnknownIfReduceOrderMattersException e) {
 			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
