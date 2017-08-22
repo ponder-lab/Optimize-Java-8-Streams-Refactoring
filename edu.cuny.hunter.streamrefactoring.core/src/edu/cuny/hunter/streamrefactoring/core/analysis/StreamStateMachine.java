@@ -575,7 +575,7 @@ class StreamStateMachine {
 				Collection<TypeAbstraction> possibleReturnTypes = Util.getPossibleTypesInterprocedurally(
 						block.getNode(), returnValue,
 						this.getStream().getAnalysisEngine().getHeapGraph().getHeapModel(),
-						this.getStream().getAnalysisEngine().getPointerAnalysis());
+						this.getStream().getAnalysisEngine().getPointerAnalysis(), LOGGER);
 
 				LOGGER.info("Possible reduce types are: " + possibleReturnTypes);
 

@@ -536,7 +536,7 @@ public class Stream {
 
 			Collection<TypeAbstraction> possibleTypes = getPossibleTypesInterprocedurally(node, valueNumber,
 					this.getAnalysisEngine().getHeapGraph().getHeapModel(),
-					this.getAnalysisEngine().getPointerAnalysis());
+					this.getAnalysisEngine().getPointerAnalysis(), LOGGER);
 
 			// Possible types: check each one.
 			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();

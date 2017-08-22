@@ -109,20 +109,20 @@ public final class Util {
 	}
 
 	public static Collection<TypeAbstraction> getPossibleTypesInterprocedurally(CGNode node, int valueNumber,
-			HeapModel heapModel, PointerAnalysis<InstanceKey> pointerAnalysis) {
+			HeapModel heapModel, PointerAnalysis<InstanceKey> pointerAnalysis, Logger logger) {
 		Collection<TypeAbstraction> ret = new HashSet<>();
 
 		PointerKey valueKey = heapModel.getPointerKeyForLocal(node, valueNumber);
-		Logger.getGlobal().fine(() -> "Value pointer key is: " + valueKey);
+		logger.fine(() -> "Value pointer key is: " + valueKey);
 
 		OrdinalSet<InstanceKey> pointsToSet = pointerAnalysis.getPointsToSet(valueKey);
 		assert pointsToSet != null;
-		Logger.getGlobal().fine(() -> "PointsTo set is: " + pointsToSet);
+		logger.fine(() -> "PointsTo set is: " + pointsToSet);
 
 		for (InstanceKey instanceKey : pointsToSet) {
 			IClass concreteType = instanceKey.getConcreteType();
 			if (!(concreteType instanceof SyntheticClass)) {
-				Logger.getGlobal().fine(() -> "Found non-synthetic concrete type: " + concreteType);
+				logger.fine(() -> "Found non-synthetic concrete type: " + concreteType);
 				PointType pointType = new PointType(concreteType);
 				ret.add(pointType);
 			}
