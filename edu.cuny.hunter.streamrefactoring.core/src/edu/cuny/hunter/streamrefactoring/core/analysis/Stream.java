@@ -1,5 +1,6 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
+import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.allEqual;
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getBinaryName;
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getPossibleTypesInterprocedurally;
 import static edu.cuny.hunter.streamrefactoring.core.safe.Util.instanceKeyCorrespondsWithInstantiationInstruction;
@@ -208,7 +209,9 @@ public class Stream {
 					"Cannot extract derive reduction ordering for stream: " + streamCreation + ".");
 		}
 
-		LOGGER.info("Execution modes: " + this.getPossibleExecutionModes());
+		Set<ExecutionMode> possibleExecutionModes = this.getPossibleExecutionModes();
+
+		LOGGER.info("Execution modes: " + possibleExecutionModes);
 		LOGGER.info("Orderings: " + this.getPossibleOrderings());
 		LOGGER.info("Side-effects: " + this.hasPossibleSideEffects());
 		LOGGER.info("Stateful intermediate operations: " + this.hasPossibleStatefulIntermediateOperations());
@@ -216,10 +219,26 @@ public class Stream {
 
 		// basically implement the tables.
 
-		// TODO first, let's check that execution modes are consistent.
-		// Otherwise, we'll fail.
-		// if (this.getPossibleExecutionModes().)
-
+		// first, let's check that execution modes are consistent. Otherwise,
+		// we'll fail.
+		if (!allEqual(possibleExecutionModes))
+			addStatusEntry(streamCreation, PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES,
+					"Stream: " + streamCreation + " has inconsitent possible execution modes.");
+		else {
+			// we have consistent execution modes.
+			ExecutionMode executionMode = possibleExecutionModes.iterator().next();
+			
+			switch (executionMode) {
+			case SEQUENTIAL:
+				
+				
+				
+				break;
+			case PARALLEL:
+				break;
+			} 
+			
+		}
 	}
 
 	private void addStatusEntry(MethodInvocation streamCreation, PreconditionFailure failure, String message) {
