@@ -214,7 +214,7 @@ public class Stream {
 		} catch (UnknownIfReduceOrderMattersException e) {
 			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
-					"Cannot extract derive reduction ordering for stream: " + streamCreation + ".");
+					"Cannot derive reduction ordering for stream: " + streamCreation + ".");
 		}
 	}
 
