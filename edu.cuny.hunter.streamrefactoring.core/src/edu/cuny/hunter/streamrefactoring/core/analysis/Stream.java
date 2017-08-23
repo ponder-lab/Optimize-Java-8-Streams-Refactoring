@@ -625,13 +625,13 @@ public class Stream {
 		builder.append("Stream [streamCreation=");
 		builder.append(this.getCreation());
 		builder.append(", enclosingMethodDeclaration=");
-		builder.append(this.getEnclosingMethodDeclaration());
+		builder.append(this.getEnclosingMethodDeclaration().getName());
 		builder.append(", possibleExecutionModes=");
 		builder.append(this.getPossibleExecutionModes());
 		builder.append(", possibleOrderings=");
 		builder.append(this.getPossibleOrderings());
 		builder.append(", status=");
-		builder.append(this.getStatus());
+		builder.append(this.getStatus().getSeverity());
 		builder.append("]");
 		return builder.toString();
 	}
