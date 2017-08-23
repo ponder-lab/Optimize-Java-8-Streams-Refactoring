@@ -707,6 +707,7 @@ public class Stream {
 			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
 		if (!this.isCallGraphBuilt()) {
 			// FIXME: Do we want a different entry point?
+			// TODO: Do we need to build the call graph for each stream?
 			DefaultEntrypoint entryPoint = new DefaultEntrypoint(getEnclosingMethodReference(), getClassHierarchy());
 			Set<Entrypoint> entryPoints = Collections.singleton(entryPoint);
 
