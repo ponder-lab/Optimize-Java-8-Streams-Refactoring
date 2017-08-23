@@ -6,6 +6,7 @@ import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getPossibleTy
 import static edu.cuny.hunter.streamrefactoring.core.safe.Util.instanceKeyCorrespondsWithInstantiationInstruction;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -165,7 +166,9 @@ public class Stream {
 
 	private Refactoring refactoring;
 
-	private TransformationAction action;
+	private Set<TransformationAction> actions;
+
+	private PreconditionSuccess passingPrecondition;
 
 	public Stream(MethodInvocation streamCreation) throws ClassHierarchyException, IOException, CoreException,
 			InvalidClassFileException, CallGraphBuilderCancelException, CancelException {
@@ -246,6 +249,7 @@ public class Stream {
 
 				switch (executionMode) {
 				case SEQUENTIAL:
+					// table 1.
 					switch (ordering) {
 					case UNORDERED:
 						if (hasPossibleSideEffects)
@@ -255,6 +259,7 @@ public class Stream {
 							// it passed P1.
 							this.setRefactoring(Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL);
 							this.setTransformationAction(TransformationAction.CONVERT_TO_PARALLEL);
+							this.setPassingPrecondition(PreconditionSuccess.P1);
 						}
 						break;
 					case ORDERED:
@@ -267,29 +272,73 @@ public class Stream {
 								// it passed P2.
 								this.setRefactoring(Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL);
 								this.setTransformationAction(TransformationAction.CONVERT_TO_PARALLEL);
+								this.setPassingPrecondition(PreconditionSuccess.P2);
 							} else {
 								// check ROM.
+								if (!reduceOrderingPossiblyMatters) {
+									// it passes P3.
+									this.setRefactoring(Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL);
+									this.setTransformationAction(TransformationAction.UNORDER,
+											TransformationAction.CONVERT_TO_PARALLEL);
+									this.setPassingPrecondition(PreconditionSuccess.P3);
+								} else
+									addStatusEntry(creation, PreconditionFailure.REDUCE_ORDERING_MATTERS,
+											"Ordering of the result produced by a terminal operation must be preserved");
 							}
-
 						}
-
 						break;
 					}
-
 					break;
 				case PARALLEL:
-					break;
+					// table 2.
+					switch (ordering) {
+					case ORDERED:
+						if (hasPossibleStatefulIntermediateOperations) {
+							if (!reduceOrderingPossiblyMatters) {
+								// it passes P4.
+								this.setRefactoring(Refactoring.OPTIMIZE_PARALLEL_STREAM);
+								this.setTransformationAction(TransformationAction.UNORDER);
+								this.setPassingPrecondition(PreconditionSuccess.P4);
+							} else {
+								// it passes P5.
+								this.setRefactoring(Refactoring.OPTIMIZE_PARALLEL_STREAM);
+								this.setTransformationAction(TransformationAction.CONVERT_TO_SEQUENTIAL);
+								this.setPassingPrecondition(PreconditionSuccess.P5);
+							}
+						} else
+							addStatusEntry(creation, PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS,
+									"A stateful intermediate operation exists within the stream’s pipeline");
+
+						break;
+					case UNORDERED:
+						addStatusEntry(creation, PreconditionFailure.UNORDERED, "Stream is unordered.");
+						break;
+					}
 				}
 			}
 		}
 	}
 
-	protected void setTransformationAction(TransformationAction action) {
-		this.action = action;
+	private void setPassingPrecondition(PreconditionSuccess succcess) {
+		if (this.passingPrecondition == null)
+			this.passingPrecondition = succcess;
+		else
+			throw new IllegalStateException("Passing precondition being set twice.");
+
+	}
+
+	protected void setTransformationAction(TransformationAction... actions) {
+		if (this.actions == null)
+			this.actions = new HashSet<>(Arrays.asList(actions));
+		else
+			throw new IllegalStateException("Tranformation being set twice.");
 	}
 
 	protected void setRefactoring(Refactoring refactoring) {
-		this.refactoring = refactoring;
+		if (this.refactoring == null)
+			this.refactoring = refactoring;
+		else
+			throw new IllegalStateException("Refactoring being set twice.");
 	}
 
 	private boolean isConsistent(Collection<?> collection, PreconditionFailure failure, String failureMessage,
