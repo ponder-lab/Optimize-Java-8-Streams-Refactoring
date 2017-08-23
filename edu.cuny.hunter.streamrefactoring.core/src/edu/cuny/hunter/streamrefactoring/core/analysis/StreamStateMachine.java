@@ -240,6 +240,7 @@ class StreamStateMachine {
 			// this gets a solver that tracks all streams. TODO may need to do
 			// some caching at some point here.
 			// FIXME Does it track all streams?
+			LOGGER.info(() -> "Starting solver for stream: " + this.getStream());
 			ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getOptions(), engine.getCallGraph(),
 					engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null);
 
