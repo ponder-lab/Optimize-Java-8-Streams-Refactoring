@@ -245,7 +245,10 @@ public class Stream {
 			if (isConsistent(possibleOrderings, PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS,
 					"Stream: " + creation + " has inconsitent possible orderings.", creation)) {
 				ExecutionMode executionMode = possibleExecutionModes.iterator().next();
+				assert executionMode != null : "Execution mode is null";
+				
 				Ordering ordering = possibleOrderings.iterator().next();
+				assert ordering != null : "Ordering is null";
 
 				switch (executionMode) {
 				case SEQUENTIAL:
