@@ -246,7 +246,7 @@ public class Stream {
 					"Stream: " + creation + " has inconsitent possible orderings.", creation)) {
 				ExecutionMode executionMode = possibleExecutionModes.iterator().next();
 				assert executionMode != null : "Execution mode is null";
-				
+
 				Ordering ordering = possibleOrderings.iterator().next();
 				assert ordering != null : "Ordering is null";
 

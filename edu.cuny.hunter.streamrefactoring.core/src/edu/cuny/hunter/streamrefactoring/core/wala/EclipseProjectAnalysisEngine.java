@@ -88,7 +88,7 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 
 		if (callGraphBuilder == null) {
 			LOGGER.info("Creating new call graph builder.");
-		callGraphBuilder = buildCallGraph(this.getClassHierarchy(), options, true, null);
+			callGraphBuilder = buildCallGraph(this.getClassHierarchy(), options, true, null);
 		} else
 			LOGGER.info("Reusing call graph builder.");
 
