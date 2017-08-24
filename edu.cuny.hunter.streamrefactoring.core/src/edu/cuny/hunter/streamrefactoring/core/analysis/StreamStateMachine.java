@@ -238,8 +238,8 @@ class StreamStateMachine {
 			TypeStateProperty dfa = new TypeStateProperty(rule, engine.getClassHierarchy());
 
 			// this gets a solver that tracks all streams. TODO may need to do
-			// some caching at some point here.
-			// FIXME Does it track all streams?
+			// some caching at some point here. NOTE: Seems to be more difficult
+			// than initially imagined.
 			LOGGER.info(() -> "Starting solver for stream: " + this.getStream());
 			ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getOptions(), engine.getCallGraph(),
 					engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null);
