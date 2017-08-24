@@ -5,6 +5,7 @@ package edu.cuny.hunter.streamrefactoring.core.wala;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.logging.Logger;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
@@ -33,6 +34,8 @@ import com.ibm.wala.util.config.FileOfClasses;
  * 
  */
 public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJavaSourceAnalysisEngine<I> {
+
+	private static final Logger LOGGER = Logger.getGlobal();
 
 	/**
 	 * The N value used to create the {@link nCFABuilder}.
@@ -81,7 +84,15 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 
 	public CallGraph buildSafeCallGraph(AnalysisOptions options)
 			throws IllegalArgumentException, CallGraphBuilderCancelException, CancelException {
+		LOGGER.fine("callGraphBuilder before: " + this.callGraphBuilder);
+
+		if (callGraphBuilder == null) {
+			LOGGER.info("Creating new call graph builder.");
 		callGraphBuilder = buildCallGraph(this.getClassHierarchy(), options, true, null);
+		} else
+			LOGGER.info("Reusing call graph builder.");
+
+		LOGGER.fine("callGraphBuilder after: " + this.callGraphBuilder);
 		return callGraphBuilder.makeCallGraph(options, null);
 	}
 
@@ -98,5 +109,9 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	protected CallGraphBuilder<?> getCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options,
 			IAnalysisCacheView cache) {
 		return Util.makeNCFABuilder(N, options, (AnalysisCache) cache, cha, scope);
+	}
+
+	public void clearCallGraphBuilder() {
+		this.callGraphBuilder = null;
 	}
 }
