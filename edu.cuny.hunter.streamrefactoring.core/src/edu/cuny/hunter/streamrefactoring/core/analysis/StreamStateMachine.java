@@ -42,8 +42,11 @@ import com.ibm.wala.analysis.typeInference.TypeAbstraction;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
+import com.ibm.wala.classLoader.NewSiteReference;
+import com.ibm.wala.client.AnalysisEngine;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
+import com.ibm.wala.ipa.callgraph.propagation.InstanceFieldPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
@@ -61,12 +64,15 @@ import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSAPhiInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.MethodReference;
+import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.WalaException;
+import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.OrdinalSet;
+import com.ibm.wala.util.strings.Atom;
 
 import edu.cuny.hunter.streamrefactoring.core.safe.ModifiedBenignOracle;
 import edu.cuny.hunter.streamrefactoring.core.safe.TypestateSolverFactory;
@@ -824,11 +830,22 @@ class StreamStateMachine {
 								// get the set of pointers (locations) it
 								// may modify
 								OrdinalSet<PointerKey> modSet = mod.get(target);
-								LOGGER.info("#modified locations: " + modSet.size());
+								LOGGER.info("#original modified locations: " + modSet.size());
+
+								Collection<PointerKey> filteredModSet = new HashSet<>();
+
+								for (Iterator<PointerKey> iterator = modSet.iterator(); iterator.hasNext();) {
+									PointerKey pointerKey = iterator.next();
+									if (!filterPointerKey(pointerKey, engine))
+										filteredModSet.add(pointerKey);
+								}
+
+								LOGGER.info("#filtered modified locations: " + filteredModSet.size());
 
 								// if it's non-empty.
-								if (!modSet.isEmpty()) {
-									modSet.forEach(pk -> LOGGER.info(() -> "Modified location: " + pk));
+								if (!filteredModSet.isEmpty()) {
+									filteredModSet
+											.forEach(pk -> LOGGER.fine(() -> "Filtered modified location: " + pk));
 
 									// mark the instances whose pipeline may
 									// have side-effects.
@@ -845,6 +862,49 @@ class StreamStateMachine {
 			} else
 				LOGGER.warning("Def was an instance of a: " + def.getClass());
 		}
+	}
+
+	/**
+	 * Returns true if the given {@link PointerKey} should be filtered from the
+	 * {@link ModRef} analysis.
+	 * 
+	 * @param pointerKey
+	 *            The {@link PointerKey} in question.
+	 * @param engine
+	 *            The {@link AnalysisEngine} to use.
+	 * @return <code>true</code> if the given {@link PointerKey} should be
+	 *         filtered and <code>false</code> otherwise.
+	 * @apiNote The current filtering mechanism excludes field
+	 *          {@link PointerKey}s whose instance is being assigned with the
+	 *          stream package. Basically, we are looking for modifications to
+	 *          the client code,
+	 */
+	private static boolean filterPointerKey(PointerKey pointerKey, EclipseProjectAnalysisEngine<InstanceKey> engine) {
+		Boolean ret = null;
+
+		if (pointerKey instanceof InstanceFieldPointerKey) {
+			InstanceFieldPointerKey fieldPointerKey = (InstanceFieldPointerKey) pointerKey;
+			InstanceKey instanceKey = fieldPointerKey.getInstanceKey();
+
+			for (Iterator<Pair<CGNode, NewSiteReference>> creationSiteIterator = instanceKey
+					.getCreationSites(engine.getCallGraph()); creationSiteIterator.hasNext();) {
+				Pair<CGNode, NewSiteReference> creationSite = creationSiteIterator.next();
+				TypeReference declaredType = creationSite.snd.getDeclaredType();
+				TypeName name = declaredType.getName();
+				Atom packageAtom = name.getPackage();
+				boolean fromStreamPackage = packageAtom.startsWith(Atom.findOrCreateUnicodeAtom("java/util/stream"));
+
+				if (ret == null) {
+					// haven't decided yet. Initialize.
+					ret = fromStreamPackage;
+				} else if (ret != fromStreamPackage) {
+					// we have a discrepancy.
+					throw new IllegalArgumentException("Can't determine consistent write location package");
+				}
+			}
+		}
+
+		return ret;
 	}
 
 	private static boolean isStreamCreatedFromIntermediateOperation(CallStringWithReceivers callString) {
