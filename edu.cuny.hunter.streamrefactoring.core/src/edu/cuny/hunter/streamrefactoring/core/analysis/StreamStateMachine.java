@@ -38,6 +38,7 @@ import com.ibm.safe.typestate.core.BenignOracle;
 import com.ibm.safe.typestate.core.TypeStateProperty;
 import com.ibm.safe.typestate.core.TypeStateResult;
 import com.ibm.safe.typestate.options.TypeStateOptions;
+import com.ibm.wala.analysis.typeInference.JavaPrimitiveType;
 import com.ibm.wala.analysis.typeInference.TypeAbstraction;
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IClass;
@@ -574,18 +575,25 @@ class StreamStateMachine {
 				int numOfRetVals = invokeInstruction.getNumberOfReturnValues();
 				assert numOfRetVals <= 1 : "How could you possibly return " + numOfRetVals + " values?";
 
-				// TODO: Can I base my decision on the return type? Declared
-				// type or actual? Generics actually give a pretty good
-				// approximation, however, it's not captured in the IR
-				// (erasure?)
-				int returnValue = invokeInstruction.getReturnValue(0);
+				Collection<TypeAbstraction> possibleReturnTypes = null;
 
-				Collection<TypeAbstraction> possibleReturnTypes = Util.getPossibleTypesInterprocedurally(
-						block.getNode(), returnValue,
-						this.getStream().getAnalysisEngine().getHeapGraph().getHeapModel(),
-						this.getStream().getAnalysisEngine().getPointerAnalysis(), LOGGER);
+				// if it's a non-void method.
+				if (numOfRetVals > 0) {
+					// TODO: Can I base my decision on the return type? Declared
+					// type or actual? Generics actually give a pretty good
+					// approximation, however, it's not captured in the IR
+					// (erasure?)
+					int returnValue = invokeInstruction.getReturnValue(0);
 
-				LOGGER.info("Possible reduce types are: " + possibleReturnTypes);
+					possibleReturnTypes = Util.getPossibleTypesInterprocedurally(block.getNode(), returnValue,
+							this.getStream().getAnalysisEngine().getHeapGraph().getHeapModel(),
+							this.getStream().getAnalysisEngine().getPointerAnalysis(), LOGGER);
+
+					LOGGER.info("Possible reduce types are: " + possibleReturnTypes);
+				} else {
+					// it's a void method.
+					possibleReturnTypes = Collections.singleton(JavaPrimitiveType.VOID);
+				}
 
 				boolean rom = false;
 
