@@ -114,7 +114,7 @@ public final class Util {
 
 		PointerKey valueKey = heapModel.getPointerKeyForLocal(node, valueNumber);
 		logger.fine(() -> "Value pointer key is: " + valueKey);
-
+		
 		OrdinalSet<InstanceKey> pointsToSet = pointerAnalysis.getPointsToSet(valueKey);
 		assert pointsToSet != null;
 		logger.fine(() -> "PointsTo set is: " + pointsToSet);

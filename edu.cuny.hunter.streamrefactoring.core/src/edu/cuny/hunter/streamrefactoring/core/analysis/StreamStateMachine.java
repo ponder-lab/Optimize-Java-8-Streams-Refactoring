@@ -14,11 +14,13 @@ import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.jdt.core.dom.MethodInvocation;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -222,9 +224,8 @@ class StreamStateMachine {
 	}
 
 	public void start() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
-			InvalidClassFileException, PropertiesException, InconsistentPossibleOrderingException,
-			UnknownIfReduceOrderMattersException, NoniterableException, NoninstantiableException,
-			CannotExtractSpliteratorException {
+			InvalidClassFileException, PropertiesException, UnknownIfReduceOrderMattersException, NoniterableException,
+			NoninstantiableException, CannotExtractSpliteratorException {
 		// get the analysis engine.
 		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
@@ -555,9 +556,8 @@ class StreamStateMachine {
 
 	private void discoverIfReduceOrderingPossiblyMatters(
 			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers)
-			throws IOException, CoreException, UnknownIfReduceOrderMattersException,
-			InconsistentPossibleOrderingException, NoniterableException, NoninstantiableException,
-			CannotExtractSpliteratorException {
+			throws IOException, CoreException, UnknownIfReduceOrderMattersException, NoniterableException,
+			NoninstantiableException, CannotExtractSpliteratorException {
 		// for each terminal operation call, I think?
 		for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 			int processedInstructions = 0;
@@ -597,27 +597,35 @@ class StreamStateMachine {
 
 				boolean rom = false;
 
-				if (isVoid(possibleReturnTypes)) {
-					rom = deriveRomForVoidMethod(invokeInstruction);
-				} else {
-					boolean scalar = isScalar(possibleReturnTypes);
-					if (scalar) {
-						rom = deriveRomForScalarMethod(invokeInstruction);
-					} else if (!scalar) {
-						rom = deriveRomForNonScalarMethod(possibleReturnTypes);
+				try {
+					if (isVoid(possibleReturnTypes))
+						rom = deriveRomForVoidMethod(invokeInstruction);
+					else {
+						boolean scalar = isScalar(possibleReturnTypes);
+						if (scalar)
+							rom = deriveRomForScalarMethod(invokeInstruction);
+						else if (!scalar)
+							rom = deriveRomForNonScalarMethod(possibleReturnTypes);
+						else
+							throw new IllegalStateException(
+									"Can't derive ROM for possible return types: " + possibleReturnTypes);
+					}
+
+					if (rom) {
+						LOGGER.info(() -> "Reduce ordering matters for: " + invokeInstruction);
+						OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
+						possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
 					} else
-						throw new IllegalStateException(
-								"Can't derive ROM for possible return types: " + possibleReturnTypes);
+						LOGGER.info(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
+				} catch (InconsistentPossibleOrderingException e) {
+					MethodInvocation streamCreation = this.getStream().getCreation();
+					LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+					this.getStream().addStatusEntry(streamCreation, PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS,
+							"Inconsistent ordering for stream: " + streamCreation + ".");
+					continue;
+				} finally {
+					++processedInstructions;
 				}
-
-				if (rom) {
-					LOGGER.info(() -> "Reduce ordering matters for: " + invokeInstruction);
-					OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
-					possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
-				} else
-					LOGGER.info(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
-
-				++processedInstructions;
 			}
 			assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
 		}

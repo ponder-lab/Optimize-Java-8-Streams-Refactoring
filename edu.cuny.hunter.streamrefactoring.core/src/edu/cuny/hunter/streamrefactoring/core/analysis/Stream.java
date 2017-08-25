@@ -210,10 +210,6 @@ public class Stream {
 				| CannotExtractSpliteratorException e) {
 			LOGGER.log(Level.SEVERE, "Error while building stream.", e);
 			throw new RuntimeException(e);
-		} catch (InconsistentPossibleOrderingException e) {
-			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
-			addStatusEntry(streamCreation, PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS,
-					"Inconsistent ordering for stream: " + streamCreation + ".");
 		} catch (UnknownIfReduceOrderMattersException e) {
 			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
@@ -353,7 +349,7 @@ public class Stream {
 			return true;
 	}
 
-	private void addStatusEntry(MethodInvocation streamCreation, PreconditionFailure failure, String message) {
+	void addStatusEntry(MethodInvocation streamCreation, PreconditionFailure failure, String message) {
 		CompilationUnit compilationUnit = (CompilationUnit) ASTNodes.getParent(streamCreation,
 				ASTNode.COMPILATION_UNIT);
 		ICompilationUnit compilationUnit2 = (ICompilationUnit) compilationUnit.getJavaElement();
