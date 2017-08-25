@@ -84,7 +84,7 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 
 	public CallGraph buildSafeCallGraph(AnalysisOptions options)
 			throws IllegalArgumentException, CallGraphBuilderCancelException, CancelException {
-		LOGGER.fine("callGraphBuilder before: " + this.callGraphBuilder);
+		LOGGER.entering(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
 
 		if (callGraphBuilder == null) {
 			LOGGER.info("Creating new call graph builder.");
@@ -92,7 +92,7 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 		} else
 			LOGGER.info("Reusing call graph builder.");
 
-		LOGGER.fine("callGraphBuilder after: " + this.callGraphBuilder);
+		LOGGER.exiting(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
 		return callGraphBuilder.makeCallGraph(options, null);
 	}
 
