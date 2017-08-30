@@ -1,8 +1,8 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.allEqual;
-import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getBinaryName;
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getPossibleTypesInterprocedurally;
+import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.matches;
 import static edu.cuny.hunter.streamrefactoring.core.safe.Util.instanceKeyCorrespondsWithInstantiationInstruction;
 
 import java.io.IOException;
@@ -400,6 +400,10 @@ public class Stream {
 		return enclosingMethodDeclaration;
 	}
 
+	public CompilationUnit getEnclosingCompilationUnit() {
+		return (CompilationUnit) ASTNodes.getParent(this.getEnclosingTypeDeclaration(), ASTNode.COMPILATION_UNIT);
+	}
+
 	private IR getEnclosingMethodIR() throws IOException, CoreException {
 		IR ir = methodDeclarationToIRMap.get(getEnclosingMethodDeclaration());
 
@@ -495,25 +499,8 @@ public class Stream {
 			if (lineNumberFromIR == lineNumberFromAST) {
 				// lines from the AST and the IR match. Let's dive a little
 				// deeper to be more confident of the correspondence.
-				if (instruction.hasDef() && instruction.getNumberOfDefs() == 2) {
-					if (instruction instanceof SSAInvokeInstruction) {
-						SSAInvokeInstruction invokeInstruction = (SSAInvokeInstruction) instruction;
-						TypeReference declaredTargetDeclaringClass = invokeInstruction.getDeclaredTarget()
-								.getDeclaringClass();
-						if (getBinaryName(declaredTargetDeclaringClass)
-								.equals(this.getCreation().getExpression().resolveTypeBinding().getBinaryName())) {
-							MethodReference callSiteDeclaredTarget = invokeInstruction.getCallSite()
-									.getDeclaredTarget();
-							// FIXME: This matching needs much work.
-							if (callSiteDeclaredTarget.getName().toString()
-									.equals(this.getCreation().resolveMethodBinding().getName())) {
-								return Optional.of(invokeInstruction);
-							}
-						}
-					} else
-						LOGGER.warning("Instruction: " + instruction + " is not an SSAInstruction.");
-				} else
-					LOGGER.warning("Instruction: " + instruction + " has no definitions.");
+				if (matches(instruction, this.getCreation(), LOGGER))
+					return Optional.of((SSAInvokeInstruction) instruction);
 			}
 		}
 		return Optional.empty();
@@ -584,7 +571,7 @@ public class Stream {
 
 			Collection<TypeAbstraction> possibleTypes = getPossibleTypesInterprocedurally(node, valueNumber,
 					this.getAnalysisEngine().getHeapGraph().getHeapModel(),
-					this.getAnalysisEngine().getPointerAnalysis(), LOGGER);
+					this.getAnalysisEngine().getPointerAnalysis(), this, LOGGER);
 
 			// Possible types: check each one.
 			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
