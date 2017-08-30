@@ -94,12 +94,25 @@ public final class Util {
 	 *         {@link BaseStream}.
 	 */
 	public static boolean implementsBaseStream(TypeReference typeReference, IClassHierarchy classHierarchy) {
+		return implementsType(typeReference, classHierarchy, Util::isBaseStream);
+	}
+
+	public static boolean implementsIterable(TypeReference reference, IClassHierarchy classHierarchy) {
+		return implementsType(reference, classHierarchy, Util::isIterable);
+	}
+
+	public static boolean implementsCollector(TypeReference reference, IClassHierarchy classHierarchy) {
+		return implementsType(reference, classHierarchy, Util::isCollector);
+	}
+
+	public static boolean implementsType(TypeReference typeReference, IClassHierarchy classHierarchy,
+			Predicate<IClass> predicate) {
 		IClass clazz = classHierarchy.lookupClass(typeReference);
 
 		if (clazz == null)
 			return false;
 		else
-			return isBaseStream(clazz) || clazz.getAllImplementedInterfaces().stream().anyMatch(Util::isBaseStream);
+			return predicate.test(clazz) || clazz.getAllImplementedInterfaces().stream().anyMatch(predicate);
 	}
 
 	static String getBinaryName(TypeReference typeReference) {
