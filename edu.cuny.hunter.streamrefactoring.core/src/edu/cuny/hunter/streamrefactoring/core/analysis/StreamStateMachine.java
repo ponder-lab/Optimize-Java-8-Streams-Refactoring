@@ -401,7 +401,10 @@ class StreamStateMachine {
 				Set<InstanceKey> possibleReceivers = new HashSet<>(callString.getPossibleReceivers());
 
 				// get any additional receivers if necessary #36.
-				possibleReceivers.addAll(getAdditionalNecessaryReceiversFromPredecessors(instance, callString));
+				Collection<? extends InstanceKey> additionalNecessaryReceiversFromPredecessors = getAdditionalNecessaryReceiversFromPredecessors(
+						instance);
+				LOGGER.info(() -> "Adding additional receivers: " + additionalNecessaryReceiversFromPredecessors);
+				possibleReceivers.addAll(additionalNecessaryReceiversFromPredecessors);
 
 				instanceToPredecessorsMap.merge(instance, possibleReceivers, (x, y) -> {
 					x.addAll(y);
@@ -462,50 +465,24 @@ class StreamStateMachine {
 				instancesWhoseReduceOrderingPossiblyMatters.contains(streamInstanceKey));
 	}
 
-	private Collection<? extends InstanceKey> getAdditionalNecessaryReceiversFromPredecessors(InstanceKey instance,
-			CallStringWithReceivers callString) throws IOException, CoreException {
+	private Collection<? extends InstanceKey> getAdditionalNecessaryReceiversFromPredecessors(InstanceKey instance)
+			throws IOException, CoreException {
 		Collection<InstanceKey> ret = new HashSet<>();
 
-		LOGGER.fine("Instance is: " + instance);
+		if (instance != null) {
+			CallStringWithReceivers callString = getCallString(instance);
+			Set<InstanceKey> possibleReceivers = callString.getPossibleReceivers();
 
-		// for each method in the call string.
-		for (IMethod calledMethod : callString.getMethods()) {
-			// who's the caller?
-			LOGGER.fine("Called method is: " + calledMethod);
-
-			TypeReference returnType = calledMethod.getReturnType();
-			LOGGER.fine("Return type is: " + returnType);
-
-			boolean implementsBaseStream = Util.implementsBaseStream(returnType, this.getStream().getClassHierarchy());
-			LOGGER.fine("Is it a stream? " + implementsBaseStream);
-
-			if (implementsBaseStream) {
-				// look up the call string for this method.
-				Set<CGNode> nodes = this.getStream().getAnalysisEngine().getCallGraph()
-						.getNodes(calledMethod.getReference());
-				assert nodes.size() == 1 : "Only expecting one node here.";
-
-				for (CGNode cgNode : nodes) {
-					LOGGER.fine("Found node: " + cgNode);
-
-					// try to get its CallStringWithReceivers.
-					CallStringWithReceivers calledMethodCallString = getCallString(cgNode);
-
-					// what are its receivers?
-					Set<InstanceKey> possibleReceivers = calledMethodCallString.getPossibleReceivers();
-					LOGGER.fine(() -> "It's receivers are: " + possibleReceivers);
-
-					// filter out ones that aren't streams.
-					for (InstanceKey receiver : possibleReceivers) {
-						if (Util.implementsBaseStream(receiver.getConcreteType().getReference(),
-								this.getStream().getClassHierarchy()))
-							ret.add(receiver);
-					}
+			// filter out ones that aren't streams.
+			for (InstanceKey receiver : possibleReceivers) {
+				if (Util.implementsBaseStream(receiver.getConcreteType().getReference(),
+						this.getStream().getClassHierarchy())) {
+					ret.add(receiver);
+					ret.addAll(getAdditionalNecessaryReceiversFromPredecessors(receiver));
 				}
 			}
 		}
 
-		LOGGER.info(() -> "Adding additional receivers: " + ret);
 		return ret;
 	}
 
