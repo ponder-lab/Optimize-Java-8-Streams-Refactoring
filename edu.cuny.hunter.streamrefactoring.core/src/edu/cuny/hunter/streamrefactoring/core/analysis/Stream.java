@@ -302,7 +302,7 @@ public class Stream {
 							}
 						} else
 							addStatusEntry(creation, PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS,
-									"A stateful intermediate operation exists within the stream’s pipeline");
+									"No stateful intermediate operation exists within the stream’s pipeline.");
 
 						break;
 					case UNORDERED:
