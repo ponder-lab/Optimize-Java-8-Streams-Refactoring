@@ -25,6 +25,7 @@ import com.ibm.wala.analysis.typeInference.PointType;
 import com.ibm.wala.analysis.typeInference.TypeAbstraction;
 import com.ibm.wala.analysis.typeInference.TypeInference;
 import com.ibm.wala.cast.java.ipa.callgraph.JavaSourceAnalysisScope;
+import com.ibm.wala.cast.java.translator.jdt.JDTIdentityMapper;
 import com.ibm.wala.classLoader.IBytecodeMethod;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IClassLoader;
@@ -344,5 +345,9 @@ public final class Util {
 			}
 		}
 		return false;
+	}
+
+	public static JDTIdentityMapper getJDTIdentifyMapper(ASTNode node) {
+		return new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE, node.getAST());
 	}
 }

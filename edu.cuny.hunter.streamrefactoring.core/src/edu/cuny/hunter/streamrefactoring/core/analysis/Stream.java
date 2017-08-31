@@ -1,6 +1,7 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.allEqual;
+import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getJDTIdentifyMapper;
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getPossibleTypesInterprocedurally;
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.matches;
 import static edu.cuny.hunter.streamrefactoring.core.safe.Util.instanceKeyCorrespondsWithInstantiationInstruction;
@@ -44,7 +45,6 @@ import org.osgi.framework.FrameworkUtil;
 
 import com.ibm.safe.internal.exceptions.PropertiesException;
 import com.ibm.wala.analysis.typeInference.TypeAbstraction;
-import com.ibm.wala.cast.java.ipa.callgraph.JavaSourceAnalysisScope;
 import com.ibm.wala.cast.java.translator.jdt.JDTIdentityMapper;
 import com.ibm.wala.classLoader.IBytecodeMethod;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
@@ -93,10 +93,6 @@ public class Stream {
 		javaProjectToAnalysisEngineMap.clear();
 		methodDeclarationToIRMap.clear();
 		StreamStateMachine.clearCaches();
-	}
-
-	private static JDTIdentityMapper getJDTIdentifyMapper(ASTNode node) {
-		return new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE, node.getAST());
 	}
 
 	private static int getLineNumberFromAST(SimpleName methodName) {
