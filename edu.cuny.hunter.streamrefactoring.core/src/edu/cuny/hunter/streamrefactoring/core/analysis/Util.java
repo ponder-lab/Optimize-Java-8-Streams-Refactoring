@@ -1,24 +1,19 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import java.lang.reflect.Modifier;
-import java.security.SignatureException;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.BaseStream;
 
-import org.eclipse.jdt.core.ISourceRange;
 import org.eclipse.jdt.core.ITypeRoot;
-import org.eclipse.jdt.core.SourceRange;
-import org.eclipse.jdt.core.dom.ASTParser;
+import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodInvocation;
-import org.eclipse.jdt.core.dom.NodeFinder;
 import org.eclipse.jdt.core.dom.SimpleName;
 
 import com.ibm.wala.analysis.typeInference.PointType;
@@ -28,34 +23,25 @@ import com.ibm.wala.cast.java.ipa.callgraph.JavaSourceAnalysisScope;
 import com.ibm.wala.cast.java.translator.jdt.JDTIdentityMapper;
 import com.ibm.wala.classLoader.IBytecodeMethod;
 import com.ibm.wala.classLoader.IClass;
-import com.ibm.wala.classLoader.IClassLoader;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.classLoader.IMethod.SourcePosition;
-import com.ibm.wala.classLoader.ShrikeClass;
 import com.ibm.wala.classLoader.SyntheticClass;
-import com.ibm.wala.ide.util.ASTNodeFinder;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.propagation.HeapModel;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
-import com.ibm.wala.ipa.callgraph.propagation.LocalPointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.PhiValue;
-import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSAPhiInstruction;
 import com.ibm.wala.ssa.Value;
-import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
-import com.ibm.wala.types.generics.ClassSignature;
-import com.ibm.wala.util.debug.UnimplementedError;
 import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.util.strings.Atom;
 import com.ibm.wala.util.strings.StringStuff;
@@ -81,6 +67,10 @@ public final class Util {
 			int extendedStartPosition = unit.getExtendedStartPosition(methodName);
 			int lineNumber = unit.getLineNumber(extendedStartPosition);
 
+			// FIXME: Matching line numbers could be dangerous. However, since
+			// we should be using this for terminal operations, most likely,
+			// this will work out. Otherwise, the matching can be inaccurate
+			// (without column information).
 			if (lineNumber == sourcePosition.getFirstLine()) {
 				// we have at least a line correlation.
 				if (matches(methodReference.getDeclaringClass(), methodReference, node)) {
@@ -269,23 +259,28 @@ public final class Util {
 								sourcePosition, def.getCallSite().getDeclaredTarget());
 
 						// what does the method return?
-						ITypeBinding returnType = correspondingInvocation.resolveMethodBinding().getReturnType();
-						System.out.println(returnType);
+						ITypeBinding genericReturnType = correspondingInvocation.resolveMethodBinding().getReturnType();
 
-						// TODO: is it compatible with the concrete type we got
-						// from WALA?
+						// Is it compatible with the concrete type we got from
+						// WALA?
+						// But first, we'll need to translate the Eclipse JDT
+						// type over to a IClass.
+						TypeReference genericTypeRef = getJDTIdentifyMapper(correspondingInvocation)
+								.getTypeRef(genericReturnType);
+						IClass genericClass = node.getClassHierarchy().lookupClass(genericTypeRef);
+
+						boolean assignableFrom = node.getClassHierarchy().isAssignableFrom(genericClass, concreteType);
+
+						// only add it if it's assignable.
+						if (assignableFrom)
+							ret.add(new PointType(concreteType));
 
 					} else {
 						// FIXME: Interprocedural?
 						throw new IllegalStateException("Can't find corresponding file.");
 					}
-
-					System.out.println(concreteType);
-					System.out.println(instanceKey);
-				}
-
-				PointType pointType = new PointType(concreteType);
-				ret.add(pointType);
+				} else // just add it.
+					ret.add(new PointType(concreteType));
 			}
 		}
 		return ret;
