@@ -48,6 +48,7 @@ import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.classLoader.NewSiteReference;
 import com.ibm.wala.client.AnalysisEngine;
 import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceFieldPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
@@ -468,21 +469,49 @@ class StreamStateMachine {
 	private Collection<? extends InstanceKey> getAdditionalNecessaryReceiversFromPredecessors(InstanceKey instance)
 			throws IOException, CoreException {
 		Collection<InstanceKey> ret = new HashSet<>();
+		LOGGER.fine(() -> "Instance is: " + instance);
 
-		if (instance != null) {
-			CallStringWithReceivers callString = getCallString(instance);
-			Set<InstanceKey> possibleReceivers = callString.getPossibleReceivers();
+		CallStringWithReceivers callString = getCallString(instance);
 
-			// filter out ones that aren't streams.
-			for (InstanceKey receiver : possibleReceivers) {
-				if (Util.implementsBaseStream(receiver.getConcreteType().getReference(),
-						this.getStream().getClassHierarchy())) {
-					ret.add(receiver);
-					ret.addAll(getAdditionalNecessaryReceiversFromPredecessors(receiver));
+		// for each method in the call string.
+		for (IMethod calledMethod : callString.getMethods()) {
+			// who's the caller?
+			LOGGER.fine(() -> "Called method is: " + calledMethod);
+
+			TypeReference returnType = calledMethod.getReturnType();
+			LOGGER.fine(() -> "Return type is: " + returnType);
+
+			boolean implementsBaseStream = Util.implementsBaseStream(returnType, this.getStream().getClassHierarchy());
+			LOGGER.fine(() -> "Is it a stream? " + implementsBaseStream);
+
+			if (implementsBaseStream) {
+				// look up the call string for this method.
+				CallGraph callGraph = this.getStream().getAnalysisEngine().getCallGraph();
+
+				NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
+				LOGGER.info(() -> "Predecessor count is: " + callGraph.getPredNodeCount(allocationInNode.getNode()));
+
+				for (Iterator<CGNode> predNodes = callGraph.getPredNodes(allocationInNode.getNode()); predNodes
+						.hasNext();) {
+					CGNode node = predNodes.next();
+					LOGGER.fine(() -> "Found node: " + node);
+
+					// try to get its CallStringWithReceivers.
+					CallStringWithReceivers calledMethodCallString = getCallString(node);
+
+					// what are its receivers?
+					Set<InstanceKey> possibleReceivers = calledMethodCallString.getPossibleReceivers();
+					LOGGER.fine(() -> "It's receivers are: " + possibleReceivers);
+
+					// filter out ones that aren't streams.
+					for (InstanceKey receiver : possibleReceivers) {
+						if (Util.implementsBaseStream(receiver.getConcreteType().getReference(),
+								this.getStream().getClassHierarchy()))
+							ret.add(receiver);
+					}
 				}
 			}
 		}
-
 		return ret;
 	}
 
