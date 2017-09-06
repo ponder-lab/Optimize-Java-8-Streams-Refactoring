@@ -109,9 +109,10 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 				errorPrinter = createCSVPrinter("failed_preconditions.csv",
 						new String[] { "stream", "start pos", "length", "method", "type FQN", "code", "message" });
 
-				streamAttributesPrinter = createCSVPrinter("stream_attributes.csv", new String[] { "stream",
-						"start pos", "length", "method", "type FQN", "execution mode", "ordering", "status" });
-
+				streamAttributesPrinter = createCSVPrinter("stream_attributes.csv",
+						new String[] { "stream", "start pos", "length", "method", "type FQN", "execution mode",
+								"ordering", "side-effects?", "stateful intermediate operations", "reduce ordering possibly matters", "status" });
+				
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
 						throw new IllegalStateException(
@@ -151,7 +152,10 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
 								stream.getEnclosingType().getFullyQualifiedName(), stream.getPossibleExecutionModes(),
-								stream.getPossibleOrderings(), stream.getStatus().isOK() ? 0
+								stream.getPossibleOrderings(), stream.hasPossibleSideEffects(),
+								stream.hasPossibleStatefulIntermediateOperations(),
+								stream.reduceOrderingPossiblyMatters(),
+								stream.getStatus().isOK() ? 0
 										: stream.getStatus().getEntryWithHighestSeverity().getSeverity());
 					}
 
