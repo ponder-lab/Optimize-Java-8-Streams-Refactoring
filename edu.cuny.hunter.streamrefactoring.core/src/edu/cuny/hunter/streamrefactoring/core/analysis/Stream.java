@@ -385,7 +385,7 @@ public class Stream {
 	}
 
 	private IJavaProject getCreationJavaProject() {
-		return this.getCreation().resolveMethodBinding().getJavaElement().getJavaProject();
+		return this.getEnclosingEclipseMethod().getJavaProject();
 	}
 
 	public IMethod getEnclosingEclipseMethod() {
