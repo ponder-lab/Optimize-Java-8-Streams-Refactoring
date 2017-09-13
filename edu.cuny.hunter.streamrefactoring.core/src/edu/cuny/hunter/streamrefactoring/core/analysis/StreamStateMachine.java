@@ -1005,7 +1005,7 @@ class StreamStateMachine {
 			if (blockInContextProcedure == cgNode) {
 				IExplodedBasicBlock delegate = basicBlockInContext.getDelegate();
 				if (!delegate.isEntryBlock() && !delegate.isExitBlock()
-						&& delegate.getOriginalNumber() == block.getNumber())
+						&& delegate.getOriginalNumber() == block.getNumber() && delegate.getInstruction() != null)
 					return Optional.of(basicBlockInContext);
 			}
 		}
