@@ -713,4 +713,16 @@ public class Stream {
 	protected void setCallGraphBuilt(boolean callGraphBuilt) {
 		this.callGraphBuilt = callGraphBuilt;
 	}
+	
+	public Refactoring getRefactoring() {
+		return this.refactoring;
+	}
+	
+	public Set<TransformationAction> getActions() {
+		return this.actions;
+	}
+	
+	public PreconditionSuccess getPassingPrecondition() {
+		return this.passingPrecondition;
+	}
 }

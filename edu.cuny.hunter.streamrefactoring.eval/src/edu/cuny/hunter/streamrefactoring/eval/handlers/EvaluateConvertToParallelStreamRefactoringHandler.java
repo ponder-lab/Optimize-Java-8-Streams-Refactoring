@@ -111,7 +111,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 				streamAttributesPrinter = createCSVPrinter("stream_attributes.csv",
 						new String[] { "stream", "start pos", "length", "method", "type FQN", "execution mode",
-								"ordering", "side-effects?", "stateful intermediate operations", "reduce ordering possibly matters", "status" });
+								"ordering", "side-effects?", "stateful intermediate operations", "reduce ordering possibly matters", 
+								"refactoring", "actions", "passingPrecondition", "status"});
 				
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
@@ -155,6 +156,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 								stream.getPossibleOrderings(), stream.hasPossibleSideEffects(),
 								stream.hasPossibleStatefulIntermediateOperations(),
 								stream.reduceOrderingPossiblyMatters(),
+								stream.getRefactoring(),
+								stream.getActions(),
+								stream.getPassingPrecondition(),								
 								stream.getStatus().isOK() ? 0
 										: stream.getStatus().getEntryWithHighestSeverity().getSeverity());
 					}
