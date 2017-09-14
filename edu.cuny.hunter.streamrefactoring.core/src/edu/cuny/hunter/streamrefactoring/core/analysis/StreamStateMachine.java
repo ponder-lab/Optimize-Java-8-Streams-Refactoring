@@ -545,11 +545,9 @@ class StreamStateMachine {
 			InstanceKey instance = it.next();
 
 			if (!instanceToStatefulIntermediateOperationContainment.containsKey(instance)) {
-				CallStringWithReceivers callString = getCallString(instance);
-
 				// make sure that the stream is the result of an intermediate
 				// operation.
-				if (!isStreamCreatedFromIntermediateOperation(callString))
+				if (!isStreamCreatedFromIntermediateOperation(instance))
 					continue;
 
 				NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
@@ -761,13 +759,13 @@ class StreamStateMachine {
 		// "intermediate" streams).
 		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
 			InstanceKey instance = it.next();
-			CallStringWithReceivers callString = getCallString(instance);
 
 			// make sure that the stream is the result of an intermediate
 			// operation.
-			if (!isStreamCreatedFromIntermediateOperation(callString))
+			if (!isStreamCreatedFromIntermediateOperation(instance))
 				continue;
 
+			CallStringWithReceivers callString = getCallString(instance);
 			CallSiteReference[] callSiteRefs = callString.getCallSiteRefs();
 			assert callSiteRefs.length == 2 : "Expecting call sites two-deep.";
 
@@ -929,8 +927,8 @@ class StreamStateMachine {
 		return ret;
 	}
 
-	private static boolean isStreamCreatedFromIntermediateOperation(CallStringWithReceivers callString) {
-		Set<InstanceKey> receivers = callString.getPossibleReceivers();
+	private static boolean isStreamCreatedFromIntermediateOperation(InstanceKey instance) {
+		Set<InstanceKey> receivers = getCallString(instance).getPossibleReceivers();
 
 		if (receivers.isEmpty())
 			return false;
