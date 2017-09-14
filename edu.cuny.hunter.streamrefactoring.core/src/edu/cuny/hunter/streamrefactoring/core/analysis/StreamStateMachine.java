@@ -391,7 +391,8 @@ class StreamStateMachine {
 
 			// discover whether any stateful intermediate operations are
 			// present.
-			discoverPossibleStatefulIntermediateOperations(result);
+			discoverPossibleStatefulIntermediateOperations(result, this.getStream().getClassHierarchy(),
+					this.getStream().getAnalysisEngine().getCallGraph());
 
 			// does reduction order matter?
 			discoverIfReduceOrderingPossiblyMatters(terminalBlockToPossibleReceivers);
@@ -536,8 +537,8 @@ class StreamStateMachine {
 			return instanceToAllPredecessorsMap.get(instanceKey);
 	}
 
-	private static void discoverPossibleStatefulIntermediateOperations(AggregateSolverResult result)
-			throws IOException, CoreException {
+	private static void discoverPossibleStatefulIntermediateOperations(AggregateSolverResult result,
+			IClassHierarchy hierarchy, CallGraph callGraph) throws IOException, CoreException {
 		// for each instance in the analysis result (these should be the
 		// "intermediate" streams).
 		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
@@ -546,13 +547,19 @@ class StreamStateMachine {
 			if (!instanceToStatefulIntermediateOperationContainment.containsKey(instance)) {
 				// make sure that the stream is the result of an intermediate
 				// operation.
-				if (!isStreamCreatedFromIntermediateOperation(instance))
+				if (!isStreamCreatedFromIntermediateOperation(instance, hierarchy, callGraph))
 					continue;
 
-				NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
-				MethodReference reference = allocationInNode.getNode().getMethod().getReference();
-				boolean statefulIntermediateOperation = isStatefulIntermediateOperation(reference);
-				instanceToStatefulIntermediateOperationContainment.put(instance, statefulIntermediateOperation);
+				CallStringWithReceivers callString = getCallString(instance);
+
+				boolean found = false;
+				for (CallSiteReference callSiteReference : callString.getCallSiteRefs()) {
+					if (isStatefulIntermediateOperation(callSiteReference.getDeclaredTarget())) {
+						found = true; // found one.
+						break; // no need to continue checking.
+					}
+				}
+				instanceToStatefulIntermediateOperationContainment.put(instance, found);
 			}
 		}
 	}
@@ -761,7 +768,8 @@ class StreamStateMachine {
 
 			// make sure that the stream is the result of an intermediate
 			// operation.
-			if (!isStreamCreatedFromIntermediateOperation(instance))
+			if (!isStreamCreatedFromIntermediateOperation(instance, this.getStream().getClassHierarchy(),
+					engine.getCallGraph()))
 				continue;
 
 			CallStringWithReceivers callString = getCallString(instance);
@@ -926,8 +934,17 @@ class StreamStateMachine {
 		return ret;
 	}
 
-	private static boolean isStreamCreatedFromIntermediateOperation(InstanceKey instance) {
+	private static boolean isStreamCreatedFromIntermediateOperation(InstanceKey instance, IClassHierarchy hierarchy,
+			CallGraph callGraph) throws IOException, CoreException {
+		// Get the immediate possible receivers of the stream instance.
 		Set<InstanceKey> receivers = getCallString(instance).getPossibleReceivers();
+
+		// Get any additional receivers we need to consider.
+		Collection<? extends InstanceKey> additionalReceivers = getAdditionalNecessaryReceiversFromPredecessors(
+				instance, hierarchy, callGraph);
+
+		// Add them to the receivers set.
+		receivers.addAll(additionalReceivers);
 
 		if (receivers.isEmpty())
 			return false;
