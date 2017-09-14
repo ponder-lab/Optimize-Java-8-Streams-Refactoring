@@ -5,6 +5,7 @@ import static edu.cuny.hunter.streamrefactoring.core.utils.Util.createConvertToP
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -45,13 +46,9 @@ import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.RefactoringStatusEntry;
 import org.eclipse.ltk.core.refactoring.participants.ProcessorBasedRefactoring;
-import org.eclipse.swt.internal.mozilla.nsIComponentRegistrar;
-import org.omg.CORBA.PRIVATE_MEMBER;
 import org.osgi.framework.FrameworkUtil;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
-import edu.cuny.hunter.streamrefactoring.core.analysis.StreamOrderingTypeStateRule;
-import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
 import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
 import edu.cuny.hunter.streamrefactoring.eval.utils.Util;
@@ -73,8 +70,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	private static final boolean PERFORM_CHANGE_DEFAULT = false;
 
 	/**
-	 * the command has been executed, so extract extract the needed information
-	 * from the application context.
+	 * the command has been executed, so extract extract the needed information from
+	 * the application context.
 	 */
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
@@ -118,18 +115,18 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						new String[] { "stream", "start pos", "length", "method", "type FQN", "code", "message" });
 
 				streamAttributesPrinter = createCSVPrinter("stream_attributes.csv",
-						new String[] { "subject","stream", "start pos", "length", "method", "type FQN",
-								"side-effects?", "stateful intermediate operations", "reduce ordering possibly matters", 
-								"refactoring", "passingPrecondition", "status"});
-				
-				streamActionsPrinter = createCSVPrinter("stream_actions.csv", 
-						new String[]{"subject", "stream", "start pos", "length", "type FQN", "actions"});
-				
+						new String[] { "stream", "start pos", "length", "method", "type FQN", "side-effects?",
+								"stateful intermediate operations", "reduce ordering possibly matters", "refactoring",
+								"passingPrecondition", "status" });
+
+				streamActionsPrinter = createCSVPrinter("stream_actions.csv",
+						new String[] { "stream", "start pos", "length", "type FQN", "method", "actions" });
+
 				streamExecutionModePrinter = createCSVPrinter("stream_execution_modes.csv",
-						new String[] {"subject", "stream", "start pos","length", "type FQN", "execution mode"});
-				
-				streamOrderingPrinter = createCSVPrinter("stream_orderings.csv", 
-						new String[] {"subject", "stream", "start pos", "length", "type FQN", "ordering"});
+						new String[] { "stream", "start pos", "length", "type FQN", "method", "execution mode" });
+
+				streamOrderingPrinter = createCSVPrinter("stream_orderings.csv",
+						new String[] { "stream", "start pos", "length", "type FQN", "method", "ordering" });
 
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
@@ -166,23 +163,23 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
 								stream.getEnclosingType().getFullyQualifiedName());
 
-						streamAttributesPrinter.printRecord(
-								javaProject.getElementName(),
-								stream.getCreation(),
+						streamAttributesPrinter.printRecord(stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
 								stream.getEnclosingType().getFullyQualifiedName(), stream.hasPossibleSideEffects(),
 								stream.hasPossibleStatefulIntermediateOperations(),
-								stream.reduceOrderingPossiblyMatters(),
-								stream.getRefactoring(),
-								stream.getPassingPrecondition(),								
-								stream.getStatus().isOK() ? 0
+								stream.reduceOrderingPossiblyMatters(), stream.getRefactoring(),
+								stream.getPassingPrecondition(), stream.getStatus().isOK() ? 0
 										: stream.getStatus().getEntryWithHighestSeverity().getSeverity());
-						
-						printStreamAttributesWithMultipleValues(stream.getActions(), streamActionsPrinter, stream, javaProject);
-						printStreamAttributesWithMultipleValues(stream.getPossibleExecutionModes(), streamExecutionModePrinter, stream, javaProject);
-						printStreamAttributesWithMultipleValues(stream.getPossibleOrderings(), streamOrderingPrinter, stream, javaProject);
-     
+
+						String method = Util.getMethodIdentifier(stream.getEnclosingEclipseMethod());
+						printStreamAttributesWithMultipleValues(stream.getActions(), streamActionsPrinter, stream,
+								method);
+						printStreamAttributesWithMultipleValues(stream.getPossibleExecutionModes(),
+								streamExecutionModePrinter, stream, method);
+						printStreamAttributesWithMultipleValues(stream.getPossibleOrderings(), streamOrderingPrinter,
+								stream, method);
+
 					}
 
 					// #optimizable streams.
@@ -280,9 +277,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						streamAttributesPrinter.close();
 					if (streamActionsPrinter != null)
 						streamActionsPrinter.close();
-					if (streamExecutionModePrinter !=null)
+					if (streamExecutionModePrinter != null)
 						streamExecutionModePrinter.close();
-					if (streamOrderingPrinter !=null)
+					if (streamOrderingPrinter != null)
 						streamOrderingPrinter.close();
 
 					// clear cache.
@@ -367,21 +364,21 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	private static CSVPrinter createCSVPrinter(String fileName, String[] header) throws IOException {
 		return new CSVPrinter(new FileWriter(fileName, true), CSVFormat.EXCEL.withHeader(header));
 	}
-	
-	void printStreamAttributesWithMultipleValues(Set set, CSVPrinter printer, Stream stream, IJavaProject javaProject) {
-		for (Object object: set) {  
+
+	void printStreamAttributesWithMultipleValues(Set<?> set, CSVPrinter printer, Stream stream, String method)
+			throws RuntimeException {
+		for (Object object : set) {
+
 			try {
-				printer.printRecord(javaProject.getElementName(),
-						stream.getCreation(),
-						stream.getCreation().getStartPosition(),
-						stream.getCreation().getLength(),
-						stream.getEnclosingType().getFullyQualifiedName(),
+				printer.printRecord(stream.getCreation(), stream.getCreation().getStartPosition(),
+						stream.getCreation().getLength(), method, stream.getEnclosingType().getFullyQualifiedName(),
 						object.toString());
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+
 		}
 	}
-	
+
 }
