@@ -123,13 +123,13 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 								"refactoring", "passingPrecondition", "status"});
 				
 				streamActionsPrinter = createCSVPrinter("stream_actions.csv", 
-						new String[]{"subject", "stream", "start pos", "actions"});
+						new String[]{"subject", "stream", "start pos", "length", "type FQN", "actions"});
 				
 				streamExecutionModePrinter = createCSVPrinter("stream_execution_modes.csv",
-						new String[] {"subject", "stream", "start pos", "execution mode"});
+						new String[] {"subject", "stream", "start pos","length", "type FQN", "execution mode"});
 				
 				streamOrderingPrinter = createCSVPrinter("stream_orderings.csv", 
-						new String[] {"subject", "stream", "start pos", "ordering"});
+						new String[] {"subject", "stream", "start pos", "length", "type FQN", "ordering"});
 
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
@@ -374,6 +374,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 				printer.printRecord(javaProject.getElementName(),
 						stream.getCreation(),
 						stream.getCreation().getStartPosition(),
+						stream.getCreation().getLength(),
+						stream.getEnclosingType().getFullyQualifiedName(),
 						object.toString());
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
