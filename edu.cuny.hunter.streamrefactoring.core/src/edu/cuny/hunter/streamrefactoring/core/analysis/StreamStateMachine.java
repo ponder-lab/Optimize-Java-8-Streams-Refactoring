@@ -57,6 +57,7 @@ import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
+import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.ipa.modref.ModRef;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.DefUse;
@@ -403,7 +404,8 @@ class StreamStateMachine {
 
 				// get any additional receivers if necessary #36.
 				Collection<? extends InstanceKey> additionalNecessaryReceiversFromPredecessors = getAdditionalNecessaryReceiversFromPredecessors(
-						instance);
+						instance, this.getStream().getClassHierarchy(),
+						this.getStream().getAnalysisEngine().getCallGraph());
 				LOGGER.info(() -> "Adding additional receivers: " + additionalNecessaryReceiversFromPredecessors);
 				possibleReceivers.addAll(additionalNecessaryReceiversFromPredecessors);
 
@@ -466,8 +468,8 @@ class StreamStateMachine {
 				instancesWhoseReduceOrderingPossiblyMatters.contains(streamInstanceKey));
 	}
 
-	private Collection<? extends InstanceKey> getAdditionalNecessaryReceiversFromPredecessors(InstanceKey instance)
-			throws IOException, CoreException {
+	private static Collection<? extends InstanceKey> getAdditionalNecessaryReceiversFromPredecessors(
+			InstanceKey instance, IClassHierarchy hierarchy, CallGraph callGraph) throws IOException, CoreException {
 		Collection<InstanceKey> ret = new HashSet<>();
 		LOGGER.fine(() -> "Instance is: " + instance);
 
@@ -481,13 +483,11 @@ class StreamStateMachine {
 			TypeReference returnType = calledMethod.getReturnType();
 			LOGGER.fine(() -> "Return type is: " + returnType);
 
-			boolean implementsBaseStream = Util.implementsBaseStream(returnType, this.getStream().getClassHierarchy());
+			boolean implementsBaseStream = Util.implementsBaseStream(returnType, hierarchy);
 			LOGGER.fine(() -> "Is it a stream? " + implementsBaseStream);
 
 			if (implementsBaseStream) {
 				// look up the call string for this method.
-				CallGraph callGraph = this.getStream().getAnalysisEngine().getCallGraph();
-
 				NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
 				LOGGER.info(() -> "Predecessor count is: " + callGraph.getPredNodeCount(allocationInNode.getNode()));
 
@@ -505,8 +505,7 @@ class StreamStateMachine {
 
 					// filter out ones that aren't streams.
 					for (InstanceKey receiver : possibleReceivers) {
-						if (Util.implementsBaseStream(receiver.getConcreteType().getReference(),
-								this.getStream().getClassHierarchy()))
+						if (Util.implementsBaseStream(receiver.getConcreteType().getReference(), hierarchy))
 							ret.add(receiver);
 					}
 				}
