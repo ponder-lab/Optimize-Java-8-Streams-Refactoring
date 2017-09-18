@@ -449,9 +449,18 @@ class StreamStateMachine {
 
 		// propagate the instances with stateful intermediate operations.
 		instanceToStatefulIntermediateOperationContainment
-				.putAll(instanceToStatefulIntermediateOperationContainment.entrySet().stream().filter(Entry::getValue)
-						.map(Entry::getKey).flatMap(ik -> getAllPredecessors(ik).stream())
-						.collect(Collectors.toMap(Function.identity(), v -> true)));
+				.entrySet().stream().filter(Entry::getValue).map(Entry::getKey)
+				.flatMap(ik -> getAllPredecessors(ik).stream())
+				.collect(Collectors.toMap(Function.identity(), v -> true))
+				.forEach((k, v) -> instanceToStatefulIntermediateOperationContainment.merge(k, v, (v1, v2) -> {
+					// if they're the same value, just use the first one.
+					if (v1 == v2)
+						return v2;
+					else
+						// otherwise, if we have either previously seen an SIO
+						// or see one now, we should remember that.
+						return true;
+				}));
 
 		// propagate the instances whose reduce ordering possibly matters.
 		propagateStreamInstanceProperty(instancesWhoseReduceOrderingPossiblyMatters);
