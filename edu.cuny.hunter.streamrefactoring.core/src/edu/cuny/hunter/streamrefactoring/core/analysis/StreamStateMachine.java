@@ -448,9 +448,8 @@ class StreamStateMachine {
 		propagateStreamInstanceProperty(instancesWithSideEffects);
 
 		// propagate the instances with stateful intermediate operations.
-		instanceToStatefulIntermediateOperationContainment
-				.entrySet().stream().filter(Entry::getValue).map(Entry::getKey)
-				.flatMap(ik -> getAllPredecessors(ik).stream())
+		instanceToStatefulIntermediateOperationContainment.entrySet().stream().filter(Entry::getValue)
+				.map(Entry::getKey).flatMap(ik -> getAllPredecessors(ik).stream())
 				.collect(Collectors.toMap(Function.identity(), v -> true))
 				.forEach((k, v) -> instanceToStatefulIntermediateOperationContainment.merge(k, v, (v1, v2) -> {
 					// if they're the same value, just use the first one.
