@@ -713,4 +713,8 @@ public class Stream {
 	protected void setCallGraphBuilt(boolean callGraphBuilt) {
 		this.callGraphBuilt = callGraphBuilt;
 	}
+
+	static Map<MethodDeclaration, IR> getMethodDeclarationToIRMap() {
+		return Collections.unmodifiableMap(methodDeclarationToIRMap);
+	}
 }

@@ -5,6 +5,7 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.Spliterator;
+import java.util.logging.Logger;
 import java.util.stream.BaseStream;
 
 import org.eclipse.jdt.core.IMethod;
@@ -43,9 +44,11 @@ class OrderingInference {
 
 				if (ret == null)
 					ret = ordering;
-				else if (ret != ordering)
+				else if (ret != ordering) {
+					Logger.getGlobal().info(() -> "IR is: " + Stream.getMethodDeclarationToIRMap());
 					throw new InconsistentPossibleOrderingException(
 							ret + " does not match " + ordering + " for type: " + typeAbstraction + ".");
+				}
 			}
 		}
 
