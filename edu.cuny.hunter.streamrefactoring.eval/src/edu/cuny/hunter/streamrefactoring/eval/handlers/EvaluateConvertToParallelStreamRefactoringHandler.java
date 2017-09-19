@@ -2,10 +2,8 @@ package edu.cuny.hunter.streamrefactoring.eval.handlers;
 
 import static edu.cuny.hunter.streamrefactoring.core.utils.Util.createConvertToParallelStreamRefactoringProcessor;
 
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -119,14 +117,11 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 								"stateful intermediate operations", "reduce ordering possibly matters", "refactoring",
 								"passingPrecondition", "status" });
 
-				streamActionsPrinter = createCSVPrinter("stream_actions.csv",
-						new String[] { "stream", "start pos", "length", "type FQN", "method", "actions" });
+				streamActionsPrinter = createCSVPrinter("stream_actions.csv", buildeFirstFewColumns("actions"));
 
-				streamExecutionModePrinter = createCSVPrinter("stream_execution_modes.csv",
-						new String[] { "stream", "start pos", "length", "type FQN", "method", "execution mode" });
+				streamExecutionModePrinter = createCSVPrinter("stream_execution_modes.csv", buildeFirstFewColumns("execution mode"));
 
-				streamOrderingPrinter = createCSVPrinter("stream_orderings.csv",
-						new String[] { "stream", "start pos", "length", "type FQN", "method", "ordering" });
+				streamOrderingPrinter = createCSVPrinter("stream_orderings.csv", buildeFirstFewColumns("ordering"));
 
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
@@ -379,6 +374,10 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			}
 
 		}
+	}
+
+	String[] buildeFirstFewColumns(String attribute) {
+		return new String[] { "stream", "start pos", "length", "method", "type FQN", attribute };
 	}
 
 }
