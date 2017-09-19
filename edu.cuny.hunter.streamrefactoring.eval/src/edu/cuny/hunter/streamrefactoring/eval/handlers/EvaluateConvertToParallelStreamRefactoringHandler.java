@@ -361,18 +361,11 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	}
 
 	private static void printStreamAttributesWithMultipleValues(Set<?> set, CSVPrinter printer, Stream stream, String method)
-			throws RuntimeException {
+			throws RuntimeException, IOException {
 		for (Object object : set) {
-
-			try {
-				printer.printRecord(stream.getCreation(), stream.getCreation().getStartPosition(),
-						stream.getCreation().getLength(), method, stream.getEnclosingType().getFullyQualifiedName(),
-						object.toString());
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-
+			printer.printRecord(stream.getCreation(), stream.getCreation().getStartPosition(),
+				stream.getCreation().getLength(), method, stream.getEnclosingType().getFullyQualifiedName(),
+					object.toString());
 		}
 	}
 
