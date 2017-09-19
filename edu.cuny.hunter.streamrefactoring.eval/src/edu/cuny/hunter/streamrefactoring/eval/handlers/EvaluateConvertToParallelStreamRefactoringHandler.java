@@ -73,9 +73,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	 */
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
-		
-		HashSet<CSVPrinter> printers = new HashSet<CSVPrinter>();
-		
 		Job.create("Evaluating Convert To Parallel Stream Refactoring ...", monitor -> {
 			CSVPrinter resultsPrinter = null;
 			CSVPrinter candidateStreamPrinter = null;
@@ -86,17 +83,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter streamActionsPrinter = null;
 			CSVPrinter streamExecutionModePrinter = null;
 			CSVPrinter streamOrderingPrinter = null;
-			
-			printers.add(resultsPrinter);
-			printers.add(candidateStreamPrinter);
-			printers.add(optimizedStreamPrinter);
-			printers.add(nonOptimizedStreamPrinter);
-			printers.add(errorPrinter);
-			printers.add(streamAttributesPrinter);
-			printers.add(streamActionsPrinter);
-			printers.add(streamExecutionModePrinter);
-			printers.add(streamOrderingPrinter);
-			
 
 			ConvertToParallelStreamRefactoringProcessor processor = null;
 
@@ -272,11 +258,25 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			} finally {
 				try {
 					// closing the files writer after done writing
-					for (CSVPrinter printer: printers) {
-						if (printer != null)
-							printer.close();
-					}
-					
+					if (resultsPrinter != null)
+						resultsPrinter.close();
+					if (candidateStreamPrinter != null)
+						candidateStreamPrinter.close();
+					if (optimizedStreamPrinter != null)
+						optimizedStreamPrinter.close();
+					if (nonOptimizedStreamPrinter != null)
+						nonOptimizedStreamPrinter.close();
+					if (errorPrinter != null)
+						errorPrinter.close();
+					if (streamAttributesPrinter != null)
+						streamAttributesPrinter.close();
+					if (streamActionsPrinter != null)
+						streamActionsPrinter.close();
+					if (streamExecutionModePrinter != null)
+						streamExecutionModePrinter.close();
+					if (streamOrderingPrinter != null)
+						streamOrderingPrinter.close();
+
 					// clear cache.
 					if (processor != null)
 						processor.clearCaches();
