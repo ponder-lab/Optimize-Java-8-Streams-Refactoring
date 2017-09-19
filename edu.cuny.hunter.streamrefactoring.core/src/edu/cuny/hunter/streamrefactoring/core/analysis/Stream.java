@@ -210,6 +210,8 @@ public class Stream {
 			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
 					"Cannot derive reduction ordering for stream: " + streamCreation + ".");
+		}catch (InconsistentPossibleOrderingException e) {
+			LOGGER.log(Level.WARNING, "Require terminal operations!", e);
 		}
 	}
 
