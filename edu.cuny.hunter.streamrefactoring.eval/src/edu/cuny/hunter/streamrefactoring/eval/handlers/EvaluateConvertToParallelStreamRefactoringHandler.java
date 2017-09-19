@@ -360,7 +360,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		return new CSVPrinter(new FileWriter(fileName, true), CSVFormat.EXCEL.withHeader(header));
 	}
 
-	void printStreamAttributesWithMultipleValues(Set<?> set, CSVPrinter printer, Stream stream, String method)
+	private static void printStreamAttributesWithMultipleValues(Set<?> set, CSVPrinter printer, Stream stream, String method)
 			throws RuntimeException {
 		for (Object object : set) {
 
@@ -376,7 +376,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		}
 	}
 
-	String[] buildeFirstFewColumns(String attribute) {
+	private static String[] buildeFirstFewColumns(String attribute) {
 		return new String[] { "stream", "start pos", "length", "method", "type FQN", attribute };
 	}
 
