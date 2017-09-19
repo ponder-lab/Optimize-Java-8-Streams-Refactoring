@@ -166,7 +166,8 @@ public class Stream {
 
 	private PreconditionSuccess passingPrecondition;
 
-	public Stream(MethodInvocation streamCreation) throws ClassHierarchyException, IOException, CoreException,
+	public Stream(MethodInvocation streamCreation)
+			throws ClassHierarchyException, IOException, CoreException, RequireTerminalOperationException,
 			InvalidClassFileException, CallGraphBuilderCancelException, CancelException {
 		this.creation = streamCreation;
 		this.enclosingTypeDeclaration = (TypeDeclaration) ASTNodes.getParent(this.getCreation(),
@@ -210,8 +211,10 @@ public class Stream {
 			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
 					"Cannot derive reduction ordering for stream: " + streamCreation + ".");
-		}catch (InconsistentPossibleOrderingException e) {
-			LOGGER.log(Level.WARNING, "Require terminal operations!", e);
+		} catch (RequireTerminalOperationException e) {
+			LOGGER.log(Level.WARNING, "Require terminal operations: " + streamCreation, e);
+			addStatusEntry(streamCreation, PreconditionFailure.NO_TERMINAL_OPERATIONS,
+					"Require terminal operations: " + streamCreation + ".");
 		}
 	}
 
