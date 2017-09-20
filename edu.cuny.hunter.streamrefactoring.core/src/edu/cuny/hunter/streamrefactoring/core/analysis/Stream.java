@@ -487,7 +487,6 @@ public class Stream {
 
 		for (Iterator<SSAInstruction> it = this.getEnclosingMethodIR().iterateNormalInstructions(); it.hasNext();) {
 			SSAInstruction instruction = it.next();
-			System.out.println(instruction);
 
 			int lineNumberFromIR = getLineNumberFromIR(method, instruction);
 			int lineNumberFromAST = getLineNumberFromAST(methodName);
