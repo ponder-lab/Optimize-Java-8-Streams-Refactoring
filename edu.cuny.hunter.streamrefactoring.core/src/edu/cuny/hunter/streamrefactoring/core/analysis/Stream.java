@@ -722,16 +722,4 @@ public class Stream {
 	static Map<MethodDeclaration, IR> getMethodDeclarationToIRMap() {
 		return Collections.unmodifiableMap(methodDeclarationToIRMap);
 	}
-
-	public Refactoring getRefactoring() {
-		return this.refactoring;
-	}
-
-	public Set<TransformationAction> getActions() {
-		return this.actions;
-	}
-
-	public PreconditionSuccess getPassingPrecondition() {
-		return this.passingPrecondition;
-	}
 }
