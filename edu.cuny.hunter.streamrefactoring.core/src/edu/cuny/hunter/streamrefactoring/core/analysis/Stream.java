@@ -714,6 +714,7 @@ public class Stream {
 
 	static Map<MethodDeclaration, IR> getMethodDeclarationToIRMap() {
 		return Collections.unmodifiableMap(methodDeclarationToIRMap);
+	}
 	
 	public Refactoring getRefactoring() {
 		return this.refactoring;
