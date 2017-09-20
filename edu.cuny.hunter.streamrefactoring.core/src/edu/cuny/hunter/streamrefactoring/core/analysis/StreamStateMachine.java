@@ -601,10 +601,6 @@ class StreamStateMachine {
 
 				// if it's a non-void method.
 				if (numOfRetVals > 0) {
-					// TODO: Can I base my decision on the return type? Declared
-					// type or actual? Generics actually give a pretty good
-					// approximation, however, it's not captured in the IR
-					// (erasure?)
 					int returnValue = invokeInstruction.getReturnValue(0);
 
 					possibleReturnTypes = Util.getPossibleTypesInterprocedurally(block.getNode(), returnValue,
