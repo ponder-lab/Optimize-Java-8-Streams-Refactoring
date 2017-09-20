@@ -212,9 +212,15 @@ public class Stream {
 			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
 					"Cannot derive reduction ordering for stream: " + streamCreation + ".");
 		}
+
+		// check preconditions.
+		this.check();
 	}
 
-	public void check() {
+	/**
+	 * Check this {@link Stream} for precondition failures.
+	 */
+	protected void check() {
 		Set<ExecutionMode> possibleExecutionModes = this.getPossibleExecutionModes();
 		Set<Ordering> possibleOrderings = this.getPossibleOrderings();
 		boolean hasPossibleSideEffects = this.hasPossibleSideEffects();
@@ -716,15 +722,15 @@ public class Stream {
 	static Map<MethodDeclaration, IR> getMethodDeclarationToIRMap() {
 		return Collections.unmodifiableMap(methodDeclarationToIRMap);
 	}
-	
+
 	public Refactoring getRefactoring() {
 		return this.refactoring;
 	}
-	
+
 	public Set<TransformationAction> getActions() {
 		return this.actions;
 	}
-	
+
 	public PreconditionSuccess getPassingPrecondition() {
 		return this.passingPrecondition;
 	}
