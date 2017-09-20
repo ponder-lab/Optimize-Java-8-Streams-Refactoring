@@ -309,7 +309,7 @@ public class Stream {
 							}
 						} else
 							addStatusEntry(creation, PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS,
-									"No stateful intermediate operation exists within the stream’s pipeline.");
+									"No stateful intermediate operation exists within the stream's pipeline.");
 
 						break;
 					case UNORDERED:
@@ -649,12 +649,12 @@ public class Stream {
 
 	/**
 	 * Returns true iff any behavioral parameters (λ-expressions) associated
-	 * with any operations in the stream’s pipeline has side-effects on any
+	 * with any operations in the stream's pipeline has side-effects on any
 	 * possible path. TODO: What if one path has side-effects and the other
 	 * doesn't?
 	 * 
 	 * @return true iff any behavioral parameters (λ-expressions) associated
-	 *         with any operations in the stream’s pipeline has side-effects on
+	 *         with any operations in the stream's pipeline has side-effects on
 	 *         any possible path.
 	 */
 	public boolean hasPossibleSideEffects() {
