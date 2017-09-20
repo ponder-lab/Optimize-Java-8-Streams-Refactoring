@@ -12,7 +12,8 @@ public enum PreconditionFailure {
 	HAS_SIDE_EFFECTS2(9), // P2.
 	REDUCE_ORDERING_MATTERS(10), // P3.
 	NO_STATEFUL_INTERMEDIATE_OPERATIONS(11), // P4 or P5.
-	UNORDERED(12); // P4 or P4.
+	UNORDERED(12), // P4 or P4.
+	NO_TERMINAL_OPERATIONS(13);
 
 	private int code;
 
