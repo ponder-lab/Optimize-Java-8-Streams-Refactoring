@@ -485,7 +485,6 @@ public class Stream {
 
 		for (Iterator<SSAInstruction> it = this.getEnclosingMethodIR().iterateNormalInstructions(); it.hasNext();) {
 			SSAInstruction instruction = it.next();
-			System.out.println(instruction);
 
 			int lineNumberFromIR = getLineNumberFromIR(method, instruction);
 			int lineNumberFromAST = getLineNumberFromAST(methodName);
@@ -712,6 +711,9 @@ public class Stream {
 	protected void setCallGraphBuilt(boolean callGraphBuilt) {
 		this.callGraphBuilt = callGraphBuilt;
 	}
+
+	static Map<MethodDeclaration, IR> getMethodDeclarationToIRMap() {
+		return Collections.unmodifiableMap(methodDeclarationToIRMap);
 	
 	public Refactoring getRefactoring() {
 		return this.refactoring;
