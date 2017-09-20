@@ -689,7 +689,8 @@ public class Stream {
 
 			// set options.
 			AnalysisOptions options = getAnalysisEngine().getDefaultOptions(entryPoints);
-			options.setReflectionOptions(ReflectionOptions.NONE); // turn off reflection analysis for now.
+			// TODO turn off reflection analysis for now.
+			options.setReflectionOptions(ReflectionOptions.NONE);
 			options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
 
 			// FIXME: Do we need to build a new call graph for each entry point?
