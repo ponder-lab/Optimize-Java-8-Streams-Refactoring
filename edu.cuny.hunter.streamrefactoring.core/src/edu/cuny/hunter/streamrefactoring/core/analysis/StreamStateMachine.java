@@ -178,7 +178,7 @@ class StreamStateMachine {
 
 	/**
 	 * A table mapping an instance and a block to the instance's possible states
-	 * at that block.
+	 * at that block. TODO: Should this be separate for different kinds of states?
 	 */
 	private static Table<InstanceKey, BasicBlockInContext<IExplodedBasicBlock>, Set<IDFAState>> instanceBlockStateTable = HashBasedTable
 			.create();
