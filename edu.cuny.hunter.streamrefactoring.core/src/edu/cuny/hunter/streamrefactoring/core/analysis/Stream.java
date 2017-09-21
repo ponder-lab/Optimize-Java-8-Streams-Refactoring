@@ -168,7 +168,7 @@ public class Stream {
 	private PreconditionSuccess passingPrecondition;
 
 	public Stream(MethodInvocation streamCreation)
-			throws ClassHierarchyException, IOException, CoreException,
+			throws ClassHierarchyException, IOException, CoreException, RequireTerminalOperationException,
 			InvalidClassFileException, CallGraphBuilderCancelException, CancelException {
 		this.creation = streamCreation;
 		this.enclosingTypeDeclaration = (TypeDeclaration) ASTNodes.getParent(this.getCreation(),
