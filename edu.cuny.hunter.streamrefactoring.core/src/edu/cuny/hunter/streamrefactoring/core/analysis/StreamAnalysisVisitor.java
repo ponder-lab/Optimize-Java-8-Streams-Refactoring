@@ -50,8 +50,6 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 			} catch (ClassHierarchyException | IOException | CoreException | InvalidClassFileException | CancelException e) {
 				logger.log(Level.SEVERE, "Encountered exception while processing: " + node, e);
 				throw new RuntimeException(e);
-			} catch (RequireTerminalOperationException e) {
-				logger.log(Level.WARNING, "Require Terminal Operations!", e);
 			}
 			this.getStreamSet().add(stream);
 			
