@@ -295,13 +295,8 @@ public final class Util {
 
 	private static int indexOf(Object[] objs, Object o) {
 		for (int i = 0; i < objs.length; i++) {
-			if (o != null) {
-				if (o.equals(objs[i]))
-					return i;
-			} else {
-				if (objs[i] == null)
-					return i;
-			}
+			if (o!=null && o.equals(objs[i])) return i;
+			if (o == null && objs[i] == null) return i;
 		}
 		return -1;
 	}
