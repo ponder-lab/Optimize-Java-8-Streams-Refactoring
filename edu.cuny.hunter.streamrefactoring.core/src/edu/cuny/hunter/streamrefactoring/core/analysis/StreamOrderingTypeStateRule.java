@@ -32,7 +32,7 @@ public class StreamOrderingTypeStateRule extends StreamAttributeTypestateRule {
 		IDFAState unorderedState = addState(Ordering.UNORDERED);
 		this.getDFAStateToOrderingMap().put(unorderedState, Ordering.UNORDERED);
 
-		IDispatchEvent sortedEvent = addEvent("sorted", ".*sorted\\(\\).*");
+		IDispatchEvent sortedEvent = addEvent("sorted", ".*sorted\\(.*\\).*");
 		IDispatchEvent unorderedEvent = addEvent("unordered", ".*unordered\\(\\).*");
 
 		// TODO: Need to add concat().
