@@ -728,7 +728,10 @@ public class Stream {
 	}
 	
 	public Set<TransformationAction> getActions() {
-		return this.actions;
+		if (this.actions != null)
+			return Collections.unmodifiableSet(this.actions);
+		else
+			return null;
 	}
 	
 	public PreconditionSuccess getPassingPrecondition() {
