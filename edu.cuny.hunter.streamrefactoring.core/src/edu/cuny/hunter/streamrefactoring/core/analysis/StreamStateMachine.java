@@ -418,12 +418,12 @@ class StreamStateMachine {
 				});
 			}
 
-			// for each terminal operation call, I think? FIXME: Do streams that
 			// don't terminate have a state?
 			if (terminalBlockToPossibleReceivers.keySet().isEmpty()) {
 				throw new RequireTerminalOperationException("Require terminal operations!");
 			}
 			
+			// for each terminal operation call, I think? 
 			for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 				OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
 				// for each possible receiver of the terminal operation call.
