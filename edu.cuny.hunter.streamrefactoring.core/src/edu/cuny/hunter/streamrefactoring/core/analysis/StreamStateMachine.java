@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -37,6 +36,7 @@ import com.ibm.safe.internal.exceptions.SolverTimeoutException;
 import com.ibm.safe.options.WholeProgramProperties;
 import com.ibm.safe.properties.PropertiesManager;
 import com.ibm.safe.reporting.message.AggregateSolverResult;
+import com.ibm.safe.rules.TypestateRule;
 import com.ibm.safe.typestate.base.BaseFactoid;
 import com.ibm.safe.typestate.core.BenignOracle;
 import com.ibm.safe.typestate.core.TypeStateProperty;
@@ -180,7 +180,7 @@ class StreamStateMachine {
 	 * A table mapping an instance and a block to the instance's possible states
 	 * at that block.
 	 */
-	private static Table<InstanceKey, BasicBlockInContext<IExplodedBasicBlock>, Set<IDFAState>> instanceBlockStateTable = HashBasedTable
+	private static Table<InstanceKey, BasicBlockInContext<IExplodedBasicBlock>, Map<TypestateRule, Set<IDFAState>>> instanceBlockStateTable = HashBasedTable
 			.create();
 
 	/**
@@ -193,7 +193,7 @@ class StreamStateMachine {
 	 */
 	private static Map<InstanceKey, Set<InstanceKey>> instanceToAllPredecessorsMap = new HashMap<>();
 
-	private static Map<InstanceKey, Collection<IDFAState>> originStreamToMergedTypeStateMap = new HashMap<>();
+	private static Map<InstanceKey, Map<TypestateRule, Set<IDFAState>>> originStreamToMergedTypeStateMap = new HashMap<>();
 
 	/**
 	 * A set of instances whose pipelines contain behavioral parameters that may
@@ -358,15 +358,27 @@ class StreamStateMachine {
 
 									// retrieve the state set for this instance
 									// and block.
-									Set<IDFAState> stateSet = instanceBlockStateTable.get(instanceKey, blockInContext);
+									Map<TypestateRule, Set<IDFAState>> ruleToStates = instanceBlockStateTable
+											.get(instanceKey, blockInContext);
+
+									// if it doesn't yet exist.
+									if (ruleToStates == null) {
+										// allocate a new rule map.
+										ruleToStates = new HashMap<>();
+
+										// place it in the table.
+										instanceBlockStateTable.put(instanceKey, blockInContext, ruleToStates);
+									}
+
+									Set<IDFAState> stateSet = ruleToStates.get(rule);
 
 									// if it does not yet exist.
 									if (stateSet == null) {
 										// allocate a new set.
 										stateSet = new HashSet<>();
 
-										// place it in the table.
-										instanceBlockStateTable.put(instanceKey, blockInContext, stateSet);
+										// place it in the map.
+										ruleToStates.put(rule, stateSet);
 									}
 
 									// get the facts.
@@ -429,17 +441,40 @@ class StreamStateMachine {
 				for (InstanceKey instanceKey : possibleReceivers) {
 					Set<IDFAState> possibleStates = computeMergedTypeState(instanceKey, block, rule);
 					Set<InstanceKey> possibleOriginStreams = computePossibleOriginStreams(instanceKey);
-					possibleOriginStreams.forEach(
-							os -> originStreamToMergedTypeStateMap.merge(os, new HashSet<>(possibleStates), (x, y) -> {
-								x.addAll(y);
-								return x;
-							}));
+					possibleOriginStreams.forEach(os -> {
+						// create a new map.
+						Map<TypestateRule, Set<IDFAState>> ruleToStates = new HashMap<>();
+						ruleToStates.put(rule, new HashSet<>(possibleStates));
+
+						// merge it.
+						originStreamToMergedTypeStateMap.merge(os, ruleToStates, (m1, m2) -> {
+							Set<IDFAState> states1 = m1.get(rule);
+							Set<IDFAState> states2 = m2.get(rule);
+
+							// if the states in for this rule are empty.
+							if (states1 == null) {
+								// create a new set.
+								states1 = new HashSet<>();
+
+								// put it in the map.
+								m1.put(rule, states1);
+							}
+
+							// since we're merging the second map into the
+							// first, nothing to do if the second map is empty.
+							if (states2 != null)
+								states1.addAll(states2);
+
+							// finally, return the second map.
+							return m1;
+						});
+					});
 				}
 			}
 
 			InstanceKey streamInQuestionInstanceKey = this.getStream()
 					.getInstanceKey(instanceToPredecessorsMap.keySet(), engine.getCallGraph());
-			Collection<IDFAState> states = originStreamToMergedTypeStateMap.get(streamInQuestionInstanceKey);
+			Collection<IDFAState> states = originStreamToMergedTypeStateMap.get(streamInQuestionInstanceKey).get(rule);
 			// Map IDFAState to StreamExecutionMode, etc., and add them to the
 			// possible stream states but only if they're not bottom (for those,
 			// we fall back to the initial state).
@@ -1064,7 +1099,7 @@ class StreamStateMachine {
 	private static Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
 			BasicBlockInContext<IExplodedBasicBlock> block, StreamAttributeTypestateRule rule) {
 		Set<InstanceKey> predecessors = instanceToPredecessorsMap.get(instanceKey);
-		Set<IDFAState> possibleInstanceStates = instanceBlockStateTable.get(instanceKey, block);
+		Set<IDFAState> possibleInstanceStates = instanceBlockStateTable.get(instanceKey, block).get(rule);
 
 		if (predecessors.isEmpty())
 			return possibleInstanceStates;
