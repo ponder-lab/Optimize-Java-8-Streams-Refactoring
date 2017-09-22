@@ -1097,6 +1097,8 @@ class StreamStateMachine {
 	}
 
 	private static IDFAState selectState(IDFAState state1, IDFAState state2, StreamAttributeTypestateRule rule) {
+		// NOTE: == is deliberate here because each rule has its own bottom
+		// state (see #62).
 		if (state1 == rule.getBottomState())
 			return state2;
 		else

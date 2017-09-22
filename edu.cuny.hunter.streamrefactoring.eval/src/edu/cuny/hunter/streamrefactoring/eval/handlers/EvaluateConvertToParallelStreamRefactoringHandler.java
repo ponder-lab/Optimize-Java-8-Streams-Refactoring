@@ -68,8 +68,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	private static final boolean PERFORM_CHANGE_DEFAULT = false;
 
 	/**
-	 * the command has been executed, so extract extract the needed information from
-	 * the application context.
+	 * the command has been executed, so extract extract the needed information
+	 * from the application context.
 	 */
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {

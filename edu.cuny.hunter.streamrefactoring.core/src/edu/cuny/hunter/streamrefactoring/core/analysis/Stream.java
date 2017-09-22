@@ -217,9 +217,16 @@ public class Stream {
 			addStatusEntry(streamCreation, PreconditionFailure.NO_TERMINAL_OPERATIONS,
 					"Require terminal operations: " + streamCreation + ".");
 		}
+
+
+		// check preconditions.
+		this.check();
 	}
 
-	public void check() {
+	/**
+	 * Check this {@link Stream} for precondition failures.
+	 */
+	protected void check() {
 		Set<ExecutionMode> possibleExecutionModes = this.getPossibleExecutionModes();
 		Set<Ordering> possibleOrderings = this.getPossibleOrderings();
 		boolean hasPossibleSideEffects = this.hasPossibleSideEffects();
@@ -308,7 +315,7 @@ public class Stream {
 							}
 						} else
 							addStatusEntry(creation, PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS,
-									"No stateful intermediate operation exists within the stream’s pipeline.");
+									"No stateful intermediate operation exists within the stream's pipeline.");
 
 						break;
 					case UNORDERED:
@@ -490,7 +497,6 @@ public class Stream {
 
 		for (Iterator<SSAInstruction> it = this.getEnclosingMethodIR().iterateNormalInstructions(); it.hasNext();) {
 			SSAInstruction instruction = it.next();
-			System.out.println(instruction);
 
 			int lineNumberFromIR = getLineNumberFromIR(method, instruction);
 			int lineNumberFromAST = getLineNumberFromAST(methodName);
@@ -649,12 +655,12 @@ public class Stream {
 
 	/**
 	 * Returns true iff any behavioral parameters (λ-expressions) associated
-	 * with any operations in the stream’s pipeline has side-effects on any
+	 * with any operations in the stream's pipeline has side-effects on any
 	 * possible path. TODO: What if one path has side-effects and the other
 	 * doesn't?
 	 * 
 	 * @return true iff any behavioral parameters (λ-expressions) associated
-	 *         with any operations in the stream’s pipeline has side-effects on
+	 *         with any operations in the stream's pipeline has side-effects on
 	 *         any possible path.
 	 */
 	public boolean hasPossibleSideEffects() {
@@ -695,7 +701,8 @@ public class Stream {
 
 			// set options.
 			AnalysisOptions options = getAnalysisEngine().getDefaultOptions(entryPoints);
-			options.setReflectionOptions(ReflectionOptions.NONE); // turn off reflection analysis for now.
+			// TODO turn off reflection analysis for now.
+			options.setReflectionOptions(ReflectionOptions.NONE);
 			options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
 
 			// FIXME: Do we need to build a new call graph for each entry point?
@@ -728,5 +735,9 @@ public class Stream {
 	
 	public PreconditionSuccess getPassingPrecondition() {
 		return this.passingPrecondition;
+	}
+	
+	static Map<MethodDeclaration, IR> getMethodDeclarationToIRMap() {
+		return Collections.unmodifiableMap(methodDeclarationToIRMap);
 	}
 }
