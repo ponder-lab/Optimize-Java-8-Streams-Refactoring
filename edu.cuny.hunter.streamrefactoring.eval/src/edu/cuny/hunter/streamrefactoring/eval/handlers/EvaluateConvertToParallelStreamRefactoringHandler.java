@@ -117,11 +117,11 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 								"stateful intermediate operations", "reduce ordering possibly matters", "refactoring",
 								"passingPrecondition", "status" });
 
-				streamActionsPrinter = createCSVPrinter("stream_actions.csv", buildeFirstFewColumns("actions"));
+				streamActionsPrinter = createCSVPrinter("stream_actions.csv", buildAttributeColumns("actions"));
 
-				streamExecutionModePrinter = createCSVPrinter("stream_execution_modes.csv", buildeFirstFewColumns("execution mode"));
+				streamExecutionModePrinter = createCSVPrinter("stream_execution_modes.csv", buildAttributeColumns("execution mode"));
 
-				streamOrderingPrinter = createCSVPrinter("stream_orderings.csv", buildeFirstFewColumns("ordering"));
+				streamOrderingPrinter = createCSVPrinter("stream_orderings.csv", buildAttributeColumns("ordering"));
 
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
@@ -360,17 +360,17 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		return new CSVPrinter(new FileWriter(fileName, true), CSVFormat.EXCEL.withHeader(header));
 	}
 
-	private static void printStreamAttributesWithMultipleValues(Set<?> set, CSVPrinter printer, Stream stream, String method)
-			throws IOException {
+	private static void printStreamAttributesWithMultipleValues(Set<?> set, CSVPrinter printer, Stream stream,
+			String method) throws IOException {
 		if (set != null)
-		for (Object object : set) {
-			printer.printRecord(stream.getCreation(), stream.getCreation().getStartPosition(),
-				stream.getCreation().getLength(), method, stream.getEnclosingType().getFullyQualifiedName(),
-					object.toString());
-		}
+			for (Object object : set) {
+				printer.printRecord(stream.getCreation(), stream.getCreation().getStartPosition(),
+						stream.getCreation().getLength(), method, stream.getEnclosingType().getFullyQualifiedName(),
+						object.toString());
+			}
 	}
 
-	private static String[] buildeFirstFewColumns(String attribute) {
+	private static String[] buildAttributeColumns(String attribute) {
 		return new String[] { "stream", "start pos", "length", "method", "type FQN", attribute };
 	}
 
