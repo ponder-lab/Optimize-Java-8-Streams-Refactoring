@@ -13,8 +13,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BiFunction;
-import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -454,20 +452,10 @@ class StreamStateMachine {
 		propagateStreamInstanceProperty(instancesWithSideEffects);
 
 		// propagate the instances with stateful intermediate operations.
-		BinaryOperator<Boolean> remappingFunction = (v1, v2) -> {
-			// if they're the same value, just use the first one.
-			if (v1 == v2)
-				return v2;
-			else
-				// otherwise, if we have either previously seen an SIO
-				// or see one now, we should remember that.
-				return true;
-		};
-
-		instanceToStatefulIntermediateOperationContainment.entrySet().stream().filter(Entry::getValue)
-				.map(Entry::getKey).flatMap(ik -> getAllPredecessors(ik).stream())
-				.collect(Collectors.toMap(Function.identity(), v -> true, remappingFunction))
-				.forEach((k, v) -> instanceToStatefulIntermediateOperationContainment.merge(k, v, remappingFunction));
+		instanceToStatefulIntermediateOperationContainment
+				.putAll(instanceToStatefulIntermediateOperationContainment.entrySet().stream().filter(Entry::getValue)
+						.map(Entry::getKey).flatMap(ik -> getAllPredecessors(ik).stream())
+						.collect(Collectors.toMap(Function.identity(), v -> true)));
 
 		// propagate the instances whose reduce ordering possibly matters.
 		propagateStreamInstanceProperty(instancesWhoseReduceOrderingPossiblyMatters);
@@ -605,6 +593,10 @@ class StreamStateMachine {
 
 				// if it's a non-void method.
 				if (numOfRetVals > 0) {
+					// TODO: Can I base my decision on the return type? Declared
+					// type or actual? Generics actually give a pretty good
+					// approximation, however, it's not captured in the IR
+					// (erasure?)
 					int returnValue = invokeInstruction.getReturnValue(0);
 
 					possibleReturnTypes = Util.getPossibleTypesInterprocedurally(block.getNode(), returnValue,

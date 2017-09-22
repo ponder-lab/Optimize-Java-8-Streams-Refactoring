@@ -61,7 +61,6 @@ import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
-import com.ibm.wala.ssa.SSAOptions;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
@@ -412,6 +411,9 @@ public class Stream {
 		if (ir == null) {
 			// get the IR for the enclosing method.
 			com.ibm.wala.classLoader.IMethod resolvedMethod = getEnclosingWalaMethod();
+
+			// TODO:
+			// options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
 			ir = this.getAnalysisEngine().getCache().getIR(resolvedMethod);
 
 			if (ir == null)
@@ -693,10 +695,9 @@ public class Stream {
 			DefaultEntrypoint entryPoint = new DefaultEntrypoint(getEnclosingMethodReference(), getClassHierarchy());
 			Set<Entrypoint> entryPoints = Collections.singleton(entryPoint);
 
-			// set options.
+			// turn off reflection analysis for now.
 			AnalysisOptions options = getAnalysisEngine().getDefaultOptions(entryPoints);
-			options.setReflectionOptions(ReflectionOptions.NONE); // turn off reflection analysis for now.
-			options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
+			options.setReflectionOptions(ReflectionOptions.NONE);
 
 			// FIXME: Do we need to build a new call graph for each entry point?
 			// Doesn't make sense. Maybe we need to collect all enclosing
