@@ -80,6 +80,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter nonOptimizedStreamPrinter = null;
 			CSVPrinter errorPrinter = null;
 			CSVPrinter streamAttributesPrinter = null;
+			CSVPrinter streamActionsPrinter = null;
+			CSVPrinter streamExecutionModePrinter = null;
+			CSVPrinter streamOrderingPrinter = null;
 
 			ConvertToParallelStreamRefactoringProcessor processor = null;
 
@@ -110,9 +113,16 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						new String[] { "stream", "start pos", "length", "method", "type FQN", "code", "message" });
 
 				streamAttributesPrinter = createCSVPrinter("stream_attributes.csv",
-						new String[] { "stream", "start pos", "length", "method", "type FQN", "execution mode",
-								"ordering", "side-effects?", "stateful intermediate operations", "reduce ordering possibly matters", "status" });
-				
+						new String[] { "stream", "start pos", "length", "method", "type FQN", "side-effects?",
+								"stateful intermediate operations", "reduce ordering possibly matters", "refactoring",
+								"passingPrecondition", "status" });
+
+				streamActionsPrinter = createCSVPrinter("stream_actions.csv", buildAttributeColumns("actions"));
+
+				streamExecutionModePrinter = createCSVPrinter("stream_execution_modes.csv", buildAttributeColumns("execution mode"));
+
+				streamOrderingPrinter = createCSVPrinter("stream_orderings.csv", buildAttributeColumns("ordering"));
+
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
 						throw new IllegalStateException(
@@ -151,12 +161,20 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						streamAttributesPrinter.printRecord(stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
-								stream.getEnclosingType().getFullyQualifiedName(), stream.getPossibleExecutionModes(),
-								stream.getPossibleOrderings(), stream.hasPossibleSideEffects(),
+								stream.getEnclosingType().getFullyQualifiedName(), stream.hasPossibleSideEffects(),
 								stream.hasPossibleStatefulIntermediateOperations(),
-								stream.reduceOrderingPossiblyMatters(),
-								stream.getStatus().isOK() ? 0
+								stream.reduceOrderingPossiblyMatters(), stream.getRefactoring(),
+								stream.getPassingPrecondition(), stream.getStatus().isOK() ? 0
 										: stream.getStatus().getEntryWithHighestSeverity().getSeverity());
+
+						String method = Util.getMethodIdentifier(stream.getEnclosingEclipseMethod());
+						printStreamAttributesWithMultipleValues(stream.getActions(), streamActionsPrinter, stream,
+								method);
+						printStreamAttributesWithMultipleValues(stream.getPossibleExecutionModes(),
+								streamExecutionModePrinter, stream, method);
+						printStreamAttributesWithMultipleValues(stream.getPossibleOrderings(), streamOrderingPrinter,
+								stream, method);
+
 					}
 
 					// #optimizable streams.
@@ -252,6 +270,12 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						errorPrinter.close();
 					if (streamAttributesPrinter != null)
 						streamAttributesPrinter.close();
+					if (streamActionsPrinter != null)
+						streamActionsPrinter.close();
+					if (streamExecutionModePrinter != null)
+						streamExecutionModePrinter.close();
+					if (streamOrderingPrinter != null)
+						streamOrderingPrinter.close();
 
 					// clear cache.
 					if (processor != null)
@@ -335,4 +359,19 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	private static CSVPrinter createCSVPrinter(String fileName, String[] header) throws IOException {
 		return new CSVPrinter(new FileWriter(fileName, true), CSVFormat.EXCEL.withHeader(header));
 	}
+
+	private static void printStreamAttributesWithMultipleValues(Set<?> set, CSVPrinter printer, Stream stream,
+			String method) throws IOException {
+		if (set != null)
+			for (Object object : set) {
+				printer.printRecord(stream.getCreation(), stream.getCreation().getStartPosition(),
+						stream.getCreation().getLength(), method, stream.getEnclosingType().getFullyQualifiedName(),
+						object.toString());
+			}
+	}
+
+	private static String[] buildAttributeColumns(String attribute) {
+		return new String[] { "stream", "start pos", "length", "method", "type FQN", attribute };
+	}
+
 }
