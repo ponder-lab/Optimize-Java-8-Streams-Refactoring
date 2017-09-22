@@ -641,7 +641,8 @@ class StreamStateMachine {
 						LOGGER.info(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
 				} catch (InconsistentPossibleOrderingException e) {
 					MethodInvocation streamCreation = this.getStream().getCreation();
-					LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
+					LOGGER.log(Level.WARNING, "Inconsistent possible ordering encountered while processing: "
+							+ streamCreation + " and instruction: " + instruction + ".", e);
 					this.getStream().addStatusEntry(streamCreation, PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS,
 							"Inconsistent ordering for stream: " + streamCreation + ".");
 					continue;
