@@ -167,8 +167,7 @@ public class Stream {
 
 	private PreconditionSuccess passingPrecondition;
 
-	public Stream(MethodInvocation streamCreation)
-			throws ClassHierarchyException, IOException, CoreException,
+	public Stream(MethodInvocation streamCreation) throws ClassHierarchyException, IOException, CoreException,
 			InvalidClassFileException, CallGraphBuilderCancelException, CancelException {
 		this.creation = streamCreation;
 		this.enclosingTypeDeclaration = (TypeDeclaration) ASTNodes.getParent(this.getCreation(),
@@ -217,7 +216,6 @@ public class Stream {
 			addStatusEntry(streamCreation, PreconditionFailure.NO_TERMINAL_OPERATIONS,
 					"Require terminal operations: " + streamCreation + ".");
 		}
-
 
 		// check preconditions.
 		this.check();
