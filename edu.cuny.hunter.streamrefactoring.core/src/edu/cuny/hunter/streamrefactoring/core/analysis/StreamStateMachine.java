@@ -95,12 +95,10 @@ class StreamStateMachine {
 	 */
 	// @formatter:off
 	private static final String[] STATEFUL_INTERMEDIATE_OPERATIONS = { "java.util.stream.Stream.distinct",
-			"java.util.stream.Stream.sorted", "java.util.stream.Stream.limit", "java.util.stream.Stream.skip",
-			"java.util.stream.DoubleStream.distinct", "java.util.stream.DoubleStream.sorted",
+			"java.util.stream.Stream.limit", "java.util.stream.Stream.skip", "java.util.stream.DoubleStream.distinct",
 			"java.util.stream.DoubleStream.limit", "java.util.stream.DoubleStream.skip",
-			"java.util.stream.IntStream.distinct", "java.util.stream.IntStream.sorted",
-			"java.util.stream.IntStream.limit", "java.util.stream.IntStream.skip",
-			"java.util.stream.LongStream.distinct", "java.util.stream.LongStream.sorted",
+			"java.util.stream.IntStream.distinct", "java.util.stream.IntStream.limit",
+			"java.util.stream.IntStream.skip", "java.util.stream.LongStream.distinct",
 			"java.util.stream.LongStream.limit", "java.util.stream.LongStream.skip" };
 	// @formatter:on
 
@@ -433,8 +431,8 @@ class StreamStateMachine {
 			if (terminalBlockToPossibleReceivers.keySet().isEmpty()) {
 				throw new RequireTerminalOperationException("Require terminal operations!");
 			}
-			
-			// for each terminal operation call, I think? 
+
+			// for each terminal operation call, I think?
 			for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 				OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
 				// for each possible receiver of the terminal operation call.
