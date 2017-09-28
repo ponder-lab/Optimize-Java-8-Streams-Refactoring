@@ -428,16 +428,12 @@ class StreamStateMachine {
 				});
 			}
 
+
 			if (terminalBlockToPossibleReceivers.keySet().isEmpty()) {
 				throw new RequireTerminalOperationException("Require terminal operations!");
 			}
-<<<<<<< HEAD
-			
-			// for each terminal operation call, I think? 
-=======
 
 			// for each terminal operation call, I think?
->>>>>>> 40cb4dbb825d3e10e3cb60cf246e07be7bdb9d0c
 			for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 				OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
 				// for each possible receiver of the terminal operation call.
