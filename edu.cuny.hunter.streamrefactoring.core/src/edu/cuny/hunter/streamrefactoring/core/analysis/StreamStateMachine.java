@@ -437,6 +437,8 @@ class StreamStateMachine {
 			for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 				OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
 				// for each possible receiver of the terminal operation call.
+				// FIXME why mess with all blocks here? Why not just those with
+				// receivers related to the stream in question?
 				for (InstanceKey instanceKey : possibleReceivers) {
 					Set<IDFAState> possibleStates = computeMergedTypeState(instanceKey, block, rule);
 					Set<InstanceKey> possibleOriginStreams = computePossibleOriginStreams(instanceKey);
