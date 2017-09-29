@@ -219,9 +219,6 @@ public class Stream {
 			addStatusEntry(streamCreation, PreconditionFailure.NO_TERMINAL_OPERATIONS,
 					"Require terminal operations: " + streamCreation + ".");
 		}
-
-		// check preconditions.
-		this.check();
 	}
 
 	/**
