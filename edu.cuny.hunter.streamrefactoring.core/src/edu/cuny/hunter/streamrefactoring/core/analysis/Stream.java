@@ -200,9 +200,12 @@ public class Stream {
 							+ ".");
 		}
 
-		// start the state machine.
 		try {
+			// start the state machine.
 			new StreamStateMachine(this).start();
+
+			// check preconditions.
+			this.check();
 		} catch (PropertiesException | CancelException | NoniterableException | NoninstantiableException
 				| CannotExtractSpliteratorException e) {
 			LOGGER.log(Level.SEVERE, "Error while building stream.", e);
