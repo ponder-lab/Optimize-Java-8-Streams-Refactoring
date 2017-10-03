@@ -87,7 +87,7 @@ public final class Util {
 	    SSAPropagationCallGraphBuilder result = new nCFABuilderWithActualParametersInContext(n, cha, options, cache, appSelector, appInterpreter);
 	    // nCFABuilder uses type-based heap abstraction by default, but we want allocation sites
 	    result.setInstanceKeys(new ZeroXInstanceKeys(options, cha, result.getContextInterpreter(), ZeroXInstanceKeys.ALLOCATIONS
-	        | ZeroXInstanceKeys.SMUSH_MANY | ZeroXInstanceKeys.SMUSH_PRIMITIVE_HOLDERS | ZeroXInstanceKeys.SMUSH_STRINGS
+						| ZeroXInstanceKeys.SMUSH_MANY | ZeroXInstanceKeys.SMUSH_PRIMITIVE_HOLDERS | ZeroXInstanceKeys.SMUSH_STRINGS
 	        | ZeroXInstanceKeys.SMUSH_THROWABLES));
 	    return result;
 	  }
