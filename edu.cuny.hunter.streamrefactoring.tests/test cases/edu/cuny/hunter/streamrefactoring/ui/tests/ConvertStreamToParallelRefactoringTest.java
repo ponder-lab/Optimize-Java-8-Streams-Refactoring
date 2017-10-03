@@ -162,10 +162,22 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 		helper("anotherSet.parallelStream()", ExecutionMode.PARALLEL, Ordering.UNORDERED);
 	}
 
+	private static boolean compiles(String source, String directory) throws IOException {
+
+		File sourceFile = new File(directory, "bin/A.java");
+		sourceFile.getParentFile().mkdirs();
+		Files.write(sourceFile.toPath(), source.getBytes());
+
+		// Compile source file.
+		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+		return compiler.run(null, null, null, sourceFile.getPath()) == 0;
+	}
+	
 	private void helper(String expectedCreation, ExecutionMode expectedExecutionMode,
 			Ordering expectedOrdering) throws Exception {
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
-		assertTrue("Input should compile.", compiles(cu.getSource()));
+		String directory = cu.getParent().getParent().getParent().getResource().getLocation().toString();
+		assertTrue("Input should compile.", compiles(cu.getSource(), directory));
 
 		ASTParser parser = ASTParser.newParser(AST.JLS8);
 		parser.setResolveBindings(true);
