@@ -122,23 +122,16 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 		return logger;
 	}
 
-	private static boolean compiles(String source, Path directory) throws IOException {
+	private static boolean compiles(String source) throws IOException {
 		// Save source in .java file.
-		File sourceFile = new File(directory.toFile(), "bin/p/A.java");
+		Path root = Files.createTempDirectory(null);
+		File sourceFile = new File(root.toFile(), "p/A.java");
 		sourceFile.getParentFile().mkdirs();
 		Files.write(sourceFile.toPath(), source.getBytes());
 
 		// Compile source file.
 		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-		boolean compileSuccess = (compiler.run(null, null, null, sourceFile.getPath()) == 0);
-
-		sourceFile.delete();
-		return compileSuccess;
-	}
-
-	@SuppressWarnings("unused")
-	private static boolean compiles(String source) throws IOException {	
-		return compiles(source,  Files.createTempDirectory(null));
+		return compiler.run(null, null, null, sourceFile.getPath()) == 0;
 	}
 
 	public void testArraysAsList() throws Exception {
@@ -172,8 +165,7 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 	private void helper(String expectedCreation, ExecutionMode expectedExecutionMode,
 			Ordering expectedOrdering) throws Exception {
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
-		String directory = cu.getParent().getParent().getParent().getResource().getLocation().toString();
-		assertTrue("Input should compile.", compiles(cu.getSource(), Paths.get(directory)));
+		assertTrue("Input should compile.", compiles(cu.getSource()));
 
 		ASTParser parser = ASTParser.newParser(AST.JLS8);
 		parser.setResolveBindings(true);
