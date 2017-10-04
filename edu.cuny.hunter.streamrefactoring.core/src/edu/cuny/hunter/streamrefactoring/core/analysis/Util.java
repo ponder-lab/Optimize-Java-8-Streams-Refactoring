@@ -3,6 +3,7 @@ package edu.cuny.hunter.streamrefactoring.core.analysis;
 import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
@@ -318,7 +319,7 @@ public final class Util {
 		}
 	}
 
-	public static boolean matches(SSAInstruction instruction, MethodInvocation invocation, Logger logger) {
+	public static boolean matches(SSAInstruction instruction, MethodInvocation invocation, Optional<Logger> logger) {
 		if (instruction.hasDef() && instruction.getNumberOfDefs() == 2) {
 			if (instruction instanceof SSAInvokeInstruction) {
 				SSAInvokeInstruction invokeInstruction = (SSAInvokeInstruction) instruction;
@@ -326,9 +327,9 @@ public final class Util {
 						invokeInstruction.getCallSite().getDeclaredTarget(), invocation))
 					return true;
 			} else
-				logger.warning("Instruction: " + instruction + " is not an SSAInstruction.");
+				logger.ifPresent(l -> l.warning("Instruction: " + instruction + " is not an SSAInstruction."));
 		} else
-			logger.warning("Instruction: " + instruction + " has no definitions.");
+			logger.ifPresent(l -> l.warning("Instruction: " + instruction + " has no definitions."));
 		return false;
 	}
 

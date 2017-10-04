@@ -502,7 +502,7 @@ public class Stream {
 			if (lineNumberFromIR == lineNumberFromAST) {
 				// lines from the AST and the IR match. Let's dive a little
 				// deeper to be more confident of the correspondence.
-				if (matches(instruction, this.getCreation(), LOGGER))
+				if (matches(instruction, this.getCreation(), Optional.of(LOGGER)))
 					return Optional.of((SSAInvokeInstruction) instruction);
 			}
 		}
