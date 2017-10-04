@@ -22,7 +22,9 @@ class OrderingInference {
 	private Objenesis objenesis = new ObjenesisStd();
 
 	private IClassHierarchy classHierarchy;
-	
+
+	private static final Logger LOGGER = Logger.getGlobal();
+
 	public OrderingInference(IClassHierarchy classHierarchy) {
 		this.classHierarchy = classHierarchy;
 	}
@@ -45,8 +47,8 @@ class OrderingInference {
 				if (ret == null)
 					ret = ordering;
 				else if (ret != ordering) {
-					Logger.getGlobal().info(() -> "IR is: " + Stream.getMethodDeclarationToIRMap());
-					throw new InconsistentPossibleOrderingException("Types have inconsistent orderings: " + possibleTypes);
+					throw new InconsistentPossibleOrderingException(
+							"Types have inconsistent orderings, defaulting to ordered: " + possibleTypes);
 				}
 			}
 		}
@@ -133,7 +135,7 @@ class OrderingInference {
 			throws CannotExtractSpliteratorException {
 		Objects.requireNonNull(instance);
 		Objects.requireNonNull(calledMethodName);
-		
+
 		Spliterator<?> spliterator = null;
 
 		if (instance instanceof Iterable) {
@@ -172,7 +174,7 @@ class OrderingInference {
 		// special case. Arrays are always ordered.
 		if (typeReference.isArrayType())
 			return Ordering.ORDERED;
-		
+
 		String binaryName = Util.getBinaryName(typeReference);
 		return inferOrdering(binaryName, calledMethodName);
 	}

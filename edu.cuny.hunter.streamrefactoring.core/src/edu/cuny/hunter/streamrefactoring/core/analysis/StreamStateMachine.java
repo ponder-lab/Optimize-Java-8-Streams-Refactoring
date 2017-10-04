@@ -674,6 +674,7 @@ class StreamStateMachine {
 						possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
 					} else
 						LOGGER.info(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
+					// TODO: This needs to move:
 				} catch (InconsistentPossibleOrderingException e) {
 					MethodInvocation streamCreation = this.getStream().getCreation();
 					LOGGER.log(Level.WARNING, "Inconsistent possible ordering encountered while processing: "
