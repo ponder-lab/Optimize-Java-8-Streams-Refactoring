@@ -46,8 +46,7 @@ class OrderingInference {
 					ret = ordering;
 				else if (ret != ordering) {
 					Logger.getGlobal().info(() -> "IR is: " + Stream.getMethodDeclarationToIRMap());
-					throw new InconsistentPossibleOrderingException(ret + " does not match " + ordering + " for type: "
-							+ typeAbstraction + " and called method: " + calledMethodName + ".");
+					throw new InconsistentPossibleOrderingException("Types have inconsistent orderings: " + possibleTypes);
 				}
 			}
 		}
