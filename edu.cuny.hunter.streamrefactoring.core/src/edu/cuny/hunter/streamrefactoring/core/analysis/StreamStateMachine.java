@@ -428,7 +428,6 @@ class StreamStateMachine {
 				});
 			}
 
-
 			if (terminalBlockToPossibleReceivers.keySet().isEmpty()) {
 				throw new RequireTerminalOperationException("Require terminal operations!");
 			}
