@@ -121,6 +121,19 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 	protected Logger getLogger() {
 		return logger;
 	}
+	
+	private static boolean compiles(String source, Path directory) throws IOException {
+		File sourceFile = new File(directory.toFile(), "bin/p/A.java");
+		sourceFile.getParentFile().mkdirs();
+		Files.write(sourceFile.toPath(), source.getBytes());
+
+		// Compile source file.
+		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+		boolean compileSuccess = (compiler.run(null, null, null, sourceFile.getPath()) == 0);
+
+		sourceFile.delete();
+		return compileSuccess;
+	}
 
 	private static boolean compiles(String source) throws IOException {	
 		return compiles(source,  Files.createTempDirectory(null));
@@ -154,20 +167,6 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 		helper("anotherSet.parallelStream()", ExecutionMode.PARALLEL, Ordering.UNORDERED);
 	}
 
-	private static boolean compiles(String source, Path directory) throws IOException {
-
-		File sourceFile = new File(directory.toFile(), "bin/p/A.java");
-		sourceFile.getParentFile().mkdirs();
-		Files.write(sourceFile.toPath(), source.getBytes());
-
-		// Compile source file.
-		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-		boolean compileSuccess = (compiler.run(null, null, null, sourceFile.getPath()) == 0);
-
-		sourceFile.delete();
-		return compileSuccess;
-	}
-	
 	private void helper(String expectedCreation, ExecutionMode expectedExecutionMode,
 			Ordering expectedOrdering) throws Exception {
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
