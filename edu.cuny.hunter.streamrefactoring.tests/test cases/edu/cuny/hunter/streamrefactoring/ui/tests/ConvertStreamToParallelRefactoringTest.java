@@ -136,6 +136,7 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 		return compileSuccess;
 	}
 
+	@SuppressWarnings("unused")
 	private static boolean compiles(String source) throws IOException {	
 		return compiles(source,  Files.createTempDirectory(null));
 	}
