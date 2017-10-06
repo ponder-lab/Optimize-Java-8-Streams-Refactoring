@@ -1,7 +1,9 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -48,6 +50,8 @@ import com.ibm.wala.util.strings.Atom;
 import com.ibm.wala.util.strings.StringStuff;
 
 public final class Util {
+
+	private static final Logger LOGGER = Logger.getGlobal();
 
 	private static final class CorrespondingASTVisitor extends ASTVisitor {
 		private CompilationUnit unit;
@@ -185,7 +189,8 @@ public final class Util {
 	}
 
 	public static Collection<TypeAbstraction> getPossibleTypesInterprocedurally(CGNode node, int valueNumber,
-			HeapModel heapModel, PointerAnalysis<InstanceKey> pointerAnalysis, Stream stream, Logger logger) {
+			HeapModel heapModel, PointerAnalysis<InstanceKey> pointerAnalysis, Stream stream, Logger logger)
+			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
 		Collection<TypeAbstraction> ret = new HashSet<>();
 
 		PointerKey valueKey = heapModel.getPointerKeyForLocal(node, valueNumber);
@@ -196,9 +201,10 @@ public final class Util {
 		logger.fine(() -> "PointsTo set is: " + pointsToSet);
 
 		for (InstanceKey instanceKey : pointsToSet) {
-			IClass concreteType = instanceKey.getConcreteType();
-			if (!(concreteType instanceof SyntheticClass)) {
-				logger.fine(() -> "Found non-synthetic concrete type: " + concreteType);
+			IClass concreteClass = instanceKey.getConcreteType();
+
+			if (!(concreteClass instanceof SyntheticClass)) {
+				logger.fine(() -> "Found non-synthetic concrete type: " + concreteClass);
 
 				// Workaround #38, problem seemingly with generics.
 				// Due to type erasure, we may have the problem if the return
@@ -208,6 +214,8 @@ public final class Util {
 				Collection<TypeAbstraction> returnTypes = Util.getPossibleTypes(valueNumber, inference);
 				assert returnTypes.size() == 1 : "Not expecting more than one return type.";
 				TypeAbstraction rType = returnTypes.iterator().next();
+
+				PointType concreteType = new PointType(concreteClass);
 
 				if (rType.getType().getReference().equals(TypeReference.JavaLangObject)) {
 					IR ir = node.getIR();
@@ -270,21 +278,66 @@ public final class Util {
 								.getTypeRef(genericReturnType);
 						IClass genericClass = node.getClassHierarchy().lookupClass(genericTypeRef);
 
-						boolean assignableFrom = node.getClassHierarchy().isAssignableFrom(genericClass, concreteType);
+						boolean assignableFrom = node.getClassHierarchy().isAssignableFrom(genericClass, concreteClass);
 
-						// only add it if it's assignable.
-						if (assignableFrom)
-							ret.add(new PointType(concreteType));
+						// if it's assignable.
+						if (assignableFrom) {
+							// would the ordering be consistent?
+							if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), concreteType,
+									stream.getOrderingInference())) {
+								// if so, add it.
+								LOGGER.info("Add type straight up: " + concreteType);
+								ret.add(concreteType);
+							} else {
+								// otherwise, would the generic type cause the
+								// ordering to be inconsistent?
+								PointType genericType = new PointType(genericClass);
+
+								if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), genericType,
+										stream.getOrderingInference())) {
+									LOGGER.info("Defaulting to generic type: " + genericType);
+									ret.add(genericType);
+								} else {
+									// fall back to the concrete type.
+									LOGGER.info("Defaulting to concrete type eventhough it isn't consistent: "
+											+ concreteType);
+									ret.add(concreteType);
+								}
+							}
+						}
 
 					} else {
 						// FIXME: Interprocedural?
 						throw new IllegalStateException("Can't find corresponding file.");
 					}
-				} else // just add it.
-					ret.add(new PointType(concreteType));
+				} else {
+					// just add it.
+					LOGGER.info("Add type straight up: " + concreteType);
+					ret.add(concreteType);
+				}
 			}
 		}
 		return ret;
+	}
+
+	private static boolean wouldOrderingBeConsistent(final Collection<TypeAbstraction> types,
+			TypeAbstraction additionalType, OrderingInference inference)
+			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
+		// make a copy.
+		Collection<TypeAbstraction> copy = new ArrayList<>(types);
+
+		// add the new type to the copy.
+		copy.add(additionalType);
+
+		// check the ordering
+		try {
+			inference.inferOrdering(copy);
+		} catch (InconsistentPossibleOrderingException | NoninstantiableException e) {
+			// it's inconsistent.
+			return false;
+		}
+
+		return true;
 	}
 
 	private static MethodInvocation findCorrespondingMethodInvocation(CompilationUnit unit,

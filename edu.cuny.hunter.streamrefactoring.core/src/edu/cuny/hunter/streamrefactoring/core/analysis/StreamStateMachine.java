@@ -654,45 +654,44 @@ class StreamStateMachine {
 
 				boolean rom = false;
 
-				try {
-					if (isVoid(possibleReturnTypes))
-						rom = deriveRomForVoidMethod(invokeInstruction);
-					else {
-						boolean scalar = isScalar(possibleReturnTypes);
-						if (scalar)
-							rom = deriveRomForScalarMethod(invokeInstruction);
-						else if (!scalar)
-							rom = deriveRomForNonScalarMethod(possibleReturnTypes);
-						else
-							throw new IllegalStateException(
-									"Can't derive ROM for possible return types: " + possibleReturnTypes);
-					}
-
-					if (rom) {
-						LOGGER.info(() -> "Reduce ordering matters for: " + invokeInstruction);
-						OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
-						possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
-					} else
-						LOGGER.info(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
-				} catch (InconsistentPossibleOrderingException e) {
-					MethodInvocation streamCreation = this.getStream().getCreation();
-					LOGGER.log(Level.WARNING, "Inconsistent possible ordering encountered while processing: "
-							+ streamCreation + " and instruction: " + instruction + ".", e);
-					this.getStream().addStatusEntry(streamCreation, PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS,
-							"Inconsistent ordering for stream: " + streamCreation + ".");
-					continue;
-				} finally {
-					++processedInstructions;
+				if (isVoid(possibleReturnTypes))
+					rom = deriveRomForVoidMethod(invokeInstruction);
+				else {
+					boolean scalar = isScalar(possibleReturnTypes);
+					if (scalar)
+						rom = deriveRomForScalarMethod(invokeInstruction);
+					else if (!scalar)
+						rom = deriveRomForNonScalarMethod(possibleReturnTypes);
+					else
+						throw new IllegalStateException(
+								"Can't derive ROM for possible return types: " + possibleReturnTypes);
 				}
+
+				if (rom) {
+					LOGGER.info(() -> "Reduce ordering matters for: " + invokeInstruction);
+					OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
+					possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
+				} else
+					LOGGER.info(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
+
+				++processedInstructions;
 			}
 			assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
 		}
 	}
 
 	private boolean deriveRomForNonScalarMethod(Collection<TypeAbstraction> possibleReturnTypes)
-			throws InconsistentPossibleOrderingException, NoniterableException, NoninstantiableException,
-			CannotExtractSpliteratorException {
-		Ordering ordering = this.getStream().getOrderingInference().inferOrdering(possibleReturnTypes);
+			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
+		Ordering ordering;
+		try {
+			ordering = this.getStream().getOrderingInference().inferOrdering(possibleReturnTypes);
+		} catch (InconsistentPossibleOrderingException e) {
+			// default to ordered #55.
+			ordering = Ordering.ORDERED;
+			LOGGER.warning("Inconsistently ordered possible return types encountered: " + possibleReturnTypes
+					+ ". Defaulting to: " + ordering);
+		}
+
 		LOGGER.info("Ordering of reduction type is: " + ordering);
 
 		switch (ordering) {
