@@ -200,9 +200,12 @@ public class Stream {
 							+ ".");
 		}
 
-		// start the state machine.
 		try {
+			// start the state machine.
 			new StreamStateMachine(this).start();
+
+			// check preconditions.
+			this.check();
 		} catch (PropertiesException | CancelException | NoniterableException | NoninstantiableException
 				| CannotExtractSpliteratorException e) {
 			LOGGER.log(Level.SEVERE, "Error while building stream.", e);
@@ -216,9 +219,6 @@ public class Stream {
 			addStatusEntry(streamCreation, PreconditionFailure.NO_TERMINAL_OPERATIONS,
 					"Require terminal operations: " + streamCreation + ".");
 		}
-
-		// check preconditions.
-		this.check();
 	}
 
 	/**
@@ -502,7 +502,7 @@ public class Stream {
 			if (lineNumberFromIR == lineNumberFromAST) {
 				// lines from the AST and the IR match. Let's dive a little
 				// deeper to be more confident of the correspondence.
-				if (matches(instruction, this.getCreation(), LOGGER))
+				if (matches(instruction, this.getCreation(), Optional.of(LOGGER)))
 					return Optional.of((SSAInvokeInstruction) instruction);
 			}
 		}

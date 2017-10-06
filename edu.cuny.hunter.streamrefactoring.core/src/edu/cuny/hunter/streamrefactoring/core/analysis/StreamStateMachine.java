@@ -1,6 +1,7 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import static com.ibm.safe.typestate.core.AbstractWholeProgramSolver.DUMMY_ZERO;
+import static edu.cuny.hunter.streamrefactoring.core.analysis.StreamAttributeTypestateRule.BOTTOM_STATE_NAME;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -436,6 +437,8 @@ class StreamStateMachine {
 			for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 				OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
 				// for each possible receiver of the terminal operation call.
+				// FIXME why mess with all blocks here? Why not just those with
+				// receivers related to the stream in question?
 				for (InstanceKey instanceKey : possibleReceivers) {
 					Set<IDFAState> possibleStates = computeMergedTypeState(instanceKey, block, rule);
 					Set<InstanceKey> possibleOriginStreams = computePossibleOriginStreams(instanceKey);
@@ -1104,14 +1107,13 @@ class StreamStateMachine {
 
 		Set<IDFAState> ret = new HashSet<>();
 		for (InstanceKey pred : predecessors) {
-			ret.addAll(mergeTypeStates(possibleInstanceStates, computeMergedTypeState(pred, block, rule), rule));
+			ret.addAll(mergeTypeStates(possibleInstanceStates, computeMergedTypeState(pred, block, rule)));
 		}
 
 		return ret;
 	}
 
-	private static Collection<? extends IDFAState> mergeTypeStates(Set<IDFAState> set1, Set<IDFAState> set2,
-			StreamAttributeTypestateRule rule) {
+	private static Collection<? extends IDFAState> mergeTypeStates(Set<IDFAState> set1, Set<IDFAState> set2) {
 		if (set1.isEmpty())
 			return set2;
 		else if (set2.isEmpty())
@@ -1121,17 +1123,15 @@ class StreamStateMachine {
 
 		for (IDFAState state1 : set1) {
 			for (IDFAState state2 : set2) {
-				ret.add(selectState(state1, state2, rule));
+				ret.add(selectState(state1, state2));
 			}
 		}
 
 		return ret;
 	}
 
-	private static IDFAState selectState(IDFAState state1, IDFAState state2, StreamAttributeTypestateRule rule) {
-		// NOTE: == is deliberate here because each rule has its own bottom
-		// state (see #62).
-		if (state1 == rule.getBottomState())
+	private static IDFAState selectState(IDFAState state1, IDFAState state2) {
+		if (state1.getName().equals(BOTTOM_STATE_NAME))
 			return state2;
 		else
 			return state1;

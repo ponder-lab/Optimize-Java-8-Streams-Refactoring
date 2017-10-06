@@ -73,10 +73,6 @@ public abstract class StreamAttributeTypestateRule extends TypestateRule {
 		return this.addState(constant.name().toLowerCase());
 	}
 
-	public IDFAState getBottomState() {
-		return bottomState;
-	}
-
 	protected void addPossibleAttributes(Stream stream, Collection<IDFAState> states) {
 		Objects.requireNonNull(stream);
 		Objects.requireNonNull(states);
