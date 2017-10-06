@@ -122,16 +122,8 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 		return logger;
 	}
 
-	private static boolean compiles(String source) throws IOException {
-		// Save source in .java file.
-		Path root = Files.createTempDirectory(null);
-		File sourceFile = new File(root.toFile(), "p/A.java");
-		sourceFile.getParentFile().mkdirs();
-		Files.write(sourceFile.toPath(), source.getBytes());
-
-		// Compile source file.
-		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-		return compiler.run(null, null, null, sourceFile.getPath()) == 0;
+	private static boolean compiles(String source) throws IOException {	
+		return compiles(source,  Files.createTempDirectory(null));
 	}
 
 	public void testArraysAsList() throws Exception {
