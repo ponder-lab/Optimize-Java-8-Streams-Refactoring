@@ -121,7 +121,7 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 	protected Logger getLogger() {
 		return logger;
 	}
-	
+
 	private static boolean compiles(String source, Path directory) throws IOException {
 		// Save source in .java file.
 		File sourceFile = new File(directory.toFile(), "bin/p/A.java");
