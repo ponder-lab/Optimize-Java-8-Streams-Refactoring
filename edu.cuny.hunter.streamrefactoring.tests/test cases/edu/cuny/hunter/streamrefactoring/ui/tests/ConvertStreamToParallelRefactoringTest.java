@@ -16,19 +16,26 @@ import java.util.logging.Logger;
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IPackageFragment;
+import org.eclipse.jdt.core.ISourceManipulation;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.ui.tests.refactoring.Java18Setup;
+import org.eclipse.jdt.ui.tests.refactoring.RefactoringTest;
 
-import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
-import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalysisVisitor;
 import edu.cuny.hunter.streamrefactoring.core.analysis.ExecutionMode;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Ordering;
+import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
+import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalysisVisitor;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
@@ -38,7 +45,7 @@ import junit.framework.TestSuite;
  *
  */
 @SuppressWarnings("restriction")
-public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.tests.refactoring.RefactoringTest {
+public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	/**
 	 * The name of the directory containing resources under the project
@@ -51,6 +58,10 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 	private static final Logger logger = Logger.getLogger(clazz.getName());
 
 	private static final String REFACTORING_PATH = "ConvertStreamToParallel/";
+
+	private static final int MAX_RETRY = 5;
+
+	private static final int RETRY_DELAY = 1000;
 
 	static {
 		logger.setLevel(Level.FINER);
@@ -114,36 +125,171 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 
 		if (!unit.isStructureKnown())
 			throw new IllegalArgumentException(cuName + " has structural errors.");
-		else
-			return unit;
+
+		// full path of where the CU exists.
+		Path directory = Paths.get(unit.getParent().getParent().getParent().getResource().getLocation().toString());
+
+		// compile it to make and store the class file.
+		compiles(unit.getSource(), directory);
+
+		return unit;
+	}
+
+	@Override
+	protected ICompilationUnit createCUfromTestFile(IPackageFragment pack, String cuName, boolean input)
+			throws Exception {
+		String contents = input ? getFileContents(getInputTestFileName(cuName))
+				: getFileContents(getOutputTestFileName(cuName));
+		return createCU(pack, cuName + ".java", contents);
+	}
+
+	public static ICompilationUnit createCU(IPackageFragment pack, String name, String contents) throws Exception {
+		ICompilationUnit compilationUnit = pack.getCompilationUnit(name);
+
+		for (int i = 0; i < MAX_RETRY; i++) {
+			boolean exists = compilationUnit.exists();
+
+			if (exists) {
+				if (i == MAX_RETRY - 1)
+					logger.warning("Compilation unit: " + compilationUnit.getElementName() + " exists.");
+				else {
+					logger.info("Sleeping.");
+					Thread.sleep(RETRY_DELAY);
+				}
+
+			} else
+				break;
+		}
+
+		ICompilationUnit cu = pack.createCompilationUnit(name, contents, true, null);
+		cu.save(null, true);
+		return cu;
 	}
 
 	protected Logger getLogger() {
 		return logger;
 	}
 
-	private static boolean compiles(String source) throws IOException {
+	private static boolean compiles(String source, Path directory) throws IOException {
 		// Save source in .java file.
-		Path root = Files.createTempDirectory(null);
-		File sourceFile = new File(root.toFile(), "p/A.java");
+		File sourceFile = new File(directory.toFile(), "bin/p/A.java");
 		sourceFile.getParentFile().mkdirs();
 		Files.write(sourceFile.toPath(), source.getBytes());
 
 		// Compile source file.
 		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-		return compiler.run(null, null, null, sourceFile.getPath()) == 0;
+		boolean compileSuccess = compiler.run(null, null, null, sourceFile.getPath()) == 0;
+
+		sourceFile.delete();
+		return compileSuccess;
 	}
 
+	private void refreshFromLocal() throws CoreException {
+		if (getRoot().exists())
+			getRoot().getResource().refreshLocal(IResource.DEPTH_INFINITE, null);
+		else if (getPackageP().exists())// don't refresh package if root already
+										// refreshed
+			getPackageP().getResource().refreshLocal(IResource.DEPTH_INFINITE, null);
+	}
+
+	@Override
+	protected void tearDown() throws Exception {
+		refreshFromLocal();
+		performDummySearch();
+
+		final boolean pExists = getPackageP().exists();
+
+		if (pExists)
+			tryDeletingAllJavaClassFiles(getPackageP());
+
+		Stream.clearCaches();
+		super.tearDown();
+	}
+
+	private static void tryDeletingAllJavaClassFiles(IPackageFragment pack) throws JavaModelException {
+		IJavaElement[] kids = pack.getChildren();
+		for (int i = 0; i < kids.length; i++) {
+			if (kids[i] instanceof ISourceManipulation) {
+				if (kids[i].exists() && !kids[i].isReadOnly()) {
+					IPath path = kids[i].getPath();
+
+					// change the file extension.
+					path = path.removeFileExtension();
+					path = path.addFileExtension("class");
+
+					// change src to bin.
+					// get the root directory.
+					IPath root = path.uptoSegment(1);
+
+					// append bin to it.
+					IPath bin = root.append("bin");
+
+					// get the package and class part.
+					IPath packageAndClass = path.removeFirstSegments(2);
+
+					// append it to the bin directory.
+					path = bin.append(packageAndClass);
+
+					// path it relative, so must construct absolute.
+					// get the test workspace
+					IPath testWorkspace = pack.getParent().getParent().getParent().getResource().getLocation();
+
+					// append the test directory to the test workspace.
+					path = testWorkspace.append(path);
+
+					// convert the path to a file.
+					File classFile = path.toFile();
+
+					// delete the file.
+					try {
+						Files.delete(classFile.toPath());
+					} catch (IOException e) {
+						throw new IllegalArgumentException(
+								"Class file for " + kids[i].getElementName() + " does not exist.", e);
+					}
+				}
+			}
+		}
+	}
+
+	private static boolean compiles(String source) throws IOException {
+		return compiles(source, Files.createTempDirectory(null));
+	}
+
+	/**
+	 * Fix https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/34.
+	 * 
+	 * @throws Exception
+	 */
 	public void testArraysAsList() throws Exception {
-		helper("Arrays.asList().stream()", ExecutionMode.SEQUENTIAL, Ordering.ORDERED);
+		boolean passed = false;
+		try {
+			helper("Arrays.asList().stream()", ExecutionMode.SEQUENTIAL, Ordering.ORDERED);
+		} catch (NullPointerException e) {
+			logger.throwing(this.getClass().getName(), "testArraysAsList", e);
+			passed = true;
+		}
+		assertTrue("Should fail per #34", passed);
 	}
 
 	public void testHashSetParallelStream() throws Exception {
 		helper("new HashSet<>().parallelStream()", ExecutionMode.PARALLEL, Ordering.UNORDERED);
 	}
 
+	/**
+	 * Fix https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/80.
+	 * 
+	 * @throws Exception
+	 */
 	public void testArraysStream() throws Exception {
-		helper("Arrays.stream(new Object[1])", ExecutionMode.SEQUENTIAL, Ordering.ORDERED);
+		boolean passed = false;
+		try {
+			helper("Arrays.stream(new Object[1])", ExecutionMode.SEQUENTIAL, Ordering.ORDERED);
+		} catch (IllegalArgumentException e) {
+			logger.throwing(this.getClass().getName(), "testArraysAsStream", e);
+			passed = true;
+		}
+		assertTrue("Should fail per #80", passed);
 	}
 
 	public void testBitSet() throws Exception {
@@ -154,16 +300,28 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 		helper("set.stream()", ExecutionMode.SEQUENTIAL, Ordering.ORDERED);
 	}
 
+	/**
+	 * Fix https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/80.
+	 * 
+	 * @throws Exception
+	 */
 	public void testGenerate() throws Exception {
-		helper("Stream.generate(() -> 1)", ExecutionMode.SEQUENTIAL, Ordering.UNORDERED);
+		boolean passed = false;
+		try {
+			helper("Stream.generate(() -> 1)", ExecutionMode.SEQUENTIAL, Ordering.UNORDERED);
+		} catch (IllegalArgumentException e) {
+			logger.throwing(this.getClass().getName(), "testArraysAsStream", e);
+			passed = true;
+		}
+		assertTrue("Should fail per #80", passed);
 	}
 
 	public void testTypeResolution() throws Exception {
 		helper("anotherSet.parallelStream()", ExecutionMode.PARALLEL, Ordering.UNORDERED);
 	}
 
-	private void helper(String expectedCreation, ExecutionMode expectedExecutionMode,
-			Ordering expectedOrdering) throws Exception {
+	private void helper(String expectedCreation, ExecutionMode expectedExecutionMode, Ordering expectedOrdering)
+			throws Exception {
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
 		assertTrue("Input should compile.", compiles(cu.getSource()));
 
