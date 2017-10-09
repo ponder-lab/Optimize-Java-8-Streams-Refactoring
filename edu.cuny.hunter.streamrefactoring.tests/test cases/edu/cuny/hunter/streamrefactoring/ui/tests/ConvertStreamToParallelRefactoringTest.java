@@ -202,6 +202,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		if (pExists)
 			tryDeletingAllJavaClassFiles(getPackageP());
 
+		Stream.clearCaches();
 		super.tearDown();
 	}
 
