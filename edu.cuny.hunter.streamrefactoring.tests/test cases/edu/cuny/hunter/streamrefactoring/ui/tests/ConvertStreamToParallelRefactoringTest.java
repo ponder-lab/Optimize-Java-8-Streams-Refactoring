@@ -16,19 +16,25 @@ import java.util.logging.Logger;
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
 
+import org.eclipse.core.resources.IResource;
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
+import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IPackageFragment;
+import org.eclipse.jdt.core.ISourceManipulation;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.ui.tests.refactoring.Java18Setup;
 
-import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
-import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalysisVisitor;
 import edu.cuny.hunter.streamrefactoring.core.analysis.ExecutionMode;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Ordering;
+import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
+import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalysisVisitor;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
@@ -51,6 +57,10 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 	private static final Logger logger = Logger.getLogger(clazz.getName());
 
 	private static final String REFACTORING_PATH = "ConvertStreamToParallel/";
+
+	private static final int MAX_RETRY = 5;
+
+	private static final int RETRY_DELAY = 1000;
 
 	static {
 		logger.setLevel(Level.FINER);
@@ -124,6 +134,37 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 			return unit;
 	}
 
+	@Override
+	protected ICompilationUnit createCUfromTestFile(IPackageFragment pack, String cuName, boolean input)
+			throws Exception {
+		String contents = input ? getFileContents(getInputTestFileName(cuName))
+				: getFileContents(getOutputTestFileName(cuName));
+		return createCU(pack, cuName + ".java", contents);
+	}
+
+	public static ICompilationUnit createCU(IPackageFragment pack, String name, String contents) throws Exception {
+		ICompilationUnit compilationUnit = pack.getCompilationUnit(name);
+
+		for (int i = 0; i < MAX_RETRY; i++) {
+			boolean exists = compilationUnit.exists();
+
+			if (exists) {
+				if (i == MAX_RETRY - 1)
+					assertFalse("Compilation unit: " + compilationUnit.getElementName() + " exists.", exists);
+				else {
+					logger.info("Sleeping.");
+					Thread.sleep(RETRY_DELAY);
+				}
+
+			} else
+				break;
+		}
+
+		ICompilationUnit cu = pack.createCompilationUnit(name, contents, true, null);
+		cu.save(null, true);
+		return cu;
+	}
+
 	protected Logger getLogger() {
 		return logger;
 	}
@@ -140,6 +181,73 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 
 		sourceFile.delete();
 		return compileSuccess;
+	}
+	
+	private void refreshFromLocal() throws CoreException {
+		if (getRoot().exists())
+			getRoot().getResource().refreshLocal(IResource.DEPTH_INFINITE, null);
+		else if (getPackageP().exists())// don't refresh package if root already
+										// refreshed
+			getPackageP().getResource().refreshLocal(IResource.DEPTH_INFINITE, null);
+	}
+
+	@Override
+	protected void tearDown() throws Exception {
+		refreshFromLocal();
+		performDummySearch();
+
+		final boolean pExists = getPackageP().exists();
+
+		if (pExists)
+			tryDeletingAllJavaClassFiles(getPackageP());
+
+		super.tearDown();
+	}
+
+	private static void tryDeletingAllJavaClassFiles(IPackageFragment pack) throws JavaModelException {
+		IJavaElement[] kids = pack.getChildren();
+		for (int i = 0; i < kids.length; i++) {
+			if (kids[i] instanceof ISourceManipulation) {
+				if (kids[i].exists() && !kids[i].isReadOnly()) {
+					IPath path = kids[i].getPath();
+
+					// change the file extension.
+					path = path.removeFileExtension();
+					path = path.addFileExtension("class");
+
+					// change src to bin.
+					// get the root directory.
+					IPath root = path.uptoSegment(1);
+
+					// append bin to it.
+					IPath bin = root.append("bin");
+
+					// get the package and class part.
+					IPath packageAndClass = path.removeFirstSegments(2);
+
+					// append it to the bin directory.
+					path = bin.append(packageAndClass);
+
+					// path it relative, so must construct absolute.
+					// get the test workspace
+					IPath testWorkspace = pack.getParent().getParent().getParent().getResource().getLocation();
+
+					// append the test directory to the test workspace.
+					path = testWorkspace.append(path);
+
+					// convert the path to a file.
+					File classFile = path.toFile();
+
+					// delete the file.
+					try {
+						Files.delete(classFile.toPath());
+					} catch (IOException e) {
+						throw new IllegalArgumentException(
+								"Class file for " + kids[i].getElementName() + " does not exist.", e);
+					}
+				}
+			}
+		}
 	}
 
 	private static boolean compiles(String source) throws IOException {	
