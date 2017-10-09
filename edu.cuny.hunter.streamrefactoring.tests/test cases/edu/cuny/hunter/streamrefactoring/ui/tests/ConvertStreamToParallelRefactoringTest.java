@@ -132,7 +132,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		// compile it to make and store the class file.
 		compiles(unit.getSource(), directory);
 
-			return unit;
+		return unit;
 	}
 
 	@Override
@@ -183,7 +183,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		sourceFile.delete();
 		return compileSuccess;
 	}
-	
+
 	private void refreshFromLocal() throws CoreException {
 		if (getRoot().exists())
 			getRoot().getResource().refreshLocal(IResource.DEPTH_INFINITE, null);
