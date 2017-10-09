@@ -252,20 +252,44 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		}
 	}
 
-	private static boolean compiles(String source) throws IOException {	
-		return compiles(source,  Files.createTempDirectory(null));
+	private static boolean compiles(String source) throws IOException {
+		return compiles(source, Files.createTempDirectory(null));
 	}
 
+	/**
+	 * Fix https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/34.
+	 * 
+	 * @throws Exception
+	 */
 	public void testArraysAsList() throws Exception {
-		helper("Arrays.asList().stream()", ExecutionMode.SEQUENTIAL, Ordering.ORDERED);
+		boolean passed = false;
+		try {
+			helper("Arrays.asList().stream()", ExecutionMode.SEQUENTIAL, Ordering.ORDERED);
+		} catch (NullPointerException e) {
+			logger.throwing(this.getClass().getName(), "testArraysAsList", e);
+			passed = true;
+		}
+		assertTrue("Should fail per #34", passed);
 	}
 
 	public void testHashSetParallelStream() throws Exception {
 		helper("new HashSet<>().parallelStream()", ExecutionMode.PARALLEL, Ordering.UNORDERED);
 	}
 
+	/**
+	 * Fix https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/80.
+	 * 
+	 * @throws Exception
+	 */
 	public void testArraysStream() throws Exception {
-		helper("Arrays.stream(new Object[1])", ExecutionMode.SEQUENTIAL, Ordering.ORDERED);
+		boolean passed = false;
+		try {
+			helper("Arrays.stream(new Object[1])", ExecutionMode.SEQUENTIAL, Ordering.ORDERED);
+		} catch (IllegalArgumentException e) {
+			logger.throwing(this.getClass().getName(), "testArraysAsStream", e);
+			passed = true;
+		}
+		assertTrue("Should fail per #80", passed);
 	}
 
 	public void testBitSet() throws Exception {
@@ -276,8 +300,20 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		helper("set.stream()", ExecutionMode.SEQUENTIAL, Ordering.ORDERED);
 	}
 
+	/**
+	 * Fix https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/80.
+	 * 
+	 * @throws Exception
+	 */
 	public void testGenerate() throws Exception {
-		helper("Stream.generate(() -> 1)", ExecutionMode.SEQUENTIAL, Ordering.UNORDERED);
+		boolean passed = false;
+		try {
+			helper("Stream.generate(() -> 1)", ExecutionMode.SEQUENTIAL, Ordering.UNORDERED);
+		} catch (IllegalArgumentException e) {
+			logger.throwing(this.getClass().getName(), "testArraysAsStream", e);
+			passed = true;
+		}
+		assertTrue("Should fail per #80", passed);
 	}
 
 	public void testTypeResolution() throws Exception {
