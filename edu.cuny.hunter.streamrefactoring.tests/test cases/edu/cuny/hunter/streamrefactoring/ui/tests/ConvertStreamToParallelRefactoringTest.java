@@ -114,7 +114,13 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 
 		if (!unit.isStructureKnown())
 			throw new IllegalArgumentException(cuName + " has structural errors.");
-		else
+
+		// full path of where the CU exists.
+		Path directory = Paths.get(unit.getParent().getParent().getParent().getResource().getLocation().toString());
+
+		// compile it to make and store the class file.
+		compiles(unit.getSource(), directory);
+
 			return unit;
 	}
 
@@ -136,7 +142,6 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 		return compileSuccess;
 	}
 
-	@SuppressWarnings("unused")
 	private static boolean compiles(String source) throws IOException {	
 		return compiles(source,  Files.createTempDirectory(null));
 	}
@@ -169,11 +174,10 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 		helper("anotherSet.parallelStream()", ExecutionMode.PARALLEL, Ordering.UNORDERED);
 	}
 
-	private void helper(String expectedCreation, ExecutionMode expectedExecutionMode,
-			Ordering expectedOrdering) throws Exception {
+	private void helper(String expectedCreation, ExecutionMode expectedExecutionMode, Ordering expectedOrdering)
+			throws Exception {
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
-		String directory = cu.getParent().getParent().getParent().getResource().getLocation().toString();
-		assertTrue("Input should compile.", compiles(cu.getSource(), Paths.get(directory)));
+		assertTrue("Input should compile.", compiles(cu.getSource()));
 
 		ASTParser parser = ASTParser.newParser(AST.JLS8);
 		parser.setResolveBindings(true);
