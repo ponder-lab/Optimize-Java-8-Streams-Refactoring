@@ -130,7 +130,7 @@ public class ConvertStreamToParallelRefactoringTest extends org.eclipse.jdt.ui.t
 
 		// Compile source file.
 		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-		boolean compileSuccess = (compiler.run(null, null, null, sourceFile.getPath()) == 0);
+		boolean compileSuccess = compiler.run(null, null, null, sourceFile.getPath()) == 0;
 
 		sourceFile.delete();
 		return compileSuccess;
