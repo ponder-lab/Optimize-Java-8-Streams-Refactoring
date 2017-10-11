@@ -215,8 +215,6 @@ class StreamStateMachine {
 	 */
 	private final Stream stream;
 
-	private InstanceKey lastInstanceKey;
-	
 	/**
 	 * Constructs a new {@link StreamStateMachine} given a {@link Stream} to
 	 * represent.
@@ -429,11 +427,11 @@ class StreamStateMachine {
 					x.addAll(y);
 					return x;
 				});
-				
-				if (it.hasNext() == false) lastInstanceKey = instance;
 			}
-			
-			needTerminalOperations(lastInstanceKey);
+
+			if (terminalBlockToPossibleReceivers.keySet().isEmpty()) {
+				throw new RequireTerminalOperationException("Require terminal operations!");
+			}
 
 			// for each terminal operation call, I think?
 			for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
@@ -1176,24 +1174,5 @@ class StreamStateMachine {
 		instancesWithSideEffects.clear();
 		instanceToStatefulIntermediateOperationContainment.clear();
 		instancesWhoseReduceOrderingPossiblyMatters.clear();
-	}
-	
-	private Set<InstanceKey> getPossibleReceiver(InstanceKey instance) {
-		CallStringWithReceivers callString = getCallString(instance);
-		return new HashSet<>(callString.getPossibleReceivers());		
-	}
-	
-	private void needTerminalOperations(InstanceKey lastInstanceKey) throws RequireTerminalOperationException {
-		for (Iterator<InstanceKey> pre = getAllPredecessors(lastInstanceKey).iterator(); pre.hasNext();) {
-			Set<InstanceKey> possibleReceivers = getPossibleReceiver(pre.next());
-			if (possibleReceivers.isEmpty()) {
-				throw new RequireTerminalOperationException("Require terminal operations!");
-			}
-		}
-
-		if (getPossibleReceiver(lastInstanceKey).isEmpty()) {
-			throw new RequireTerminalOperationException("Require terminal operations!");
-		}
-
 	}
 }
