@@ -415,7 +415,8 @@ class StreamStateMachine {
 			// fill the instance to predecessors map.
 			for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
 				InstanceKey instance = it.next();
-				Set<InstanceKey> possibleReceivers = getPossibleReceiver(instance);
+				CallStringWithReceivers callString = getCallString(instance);
+				Set<InstanceKey> possibleReceivers = new HashSet<>(callString.getPossibleReceivers());
 
 				// get any additional receivers if necessary #36.
 				Collection<? extends InstanceKey> additionalNecessaryReceiversFromPredecessors = getAdditionalNecessaryReceiversFromPredecessors(
