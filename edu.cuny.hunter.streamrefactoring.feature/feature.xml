@@ -245,6 +245,16 @@ any resulting litigation.
       <import plugin="org.eclipse.ltk.ui.refactoring"/>
       <import plugin="edu.cuny.hunter.streamrefactoring.core" version="1.0.0" match="greaterOrEqual"/>
       <import plugin="edu.cuny.citytech.refactoring.common.ui" version="1.1.0" match="greaterOrEqual"/>
+      <import plugin="com.ibm.wala.ide" version="1.3.10" match="greaterOrEqual"/>
+      <import plugin="com.ibm.wala.ide.jdt" version="1.3.10" match="greaterOrEqual"/>
+      <import plugin="com.ibm.wala.core" version="1.3.10" match="greaterOrEqual"/>
+      <import plugin="com.ibm.wala.cast.java" version="1.3.10" match="greaterOrEqual"/>
+      <import plugin="com.ibm.wala.shrike" version="1.3.10" match="greaterOrEqual"/>
+      <import plugin="com.ibm.safe.core" version="1.0.0" match="greaterOrEqual"/>
+      <import plugin="com.ibm.safe.typestate" version="1.0.0" match="greaterOrEqual"/>
+      <import plugin="com.ibm.safe"/>
+      <import plugin="org.eclipse.jface.text"/>
+      <import plugin="org.eclipse.pde.core"/>
    </requires>
 
    <plugin
