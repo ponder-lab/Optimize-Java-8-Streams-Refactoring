@@ -9,11 +9,12 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
@@ -33,11 +34,16 @@ import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.ui.tests.refactoring.Java18Setup;
 import org.eclipse.jdt.ui.tests.refactoring.RefactoringTest;
+import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.ExecutionMode;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Ordering;
+import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
+import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionSuccess;
+import edu.cuny.hunter.streamrefactoring.core.analysis.Refactoring;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalysisVisitor;
+import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
@@ -267,7 +273,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		boolean passed = false;
 		try {
 			helper("Arrays.asList().stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
-					Collections.singleton(Ordering.ORDERED));
+					Collections.singleton(Ordering.ORDERED), null, null, null, RefactoringStatus.ERROR,
+					Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 		} catch (NullPointerException e) {
 			logger.throwing(this.getClass().getName(), "testArraysAsList", e);
 			passed = true;
@@ -277,7 +284,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	public void testHashSetParallelStream() throws Exception {
 		helper("new HashSet<>().parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.UNORDERED));
+				Collections.singleton(Ordering.UNORDERED), null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 	}
 
 	/**
@@ -289,7 +297,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		boolean passed = false;
 		try {
 			helper("Arrays.stream(new Object[1])", Collections.singleton(ExecutionMode.SEQUENTIAL),
-					Collections.singleton(Ordering.ORDERED));
+					Collections.singleton(Ordering.ORDERED), null, null, null, RefactoringStatus.ERROR,
+					Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 		} catch (IllegalArgumentException e) {
 			logger.throwing(this.getClass().getName(), "testArraysAsStream", e);
 			passed = true;
@@ -298,13 +307,15 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public void testBitSet() throws Exception {
-		helper("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
-				Collections.singleton(Ordering.ORDERED));
+		helper("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED),
+				null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 	}
 
 	public void testIntermediateOperations() throws Exception {
-		helper("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
-				Collections.singleton(Ordering.ORDERED));
+		helper("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED),
+				null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 	}
 
 	/**
@@ -316,7 +327,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		boolean passed = false;
 		try {
 			helper("Stream.generate(() -> 1)", Collections.singleton(ExecutionMode.SEQUENTIAL),
-					Collections.singleton(Ordering.UNORDERED));
+					Collections.singleton(Ordering.UNORDERED), null, null, null, RefactoringStatus.ERROR,
+					Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 		} catch (IllegalArgumentException e) {
 			logger.throwing(this.getClass().getName(), "testArraysAsStream", e);
 			passed = true;
@@ -326,11 +338,14 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	public void testTypeResolution() throws Exception {
 		helper("anotherSet.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.UNORDERED));
+				Collections.singleton(Ordering.UNORDERED), null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 	}
 
 	private void helper(String expectedCreation, Set<ExecutionMode> expectedExecutionModes,
-			Set<Ordering> expectedOrderings) throws Exception {
+			Set<Ordering> expectedOrderings, Set<TransformationAction> expectedActions,
+			PreconditionSuccess expectedPassingPrecondition, Refactoring expectedRefactoring,
+			int expectedStatusSeverity, Set<PreconditionFailure> expectedFailures) throws Exception {
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
 		assertTrue("Input should compile.", compiles(cu.getSource()));
 
@@ -358,5 +373,17 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 		Set<Ordering> orderings = stream.getPossibleOrderings();
 		assertEquals(expectedOrderings, orderings);
+
+		assertEquals(expectedActions, stream.getActions());
+		assertEquals(expectedPassingPrecondition, stream.getPassingPrecondition());
+		assertEquals(expectedRefactoring, stream.getRefactoring());
+		assertEquals(expectedStatusSeverity, stream.getStatus().getSeverity());
+
+		Set<Integer> actualCodes = Arrays.stream(stream.getStatus().getEntries()).map(e -> e.getCode())
+				.collect(Collectors.toSet());
+
+		Set<Integer> expectedCodes = expectedFailures.stream().map(e -> e.getCode()).collect(Collectors.toSet());
+
+		assertEquals(expectedCodes, actualCodes);
 	}
 }
