@@ -9,6 +9,8 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -264,7 +266,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	public void testArraysAsList() throws Exception {
 		boolean passed = false;
 		try {
-			helper("Arrays.asList().stream()", ExecutionMode.SEQUENTIAL, Ordering.ORDERED);
+			helper("Arrays.asList().stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+					Collections.singleton(Ordering.ORDERED));
 		} catch (NullPointerException e) {
 			logger.throwing(this.getClass().getName(), "testArraysAsList", e);
 			passed = true;
@@ -273,7 +276,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public void testHashSetParallelStream() throws Exception {
-		helper("new HashSet<>().parallelStream()", ExecutionMode.PARALLEL, Ordering.UNORDERED);
+		helper("new HashSet<>().parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
+				Collections.singleton(Ordering.UNORDERED));
 	}
 
 	/**
@@ -284,7 +288,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	public void testArraysStream() throws Exception {
 		boolean passed = false;
 		try {
-			helper("Arrays.stream(new Object[1])", ExecutionMode.SEQUENTIAL, Ordering.ORDERED);
+			helper("Arrays.stream(new Object[1])", Collections.singleton(ExecutionMode.SEQUENTIAL),
+					Collections.singleton(Ordering.ORDERED));
 		} catch (IllegalArgumentException e) {
 			logger.throwing(this.getClass().getName(), "testArraysAsStream", e);
 			passed = true;
@@ -293,11 +298,13 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public void testBitSet() throws Exception {
-		helper("set.stream()", ExecutionMode.SEQUENTIAL, Ordering.ORDERED);
+		helper("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.ORDERED));
 	}
 
 	public void testIntermediateOperations() throws Exception {
-		helper("set.stream()", ExecutionMode.SEQUENTIAL, Ordering.ORDERED);
+		helper("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.ORDERED));
 	}
 
 	/**
@@ -308,7 +315,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	public void testGenerate() throws Exception {
 		boolean passed = false;
 		try {
-			helper("Stream.generate(() -> 1)", ExecutionMode.SEQUENTIAL, Ordering.UNORDERED);
+			helper("Stream.generate(() -> 1)", Collections.singleton(ExecutionMode.SEQUENTIAL),
+					Collections.singleton(Ordering.UNORDERED));
 		} catch (IllegalArgumentException e) {
 			logger.throwing(this.getClass().getName(), "testArraysAsStream", e);
 			passed = true;
@@ -317,11 +325,12 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public void testTypeResolution() throws Exception {
-		helper("anotherSet.parallelStream()", ExecutionMode.PARALLEL, Ordering.UNORDERED);
+		helper("anotherSet.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
+				Collections.singleton(Ordering.UNORDERED));
 	}
 
-	private void helper(String expectedCreation, ExecutionMode expectedExecutionMode, Ordering expectedOrdering)
-			throws Exception {
+	private void helper(String expectedCreation, Collection<ExecutionMode> expectedExecutionModes,
+			Collection<Ordering> expectedOrderings) throws Exception {
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
 		assertTrue("Input should compile.", compiles(cu.getSource()));
 
@@ -345,11 +354,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		assertEquals(expectedCreation, creation.toString());
 
 		Set<ExecutionMode> executionModes = stream.getPossibleExecutionModes();
-		assertTrue(executionModes.size() == 1);
-		assertTrue(executionModes.contains(expectedExecutionMode));
+		assertTrue(executionModes.equals(expectedExecutionModes));
 
 		Set<Ordering> orderings = stream.getPossibleOrderings();
-		assertTrue(orderings.size() == 1);
-		assertTrue(orderings.contains(expectedOrdering));
+		assertTrue(orderings.equals(expectedOrderings));
 	}
 }
