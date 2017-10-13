@@ -156,7 +156,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 					logger.warning("Compilation unit: " + compilationUnit.getElementName() + " exists.");
 				else {
 					logger.info("Sleeping.");
-					Thread.sleep(RETRY_DELAY);
+					Thread.sleep(RETRY_DELAY * i);
 				}
 
 			} else
