@@ -429,10 +429,6 @@ class StreamStateMachine {
 				});
 			}
 
-			if (terminalBlockToPossibleReceivers.keySet().isEmpty()) {
-				throw new RequireTerminalOperationException("Require terminal operations!");
-			}
-
 			// for each terminal operation call, I think?
 			for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 				OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
@@ -475,6 +471,8 @@ class StreamStateMachine {
 
 			InstanceKey streamInQuestionInstanceKey = this.getStream()
 					.getInstanceKey(instanceToPredecessorsMap.keySet(), engine.getCallGraph());
+			
+			discoverTerminalOperations(result, terminalBlockToPossibleReceivers, streamInQuestionInstanceKey);
 			Collection<IDFAState> states = originStreamToMergedTypeStateMap.get(streamInQuestionInstanceKey).get(rule);
 			// Map IDFAState to StreamExecutionMode, etc., and add them to the
 			// possible stream states but only if they're not bottom (for those,
@@ -761,6 +759,36 @@ class StreamStateMachine {
 
 	private static boolean isVoid(Collection<TypeAbstraction> types) {
 		return types.stream().map(TypeAbstraction::getTypeReference).allMatch(tr -> tr.equals(TypeReference.Void));
+	}
+	
+	
+	
+	private void discoverTerminalOperations(AggregateSolverResult result,
+			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers,
+			InstanceKey streamInstance) throws RequireTerminalOperationException {
+		Collection<OrdinalSet<InstanceKey>> receivers = terminalBlockToPossibleReceivers.values();
+		Collection<InstanceKey> validStreams = new HashSet<InstanceKey>();
+
+		for (Iterator<OrdinalSet<InstanceKey>> pre = receivers.iterator(); pre.hasNext();) {
+			OrdinalSet<InstanceKey> receiver = pre.next();
+
+			for (InstanceKey instance : receiver) {
+				validStreams.add(instance);
+			}
+		}
+
+		Set<InstanceKey> streams = new HashSet<InstanceKey>();
+		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
+			streams.add(it.next());
+		}
+
+		streams.removeAll(validStreams);
+		// System.out.println(streams);
+		for (InstanceKey instance : streams) {
+			if (instance.equals(streamInstance))
+				throw new RequireTerminalOperationException("Require terminal operations.");
+		}
+
 	}
 
 	private void discoverPossibleSideEffects(AggregateSolverResult result,
