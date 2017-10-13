@@ -354,9 +354,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		assertEquals(expectedCreation, creation.toString());
 
 		Set<ExecutionMode> executionModes = stream.getPossibleExecutionModes();
-		assertEquals(executionModes, expectedExecutionModes);
+		assertEquals(expectedExecutionModes, executionModes);
 
 		Set<Ordering> orderings = stream.getPossibleOrderings();
-		assertEquals(orderings, expectedOrderings);
+		assertEquals(expectedOrderings, orderings);
 	}
 }
