@@ -329,8 +329,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				Collections.singleton(Ordering.UNORDERED));
 	}
 
-	private void helper(String expectedCreation, Collection<ExecutionMode> expectedExecutionModes,
-			Collection<Ordering> expectedOrderings) throws Exception {
+	private void helper(String expectedCreation, Set<ExecutionMode> expectedExecutionModes,
+			Set<Ordering> expectedOrderings) throws Exception {
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
 		assertTrue("Input should compile.", compiles(cu.getSource()));
 
