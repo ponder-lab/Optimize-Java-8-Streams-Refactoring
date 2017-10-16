@@ -273,8 +273,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		boolean passed = false;
 		try {
 			helper("Arrays.asList().stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
-					Collections.singleton(Ordering.ORDERED), null, null, null, RefactoringStatus.ERROR,
-					Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+					Collections.singleton(Ordering.ORDERED), false, false, false, null, null, null,
+					RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 		} catch (NullPointerException e) {
 			logger.throwing(this.getClass().getName(), "testArraysAsList", e);
 			passed = true;
@@ -284,8 +284,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	public void testHashSetParallelStream() throws Exception {
 		helper("new HashSet<>().parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.UNORDERED), null, null, null, RefactoringStatus.ERROR,
-				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
+				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 	}
 
 	/**
@@ -297,8 +297,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		boolean passed = false;
 		try {
 			helper("Arrays.stream(new Object[1])", Collections.singleton(ExecutionMode.SEQUENTIAL),
-					Collections.singleton(Ordering.ORDERED), null, null, null, RefactoringStatus.ERROR,
-					Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+					Collections.singleton(Ordering.ORDERED), false, false, false, null, null, null,
+					RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 		} catch (IllegalArgumentException e) {
 			logger.throwing(this.getClass().getName(), "testArraysAsStream", e);
 			passed = true;
@@ -308,13 +308,13 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	public void testBitSet() throws Exception {
 		helper("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED),
-				null, null, null, RefactoringStatus.ERROR,
+				false, false, false, null, null, null, RefactoringStatus.ERROR,
 				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 	}
 
 	public void testIntermediateOperations() throws Exception {
 		helper("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED),
-				null, null, null, RefactoringStatus.ERROR,
+				false, false, false, null, null, null, RefactoringStatus.ERROR,
 				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 	}
 
@@ -327,8 +327,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		boolean passed = false;
 		try {
 			helper("Stream.generate(() -> 1)", Collections.singleton(ExecutionMode.SEQUENTIAL),
-					Collections.singleton(Ordering.UNORDERED), null, null, null, RefactoringStatus.ERROR,
-					Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+					Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
+					RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 		} catch (IllegalArgumentException e) {
 			logger.throwing(this.getClass().getName(), "testArraysAsStream", e);
 			passed = true;
@@ -338,14 +338,16 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	public void testTypeResolution() throws Exception {
 		helper("anotherSet.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.UNORDERED), null, null, null, RefactoringStatus.ERROR,
-				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
+				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 	}
 
 	private void helper(String expectedCreation, Set<ExecutionMode> expectedExecutionModes,
-			Set<Ordering> expectedOrderings, Set<TransformationAction> expectedActions,
-			PreconditionSuccess expectedPassingPrecondition, Refactoring expectedRefactoring,
-			int expectedStatusSeverity, Set<PreconditionFailure> expectedFailures) throws Exception {
+			Set<Ordering> expectedOrderings, boolean expectingSideEffects,
+			boolean expectingStatefulIntermediateOperation, boolean expectingThatReduceOrderingMatters,
+			Set<TransformationAction> expectedActions, PreconditionSuccess expectedPassingPrecondition,
+			Refactoring expectedRefactoring, int expectedStatusSeverity, Set<PreconditionFailure> expectedFailures)
+			throws Exception {
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
 		assertTrue("Input should compile.", compiles(cu.getSource()));
 
@@ -374,6 +376,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		Set<Ordering> orderings = stream.getPossibleOrderings();
 		assertEquals(expectedOrderings, orderings);
 
+		assertEquals(expectingSideEffects, stream.hasPossibleSideEffects());
+		assertEquals(expectingStatefulIntermediateOperation, stream.hasPossibleStatefulIntermediateOperations());
+		assertEquals(expectingThatReduceOrderingMatters, stream.reduceOrderingPossiblyMatters());
 		assertEquals(expectedActions, stream.getActions());
 		assertEquals(expectedPassingPrecondition, stream.getPassingPrecondition());
 		assertEquals(expectedRefactoring, stream.getRefactoring());
