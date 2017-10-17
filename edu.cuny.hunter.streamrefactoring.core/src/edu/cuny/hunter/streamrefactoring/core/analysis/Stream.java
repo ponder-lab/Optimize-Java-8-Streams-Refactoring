@@ -366,7 +366,6 @@ public class Stream {
 
 	EclipseProjectAnalysisEngine<InstanceKey> getAnalysisEngine() throws IOException, CoreException {
 		IJavaProject javaProject = this.getCreationJavaProject();
-
 		EclipseProjectAnalysisEngine<InstanceKey> engine = javaProjectToAnalysisEngineMap.get(javaProject);
 		if (engine == null) {
 			engine = new EclipseProjectAnalysisEngine<InstanceKey>(javaProject);
