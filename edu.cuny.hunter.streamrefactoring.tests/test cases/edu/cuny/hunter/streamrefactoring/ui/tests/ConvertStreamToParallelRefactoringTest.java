@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -308,14 +309,16 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	public void testBitSet() throws Exception {
 		helper("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED),
-				false, false, false, null, null, null, RefactoringStatus.ERROR,
-				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+				false, false, false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL),
+				PreconditionSuccess.P2, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet());
 	}
 
 	public void testIntermediateOperations() throws Exception {
 		helper("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED),
-				false, false, false, null, null, null, RefactoringStatus.ERROR,
-				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+				false, true, false, EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
+				PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet());
 	}
 
 	/**

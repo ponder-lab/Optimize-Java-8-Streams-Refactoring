@@ -26,6 +26,11 @@ public class TestableJavaEclipseProjectPath extends JavaEclipseProjectPath {
 
 	@Override
 	protected void resolveLibraryPathEntry(EclipseProjectPath.ILoader loader, IPath p) {
+
+		if (p.lastSegment().matches("rtstubs[0-9]*\\.jar"))
+			// Don't resolve per https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/83.
+			return;
+
 		File file = makeAbsolute(p).toFile();
 		JarFile j;
 		try {
