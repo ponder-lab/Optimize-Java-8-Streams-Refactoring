@@ -366,6 +366,7 @@ public class Stream {
 
 	EclipseProjectAnalysisEngine<InstanceKey> getAnalysisEngine() throws IOException, CoreException {
 		IJavaProject javaProject = this.getCreationJavaProject();
+
 		EclipseProjectAnalysisEngine<InstanceKey> engine = javaProjectToAnalysisEngineMap.get(javaProject);
 		if (engine == null) {
 			engine = new EclipseProjectAnalysisEngine<InstanceKey>(javaProject);
@@ -722,22 +723,22 @@ public class Stream {
 	protected void setCallGraphBuilt(boolean callGraphBuilt) {
 		this.callGraphBuilt = callGraphBuilt;
 	}
-	
+
 	public Refactoring getRefactoring() {
 		return this.refactoring;
 	}
-	
+
 	public Set<TransformationAction> getActions() {
 		if (this.actions != null)
 			return Collections.unmodifiableSet(this.actions);
 		else
 			return null;
 	}
-	
+
 	public PreconditionSuccess getPassingPrecondition() {
 		return this.passingPrecondition;
 	}
-	
+
 	static Map<MethodDeclaration, IR> getMethodDeclarationToIRMap() {
 		return Collections.unmodifiableMap(methodDeclarationToIRMap);
 	}
