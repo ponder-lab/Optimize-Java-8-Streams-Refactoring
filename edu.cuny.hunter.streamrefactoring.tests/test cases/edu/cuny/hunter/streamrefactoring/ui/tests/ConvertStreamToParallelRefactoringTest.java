@@ -289,6 +289,13 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 	}
 
+	public void testHashSetParallelStream2() throws Exception {
+		helper("new HashSet<>().parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
+				Collections.singleton(Ordering.UNORDERED), false, true, false,
+				Collections.singleton(TransformationAction.CONVERT_TO_SEQUENTIAL), PreconditionSuccess.P4,
+				Refactoring.OPTIMIZE_PARALLEL_STREAM, RefactoringStatus.OK, Collections.emptySet());
+	}
+
 	/**
 	 * Fix https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/80.
 	 * 
