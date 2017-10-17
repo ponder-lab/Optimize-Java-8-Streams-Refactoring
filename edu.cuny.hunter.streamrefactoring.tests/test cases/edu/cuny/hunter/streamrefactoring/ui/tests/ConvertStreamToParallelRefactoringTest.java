@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package edu.cuny.hunter.streamrefactoring.ui.tests;
 
@@ -76,80 +76,22 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		logger.setLevel(Level.FINER);
 	}
 
-	public static Test setUpTest(Test test) {
-		return new Java18Setup(test);
+	private static boolean compiles(String source) throws IOException {
+		return compiles(source, Files.createTempDirectory(null));
 	}
 
-	public static Test suite() {
-		return setUpTest(new TestSuite(clazz));
-	}
+	private static boolean compiles(String source, Path directory) throws IOException {
+		// Save source in .java file.
+		File sourceFile = new File(directory.toFile(), "bin/p/A.java");
+		sourceFile.getParentFile().mkdirs();
+		Files.write(sourceFile.toPath(), source.getBytes());
 
-	public ConvertStreamToParallelRefactoringTest(String name) {
-		super(name);
-	}
+		// Compile source file.
+		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+		boolean compileSuccess = compiler.run(null, null, null, sourceFile.getPath()) == 0;
 
-	@Override
-	public String getRefactoringPath() {
-		return REFACTORING_PATH;
-	}
-
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.eclipse.jdt.ui.tests.refactoring.RefactoringTest#getFileContents(java
-	 * .lang.String) Had to override this method because, since this plug-in is
-	 * a fragment (at least I think that this is the reason), it doesn't have an
-	 * activator and the bundle is resolving to the eclipse refactoring test
-	 * bundle.
-	 */
-	@Override
-	public String getFileContents(String fileName) throws IOException {
-		Path absolutePath = getAbsolutionPath(fileName);
-		byte[] encoded = Files.readAllBytes(absolutePath);
-		return new String(encoded, Charset.defaultCharset());
-	}
-
-	private Path getAbsolutionPath(String fileName) {
-		Path path = Paths.get(RESOURCE_PATH, fileName);
-		Path absolutePath = path.toAbsolutePath();
-		return absolutePath;
-	}
-
-	public void setFileContents(String fileName, String contents) throws IOException {
-		Path absolutePath = getAbsolutionPath(fileName);
-		Files.write(absolutePath, contents.getBytes());
-	}
-
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * org.eclipse.jdt.ui.tests.refactoring.RefactoringTest#createCUfromTestFile
-	 * (org.eclipse.jdt.core.IPackageFragment, java.lang.String)
-	 */
-	@Override
-	protected ICompilationUnit createCUfromTestFile(IPackageFragment pack, String cuName) throws Exception {
-		ICompilationUnit unit = super.createCUfromTestFile(pack, cuName);
-
-		if (!unit.isStructureKnown())
-			throw new IllegalArgumentException(cuName + " has structural errors.");
-
-		// full path of where the CU exists.
-		Path directory = Paths.get(unit.getParent().getParent().getParent().getResource().getLocation().toString());
-
-		// compile it to make and store the class file.
-		compiles(unit.getSource(), directory);
-
-		return unit;
-	}
-
-	@Override
-	protected ICompilationUnit createCUfromTestFile(IPackageFragment pack, String cuName, boolean input)
-			throws Exception {
-		String contents = input ? getFileContents(getInputTestFileName(cuName))
-				: getFileContents(getOutputTestFileName(cuName));
-		return createCU(pack, cuName + ".java", contents);
+		sourceFile.delete();
+		return compileSuccess;
 	}
 
 	public static ICompilationUnit createCU(IPackageFragment pack, String name, String contents) throws Exception {
@@ -175,44 +117,12 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		return cu;
 	}
 
-	protected Logger getLogger() {
-		return logger;
+	public static Test setUpTest(Test test) {
+		return new Java18Setup(test);
 	}
 
-	private static boolean compiles(String source, Path directory) throws IOException {
-		// Save source in .java file.
-		File sourceFile = new File(directory.toFile(), "bin/p/A.java");
-		sourceFile.getParentFile().mkdirs();
-		Files.write(sourceFile.toPath(), source.getBytes());
-
-		// Compile source file.
-		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-		boolean compileSuccess = compiler.run(null, null, null, sourceFile.getPath()) == 0;
-
-		sourceFile.delete();
-		return compileSuccess;
-	}
-
-	private void refreshFromLocal() throws CoreException {
-		if (getRoot().exists())
-			getRoot().getResource().refreshLocal(IResource.DEPTH_INFINITE, null);
-		else if (getPackageP().exists())// don't refresh package if root already
-										// refreshed
-			getPackageP().getResource().refreshLocal(IResource.DEPTH_INFINITE, null);
-	}
-
-	@Override
-	protected void tearDown() throws Exception {
-		refreshFromLocal();
-		performDummySearch();
-
-		final boolean pExists = getPackageP().exists();
-
-		if (pExists)
-			tryDeletingAllJavaClassFiles(getPackageP());
-
-		Stream.clearCaches();
-		super.tearDown();
+	public static Test suite() {
+		return setUpTest(new TestSuite(clazz));
 	}
 
 	private static void tryDeletingAllJavaClassFiles(IPackageFragment pack) throws JavaModelException {
@@ -261,100 +171,71 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		}
 	}
 
-	private static boolean compiles(String source) throws IOException {
-		return compiles(source, Files.createTempDirectory(null));
+	public ConvertStreamToParallelRefactoringTest(String name) {
+		super(name);
 	}
 
-	/**
-	 * Fix https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/34.
-	 * 
-	 * @throws Exception
+	/*
+	 * (non-Javadoc)
+	 *
+	 * @see
+	 * org.eclipse.jdt.ui.tests.refactoring.RefactoringTest#createCUfromTestFile
+	 * (org.eclipse.jdt.core.IPackageFragment, java.lang.String)
 	 */
-	public void testArraysAsList() throws Exception {
-		boolean passed = false;
-		try {
-			helper("Arrays.asList().stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
-					Collections.singleton(Ordering.ORDERED), false, false, false, null, null, null,
-					RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
-		} catch (NullPointerException e) {
-			logger.throwing(this.getClass().getName(), "testArraysAsList", e);
-			passed = true;
-		}
-		assertTrue("Should fail per #34", passed);
+	@Override
+	protected ICompilationUnit createCUfromTestFile(IPackageFragment pack, String cuName) throws Exception {
+		ICompilationUnit unit = super.createCUfromTestFile(pack, cuName);
+
+		if (!unit.isStructureKnown())
+			throw new IllegalArgumentException(cuName + " has structural errors.");
+
+		// full path of where the CU exists.
+		Path directory = Paths.get(unit.getParent().getParent().getParent().getResource().getLocation().toString());
+
+		// compile it to make and store the class file.
+		compiles(unit.getSource(), directory);
+
+		return unit;
 	}
 
-	public void testHashSetParallelStream() throws Exception {
-		helper("new HashSet<>().parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
-				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+	@Override
+	protected ICompilationUnit createCUfromTestFile(IPackageFragment pack, String cuName, boolean input)
+			throws Exception {
+		String contents = input ? getFileContents(getInputTestFileName(cuName))
+				: getFileContents(getOutputTestFileName(cuName));
+		return createCU(pack, cuName + ".java", contents);
 	}
 
-	public void testHashSetParallelStream2() throws Exception {
-		helper("new HashSet<>().parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
-				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED));
+	private Path getAbsolutionPath(String fileName) {
+		Path path = Paths.get(RESOURCE_PATH, fileName);
+		Path absolutePath = path.toAbsolutePath();
+		return absolutePath;
 	}
 
-	/**
-	 * Fix https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/80.
-	 * 
-	 * @throws Exception
+	/*
+	 * (non-Javadoc)
+	 *
+	 * @see
+	 * org.eclipse.jdt.ui.tests.refactoring.RefactoringTest#getFileContents(java
+	 * .lang.String) Had to override this method because, since this plug-in is
+	 * a fragment (at least I think that this is the reason), it doesn't have an
+	 * activator and the bundle is resolving to the eclipse refactoring test
+	 * bundle.
 	 */
-	public void testArraysStream() throws Exception {
-		boolean passed = false;
-		try {
-			helper("Arrays.stream(new Object[1])", Collections.singleton(ExecutionMode.SEQUENTIAL),
-					Collections.singleton(Ordering.ORDERED), false, false, false, null, null, null,
-					RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
-		} catch (IllegalArgumentException e) {
-			logger.throwing(this.getClass().getName(), "testArraysAsStream", e);
-			passed = true;
-		}
-		assertTrue("Should fail per #80", passed);
+	@Override
+	public String getFileContents(String fileName) throws IOException {
+		Path absolutePath = getAbsolutionPath(fileName);
+		byte[] encoded = Files.readAllBytes(absolutePath);
+		return new String(encoded, Charset.defaultCharset());
 	}
 
-	public void testBitSet() throws Exception {
-		helper("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED),
-				false, false, false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL),
-				PreconditionSuccess.P2, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
-				Collections.emptySet());
+	protected Logger getLogger() {
+		return logger;
 	}
 
-	public void testIntermediateOperations() throws Exception {
-		helper("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED),
-				false, true, false, EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
-				PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
-				Collections.emptySet());
-	}
-
-	/**
-	 * Fix https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/80.
-	 * 
-	 * @throws Exception
-	 */
-	public void testGenerate() throws Exception {
-		boolean passed = false;
-		try {
-			helper("Stream.generate(() -> 1)", Collections.singleton(ExecutionMode.SEQUENTIAL),
-					Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
-					RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
-		} catch (IllegalArgumentException e) {
-			logger.throwing(this.getClass().getName(), "testArraysAsStream", e);
-			passed = true;
-		}
-		assertTrue("Should fail per #80", passed);
-	}
-
-	public void testTypeResolution() throws Exception {
-		helper("anotherSet.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
-				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
-	}
-	
-	public void testTypeResolution2() throws Exception {
-		helper("anotherSet.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
-				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.UNORDERED));
+	@Override
+	public String getRefactoringPath() {
+		return REFACTORING_PATH;
 	}
 
 	private void helper(String expectedCreation, Set<ExecutionMode> expectedExecutionModes,
@@ -405,5 +286,124 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		Set<Integer> expectedCodes = expectedFailures.stream().map(e -> e.getCode()).collect(Collectors.toSet());
 
 		assertEquals(expectedCodes, actualCodes);
+	}
+
+	private void refreshFromLocal() throws CoreException {
+		if (getRoot().exists())
+			getRoot().getResource().refreshLocal(IResource.DEPTH_INFINITE, null);
+		else if (getPackageP().exists())// don't refresh package if root already
+										// refreshed
+			getPackageP().getResource().refreshLocal(IResource.DEPTH_INFINITE, null);
+	}
+
+	public void setFileContents(String fileName, String contents) throws IOException {
+		Path absolutePath = getAbsolutionPath(fileName);
+		Files.write(absolutePath, contents.getBytes());
+	}
+
+	@Override
+	protected void tearDown() throws Exception {
+		refreshFromLocal();
+		performDummySearch();
+
+		final boolean pExists = getPackageP().exists();
+
+		if (pExists)
+			tryDeletingAllJavaClassFiles(getPackageP());
+
+		Stream.clearCaches();
+		super.tearDown();
+	}
+
+	/**
+	 * Fix https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/34.
+	 *
+	 * @throws Exception
+	 */
+	public void testArraysAsList() throws Exception {
+		boolean passed = false;
+		try {
+			helper("Arrays.asList().stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+					Collections.singleton(Ordering.ORDERED), false, false, false, null, null, null,
+					RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+		} catch (NullPointerException e) {
+			logger.throwing(this.getClass().getName(), "testArraysAsList", e);
+			passed = true;
+		}
+		assertTrue("Should fail per #34", passed);
+	}
+
+	/**
+	 * Fix https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/80.
+	 *
+	 * @throws Exception
+	 */
+	public void testArraysStream() throws Exception {
+		boolean passed = false;
+		try {
+			helper("Arrays.stream(new Object[1])", Collections.singleton(ExecutionMode.SEQUENTIAL),
+					Collections.singleton(Ordering.ORDERED), false, false, false, null, null, null,
+					RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+		} catch (IllegalArgumentException e) {
+			logger.throwing(this.getClass().getName(), "testArraysAsStream", e);
+			passed = true;
+		}
+		assertTrue("Should fail per #80", passed);
+	}
+
+	public void testBitSet() throws Exception {
+		helper("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED),
+				false, false, false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL),
+				PreconditionSuccess.P2, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet());
+	}
+
+	/**
+	 * Fix https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/80.
+	 *
+	 * @throws Exception
+	 */
+	public void testGenerate() throws Exception {
+		boolean passed = false;
+		try {
+			helper("Stream.generate(() -> 1)", Collections.singleton(ExecutionMode.SEQUENTIAL),
+					Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
+					RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+		} catch (IllegalArgumentException e) {
+			logger.throwing(this.getClass().getName(), "testArraysAsStream", e);
+			passed = true;
+		}
+		assertTrue("Should fail per #80", passed);
+	}
+
+	public void testHashSetParallelStream() throws Exception {
+		helper("new HashSet<>().parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
+				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
+				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+	}
+
+	public void testHashSetParallelStream2() throws Exception {
+		helper("new HashSet<>().parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
+				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
+				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED));
+	}
+
+	public void testIntermediateOperations() throws Exception {
+		helper("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED),
+				false, true, false, EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
+				PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet());
+	}
+
+	public void testTypeResolution() throws Exception {
+		helper("anotherSet.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
+				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
+				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+	}
+
+	public void testTypeResolution2() throws Exception {
+		helper("anotherSet.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
+				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
+				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.UNORDERED));
 	}
 }
