@@ -81,31 +81,6 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 					new JarFile(installLocation.toPath().resolve("jre").resolve("lib").resolve("jce.jar").toFile()));
 			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(
 					installLocation.toPath().resolve("jre").resolve("lib").resolve("charsets.jar").toFile()));
-
-			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(installLocation.toPath().resolve("jre")
-					.resolve("lib").resolve("ext").resolve("localedata.jar").toFile()));
-			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(installLocation.toPath().resolve("jre")
-					.resolve("lib").resolve("ext").resolve("sunec.jar").toFile()));
-			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(installLocation.toPath().resolve("jre")
-					.resolve("lib").resolve("ext").resolve("jfxrt.jar").toFile()));
-			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(installLocation.toPath().resolve("jre")
-					.resolve("lib").resolve("ext").resolve("nashorn.jar").toFile()));
-			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(installLocation.toPath().resolve("jre")
-					.resolve("lib").resolve("ext").resolve("cldrdata.jar").toFile()));
-			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(installLocation.toPath().resolve("jre")
-					.resolve("lib").resolve("ext").resolve("jaccess.jar").toFile()));
-			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(installLocation.toPath().resolve("jre")
-					.resolve("lib").resolve("ext").resolve("java-atk-wrapper.jar").toFile()));
-			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(installLocation.toPath().resolve("jre")
-					.resolve("lib").resolve("ext").resolve("icedtea-sound.jar").toFile()));
-			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(installLocation.toPath().resolve("jre")
-					.resolve("lib").resolve("ext").resolve("sunjce_provider.jar").toFile()));
-			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(installLocation.toPath().resolve("jre")
-					.resolve("lib").resolve("ext").resolve("zipfs.jar").toFile()));
-			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(installLocation.toPath().resolve("jre")
-					.resolve("lib").resolve("ext").resolve("sunpkcs11.jar").toFile()));
-			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(installLocation.toPath().resolve("jre")
-					.resolve("lib").resolve("ext").resolve("dnsns.jar").toFile()));
 		}
 
 		if (getExclusionsFile() != null) {
