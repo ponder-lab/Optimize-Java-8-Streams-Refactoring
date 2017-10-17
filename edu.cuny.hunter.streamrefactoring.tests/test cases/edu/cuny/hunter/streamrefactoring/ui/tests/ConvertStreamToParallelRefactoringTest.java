@@ -350,6 +350,12 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
 				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
 	}
+	
+	public void testTypeResolution2() throws Exception {
+		helper("anotherSet.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
+				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
+				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.UNORDERED));
+	}
 
 	private void helper(String expectedCreation, Set<ExecutionMode> expectedExecutionModes,
 			Set<Ordering> expectedOrderings, boolean expectingSideEffects,
