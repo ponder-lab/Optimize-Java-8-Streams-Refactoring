@@ -415,4 +415,10 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
 				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.UNORDERED));
 	}
+
+	public void testMotivatingExample() throws Exception {
+		helper("unorderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false,
+				false, true, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
+				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet());
+	}
 }
