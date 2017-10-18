@@ -429,4 +429,10 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				true, true, null, null, null, RefactoringStatus.ERROR,
 				EnumSet.of(PreconditionFailure.REDUCE_ORDERING_MATTERS));
 	}
+	
+	public void testTerminalOp1() throws Exception {
+		helper("collection1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
+				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+	}
 }
