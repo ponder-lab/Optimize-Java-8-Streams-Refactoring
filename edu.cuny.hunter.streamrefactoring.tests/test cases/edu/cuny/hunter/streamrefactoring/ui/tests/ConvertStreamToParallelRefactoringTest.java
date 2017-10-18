@@ -263,7 +263,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		boolean foundStream = false;
 
 		for (Stream stream : streamSet) {
-		MethodInvocation creation = stream.getCreation();
+			MethodInvocation creation = stream.getCreation();
 
 			if (expectedCreation.equals(creation.toString())) {
 				// found it.
@@ -271,29 +271,29 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 				foundStream = true;
 
-		Set<ExecutionMode> executionModes = stream.getPossibleExecutionModes();
-		assertEquals(expectedExecutionModes, executionModes);
+				Set<ExecutionMode> executionModes = stream.getPossibleExecutionModes();
+				assertEquals(expectedExecutionModes, executionModes);
 
-		Set<Ordering> orderings = stream.getPossibleOrderings();
-		assertEquals(expectedOrderings, orderings);
+				Set<Ordering> orderings = stream.getPossibleOrderings();
+				assertEquals(expectedOrderings, orderings);
 
-		assertEquals(expectingSideEffects, stream.hasPossibleSideEffects());
+				assertEquals(expectingSideEffects, stream.hasPossibleSideEffects());
 				assertEquals(expectingStatefulIntermediateOperation,
 						stream.hasPossibleStatefulIntermediateOperations());
-		assertEquals(expectingThatReduceOrderingMatters, stream.reduceOrderingPossiblyMatters());
-		assertEquals(expectedActions, stream.getActions());
-		assertEquals(expectedPassingPrecondition, stream.getPassingPrecondition());
-		assertEquals(expectedRefactoring, stream.getRefactoring());
-		assertEquals(expectedStatusSeverity, stream.getStatus().getSeverity());
+				assertEquals(expectingThatReduceOrderingMatters, stream.reduceOrderingPossiblyMatters());
+				assertEquals(expectedActions, stream.getActions());
+				assertEquals(expectedPassingPrecondition, stream.getPassingPrecondition());
+				assertEquals(expectedRefactoring, stream.getRefactoring());
+				assertEquals(expectedStatusSeverity, stream.getStatus().getSeverity());
 
-		Set<Integer> actualCodes = Arrays.stream(stream.getStatus().getEntries()).map(e -> e.getCode())
-				.collect(Collectors.toSet());
+				Set<Integer> actualCodes = Arrays.stream(stream.getStatus().getEntries()).map(e -> e.getCode())
+						.collect(Collectors.toSet());
 
 				Set<Integer> expectedCodes = expectedFailures.stream().map(e -> e.getCode())
 						.collect(Collectors.toSet());
 
-		assertEquals(expectedCodes, actualCodes);
-	}
+				assertEquals(expectedCodes, actualCodes);
+			}
 		}
 	}
 
