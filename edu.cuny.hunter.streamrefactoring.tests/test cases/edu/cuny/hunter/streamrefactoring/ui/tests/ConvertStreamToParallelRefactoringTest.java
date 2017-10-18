@@ -259,12 +259,17 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		Set<Stream> streamSet = visitor.getStreamSet();
 
 		assertNotNull(streamSet);
-		assertEquals(1, streamSet.size());
 
-		Stream stream = streamSet.iterator().next();
+		boolean foundStream = false;
 
+		for (Stream stream : streamSet) {
 		MethodInvocation creation = stream.getCreation();
-		assertEquals(expectedCreation, creation.toString());
+
+			if (expectedCreation.equals(creation.toString())) {
+				// found it.
+				assertFalse("Stream creation isn't unique.", foundStream);
+
+				foundStream = true;
 
 		Set<ExecutionMode> executionModes = stream.getPossibleExecutionModes();
 		assertEquals(expectedExecutionModes, executionModes);
@@ -273,7 +278,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		assertEquals(expectedOrderings, orderings);
 
 		assertEquals(expectingSideEffects, stream.hasPossibleSideEffects());
-		assertEquals(expectingStatefulIntermediateOperation, stream.hasPossibleStatefulIntermediateOperations());
+				assertEquals(expectingStatefulIntermediateOperation,
+						stream.hasPossibleStatefulIntermediateOperations());
 		assertEquals(expectingThatReduceOrderingMatters, stream.reduceOrderingPossiblyMatters());
 		assertEquals(expectedActions, stream.getActions());
 		assertEquals(expectedPassingPrecondition, stream.getPassingPrecondition());
@@ -283,9 +289,12 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		Set<Integer> actualCodes = Arrays.stream(stream.getStatus().getEntries()).map(e -> e.getCode())
 				.collect(Collectors.toSet());
 
-		Set<Integer> expectedCodes = expectedFailures.stream().map(e -> e.getCode()).collect(Collectors.toSet());
+				Set<Integer> expectedCodes = expectedFailures.stream().map(e -> e.getCode())
+						.collect(Collectors.toSet());
 
 		assertEquals(expectedCodes, actualCodes);
+	}
+		}
 	}
 
 	private void refreshFromLocal() throws CoreException {
