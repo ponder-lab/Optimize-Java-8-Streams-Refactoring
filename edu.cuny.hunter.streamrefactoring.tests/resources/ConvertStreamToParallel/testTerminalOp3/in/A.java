@@ -8,7 +8,7 @@ public class A {
 	void m() {
 		Collection collection1 = new HashSet<>();
 		Collection collection2 = new HashSet<>();
-		collection1.stream().count();
+		collection1.stream();
 		collection2.stream();
 	}
 }
