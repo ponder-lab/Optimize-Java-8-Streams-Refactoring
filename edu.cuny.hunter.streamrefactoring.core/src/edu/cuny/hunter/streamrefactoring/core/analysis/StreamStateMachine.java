@@ -1224,8 +1224,6 @@ class StreamStateMachine {
 		instancesWithSideEffects.clear();
 		instanceToStatefulIntermediateOperationContainment.clear();
 		instancesWhoseReduceOrderingPossiblyMatters.clear();
-
-		if (instancesThatDoNotTerminate != null)
-			instancesThatDoNotTerminate.clear();
+		instancesThatDoNotTerminate.clear();
 	}
 }
