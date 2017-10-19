@@ -808,12 +808,9 @@ class StreamStateMachine {
 			instancesThatDoNotTerminate = allStreamInstances;
 		}
 
-		// for each bad stream instance.
-		for (InstanceKey instance : instancesThatDoNotTerminate) {
-			// if the bad instance is the stream in question.
-			if (instance.equals(streamInstanceInQuestion))
-				throw new RequireTerminalOperationException("Require terminal operations.");
-		}
+		// if the stream in question is "bad".
+		if (instancesThatDoNotTerminate.contains(streamInstanceInQuestion))
+			throw new RequireTerminalOperationException("Require terminal operations.");
 	}
 
 	private void discoverPossibleSideEffects(AggregateSolverResult result,
