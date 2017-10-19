@@ -393,8 +393,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	public void testHashSetParallelStream2() throws Exception {
 		helper("new HashSet<>().parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
-				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
+				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED));
 	}
 
 	public void testIntermediateOperations() throws Exception {
@@ -417,13 +417,13 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public void testMotivatingExample() throws Exception {
-		helper("unorderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.UNORDERED), false,
-				false, false, null, null, null, RefactoringStatus.ERROR,
-				EnumSet.of(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+		helper("unorderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false,
+				false, true, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
+				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet());
 
 		helper("orderedWidgets.parallelStream()", EnumSet.of(ExecutionMode.PARALLEL), EnumSet.of(Ordering.ORDERED),
 				false, false, false, null, null, null, RefactoringStatus.ERROR,
-				EnumSet.of(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+				EnumSet.of(PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS));
 
 		helper("orderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false,
 				true, true, null, null, null, RefactoringStatus.ERROR,

@@ -471,8 +471,9 @@ class StreamStateMachine {
 
 			InstanceKey streamInQuestionInstanceKey = this.getStream()
 					.getInstanceKey(instanceToPredecessorsMap.keySet(), engine.getCallGraph());
-			
+
 			discoverTerminalOperations(result, terminalBlockToPossibleReceivers, streamInQuestionInstanceKey);
+
 			Collection<IDFAState> states = originStreamToMergedTypeStateMap.get(streamInQuestionInstanceKey).get(rule);
 			// Map IDFAState to StreamExecutionMode, etc., and add them to the
 			// possible stream states but only if they're not bottom (for those,
@@ -759,35 +760,52 @@ class StreamStateMachine {
 	private static boolean isVoid(Collection<TypeAbstraction> types) {
 		return types.stream().map(TypeAbstraction::getTypeReference).allMatch(tr -> tr.equals(TypeReference.Void));
 	}
-	
-	
-	
+
 	private void discoverTerminalOperations(AggregateSolverResult result,
 			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers,
-			InstanceKey streamInstance) throws RequireTerminalOperationException {
-		Collection<OrdinalSet<InstanceKey>> receivers = terminalBlockToPossibleReceivers.values();
+			InstanceKey streamInstanceInQuestion) throws RequireTerminalOperationException {
+		Collection<OrdinalSet<InstanceKey>> receiverSetsThatHaveTerminalOperations = terminalBlockToPossibleReceivers
+				.values();
+
+		// This will be the OK set.
 		Collection<InstanceKey> validStreams = new HashSet<InstanceKey>();
 
-		for (Iterator<OrdinalSet<InstanceKey>> pre = receivers.iterator(); pre.hasNext();) {
-			OrdinalSet<InstanceKey> receiver = pre.next();
+		// Now, we need to flatten the receiver sets.
+		for (Iterator<OrdinalSet<InstanceKey>> pre = receiverSetsThatHaveTerminalOperations.iterator(); pre
+				.hasNext();) {
+			OrdinalSet<InstanceKey> receiverSet = pre.next();
 
-			for (InstanceKey instance : receiver) {
+			// for each receiver set
+			for (InstanceKey instance : receiverSet) {
+				// add it to the OK set.
 				validStreams.add(instance);
 			}
 		}
 
-		Set<InstanceKey> streams = new HashSet<InstanceKey>();
+		// Now, we have the OK set. Let's propagate it.
+		propagateStreamInstanceProperty(validStreams);
+
+		// Now, we will find the set containing all stream instances.
+		Set<InstanceKey> allStreamInstances = new HashSet<InstanceKey>();
+
+		// for each instance in the typestate analysis result.
 		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
-			streams.add(it.next());
+			// add the current instance to the set.
+			allStreamInstances.add(it.next());
 		}
 
-		streams.removeAll(validStreams);
-		// System.out.println(streams);
-		for (InstanceKey instance : streams) {
-			if (instance.equals(streamInstance))
+		// Now, we have the set of all stream instances.
+
+		// Let's now find the bad set.
+		allStreamInstances.removeAll(validStreams);
+		Set<InstanceKey> badStreamInstances = allStreamInstances;
+
+		// for each bad stream instance.
+		for (InstanceKey instance : badStreamInstances) {
+			// if the bad instance is the stream in question.
+			if (instance.equals(streamInstanceInQuestion))
 				throw new RequireTerminalOperationException("Require terminal operations.");
 		}
-
 	}
 
 	private void discoverPossibleSideEffects(AggregateSolverResult result,
