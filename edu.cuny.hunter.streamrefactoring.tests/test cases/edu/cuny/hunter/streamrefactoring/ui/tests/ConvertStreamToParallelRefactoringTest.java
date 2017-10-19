@@ -429,4 +429,39 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				true, true, null, null, null, RefactoringStatus.ERROR,
 				EnumSet.of(PreconditionFailure.REDUCE_ORDERING_MATTERS));
 	}
+	
+	public void testTerminalOp1() throws Exception {
+		helper("collection1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.UNORDERED), false, false, false,
+				Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), 
+				PreconditionSuccess.P1, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet());
+		
+		helper("collection2.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
+				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+		
+	}
+	
+	public void testTerminalOp2() throws Exception {
+		helper("collection1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
+				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+		
+		helper("collection2.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.UNORDERED), false, false, false,
+				Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), 
+				PreconditionSuccess.P1, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet());
+	}
+	
+	public void testTerminalOp3() throws Exception {
+		helper("collection1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
+				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+		
+		helper("collection2.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
+				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS));
+	}
 }
