@@ -211,6 +211,11 @@ class StreamStateMachine {
 	private static Set<InstanceKey> instancesWhoseReduceOrderingPossiblyMatters = new HashSet<>();
 
 	/**
+	 * Stream instances that do not end in a terminal operation.
+	 */
+	private static Set<InstanceKey> instancesThatDoNotTerminate;
+
+	/**
 	 * The stream that this state machine represents.
 	 */
 	private final Stream stream;
@@ -767,41 +772,44 @@ class StreamStateMachine {
 		Collection<OrdinalSet<InstanceKey>> receiverSetsThatHaveTerminalOperations = terminalBlockToPossibleReceivers
 				.values();
 
-		// This will be the OK set.
-		Collection<InstanceKey> validStreams = new HashSet<InstanceKey>();
+		// if we haven't computed the "bad" instances.
+		if (instancesThatDoNotTerminate == null) {
+			// This will be the OK set.
+			Collection<InstanceKey> validStreams = new HashSet<InstanceKey>();
 
-		// Now, we need to flatten the receiver sets.
-		for (Iterator<OrdinalSet<InstanceKey>> pre = receiverSetsThatHaveTerminalOperations.iterator(); pre
-				.hasNext();) {
-			OrdinalSet<InstanceKey> receiverSet = pre.next();
+			// Now, we need to flatten the receiver sets.
+			for (Iterator<OrdinalSet<InstanceKey>> pre = receiverSetsThatHaveTerminalOperations.iterator(); pre
+					.hasNext();) {
+				OrdinalSet<InstanceKey> receiverSet = pre.next();
 
-			// for each receiver set
-			for (InstanceKey instance : receiverSet) {
-				// add it to the OK set.
-				validStreams.add(instance);
+				// for each receiver set
+				for (InstanceKey instance : receiverSet) {
+					// add it to the OK set.
+					validStreams.add(instance);
+				}
 			}
+
+			// Now, we have the OK set. Let's propagate it.
+			propagateStreamInstanceProperty(validStreams);
+
+			// Now, we will find the set containing all stream instances.
+			Set<InstanceKey> allStreamInstances = new HashSet<InstanceKey>();
+
+			// for each instance in the typestate analysis result.
+			for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
+				// add the current instance to the set.
+				allStreamInstances.add(it.next());
+			}
+
+			// Now, we have the set of all stream instances.
+
+			// Let's now find the bad set.
+			allStreamInstances.removeAll(validStreams);
+			instancesThatDoNotTerminate = allStreamInstances;
 		}
-
-		// Now, we have the OK set. Let's propagate it.
-		propagateStreamInstanceProperty(validStreams);
-
-		// Now, we will find the set containing all stream instances.
-		Set<InstanceKey> allStreamInstances = new HashSet<InstanceKey>();
-
-		// for each instance in the typestate analysis result.
-		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
-			// add the current instance to the set.
-			allStreamInstances.add(it.next());
-		}
-
-		// Now, we have the set of all stream instances.
-
-		// Let's now find the bad set.
-		allStreamInstances.removeAll(validStreams);
-		Set<InstanceKey> badStreamInstances = allStreamInstances;
 
 		// for each bad stream instance.
-		for (InstanceKey instance : badStreamInstances) {
+		for (InstanceKey instance : instancesThatDoNotTerminate) {
 			// if the bad instance is the stream in question.
 			if (instance.equals(streamInstanceInQuestion))
 				throw new RequireTerminalOperationException("Require terminal operations.");
@@ -1219,5 +1227,6 @@ class StreamStateMachine {
 		instancesWithSideEffects.clear();
 		instanceToStatefulIntermediateOperationContainment.clear();
 		instancesWhoseReduceOrderingPossiblyMatters.clear();
+		instancesThatDoNotTerminate.clear();
 	}
 }
