@@ -9,10 +9,51 @@
     <module>edu.cuny.hunter.streamrefactoring.ui</module>
     <module>edu.cuny.hunter.streamrefactoring.core</module>
     <module>edu.cuny.hunter.streamrefactoring.tests</module>
+    <module>edu.cuny.hunter.streamrefactoring.tests.report</module>
   </modules>
+  <profiles>
+    <profile>
+      <id>jacoco</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>${jacoco-version}</version>
+            <executions>
+              <execution>
+                <goals>
+                  <goal>prepare-agent</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+        <pluginManagement>
+          <plugins>
+            <plugin>
+              <groupId>org.eluder.coveralls</groupId>
+              <artifactId>coveralls-maven-plugin</artifactId>
+              <version>4.3.0</version>
+              <configuration>
+                <jacocoReports>
+                  <jacocoReport>${project.basedir}/edu.cuny.hunter.streamrefactoring.tests.report/target/site/jacoco-aggregate/jacoco.xml</jacocoReport>
+                </jacocoReports>
+                <repoToken>r9J3kTb5zPkhuN3pLbX48On78BFoAFHJX</repoToken>
+              </configuration>
+            </plugin>
+          </plugins>
+        </pluginManagement>
+      </build>
+    </profile>
+  </profiles>
   <properties>
     <tycho-version>0.26.0</tycho-version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <jacoco-version>0.7.8</jacoco-version>
   </properties>
   <repositories>
     <repository>
@@ -105,27 +146,6 @@
             </environment>
           </environments>
         </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.eluder.coveralls</groupId>
-        <artifactId>coveralls-maven-plugin</artifactId>
-        <version>4.3.0</version>
-        <configuration>
-          <repoToken>r9J3kTb5zPkhuN3pLbX48On78BFoAFHJX</repoToken>
-        </configuration>
-      </plugin>
-      <plugin>
-        <groupId>org.jacoco</groupId>
-        <artifactId>jacoco-maven-plugin</artifactId>
-        <version>0.7.8</version>
-        <executions>
-          <execution>
-            <id>prepare-agent</id>
-            <goals>
-              <goal>prepare-agent</goal>
-            </goals>
-          </execution>
-        </executions>
       </plugin>
     </plugins>
   </build>
