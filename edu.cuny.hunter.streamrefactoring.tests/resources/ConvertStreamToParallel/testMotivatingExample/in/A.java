@@ -14,7 +14,9 @@ import p.Widget.Color;
 
 class Widget {
 	public enum Color {
-		RED, BLUE, GREEN
+		RED,
+		BLUE,
+		GREEN
 	};
 
 	Color color;
