@@ -9,6 +9,7 @@
     <module>edu.cuny.hunter.streamrefactoring.ui</module>
     <module>edu.cuny.hunter.streamrefactoring.core</module>
     <module>edu.cuny.hunter.streamrefactoring.tests</module>
+    <module>edu.cuny.hunter.streamrefactoring.tests.report</module>
   </modules>
   <properties>
     <tycho-version>0.26.0</tycho-version>
