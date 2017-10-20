@@ -23,7 +23,7 @@ class OrderingInference {
 
 	private IClassHierarchy classHierarchy;
 
-	private static final Logger LOGGER = Logger.getGlobal();
+	private static final Logger LOGGER =  Logger.getLogger("edu.cuny.hunter.streamrefactoring");
 
 	public OrderingInference(IClassHierarchy classHierarchy) {
 		this.classHierarchy = classHierarchy;

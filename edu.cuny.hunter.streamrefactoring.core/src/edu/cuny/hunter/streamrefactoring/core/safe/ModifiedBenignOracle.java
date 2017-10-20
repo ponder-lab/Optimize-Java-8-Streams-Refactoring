@@ -22,7 +22,7 @@ public class ModifiedBenignOracle extends BenignOracle {
 
 	@Override
 	public void addBenignInstanceKey(InstanceKey ik) {
-		Logger.getGlobal().info(() -> "Was requested to ignore \"benign\" instance with key: " + ik);
+		Logger.getLogger("edu.cuny.hunter.streamrefactoring").info(() -> "Was requested to ignore \"benign\" instance with key: " + ik);
 	}
 
 	@Override

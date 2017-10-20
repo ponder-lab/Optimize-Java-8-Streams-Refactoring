@@ -40,7 +40,7 @@ import com.ibm.wala.util.config.FileOfClasses;
  */
 public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJavaSourceAnalysisEngine<I> {
 
-	private static final Logger LOGGER = Logger.getGlobal();
+	private static final Logger LOGGER = Logger.getLogger("edu.cuny.hunter.streamrefactoring");
 
 	/**
 	 * The N value used to create the {@link nCFABuilder}.

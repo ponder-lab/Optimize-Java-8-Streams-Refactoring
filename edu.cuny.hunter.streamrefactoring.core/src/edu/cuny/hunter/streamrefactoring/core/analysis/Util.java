@@ -51,7 +51,7 @@ import com.ibm.wala.util.strings.StringStuff;
 
 public final class Util {
 
-	private static final Logger LOGGER = Logger.getGlobal();
+	private static final Logger LOGGER =  Logger.getLogger("edu.cuny.hunter.streamrefactoring");
 
 	private static final class CorrespondingASTVisitor extends ASTVisitor {
 		private CompilationUnit unit;
