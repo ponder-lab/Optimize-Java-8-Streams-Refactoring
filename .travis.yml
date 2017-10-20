@@ -5,11 +5,9 @@ cache:
     apt: true
     directories:
         - $HOME/.m2
-script: mvn install
+script: mvn clean verify -Pjacoco coveralls:report
 before_install:
   - "export DISPLAY=:99.0"
   - "sh -e /etc/init.d/xvfb start"
-after_success:
-  - mvn clean install jacoco:report coveralls:report
 notifications:
     slack: cunyponder:A8GuEoj0voEn2H7MJDL1eNji
