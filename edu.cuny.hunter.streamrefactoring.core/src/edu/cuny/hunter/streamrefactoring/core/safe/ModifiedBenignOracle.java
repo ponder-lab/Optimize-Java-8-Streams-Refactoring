@@ -14,6 +14,8 @@ import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.util.collections.Pair;
 
+import edu.cuny.hunter.streamrefactoring.core.analysis.Packages;
+
 public class ModifiedBenignOracle extends BenignOracle {
 
 	public ModifiedBenignOracle(CallGraph callGraph, PointerAnalysis<?> pointerAnalysis) {
@@ -22,7 +24,7 @@ public class ModifiedBenignOracle extends BenignOracle {
 
 	@Override
 	public void addBenignInstanceKey(InstanceKey ik) {
-		Logger.getLogger("edu.cuny.hunter.streamrefactoring").info(() -> "Was requested to ignore \"benign\" instance with key: " + ik);
+		Logger.getLogger(Packages.streamRefactoring).info(() -> "Was requested to ignore \"benign\" instance with key: " + ik);
 	}
 
 	@Override

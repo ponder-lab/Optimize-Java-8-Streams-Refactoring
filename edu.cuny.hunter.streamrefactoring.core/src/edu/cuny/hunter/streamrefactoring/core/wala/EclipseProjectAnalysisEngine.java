@@ -32,6 +32,8 @@ import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.config.FileOfClasses;
 
+import edu.cuny.hunter.streamrefactoring.core.analysis.Packages;
+
 /**
  * Modified from EclipseAnalysisEngine.java, originally from Keshmesh. Authored
  * by Mohsen Vakilian and Stas Negara. Modified by Nicholas Chen and Raffi
@@ -40,7 +42,7 @@ import com.ibm.wala.util.config.FileOfClasses;
  */
 public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJavaSourceAnalysisEngine<I> {
 
-	private static final Logger LOGGER = Logger.getLogger("edu.cuny.hunter.streamrefactoring");
+	private static final Logger LOGGER = Logger.getLogger(Packages.streamRefactoring);
 
 	/**
 	 * The N value used to create the {@link nCFABuilder}.
