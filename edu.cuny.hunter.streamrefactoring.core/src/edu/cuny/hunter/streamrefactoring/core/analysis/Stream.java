@@ -88,8 +88,14 @@ public class Stream {
 	private static Map<MethodDeclaration, IR> methodDeclarationToIRMap = new HashMap<>();
 
 	private static final String PLUGIN_ID = FrameworkUtil.getBundle(Stream.class).getSymbolicName();
+	
+	private static IClassHierarchy classHierarchy = null;
+	
+	private static EclipseProjectAnalysisEngine<InstanceKey> engine = null;
 
 	public static void clearCaches() {
+		classHierarchy = null;
+		engine = null;
 		javaProjectToClassHierarchyMap.clear();
 		javaProjectToAnalysisEngineMap.clear();
 		methodDeclarationToIRMap.clear();
@@ -365,6 +371,8 @@ public class Stream {
 	}
 
 	EclipseProjectAnalysisEngine<InstanceKey> getAnalysisEngine() throws IOException, CoreException {
+		if (engine != null) return engine;
+		
 		IJavaProject javaProject = this.getCreationJavaProject();
 
 		EclipseProjectAnalysisEngine<InstanceKey> engine = javaProjectToAnalysisEngineMap.get(javaProject);
@@ -378,8 +386,10 @@ public class Stream {
 	}
 
 	IClassHierarchy getClassHierarchy() throws IOException, CoreException {
+		if (classHierarchy != null) return classHierarchy;
+		
 		IJavaProject javaProject = getCreationJavaProject();
-		IClassHierarchy classHierarchy = javaProjectToClassHierarchyMap.get(javaProject);
+		classHierarchy = javaProjectToClassHierarchyMap.get(javaProject);
 		if (classHierarchy == null) {
 			EclipseProjectAnalysisEngine<InstanceKey> engine = getAnalysisEngine();
 			engine.buildAnalysisScope();
