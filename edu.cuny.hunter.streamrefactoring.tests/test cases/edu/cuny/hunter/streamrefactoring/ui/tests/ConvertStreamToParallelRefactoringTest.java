@@ -278,19 +278,25 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 			Stream stream = expectingStreams.get(0);
 
 			Set<ExecutionMode> executionModes = stream.getPossibleExecutionModes();
-			assertEquals(result.getExpectedExecutionModes(), executionModes);
+			assertEquals(errorMessage("execution mode", result), result.getExpectedExecutionModes(), executionModes);
 
 			Set<Ordering> orderings = stream.getPossibleOrderings();
-			assertEquals(result.getExpectedOrderings(), orderings);
+			assertEquals(errorMessage("orderings", result), result.getExpectedOrderings(), orderings);
 
-			assertEquals(result.isExpectingSideEffects(), stream.hasPossibleSideEffects());
-			assertEquals(result.isExpectingStatefulIntermediateOperation(),
+			assertEquals(errorMessage("side effects", result), result.isExpectingSideEffects(),
+					stream.hasPossibleSideEffects());
+			assertEquals(errorMessage("stateful intermediate operations", result),
+					result.isExpectingStatefulIntermediateOperation(),
 					stream.hasPossibleStatefulIntermediateOperations());
-			assertEquals(result.isExpectingThatReduceOrderingMatters(), stream.reduceOrderingPossiblyMatters());
-			assertEquals(result.getExpectedActions(), stream.getActions());
-			assertEquals(result.getExpectedPassingPrecondition(), stream.getPassingPrecondition());
-			assertEquals(result.getExpectedRefactoring(), stream.getRefactoring());
-			assertEquals(result.getExpectedStatusSeverity(), stream.getStatus().getSeverity());
+			assertEquals(errorMessage("ROM", result), result.isExpectingThatReduceOrderingMatters(),
+					stream.reduceOrderingPossiblyMatters());
+			assertEquals(errorMessage("transformation actions", result), result.getExpectedActions(),
+					stream.getActions());
+			assertEquals(errorMessage("passing precondition", result), result.getExpectedPassingPrecondition(),
+					stream.getPassingPrecondition());
+			assertEquals(errorMessage("refactoring", result), result.getExpectedRefactoring(), stream.getRefactoring());
+			assertEquals(errorMessage("status severity", result), result.getExpectedStatusSeverity(),
+					stream.getStatus().getSeverity());
 
 			Set<Integer> actualCodes = Arrays.stream(stream.getStatus().getEntries()).map(e -> e.getCode())
 					.collect(Collectors.toSet());
@@ -298,8 +304,12 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 			Set<Integer> expectedCodes = result.getExpectedFailures().stream().map(e -> e.getCode())
 					.collect(Collectors.toSet());
 
-			assertEquals(expectedCodes, actualCodes);
+			assertEquals(errorMessage("status codes", result), expectedCodes, actualCodes);
 		}
+	}
+
+	private static String errorMessage(String attribute, StreamAnalysisExpectedResult result) {
+		return "Unexpected " + attribute + " for " + result.getExpectedCreation() + ".";
 	}
 
 	private void refreshFromLocal() throws CoreException {
@@ -435,12 +445,32 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				Collections.emptySet()),
 
 				new StreamAnalysisExpectedResult("orderedWidgets.parallelStream()", EnumSet.of(ExecutionMode.PARALLEL),
-						EnumSet.of(Ordering.ORDERED), false, false, false, null, null, null, RefactoringStatus.ERROR,
+						EnumSet.of(Ordering.ORDERED), false, false, true, null, null, null, RefactoringStatus.ERROR,
 						EnumSet.of(PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS)),
 
 				new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
 						EnumSet.of(Ordering.ORDERED), false, true, true, null, null, null, RefactoringStatus.ERROR,
-						EnumSet.of(PreconditionFailure.REDUCE_ORDERING_MATTERS)));
+						EnumSet.of(PreconditionFailure.REDUCE_ORDERING_MATTERS)),
+
+				new StreamAnalysisExpectedResult("orderedWidgets2.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
+						EnumSet.of(Ordering.UNORDERED), false, true, true,
+						EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
+						Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+						Collections.emptySet()),
+
+				new StreamAnalysisExpectedResult("orderedWidgets3.stream()", EnumSet.of(ExecutionMode.PARALLEL),
+						EnumSet.of(Ordering.ORDERED), false, true, true,
+						EnumSet.of(TransformationAction.CONVERT_TO_SEQUENTIAL), PreconditionSuccess.P5,
+						Refactoring.OPTIMIZE_PARALLEL_STREAM, RefactoringStatus.OK, Collections.emptySet()),
+
+				new StreamAnalysisExpectedResult("orderedWidgets2.parallelStream()", EnumSet.of(ExecutionMode.PARALLEL),
+						EnumSet.of(Ordering.ORDERED), false, true, false, EnumSet.of(TransformationAction.UNORDER),
+						PreconditionSuccess.P4, Refactoring.OPTIMIZE_PARALLEL_STREAM, RefactoringStatus.OK,
+						Collections.emptySet()),
+
+				new StreamAnalysisExpectedResult("orderedWidgets4.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
+						EnumSet.of(Ordering.ORDERED), true, false, false, null, null, null, RefactoringStatus.ERROR,
+						EnumSet.of(PreconditionFailure.HAS_SIDE_EFFECTS2)));
 	}
 
 	public void testTerminalOp1() throws Exception {
