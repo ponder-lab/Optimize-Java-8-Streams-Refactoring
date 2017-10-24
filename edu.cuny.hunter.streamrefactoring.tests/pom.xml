@@ -33,6 +33,7 @@
       </activation>
       <properties>
         <ui.test.vmargs>${tycho.testArgLine}</ui.test.vmargs>
+        <argLine>${ui.test.vmargs}</argLine>
       </properties>
     </profile>
   </profiles>
