@@ -7,7 +7,7 @@ cache:
 before_install:
   - "export DISPLAY=:99.0"
   - "sh -e /etc/init.d/xvfb start"
-  - "export _JAVA_OPTIONS: -Xmx4096m -Xms1024m"
+  - "export _JAVA_OPTIONS='-Xmx4096m -Xms1024m'"
 install: travis_wait 90 mvn install
 notifications:
     slack: cunyponder:A8GuEoj0voEn2H7MJDL1eNji
