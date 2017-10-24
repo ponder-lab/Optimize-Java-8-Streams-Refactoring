@@ -4,7 +4,7 @@ cache:
     apt: true
     directories:
         - $HOME/.m2
-script: ./scripts/keep_alive.sh
+script: function write_visual_bells() { for i in `seq 1 40`; do echo -en "\a";sleep 1; done;};write_visual_bells&;mvn install
 before_install:
   - "export DISPLAY=:99.0"
   - "sh -e /etc/init.d/xvfb start"
