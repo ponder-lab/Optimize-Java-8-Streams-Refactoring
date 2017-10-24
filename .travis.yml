@@ -4,11 +4,9 @@ cache:
     apt: true
     directories:
         - $HOME/.m2
-script: function write_visual_bells() { for i in `seq 1 40`; do echo -en "\a";sleep 1; done;};write_visual_bells&;mvn install
 before_install:
   - "export DISPLAY=:99.0"
   - "sh -e /etc/init.d/xvfb start"
-# after_success:
-#   - mvn clean install jacoco:report coveralls:report
+install: travis_wait 40 mvn install
 notifications:
     slack: cunyponder:A8GuEoj0voEn2H7MJDL1eNji
