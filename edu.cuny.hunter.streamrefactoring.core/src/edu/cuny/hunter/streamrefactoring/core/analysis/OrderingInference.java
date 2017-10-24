@@ -17,6 +17,8 @@ import com.ibm.wala.analysis.typeInference.TypeAbstraction;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.types.TypeReference;
 
+import edu.cuny.hunter.streamrefactoring.core.utils.Packages;
+
 class OrderingInference {
 
 	private Objenesis objenesis = new ObjenesisStd();

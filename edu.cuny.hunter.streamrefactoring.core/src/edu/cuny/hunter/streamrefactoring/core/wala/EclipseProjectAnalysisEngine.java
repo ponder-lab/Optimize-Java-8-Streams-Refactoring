@@ -32,7 +32,7 @@ import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.config.FileOfClasses;
 
-import edu.cuny.hunter.streamrefactoring.core.analysis.Packages;
+import edu.cuny.hunter.streamrefactoring.core.utils.Packages;
 
 /**
  * Modified from EclipseAnalysisEngine.java, originally from Keshmesh. Authored

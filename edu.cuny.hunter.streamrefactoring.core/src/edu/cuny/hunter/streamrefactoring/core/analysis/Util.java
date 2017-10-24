@@ -49,9 +49,11 @@ import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.util.strings.Atom;
 import com.ibm.wala.util.strings.StringStuff;
 
+import edu.cuny.hunter.streamrefactoring.core.utils.Packages;
+
 public final class Util {
 
-	private static final Logger LOGGER =  Logger.getLogger("edu.cuny.hunter.streamrefactoring");
+	private static final Logger LOGGER =  Logger.getLogger(Packages.streamRefactoring);
 
 	private static final class CorrespondingASTVisitor extends ASTVisitor {
 		private CompilationUnit unit;
