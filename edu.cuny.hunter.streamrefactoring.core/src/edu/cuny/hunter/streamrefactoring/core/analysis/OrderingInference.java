@@ -17,13 +17,15 @@ import com.ibm.wala.analysis.typeInference.TypeAbstraction;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.types.TypeReference;
 
+import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
+
 class OrderingInference {
 
 	private Objenesis objenesis = new ObjenesisStd();
 
 	private IClassHierarchy classHierarchy;
 
-	private static final Logger LOGGER = Logger.getGlobal();
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	public OrderingInference(IClassHierarchy classHierarchy) {
 		this.classHierarchy = classHierarchy;
