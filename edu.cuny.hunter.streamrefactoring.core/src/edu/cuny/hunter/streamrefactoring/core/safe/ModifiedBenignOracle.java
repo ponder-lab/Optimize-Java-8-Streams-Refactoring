@@ -18,7 +18,7 @@ import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 
 public class ModifiedBenignOracle extends BenignOracle {
 	
-	private static final Logger LOGGER = Logger.getLogger(LoggerNames.streamRefactoring);
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	public ModifiedBenignOracle(CallGraph callGraph, PointerAnalysis<?> pointerAnalysis) {
 		super(callGraph, pointerAnalysis);

@@ -42,7 +42,7 @@ import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
  */
 public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJavaSourceAnalysisEngine<I> {
 
-	private static final Logger LOGGER = Logger.getLogger(LoggerNames.streamRefactoring);
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	/**
 	 * The N value used to create the {@link nCFABuilder}.

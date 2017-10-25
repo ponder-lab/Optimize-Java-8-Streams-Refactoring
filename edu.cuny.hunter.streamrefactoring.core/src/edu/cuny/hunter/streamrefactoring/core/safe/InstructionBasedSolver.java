@@ -22,7 +22,7 @@ import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 
 public class InstructionBasedSolver extends TrackingUniqueSolver {
 	
-	private static final Logger LOGGER = Logger.getLogger(LoggerNames.streamRefactoring);
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private SSAInvokeInstruction instruction;
 

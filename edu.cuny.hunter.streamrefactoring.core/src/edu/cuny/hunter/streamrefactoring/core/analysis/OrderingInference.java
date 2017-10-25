@@ -25,7 +25,7 @@ class OrderingInference {
 
 	private IClassHierarchy classHierarchy;
 
-	private static final Logger LOGGER =  Logger.getLogger(LoggerNames.streamRefactoring);
+	private static final Logger LOGGER =  Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	public OrderingInference(IClassHierarchy classHierarchy) {
 		this.classHierarchy = classHierarchy;

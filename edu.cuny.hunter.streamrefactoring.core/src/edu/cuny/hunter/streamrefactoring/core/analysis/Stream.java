@@ -84,7 +84,7 @@ public class Stream {
 
 	private static Map<IJavaProject, IClassHierarchy> javaProjectToClassHierarchyMap = new HashMap<>();
 
-	private static final Logger LOGGER = Logger.getLogger(LoggerNames.streamRefactoring);
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private static Map<MethodDeclaration, IR> methodDeclarationToIRMap = new HashMap<>();
 

@@ -53,7 +53,7 @@ import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 
 public final class Util {
 
-	private static final Logger LOGGER =  Logger.getLogger(LoggerNames.streamRefactoring);
+	private static final Logger LOGGER =  Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private static final class CorrespondingASTVisitor extends ASTVisitor {
 		private CompilationUnit unit;

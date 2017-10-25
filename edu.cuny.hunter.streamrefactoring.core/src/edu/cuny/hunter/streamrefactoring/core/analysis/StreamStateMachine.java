@@ -90,7 +90,7 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 class StreamStateMachine {
 
-	private static final Logger LOGGER = Logger.getLogger(LoggerNames.streamRefactoring);
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	/**
 	 * A list of stateful intermediate operation signatures.

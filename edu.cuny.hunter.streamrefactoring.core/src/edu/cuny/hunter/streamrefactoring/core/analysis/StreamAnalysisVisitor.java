@@ -24,7 +24,7 @@ import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 public class StreamAnalysisVisitor extends ASTVisitor {
 	private Set<Stream> streamSet = new HashSet<>();
 
-	private static final Logger logger = Logger.getLogger(LoggerNames.streamRefactoring);
+	private static final Logger logger = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	public StreamAnalysisVisitor() {
 	}
