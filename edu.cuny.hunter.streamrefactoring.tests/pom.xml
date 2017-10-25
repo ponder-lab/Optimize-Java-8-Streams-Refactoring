@@ -20,6 +20,7 @@
       </activation>
       <properties>
         <ui.test.vmargs>${tycho.testArgLine} -XstartOnFirstThread -Xmx4g -XX:MaxPermSize=1g</ui.test.vmargs>
+        <argLine>${ui.test.vmargs}</argLine>
       </properties>
     </profile>
     <profile>
@@ -31,7 +32,8 @@
         </os>
       </activation>
       <properties>
-        <ui.test.vmargs>${tycho.testArgLine} -Xmx4g -XX:MaxPermSize=1g</ui.test.vmargs>
+        <ui.test.vmargs>${tycho.testArgLine}</ui.test.vmargs>
+        <argLine>${ui.test.vmargs} -Xmx4g -XX:MaxPermSize=1g</argLine>
       </properties>
     </profile>
   </profiles>
