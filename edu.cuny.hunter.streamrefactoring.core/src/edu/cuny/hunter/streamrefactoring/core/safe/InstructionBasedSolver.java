@@ -18,11 +18,11 @@ import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 
-import edu.cuny.hunter.streamrefactoring.core.utils.Packages;
+import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 
 public class InstructionBasedSolver extends TrackingUniqueSolver {
 	
-	private static final Logger LOGGER = Logger.getLogger(Packages.streamRefactoring);
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.streamRefactoring);
 
 	private SSAInvokeInstruction instruction;
 

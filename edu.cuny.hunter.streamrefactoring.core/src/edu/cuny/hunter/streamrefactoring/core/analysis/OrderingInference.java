@@ -17,7 +17,7 @@ import com.ibm.wala.analysis.typeInference.TypeAbstraction;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.types.TypeReference;
 
-import edu.cuny.hunter.streamrefactoring.core.utils.Packages;
+import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 
 class OrderingInference {
 
@@ -25,7 +25,7 @@ class OrderingInference {
 
 	private IClassHierarchy classHierarchy;
 
-	private static final Logger LOGGER =  Logger.getLogger(Packages.streamRefactoring);
+	private static final Logger LOGGER =  Logger.getLogger(LoggerNames.streamRefactoring);
 
 	public OrderingInference(IClassHierarchy classHierarchy) {
 		this.classHierarchy = classHierarchy;

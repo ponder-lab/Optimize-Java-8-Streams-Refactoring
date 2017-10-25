@@ -14,11 +14,11 @@ import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.util.collections.Pair;
 
-import edu.cuny.hunter.streamrefactoring.core.utils.Packages;
+import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 
 public class ModifiedBenignOracle extends BenignOracle {
 	
-	private static final Logger LOGGER = Logger.getLogger(Packages.streamRefactoring);
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.streamRefactoring);
 
 	public ModifiedBenignOracle(CallGraph callGraph, PointerAnalysis<?> pointerAnalysis) {
 		super(callGraph, pointerAnalysis);
