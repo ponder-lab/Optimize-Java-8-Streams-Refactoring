@@ -565,24 +565,32 @@ public class Stream {
 				String methodIdentifier = getMethodIdentifier(calledMethodBinding);
 				if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
 					this.setInitialOrdering(Ordering.UNORDERED);
+				else configureEngine(calledMethodBinding);
 			} else
 				this.setInitialOrdering(Ordering.ORDERED);
-		} else { // instance method.
-			int valueNumber = getUseValueNumberForCreation();
-
-			// get the enclosing method node.
-			this.buildCallGraph();
-			CGNode node = this.getEnclosingMethodNode();
-
-			Collection<TypeAbstraction> possibleTypes = getPossibleTypesInterprocedurally(node, valueNumber,
-					this.getAnalysisEngine().getHeapGraph().getHeapModel(),
-					this.getAnalysisEngine().getPointerAnalysis(), this, LOGGER);
-
-			// Possible types: check each one.
-			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
-			Ordering ordering = this.getOrderingInference().inferOrdering(possibleTypes, calledMethod);
-			this.setInitialOrdering(ordering);
+		} else { 
+			configureEngine(calledMethodBinding);
 		}
+	}
+
+	private void configureEngine(IMethodBinding calledMethodBinding) throws InvalidClassFileException, IOException,
+			CoreException, CallGraphBuilderCancelException, CancelException, NoniterableException,
+			NoninstantiableException, CannotExtractSpliteratorException, InconsistentPossibleOrderingException {
+		// instance method.
+		int valueNumber = getUseValueNumberForCreation();
+
+		// get the enclosing method node.
+		this.buildCallGraph();
+		CGNode node = this.getEnclosingMethodNode();
+
+		Collection<TypeAbstraction> possibleTypes = getPossibleTypesInterprocedurally(node, valueNumber,
+				this.getAnalysisEngine().getHeapGraph().getHeapModel(), this.getAnalysisEngine().getPointerAnalysis(),
+				this, LOGGER);
+
+		// Possible types: check each one.
+		IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
+		Ordering ordering = this.getOrderingInference().inferOrdering(possibleTypes, calledMethod);
+		this.setInitialOrdering(ordering);
 	}
 
 	/**
