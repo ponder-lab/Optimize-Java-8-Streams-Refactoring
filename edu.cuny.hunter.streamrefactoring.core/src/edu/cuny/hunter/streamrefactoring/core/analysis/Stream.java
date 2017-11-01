@@ -555,18 +555,18 @@ public class Stream {
 			throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
 			InconsistentPossibleOrderingException, NoniterableException, NoninstantiableException,
 			CannotExtractSpliteratorException, CallGraphBuilderCancelException, CancelException {
-		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
-		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
 
 		if (JdtFlags.isStatic(calledMethodBinding)) {
 			// static methods returning unordered streams.
-			if (expressionTypeQualifiedName.equals("java.util.stream.Stream")) {
-				String methodIdentifier = getMethodIdentifier(calledMethodBinding);
-				if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
-					this.setInitialOrdering(Ordering.UNORDERED);
-			} else
+			if (getMethodIdentifier(calledMethodBinding).equals("generate(java.util.function.Supplier)"))
+				this.setInitialOrdering(Ordering.UNORDERED);
+			else
 				this.setInitialOrdering(Ordering.ORDERED);
+			
+			// get the enclosing method node.
+			this.buildCallGraph();
+			
 		} else { // instance method.
 			int valueNumber = getUseValueNumberForCreation();
 
