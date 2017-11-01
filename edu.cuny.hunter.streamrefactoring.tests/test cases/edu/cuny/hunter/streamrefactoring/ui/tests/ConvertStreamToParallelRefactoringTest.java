@@ -380,17 +380,11 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * @throws Exception
 	 */
 	public void testGenerate() throws Exception {
-		boolean passed = false;
-		try {
-			helper(new StreamAnalysisExpectedResult("Stream.generate(() -> 1)",
-					Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED), false,
-					false, false, null, null, null, RefactoringStatus.ERROR,
-					Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
-		} catch (IllegalArgumentException e) {
-			logger.throwing(this.getClass().getName(), "testArraysAsStream", e);
-			passed = true;
-		}
-		assertTrue("Should fail per #80", passed);
+		helper(new StreamAnalysisExpectedResult("Stream.generate(() -> 1)",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED), false,
+				false, false, null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
+
 	}
 
 	public void testHashSetParallelStream() throws Exception {
