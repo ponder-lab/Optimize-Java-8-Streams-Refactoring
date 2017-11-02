@@ -386,6 +386,13 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
 
 	}
+	
+	public void testStreamOf() throws Exception {
+		helper(new StreamAnalysisExpectedResult("Stream.of(\"a\")", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.ORDERED), true, false, false, null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(PreconditionFailure.HAS_SIDE_EFFECTS2)));
+
+	}
 
 	public void testHashSetParallelStream() throws Exception {
 		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()",
