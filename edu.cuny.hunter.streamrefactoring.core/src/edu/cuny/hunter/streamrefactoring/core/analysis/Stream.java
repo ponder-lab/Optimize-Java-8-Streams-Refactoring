@@ -576,8 +576,7 @@ public class Stream {
 		} else { // instance method.
 			int valueNumber = getUseValueNumberForCreation();
 
-			// get the enclosing method node.
-			
+			// get the enclosing method node.			
 			CGNode node = this.getEnclosingMethodNode();
 
 			Collection<TypeAbstraction> possibleTypes = getPossibleTypesInterprocedurally(node, valueNumber,
