@@ -558,10 +558,13 @@ public class Stream {
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
+		
+		// build the graph.
+		this.buildCallGraph();
 
 		if (JdtFlags.isStatic(calledMethodBinding)) {
 			// static methods returning unordered streams.
-			if (expressionTypeQualifiedName.equals("java.util.stream.Stream")) {
+			if (expressionTypeQualifiedName.equals("java.util.stream.Stream") || expressionTypeQualifiedName.equals("java.util.stream.IntStream") /* TODO: More */) {
 				String methodIdentifier = getMethodIdentifier(calledMethodBinding);
 				if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
 					this.setInitialOrdering(Ordering.UNORDERED);
@@ -571,7 +574,7 @@ public class Stream {
 			int valueNumber = getUseValueNumberForCreation();
 
 			// get the enclosing method node.
-			this.buildCallGraph();
+			
 			CGNode node = this.getEnclosingMethodNode();
 
 			Collection<TypeAbstraction> possibleTypes = getPossibleTypesInterprocedurally(node, valueNumber,
