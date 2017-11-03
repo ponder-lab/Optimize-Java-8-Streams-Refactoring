@@ -571,8 +571,9 @@ public class Stream {
 				String methodIdentifier = getMethodIdentifier(calledMethodBinding);
 				if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
 					this.setInitialOrdering(Ordering.UNORDERED);
-			} else
-				this.setInitialOrdering(Ordering.ORDERED);
+				else
+					this.setInitialOrdering(Ordering.ORDERED);
+			} 
 		} else { // instance method.
 			int valueNumber = getUseValueNumberForCreation();
 
