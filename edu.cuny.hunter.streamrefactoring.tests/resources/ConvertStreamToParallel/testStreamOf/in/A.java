@@ -6,6 +6,6 @@ public class A {
 	
 	void m() {
 		Stream.of("a")
-	    .forEach(System.out::println);
+		.count();
 	}
 }
