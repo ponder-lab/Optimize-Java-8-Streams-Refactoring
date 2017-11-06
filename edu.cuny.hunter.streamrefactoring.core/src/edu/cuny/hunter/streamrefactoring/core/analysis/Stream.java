@@ -134,8 +134,8 @@ public class Stream {
 	private ExecutionMode initialExecutionMode;
 
 	/**
-	 * This should be the possible execution modes when the stream is consumed
-	 * by a terminal operation. Does not include the initial mode.
+	 * This should be the possible execution modes when the stream is consumed by a
+	 * terminal operation. Does not include the initial mode.
 	 */
 	private Set<ExecutionMode> possibleExecutionModes = new HashSet<>();
 
@@ -147,8 +147,8 @@ public class Stream {
 	private Ordering initialOrdering;
 
 	/**
-	 * This should be the ordering of the stream when it is consumed by a
-	 * terimal operation.
+	 * This should be the ordering of the stream when it is consumed by a terimal
+	 * operation.
 	 */
 	private Set<Ordering> possibleOrderings = new HashSet<>();
 
@@ -586,6 +586,7 @@ public class Stream {
 
 			// Possible types: check each one.
 			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
+
 			Ordering ordering = this.getOrderingInference().inferOrdering(possibleTypes, calledMethod);
 			assert ordering != null : "Can't find ordering for: " + possibleTypes + " using: " + calledMethod;
 			this.setInitialOrdering(ordering);
@@ -593,8 +594,7 @@ public class Stream {
 	}
 
 	/**
-	 * @return The {@link CGNode} representing the enclosing method of this
-	 *         stream.
+	 * @return The {@link CGNode} representing the enclosing method of this stream.
 	 */
 	private CGNode getEnclosingMethodNode() throws IOException, CoreException {
 		Set<CGNode> nodes = this.getAnalysisEngine().getCallGraph().getNodes(this.getEnclosingMethodReference());
@@ -661,14 +661,13 @@ public class Stream {
 	}
 
 	/**
-	 * Returns true iff any behavioral parameters (λ-expressions) associated
-	 * with any operations in the stream's pipeline has side-effects on any
-	 * possible path. TODO: What if one path has side-effects and the other
-	 * doesn't?
+	 * Returns true iff any behavioral parameters (λ-expressions) associated with
+	 * any operations in the stream's pipeline has side-effects on any possible
+	 * path. TODO: What if one path has side-effects and the other doesn't?
 	 * 
-	 * @return true iff any behavioral parameters (λ-expressions) associated
-	 *         with any operations in the stream's pipeline has side-effects on
-	 *         any possible path.
+	 * @return true iff any behavioral parameters (λ-expressions) associated with
+	 *         any operations in the stream's pipeline has side-effects on any
+	 *         possible path.
 	 */
 	public boolean hasPossibleSideEffects() {
 		return hasPossibleSideEffects;
