@@ -441,6 +441,18 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				false, null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
 	}
 
+	public void testCollectionFromParameter() throws Exception {
+		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
+				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
+				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
+	}
+
+	public void testCollectionFromParameter2() throws Exception {
+		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
+				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
+				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
+	}
+
 	public void testStaticInitializer() throws Exception {
 		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()", Collections.singleton(null),
 				Collections.singleton(null), false, false, false, null, null, null, RefactoringStatus.ERROR,
