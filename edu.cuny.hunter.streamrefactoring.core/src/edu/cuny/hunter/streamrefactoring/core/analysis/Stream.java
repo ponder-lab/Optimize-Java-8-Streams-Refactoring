@@ -24,13 +24,16 @@ import java.util.stream.Collectors;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IMember;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.ASTNode;
+import org.eclipse.jdt.core.dom.BodyDeclaration;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.Initializer;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SimpleName;
@@ -86,14 +89,14 @@ public class Stream {
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
-	private static Map<MethodDeclaration, IR> methodDeclarationToIRMap = new HashMap<>();
+	private static Map<BodyDeclaration, IR> bodyDeclarationToIRMap = new HashMap<>();
 
 	private static final String PLUGIN_ID = FrameworkUtil.getBundle(Stream.class).getSymbolicName();
 
 	public static void clearCaches() {
 		javaProjectToClassHierarchyMap.clear();
 		javaProjectToAnalysisEngineMap.clear();
-		methodDeclarationToIRMap.clear();
+		bodyDeclarationToIRMap.clear();
 		StreamStateMachine.clearCaches();
 	}
 
@@ -124,7 +127,7 @@ public class Stream {
 
 	private final MethodInvocation creation;
 
-	private final MethodDeclaration enclosingMethodDeclaration;
+	private final BodyDeclaration enclosingBodyDeclaration;
 
 	private final TypeDeclaration enclosingTypeDeclaration;
 
@@ -171,10 +174,13 @@ public class Stream {
 	public Stream(MethodInvocation streamCreation) throws ClassHierarchyException, IOException, CoreException,
 			InvalidClassFileException, CallGraphBuilderCancelException, CancelException {
 		this.creation = streamCreation;
+
 		this.enclosingTypeDeclaration = (TypeDeclaration) ASTNodes.getParent(this.getCreation(),
 				ASTNode.TYPE_DECLARATION);
-		this.enclosingMethodDeclaration = (MethodDeclaration) ASTNodes.getParent(this.getCreation(),
-				ASTNode.METHOD_DECLARATION);
+		assert this.enclosingTypeDeclaration != null;
+
+		this.enclosingBodyDeclaration = (BodyDeclaration) ASTNodes.getParent(this.getCreation(), BodyDeclaration.class);
+		assert this.enclosingBodyDeclaration != null;
 
 		this.orderingInference = new OrderingInference(this.getClassHierarchy());
 
@@ -398,15 +404,27 @@ public class Stream {
 	}
 
 	private IJavaProject getCreationJavaProject() {
-		return this.getEnclosingEclipseMethod().getJavaProject();
+		return this.getEnclosingEclipseMember().getJavaProject();
 	}
 
-	public IMethod getEnclosingEclipseMethod() {
-		return (IMethod) getEnclosingMethodDeclaration().resolveBinding().getJavaElement();
+	public IMember getEnclosingEclipseMember() {
+		BodyDeclaration bodyDeclaration = getEnclosingBodyDeclaration();
+
+		switch (bodyDeclaration.getNodeType()) {
+		case ASTNode.METHOD_DECLARATION: {
+			MethodDeclaration methodDeclaration = (MethodDeclaration) bodyDeclaration;
+			return (IMember) methodDeclaration.resolveBinding().getJavaElement();
+		}
+		case ASTNode.INITIALIZER: {
+			Initializer initialzer = (Initializer) bodyDeclaration;
+			initialzer.resolve
+		}
+		}
+		return null;
 	}
 
-	public MethodDeclaration getEnclosingMethodDeclaration() {
-		return enclosingMethodDeclaration;
+	public BodyDeclaration getEnclosingBodyDeclaration() {
+		return enclosingBodyDeclaration;
 	}
 
 	public CompilationUnit getEnclosingCompilationUnit() {
@@ -414,7 +432,7 @@ public class Stream {
 	}
 
 	private IR getEnclosingMethodIR() throws IOException, CoreException {
-		IR ir = methodDeclarationToIRMap.get(getEnclosingMethodDeclaration());
+		IR ir = bodyDeclarationToIRMap.get(getEnclosingBodyDeclaration());
 
 		if (ir == null) {
 			// get the IR for the enclosing method.
@@ -426,7 +444,7 @@ public class Stream {
 
 			LOGGER.info("IR is: " + ir.toString());
 
-			methodDeclarationToIRMap.put(getEnclosingMethodDeclaration(), ir);
+			bodyDeclarationToIRMap.put(getEnclosingBodyDeclaration(), ir);
 		}
 		return ir;
 	}
@@ -439,17 +457,17 @@ public class Stream {
 	}
 
 	MethodReference getEnclosingMethodReference() {
-		JDTIdentityMapper mapper = getJDTIdentifyMapper(getEnclosingMethodDeclaration());
-		MethodReference methodRef = mapper.getMethodRef(getEnclosingMethodDeclaration().resolveBinding());
+		JDTIdentityMapper mapper = getJDTIdentifyMapper(getEnclosingBodyDeclaration());
+		MethodReference methodRef = mapper.getMethodRef(getEnclosingBodyDeclaration().resolveBinding());
 
 		if (methodRef == null)
 			throw new IllegalStateException(
-					"Could not get method reference for: " + getEnclosingMethodDeclaration().getName());
+					"Could not get method reference for: " + getEnclosingBodyDeclaration().getName());
 		return methodRef;
 	}
 
 	public IType getEnclosingType() {
-		return (IType) getEnclosingMethodDeclaration().resolveBinding().getDeclaringClass().getJavaElement();
+		return (IType) getEnclosingBodyDeclaration().resolveBinding().getDeclaringClass().getJavaElement();
 	}
 
 	public TypeDeclaration getEnclosingTypeDeclaration() {
@@ -558,7 +576,7 @@ public class Stream {
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
-		
+
 		// build the graph.
 		this.buildCallGraph();
 
@@ -573,11 +591,11 @@ public class Stream {
 					this.setInitialOrdering(Ordering.UNORDERED);
 				else
 					this.setInitialOrdering(Ordering.ORDERED);
-			} 
+			}
 		} else { // instance method.
 			int valueNumber = getUseValueNumberForCreation();
 
-			// get the enclosing method node.			
+			// get the enclosing method node.
 			CGNode node = this.getEnclosingMethodNode();
 
 			Collection<TypeAbstraction> possibleTypes = getPossibleTypesInterprocedurally(node, valueNumber,
@@ -620,7 +638,7 @@ public class Stream {
 		builder.append("Stream [streamCreation=");
 		builder.append(this.getCreation());
 		builder.append(", enclosingMethodDeclaration=");
-		builder.append(this.getEnclosingMethodDeclaration().getName());
+		builder.append(this.getEnclosingBodyDeclaration().getName());
 		builder.append(", possibleExecutionModes=");
 		builder.append(this.getPossibleExecutionModes());
 		builder.append(", possibleOrderings=");
@@ -747,6 +765,6 @@ public class Stream {
 	}
 
 	static Map<MethodDeclaration, IR> getMethodDeclarationToIRMap() {
-		return Collections.unmodifiableMap(methodDeclarationToIRMap);
+		return Collections.unmodifiableMap(bodyDeclarationToIRMap);
 	}
 }
