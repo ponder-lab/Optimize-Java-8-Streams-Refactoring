@@ -596,7 +596,13 @@ public class Stream {
 			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
 
 			Ordering ordering = this.getOrderingInference().inferOrdering(possibleTypes, calledMethod);
-			assert ordering != null : "Can't find ordering for: " + possibleTypes + " using: " + calledMethod;
+
+			if (ordering == null) {
+				ordering = Ordering.ORDERED;
+				LOGGER.warning("Can't find ordering for: " + possibleTypes + " using: " + calledMethod
+						+ ". Falling back to: " + ordering);
+			}
+
 			this.setInitialOrdering(ordering);
 		}
 	}
