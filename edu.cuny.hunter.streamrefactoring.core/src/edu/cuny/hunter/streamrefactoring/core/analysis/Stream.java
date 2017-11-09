@@ -176,6 +176,14 @@ public class Stream {
 		this.enclosingMethodDeclaration = (MethodDeclaration) ASTNodes.getParent(this.getCreation(),
 				ASTNode.METHOD_DECLARATION);
 
+		// Work around #97.
+		if (this.enclosingMethodDeclaration == null) {
+			LOGGER.warning("Stream: " + creation + " not handled.");
+			this.addStatusEntry(creation, PreconditionFailure.CURRENTLY_NOT_HANDLED, "Stream: " + creation
+					+ " is most likely used in a context that is currently not handled by this plug-in.");
+			return;
+		}
+
 		this.orderingInference = new OrderingInference(this.getClassHierarchy());
 
 		this.inferInitialExecution();
@@ -558,7 +566,7 @@ public class Stream {
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
-		
+
 		// build the graph.
 		this.buildCallGraph();
 
@@ -573,11 +581,11 @@ public class Stream {
 					this.setInitialOrdering(Ordering.UNORDERED);
 				else
 					this.setInitialOrdering(Ordering.ORDERED);
-			} 
+			}
 		} else { // instance method.
 			int valueNumber = getUseValueNumberForCreation();
 
-			// get the enclosing method node.			
+			// get the enclosing method node.
 			CGNode node = this.getEnclosingMethodNode();
 
 			Collection<TypeAbstraction> possibleTypes = getPossibleTypesInterprocedurally(node, valueNumber,
