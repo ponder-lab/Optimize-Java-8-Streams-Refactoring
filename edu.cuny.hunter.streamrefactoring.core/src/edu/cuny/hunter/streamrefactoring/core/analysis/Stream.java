@@ -179,7 +179,7 @@ public class Stream {
 		// Work around #97.
 		if (this.enclosingMethodDeclaration == null) {
 			LOGGER.warning("Stream: " + creation + " not handled.");
-			this.addStatusEntry(creation, PreconditionFailure.CURRENTLY_NOT_HANDLED, "Stream: " + creation
+			this.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, "Stream: " + creation
 					+ " is most likely used in a context that is currently not handled by this plug-in.");
 			return;
 		}
@@ -192,19 +192,19 @@ public class Stream {
 			this.inferInitialOrdering();
 		} catch (InconsistentPossibleOrderingException e) {
 			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
-			addStatusEntry(streamCreation, PreconditionFailure.INCONSISTENT_POSSIBLE_STREAM_SOURCE_ORDERING,
+			addStatusEntry(PreconditionFailure.INCONSISTENT_POSSIBLE_STREAM_SOURCE_ORDERING,
 					"Stream: " + streamCreation + " has inconsistent possible source orderings.");
 		} catch (NoniterableException e) {
 			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
-			addStatusEntry(streamCreation, PreconditionFailure.NON_ITERABLE_POSSIBLE_STREAM_SOURCE,
+			addStatusEntry(PreconditionFailure.NON_ITERABLE_POSSIBLE_STREAM_SOURCE,
 					"Stream: " + streamCreation + " has a non-iterable possible source.");
 		} catch (NoninstantiableException e) {
 			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
-			addStatusEntry(streamCreation, PreconditionFailure.NON_INSTANTIABLE_POSSIBLE_STREAM_SOURCE, "Stream: "
-					+ streamCreation + " has a non-instantiable possible source with type: " + e.getSourceType() + ".");
+			addStatusEntry(PreconditionFailure.NON_INSTANTIABLE_POSSIBLE_STREAM_SOURCE, "Stream: " + streamCreation
+					+ " has a non-instantiable possible source with type: " + e.getSourceType() + ".");
 		} catch (CannotExtractSpliteratorException e) {
 			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
-			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_STREAM_SOURCE_ORDERING,
+			addStatusEntry(PreconditionFailure.NON_DETERMINABLE_STREAM_SOURCE_ORDERING,
 					"Cannot extract spliterator from type: " + e.getFromType() + " for stream: " + streamCreation
 							+ ".");
 		}
@@ -221,16 +221,15 @@ public class Stream {
 			throw new RuntimeException(e);
 		} catch (UnknownIfReduceOrderMattersException e) {
 			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
-			addStatusEntry(streamCreation, PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
+			addStatusEntry(PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
 					"Cannot derive reduction ordering for stream: " + streamCreation + ".");
 		} catch (RequireTerminalOperationException e) {
 			LOGGER.log(Level.WARNING, "Require terminal operations: " + streamCreation, e);
-			addStatusEntry(streamCreation, PreconditionFailure.NO_TERMINAL_OPERATIONS,
+			addStatusEntry(PreconditionFailure.NO_TERMINAL_OPERATIONS,
 					"Require terminal operations: " + streamCreation + ".");
 		} catch (InstanceKeyNotFoundException e) {
 			LOGGER.log(Level.WARNING, "Encountered probable unhandled case while processing: " + streamCreation, e);
-			addStatusEntry(streamCreation, PreconditionFailure.CURRENTLY_NOT_HANDLED,
-					"Encountered probably unhandled case.");
+			addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, "Encountered probably unhandled case.");
 		}
 	}
 
@@ -272,7 +271,7 @@ public class Stream {
 					switch (ordering) {
 					case UNORDERED:
 						if (hasPossibleSideEffects)
-							addStatusEntry(creation, PreconditionFailure.HAS_SIDE_EFFECTS, "Stream: " + creation
+							addStatusEntry(PreconditionFailure.HAS_SIDE_EFFECTS, "Stream: " + creation
 									+ " is associated with a behavioral parameter containing possible side-effects");
 						else {
 							// it passed P1.
@@ -283,7 +282,7 @@ public class Stream {
 						break;
 					case ORDERED:
 						if (hasPossibleSideEffects)
-							addStatusEntry(creation, PreconditionFailure.HAS_SIDE_EFFECTS2, "Stream: " + creation
+							addStatusEntry(PreconditionFailure.HAS_SIDE_EFFECTS2, "Stream: " + creation
 									+ " is associated with a behavioral parameter containing possible side-effects");
 						else {
 							// check SIO.
@@ -301,7 +300,7 @@ public class Stream {
 											TransformationAction.CONVERT_TO_PARALLEL);
 									this.setPassingPrecondition(PreconditionSuccess.P3);
 								} else
-									addStatusEntry(creation, PreconditionFailure.REDUCE_ORDERING_MATTERS,
+									addStatusEntry(PreconditionFailure.REDUCE_ORDERING_MATTERS,
 											"Ordering of the result produced by a terminal operation must be preserved");
 							}
 						}
@@ -325,12 +324,12 @@ public class Stream {
 								this.setPassingPrecondition(PreconditionSuccess.P5);
 							}
 						} else
-							addStatusEntry(creation, PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS,
+							addStatusEntry(PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS,
 									"No stateful intermediate operation exists within the stream's pipeline.");
 
 						break;
 					case UNORDERED:
-						addStatusEntry(creation, PreconditionFailure.UNORDERED, "Stream is unordered.");
+						addStatusEntry(PreconditionFailure.UNORDERED, "Stream is unordered.");
 						break;
 					}
 				}
@@ -363,17 +362,17 @@ public class Stream {
 	private boolean isConsistent(Collection<?> collection, PreconditionFailure failure, String failureMessage,
 			MethodInvocation streamCreation) {
 		if (!allEqual(collection)) {
-			addStatusEntry(streamCreation, failure, failureMessage);
+			addStatusEntry(failure, failureMessage);
 			return false;
 		} else
 			return true;
 	}
 
-	void addStatusEntry(MethodInvocation streamCreation, PreconditionFailure failure, String message) {
-		CompilationUnit compilationUnit = (CompilationUnit) ASTNodes.getParent(streamCreation,
-				ASTNode.COMPILATION_UNIT);
+	void addStatusEntry(PreconditionFailure failure, String message) {
+		MethodInvocation creation = this.getCreation();
+		CompilationUnit compilationUnit = (CompilationUnit) ASTNodes.getParent(creation, ASTNode.COMPILATION_UNIT);
 		ICompilationUnit compilationUnit2 = (ICompilationUnit) compilationUnit.getJavaElement();
-		RefactoringStatusContext context = JavaStatusContext.create(compilationUnit2, streamCreation);
+		RefactoringStatusContext context = JavaStatusContext.create(compilationUnit2, creation);
 		this.getStatus().addEntry(RefactoringStatus.ERROR, message, context, PLUGIN_ID, failure.getCode(), this);
 	}
 
