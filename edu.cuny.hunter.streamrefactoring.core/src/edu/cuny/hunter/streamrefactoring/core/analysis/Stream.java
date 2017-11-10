@@ -590,7 +590,15 @@ public class Stream {
 			int valueNumber = getUseValueNumberForCreation();
 
 			// get the enclosing method node.
-			CGNode node = this.getEnclosingMethodNode();
+			CGNode node = null;
+			try {
+				node = this.getEnclosingMethodNode();
+			} catch (NoEnclosingMethodNodeFoundException e) {
+				LOGGER.log(Level.WARNING, "Can't find enclosing method node for " + this.getCreation()
+						+ ". Falling back to " + Ordering.ORDERED, e);
+				this.setInitialOrdering(Ordering.ORDERED);
+				return;
+			}
 
 			Collection<TypeAbstraction> possibleTypes = getPossibleTypesInterprocedurally(node, valueNumber,
 					this.getAnalysisEngine().getHeapGraph().getHeapModel(),
@@ -613,10 +621,18 @@ public class Stream {
 
 	/**
 	 * @return The {@link CGNode} representing the enclosing method of this stream.
+	 * @throws NoEnclosingMethodNodeFoundException
+	 *             If the call graph doesn't contain a node for the enclosing
+	 *             method.
 	 */
-	private CGNode getEnclosingMethodNode() throws IOException, CoreException {
-		Set<CGNode> nodes = this.getAnalysisEngine().getCallGraph().getNodes(this.getEnclosingMethodReference());
-		assert nodes.size() == 1 : "Not expecting more than one node.";
+	private CGNode getEnclosingMethodNode() throws IOException, CoreException, NoEnclosingMethodNodeFoundException {
+		MethodReference methodReference = this.getEnclosingMethodReference();
+		Set<CGNode> nodes = this.getAnalysisEngine().getCallGraph().getNodes(methodReference);
+
+		if (nodes.isEmpty())
+			throw new NoEnclosingMethodNodeFoundException(methodReference);
+
+		assert nodes.size() == 1 : "Expecting one node.";
 		return nodes.iterator().next();
 	}
 
@@ -656,8 +672,8 @@ public class Stream {
 				.flatMap(instruction -> trackedInstances.stream()
 						.filter(ik -> instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction, callGraph))
 						.findFirst())
-				.orElseThrow(() -> new InstanceKeyNotFoundException(
-						"Can't find instance key for: " + this + " using tracked instances: " + trackedInstances));
+				.orElseThrow(() -> new InstanceKeyNotFoundException("Can't find instance key for: " + this.getCreation()
+						+ " using tracked instances: " + trackedInstances));
 	}
 
 	protected ExecutionMode getInitialExecutionMode() {
