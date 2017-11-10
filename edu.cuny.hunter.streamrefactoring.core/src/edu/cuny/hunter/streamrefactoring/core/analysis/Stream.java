@@ -227,6 +227,10 @@ public class Stream {
 			LOGGER.log(Level.WARNING, "Require terminal operations: " + streamCreation, e);
 			addStatusEntry(streamCreation, PreconditionFailure.NO_TERMINAL_OPERATIONS,
 					"Require terminal operations: " + streamCreation + ".");
+		} catch (InstanceKeyNotFoundException e) {
+			LOGGER.log(Level.WARNING, "Encountered probable unhandled case while processing: " + streamCreation, e);
+			addStatusEntry(streamCreation, PreconditionFailure.CURRENTLY_NOT_HANDLED,
+					"Encountered probably unhandled case.");
 		}
 	}
 
@@ -596,7 +600,13 @@ public class Stream {
 			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
 
 			Ordering ordering = this.getOrderingInference().inferOrdering(possibleTypes, calledMethod);
-			assert ordering != null : "Can't find ordering for: " + possibleTypes + " using: " + calledMethod;
+
+			if (ordering == null) {
+				ordering = Ordering.ORDERED;
+				LOGGER.warning("Can't find ordering for: " + possibleTypes + " using: " + calledMethod
+						+ ". Falling back to: " + ordering);
+			}
+
 			this.setInitialOrdering(ordering);
 		}
 	}
@@ -641,12 +651,12 @@ public class Stream {
 
 	// TODO: Cache this with a table?
 	public InstanceKey getInstanceKey(Collection<InstanceKey> trackedInstances, CallGraph callGraph)
-			throws InvalidClassFileException, IOException, CoreException {
+			throws InvalidClassFileException, IOException, CoreException, InstanceKeyNotFoundException {
 		return this.getInstructionForCreation()
 				.flatMap(instruction -> trackedInstances.stream()
 						.filter(ik -> instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction, callGraph))
 						.findFirst())
-				.orElseThrow(() -> new IllegalArgumentException(
+				.orElseThrow(() -> new InstanceKeyNotFoundException(
 						"Can't find instance key for: " + this + " using tracked instances: " + trackedInstances));
 	}
 
