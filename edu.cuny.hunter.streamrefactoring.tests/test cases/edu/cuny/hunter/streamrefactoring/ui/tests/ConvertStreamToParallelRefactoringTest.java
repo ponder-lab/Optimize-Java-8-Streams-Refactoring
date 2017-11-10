@@ -472,9 +472,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public void testStaticInitializer() throws Exception {
-		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()", Collections.singleton(null),
-				Collections.singleton(null), false, false, false, null, null, null, RefactoringStatus.ERROR,
-				EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()", null, null, false, false, false,
+				null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
 	}
 
 	public void testIntermediateOperations() throws Exception {

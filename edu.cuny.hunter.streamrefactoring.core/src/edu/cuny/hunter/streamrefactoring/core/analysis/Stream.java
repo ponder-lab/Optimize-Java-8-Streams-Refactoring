@@ -480,26 +480,35 @@ public class Stream {
 
 	public Set<ExecutionMode> getPossibleExecutionModes() {
 		// if no other possible execution modes exist.
+		ExecutionMode initialExecutionMode = this.getInitialExecutionMode();
+
 		if (possibleExecutionModes.isEmpty())
-			// default to the initial execution mode.
-			return Collections.singleton(this.getInitialExecutionMode());
+			if (initialExecutionMode == null)
+				return null;
+			else
+				// default to the initial execution mode.
+				return Collections.singleton(initialExecutionMode);
 
 		// otherwise, return the internal possible execution modes but with the
 		// null value (bottom state) replaced by the initial state.
-		return possibleExecutionModes.stream().map(e -> e == null ? this.getInitialExecutionMode() : e)
+		return possibleExecutionModes.stream().map(e -> e == null ? initialExecutionMode : e)
 				.collect(Collectors.toSet());
 	}
 
 	public Set<Ordering> getPossibleOrderings() {
+		Ordering initialOrdering = this.getInitialOrdering();
+
 		// if no other possible orderings exist.
 		if (possibleOrderings.isEmpty())
-			// default to the initial ordering.
-			return Collections.singleton(this.getInitialOrdering());
+			// default to the initial ordering or null if there isn't any.
+			if (initialOrdering == null)
+				return null;
+			else
+				return Collections.singleton(initialOrdering);
 
 		// otherwise, return the internal possible orderings but with the null
 		// value (bottom state) replaced by the initial state.
-		return possibleOrderings.stream().map(e -> e == null ? this.getInitialOrdering() : e)
-				.collect(Collectors.toSet());
+		return possibleOrderings.stream().map(e -> e == null ? initialOrdering : e).collect(Collectors.toSet());
 	}
 
 	Optional<SSAInvokeInstruction> getInstructionForCreation()
