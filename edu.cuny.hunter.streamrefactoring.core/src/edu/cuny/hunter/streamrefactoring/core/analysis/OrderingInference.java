@@ -5,6 +5,7 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.Spliterator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.BaseStream;
 
@@ -115,8 +116,8 @@ class OrderingInference {
 			// this information? This could be a problem in third-party
 			// container libraries. Also, what if we don't have the class in the
 			// classpath?
-			e.printStackTrace();
-			throw new RuntimeException("Can't find: " + className, e);
+			LOGGER.log(Level.WARNING, "Can't find: " + className + ". Falling back to: " + Ordering.ORDERED, e);
+			return Ordering.ORDERED;
 		}
 	}
 
