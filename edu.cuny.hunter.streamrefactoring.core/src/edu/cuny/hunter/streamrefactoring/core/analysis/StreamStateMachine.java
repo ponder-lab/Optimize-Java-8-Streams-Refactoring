@@ -688,8 +688,8 @@ class StreamStateMachine {
 		} catch (InconsistentPossibleOrderingException e) {
 			// default to ordered #55.
 			ordering = Ordering.ORDERED;
-			LOGGER.warning("Inconsistently ordered possible return types encountered: " + possibleReturnTypes
-					+ ". Defaulting to: " + ordering);
+			LOGGER.log(Level.WARNING, "Inconsistently ordered possible return types encountered: " + possibleReturnTypes
+					+ ". Defaulting to: " + ordering, e);
 		}
 
 		LOGGER.info("Ordering of reduction type is: " + ordering);
