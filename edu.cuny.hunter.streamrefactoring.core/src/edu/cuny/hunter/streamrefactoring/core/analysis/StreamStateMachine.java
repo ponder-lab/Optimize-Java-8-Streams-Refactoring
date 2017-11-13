@@ -230,7 +230,7 @@ class StreamStateMachine {
 	public void start() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
 			InvalidClassFileException, PropertiesException, UnknownIfReduceOrderMattersException, NoniterableException,
 			NoninstantiableException, CannotExtractSpliteratorException, RequireTerminalOperationException,
-			InstanceKeyNotFoundException {
+			InstanceKeyNotFoundException, NoEnclosingMethodNodeFoundException {
 		// get the analysis engine.
 		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
@@ -281,10 +281,8 @@ class StreamStateMachine {
 				// the node of where the stream was declared: TODO: Can this be
 				// somehow rewritten to get blocks corresponding to terminal
 				// operations?
-				Set<CGNode> cgNodes = engine.getCallGraph().getNodes(this.getStream().getEnclosingMethodReference());
-				assert cgNodes.size() == 1 : "Expecting only a single CG node.";
+				CGNode cgNode = this.getStream().getEnclosingMethodNode();
 
-				for (CGNode cgNode : cgNodes) {
 					for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
 						CallSiteReference callSiteReference = callSites.next();
 						MethodReference calledMethod = callSiteReference.getDeclaredTarget();
@@ -397,7 +395,6 @@ class StreamStateMachine {
 						}
 					}
 				}
-			}
 
 			// fill the instance side-effect set.
 			// FIXME: I don't think that this belongs in the typestate rule
