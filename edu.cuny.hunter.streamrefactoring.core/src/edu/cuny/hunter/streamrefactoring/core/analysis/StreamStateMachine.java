@@ -283,118 +283,118 @@ class StreamStateMachine {
 				// operations?
 				CGNode cgNode = this.getStream().getEnclosingMethodNode();
 
-					for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
-						CallSiteReference callSiteReference = callSites.next();
-						MethodReference calledMethod = callSiteReference.getDeclaredTarget();
+				for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
+					CallSiteReference callSiteReference = callSites.next();
+					MethodReference calledMethod = callSiteReference.getDeclaredTarget();
 
-						// is it a terminal operation? TODO: Should this be
-						// cached somehow? Collection of all terminal operation
-						// invocations?
-						if (isTerminalOperation(calledMethod)) {
-							// get the basic block for the call.
-							ISSABasicBlock[] blocksForCall = cgNode.getIR().getBasicBlocksForCall(callSiteReference);
+					// is it a terminal operation? TODO: Should this be
+					// cached somehow? Collection of all terminal operation
+					// invocations?
+					if (isTerminalOperation(calledMethod)) {
+						// get the basic block for the call.
+						ISSABasicBlock[] blocksForCall = cgNode.getIR().getBasicBlocksForCall(callSiteReference);
 
-							assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
-									+ callSiteReference;
+						assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
+								+ callSiteReference;
 
-							for (int i = 0; i < blocksForCall.length; i++) {
-								ISSABasicBlock block = blocksForCall[i];
+						for (int i = 0; i < blocksForCall.length; i++) {
+							ISSABasicBlock block = blocksForCall[i];
 
-								BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
-										block, cgNode, supergraph)
-												.orElseThrow(() -> new IllegalStateException(
-														"No basic block in context for block: " + block));
+							BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
+									block, cgNode, supergraph)
+											.orElseThrow(() -> new IllegalStateException(
+													"No basic block in context for block: " + block));
 
-								if (!terminalBlockToPossibleReceivers.containsKey(blockInContext)) {
-									// associate possible receivers with the
-									// blockInContext.
-									// search through each instruction in the
-									// block.
-									int processedInstructions = 0;
-									for (Iterator<SSAInstruction> it = block.iterator(); it.hasNext();) {
-										SSAInstruction instruction = it.next();
+							if (!terminalBlockToPossibleReceivers.containsKey(blockInContext)) {
+								// associate possible receivers with the
+								// blockInContext.
+								// search through each instruction in the
+								// block.
+								int processedInstructions = 0;
+								for (Iterator<SSAInstruction> it = block.iterator(); it.hasNext();) {
+									SSAInstruction instruction = it.next();
 
-										// if it's a phi instruction.
-										if (instruction instanceof SSAPhiInstruction)
-											// skip it. The pointer analysis
-											// below will handle it.
-											continue;
+									// if it's a phi instruction.
+									if (instruction instanceof SSAPhiInstruction)
+										// skip it. The pointer analysis
+										// below will handle it.
+										continue;
 
-										// Get the possible receivers. This
-										// number corresponds to the value
-										// number of the receiver of the method.
-										int valueNumberForReceiver = instruction.getUse(0);
+									// Get the possible receivers. This
+									// number corresponds to the value
+									// number of the receiver of the method.
+									int valueNumberForReceiver = instruction.getUse(0);
 
-										// it should be represented by a pointer
-										// key.
-										PointerKey pointerKey = engine.getHeapGraph().getHeapModel()
-												.getPointerKeyForLocal(cgNode, valueNumberForReceiver);
+									// it should be represented by a pointer
+									// key.
+									PointerKey pointerKey = engine.getHeapGraph().getHeapModel()
+											.getPointerKeyForLocal(cgNode, valueNumberForReceiver);
 
-										// get the points to set for the
-										// receiver. This will give us all
-										// object instances that the receiver
-										// reference points to.
-										OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis()
-												.getPointsToSet(pointerKey);
-										assert pointsToSet != null : "The points-to set (I think) should not be null for pointer: "
-												+ pointerKey;
+									// get the points to set for the
+									// receiver. This will give us all
+									// object instances that the receiver
+									// reference points to.
+									OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis()
+											.getPointsToSet(pointerKey);
+									assert pointsToSet != null : "The points-to set (I think) should not be null for pointer: "
+											+ pointerKey;
 
-										OrdinalSet<InstanceKey> previousReceivers = terminalBlockToPossibleReceivers
-												.put(blockInContext, pointsToSet);
-										assert previousReceivers == null : "Reassociating a blockInContext: "
-												+ blockInContext + " with a new points-to set: " + pointsToSet
-												+ " that was originally: " + previousReceivers;
+									OrdinalSet<InstanceKey> previousReceivers = terminalBlockToPossibleReceivers
+											.put(blockInContext, pointsToSet);
+									assert previousReceivers == null : "Reassociating a blockInContext: "
+											+ blockInContext + " with a new points-to set: " + pointsToSet
+											+ " that was originally: " + previousReceivers;
 
-										++processedInstructions;
-									}
-
-									assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
+									++processedInstructions;
 								}
 
-								IntSet intSet = instanceResult.getResult().getResult(blockInContext);
-								for (IntIterator it = intSet.intIterator(); it.hasNext();) {
-									int nextInt = it.next();
+								assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
+							}
 
-									// retrieve the state set for this instance
-									// and block.
-									Map<TypestateRule, Set<IDFAState>> ruleToStates = instanceBlockStateTable
-											.get(instanceKey, blockInContext);
+							IntSet intSet = instanceResult.getResult().getResult(blockInContext);
+							for (IntIterator it = intSet.intIterator(); it.hasNext();) {
+								int nextInt = it.next();
 
-									// if it doesn't yet exist.
-									if (ruleToStates == null) {
-										// allocate a new rule map.
-										ruleToStates = new HashMap<>();
+								// retrieve the state set for this instance
+								// and block.
+								Map<TypestateRule, Set<IDFAState>> ruleToStates = instanceBlockStateTable
+										.get(instanceKey, blockInContext);
 
-										// place it in the table.
-										instanceBlockStateTable.put(instanceKey, blockInContext, ruleToStates);
-									}
+								// if it doesn't yet exist.
+								if (ruleToStates == null) {
+									// allocate a new rule map.
+									ruleToStates = new HashMap<>();
 
-									Set<IDFAState> stateSet = ruleToStates.get(rule);
+									// place it in the table.
+									instanceBlockStateTable.put(instanceKey, blockInContext, ruleToStates);
+								}
 
-									// if it does not yet exist.
-									if (stateSet == null) {
-										// allocate a new set.
-										stateSet = new HashSet<>();
+								Set<IDFAState> stateSet = ruleToStates.get(rule);
 
-										// place it in the map.
-										ruleToStates.put(rule, stateSet);
-									}
+								// if it does not yet exist.
+								if (stateSet == null) {
+									// allocate a new set.
+									stateSet = new HashSet<>();
 
-									// get the facts.
-									Factoid factoid = instanceResult.getDomain().getMappedObject(nextInt);
-									if (factoid != DUMMY_ZERO) {
-										BaseFactoid baseFactoid = (BaseFactoid) factoid;
-										assert baseFactoid.instance.equals(
-												instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
+									// place it in the map.
+									ruleToStates.put(rule, stateSet);
+								}
 
-										// add the encountered state to the set.
-										stateSet.add(baseFactoid.state);
-									}
+								// get the facts.
+								Factoid factoid = instanceResult.getDomain().getMappedObject(nextInt);
+								if (factoid != DUMMY_ZERO) {
+									BaseFactoid baseFactoid = (BaseFactoid) factoid;
+									assert baseFactoid.instance.equals(
+											instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
+
+									// add the encountered state to the set.
+									stateSet.add(baseFactoid.state);
 								}
 							}
 						}
 					}
 				}
+			}
 
 			// fill the instance side-effect set.
 			// FIXME: I don't think that this belongs in the typestate rule
@@ -1138,7 +1138,12 @@ class StreamStateMachine {
 	private static Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
 			BasicBlockInContext<IExplodedBasicBlock> block, StreamAttributeTypestateRule rule) {
 		Set<InstanceKey> predecessors = instanceToPredecessorsMap.get(instanceKey);
-		Set<IDFAState> possibleInstanceStates = instanceBlockStateTable.get(instanceKey, block).get(rule);
+		Map<TypestateRule, Set<IDFAState>> ruleToStates = instanceBlockStateTable.get(instanceKey, block);
+
+		if (ruleToStates == null)
+			return Collections.emptySet();
+
+		Set<IDFAState> possibleInstanceStates = ruleToStates.get(rule);
 
 		if (predecessors.isEmpty())
 			return possibleInstanceStates;
