@@ -54,6 +54,8 @@ import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
+import com.ibm.wala.ipa.callgraph.impl.FakeRootMethod;
+import com.ibm.wala.ipa.callgraph.impl.FakeWorldClinitMethod;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
@@ -639,9 +641,29 @@ public class Stream {
 
 		if (nodes.isEmpty())
 			throw new NoEnclosingMethodNodeFoundException(methodReference);
+		else if (nodes.size() == 1 || nodes.size() > 1 && allFake(nodes, this.getAnalysisEngine().getCallGraph()))
+			return nodes.iterator().next(); // just return the first.
+		else
+			throw new IllegalStateException("Unexpected number of nodes: " + nodes.size());
 
-		assert nodes.size() == 1 : "Expecting one node.";
-		return nodes.iterator().next();
+	}
+
+	private static boolean allFake(Set<CGNode> nodes, CallGraph callGraph) {
+		// for each node.
+		for (CGNode cgNode : nodes) {
+			// for each predecessor.
+			for (Iterator<CGNode> it = callGraph.getPredNodes(cgNode); it.hasNext();) {
+				CGNode predNode = it.next();
+				com.ibm.wala.classLoader.IMethod predMethod = predNode.getMethod();
+
+				boolean isFakeMethod = predMethod instanceof FakeRootMethod
+						|| predMethod instanceof FakeWorldClinitMethod;
+
+				if (!isFakeMethod)
+					return false;
+			}
+		}
+		return true;
 	}
 
 	protected void addPossibleExecutionMode(ExecutionMode executionMode) {
