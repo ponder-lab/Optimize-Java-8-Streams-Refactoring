@@ -177,8 +177,8 @@ class StreamStateMachine {
 	// @formatter:on
 
 	/**
-	 * A table mapping an instance and a block to the instance's possible states
-	 * at that block.
+	 * A table mapping an instance and a block to the instance's possible states at
+	 * that block.
 	 */
 	private static Table<InstanceKey, BasicBlockInContext<IExplodedBasicBlock>, Map<TypestateRule, Set<IDFAState>>> instanceBlockStateTable = HashBasedTable
 			.create();
@@ -229,7 +229,8 @@ class StreamStateMachine {
 
 	public void start() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
 			InvalidClassFileException, PropertiesException, UnknownIfReduceOrderMattersException, NoniterableException,
-			NoninstantiableException, CannotExtractSpliteratorException, RequireTerminalOperationException, InstanceKeyNotFoundException {
+			NoninstantiableException, CannotExtractSpliteratorException, RequireTerminalOperationException,
+			InstanceKeyNotFoundException {
 		// get the analysis engine.
 		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
@@ -990,12 +991,11 @@ class StreamStateMachine {
 	 *            The {@link PointerKey} in question.
 	 * @param engine
 	 *            The {@link AnalysisEngine} to use.
-	 * @return <code>true</code> if the given {@link PointerKey} should be
-	 *         filtered and <code>false</code> otherwise.
-	 * @apiNote The current filtering mechanism excludes field
-	 *          {@link PointerKey}s whose instance is being assigned with the
-	 *          stream package. Basically, we are looking for modifications to
-	 *          the client code,
+	 * @return <code>true</code> if the given {@link PointerKey} should be filtered
+	 *         and <code>false</code> otherwise.
+	 * @apiNote The current filtering mechanism excludes field {@link PointerKey}s
+	 *          whose instance is being assigned with the stream package. Basically,
+	 *          we are looking for modifications to the client code,
 	 */
 	private static boolean filterPointerKey(PointerKey pointerKey, EclipseProjectAnalysisEngine<InstanceKey> engine) {
 		Boolean ret = null;
@@ -1088,17 +1088,17 @@ class StreamStateMachine {
 	 * represented by the given call graph node in the given supergraph.
 	 * 
 	 * @param block
-	 *            The block in which to find the corresponding block in context
-	 *            in the supergraph.
+	 *            The block in which to find the corresponding block in context in
+	 *            the supergraph.
 	 * @param cgNode
-	 *            The call graph node representing the procedure that contains
-	 *            the block.
+	 *            The call graph node representing the procedure that contains the
+	 *            block.
 	 * @param supergraph
 	 *            The supergraph in which to look up the corresponding block in
 	 *            context.
-	 * @return The block in context in the given supergraph that corresponds to
-	 *         the given block with the procedure represented by the given call
-	 *         graph node.
+	 * @return The block in context in the given supergraph that corresponds to the
+	 *         given block with the procedure represented by the given call graph
+	 *         node.
 	 */
 	private static Optional<BasicBlockInContext<IExplodedBasicBlock>> getBasicBlockInContextForBlock(
 			ISSABasicBlock block, CGNode cgNode, ICFGSupergraph supergraph) {
