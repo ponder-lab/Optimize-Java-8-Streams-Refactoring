@@ -920,8 +920,6 @@ class StreamStateMachine {
 
 				// take a look at the nodes in the caller.
 				Set<CGNode> nodes = engine.getCallGraph().getNodes(declaredTargetOfCaller);
-				assert nodes.size() == 1 : "Expecting only one node here for now (context-sensitivity?). Was: "
-						+ nodes.size();
 
 				// for each caller node.
 				for (CGNode cgNode : nodes) {
