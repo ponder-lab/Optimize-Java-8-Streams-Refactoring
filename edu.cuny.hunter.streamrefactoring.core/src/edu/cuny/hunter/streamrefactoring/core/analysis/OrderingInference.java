@@ -51,7 +51,7 @@ class OrderingInference {
 					ret = ordering;
 				else if (ret != ordering) {
 					throw new InconsistentPossibleOrderingException(
-							"Types have inconsistent orderings, defaulting to ordered: " + possibleTypes);
+							"Types have inconsistent orderings: " + possibleTypes);
 				}
 			}
 		}
