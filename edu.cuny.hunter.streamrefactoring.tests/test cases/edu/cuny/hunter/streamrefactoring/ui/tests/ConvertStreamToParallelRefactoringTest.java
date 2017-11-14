@@ -336,17 +336,10 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * @throws Exception
 	 */
 	public void testArraysAsList() throws Exception {
-		boolean passed = false;
-		try {
 			helper(new StreamAnalysisExpectedResult("Arrays.asList().stream()",
-					Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false,
-					false, false, null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
+				false, null, null, null, RefactoringStatus.ERROR,
 					Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
-		} catch (NullPointerException e) {
-			logger.throwing(this.getClass().getName(), "testArraysAsList", e);
-			passed = true;
-		}
-		assertTrue("Should fail per #34", passed);
 	}
 
 	/**
