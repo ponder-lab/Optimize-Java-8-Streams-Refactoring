@@ -229,7 +229,7 @@ public class Stream {
 			LOGGER.log(Level.WARNING, "Require terminal operations: " + streamCreation, e);
 			addStatusEntry(PreconditionFailure.NO_TERMINAL_OPERATIONS,
 					"Require terminal operations: " + streamCreation + ".");
-		} catch (InstanceKeyNotFoundException e) {
+		} catch (InstanceKeyNotFoundException | NoEnclosingMethodNodeFoundException e) {
 			LOGGER.log(Level.WARNING, "Encountered probable unhandled case while processing: " + streamCreation, e);
 			addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, "Encountered probably unhandled case.");
 		}
@@ -635,7 +635,7 @@ public class Stream {
 	 *             If the call graph doesn't contain a node for the enclosing
 	 *             method.
 	 */
-	private CGNode getEnclosingMethodNode() throws IOException, CoreException, NoEnclosingMethodNodeFoundException {
+	protected CGNode getEnclosingMethodNode() throws IOException, CoreException, NoEnclosingMethodNodeFoundException {
 		MethodReference methodReference = this.getEnclosingMethodReference();
 		Set<CGNode> nodes = this.getAnalysisEngine().getCallGraph().getNodes(methodReference);
 
