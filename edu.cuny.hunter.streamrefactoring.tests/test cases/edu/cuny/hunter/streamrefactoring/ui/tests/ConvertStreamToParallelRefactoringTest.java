@@ -65,9 +65,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 */
 	private static final String RESOURCE_PATH = "resources";
 
-	private static final Class<ConvertStreamToParallelRefactoringTest> clazz = ConvertStreamToParallelRefactoringTest.class;
+	private static final Class<ConvertStreamToParallelRefactoringTest> CLAZZ = ConvertStreamToParallelRefactoringTest.class;
 
-	private static final Logger logger = Logger.getLogger(clazz.getName());
+	private static final Logger LOGGER = Logger.getLogger(CLAZZ.getName());
 
 	private static final String REFACTORING_PATH = "ConvertStreamToParallel/";
 
@@ -76,7 +76,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	private static final int RETRY_DELAY = 1000;
 
 	static {
-		logger.setLevel(Level.FINER);
+		LOGGER.setLevel(Level.FINER);
 	}
 
 	private static boolean compiles(String source) throws IOException {
@@ -105,9 +105,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 			if (exists) {
 				if (i == MAX_RETRY - 1)
-					logger.warning("Compilation unit: " + compilationUnit.getElementName() + " exists.");
+					LOGGER.warning("Compilation unit: " + compilationUnit.getElementName() + " exists.");
 				else {
-					logger.info("Sleeping.");
+					LOGGER.info("Sleeping.");
 					Thread.sleep(RETRY_DELAY * i);
 				}
 
@@ -125,7 +125,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public static Test suite() {
-		return setUpTest(new TestSuite(clazz));
+		return setUpTest(new TestSuite(CLAZZ));
 	}
 
 	private static void tryDeletingAllJavaClassFiles(IPackageFragment pack) throws JavaModelException {
@@ -232,7 +232,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	protected Logger getLogger() {
-		return logger;
+		return LOGGER;
 	}
 
 	@Override
@@ -336,10 +336,10 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * @throws Exception
 	 */
 	public void testArraysAsList() throws Exception {
-			helper(new StreamAnalysisExpectedResult("Arrays.asList().stream()",
+		helper(new StreamAnalysisExpectedResult("Arrays.asList().stream()",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
 				false, null, null, null, RefactoringStatus.ERROR,
-					Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
+				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
 	}
 
 	/**
