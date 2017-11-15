@@ -42,10 +42,20 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 		ITypeBinding declaringClass = methodBinding.getDeclaringClass();
 		boolean declaringClassImplementsBaseStream = implementsBaseStream(declaringClass);
 
+		// Try to limit the analyzed methods to those of the API. In other
+		// words, don't process methods returning streams that are declared in
+		// the client application. TODO: This could be problematic if the API
+		// implementation treats itself as a "client."
+		String[] declaringClassPackageNameComponents = declaringClass.getPackage().getNameComponents();
+		boolean isFromAPI = declaringClassPackageNameComponents.length > 0
+				&& declaringClassPackageNameComponents[0].equals("java");
+
+		boolean instanceMethod = !JdtFlags.isStatic(methodBinding);
+		boolean intermediateOperation = instanceMethod && declaringClassImplementsBaseStream;
+
 		// java.util.stream.BaseStream is the top-level interface for all
 		// streams. Make sure we don't include intermediate operations.
-		if (returnTypeImplementsBaseStream
-				&& !(!JdtFlags.isStatic(methodBinding) && declaringClassImplementsBaseStream)) {
+		if (returnTypeImplementsBaseStream && !intermediateOperation && isFromAPI) {
 			Stream stream = null;
 			try {
 				stream = new Stream(node);

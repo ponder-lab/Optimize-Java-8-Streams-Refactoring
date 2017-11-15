@@ -95,6 +95,12 @@ class OrderingInference {
 				boolean ordered;
 
 				Spliterator<?> spliterator = getSpliterator(instance, calledMethodName);
+
+				if (spliterator == null) {
+					LOGGER.warning("Can't extract spliterator. Defaulting to: " + Ordering.ORDERED);
+					return Ordering.ORDERED;
+				}
+
 				ordered = spliterator.hasCharacteristics(Spliterator.ORDERED);
 				// TODO: Can we use something other than reflection,
 				// like static analysis? Also, it may be an abstract
@@ -142,7 +148,12 @@ class OrderingInference {
 		Spliterator<?> spliterator = null;
 
 		if (instance instanceof Iterable) {
-			spliterator = ((Iterable<?>) instance).spliterator();
+			try {
+				spliterator = ((Iterable<?>) instance).spliterator();
+			} catch (NullPointerException e) {
+				LOGGER.log(Level.WARNING, "Possible trouble creating instance (most likely private type).", e);
+				return null;
+			}
 		} else {
 			// try to call the stream() method to get the spliterator.
 			BaseStream<?, ?> baseStream = null;
