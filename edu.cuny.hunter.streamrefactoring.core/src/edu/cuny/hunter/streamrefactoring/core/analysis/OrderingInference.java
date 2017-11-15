@@ -5,6 +5,7 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.Spliterator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.BaseStream;
 
@@ -17,13 +18,15 @@ import com.ibm.wala.analysis.typeInference.TypeAbstraction;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.types.TypeReference;
 
+import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
+
 class OrderingInference {
 
 	private Objenesis objenesis = new ObjenesisStd();
 
 	private IClassHierarchy classHierarchy;
 
-	private static final Logger LOGGER = Logger.getGlobal();
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	public OrderingInference(IClassHierarchy classHierarchy) {
 		this.classHierarchy = classHierarchy;
@@ -48,7 +51,7 @@ class OrderingInference {
 					ret = ordering;
 				else if (ret != ordering) {
 					throw new InconsistentPossibleOrderingException(
-							"Types have inconsistent orderings, defaulting to ordered: " + possibleTypes);
+							"Types have inconsistent orderings: " + possibleTypes);
 				}
 			}
 		}
@@ -113,8 +116,8 @@ class OrderingInference {
 			// this information? This could be a problem in third-party
 			// container libraries. Also, what if we don't have the class in the
 			// classpath?
-			e.printStackTrace();
-			throw new RuntimeException("Can't find: " + className, e);
+			LOGGER.log(Level.WARNING, "Can't find: " + className + ". Falling back to: " + Ordering.ORDERED, e);
+			return Ordering.ORDERED;
 		}
 	}
 

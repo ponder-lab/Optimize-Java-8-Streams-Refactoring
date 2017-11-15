@@ -18,7 +18,11 @@ import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 
+import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
+
 public class InstructionBasedSolver extends TrackingUniqueSolver {
+	
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private SSAInvokeInstruction instruction;
 
@@ -38,7 +42,7 @@ public class InstructionBasedSolver extends TrackingUniqueSolver {
 		Collection<InstanceKey> trackedInstancesByType = this.computeTrackedInstancesByType();
 
 		for (InstanceKey instanceKey : trackedInstancesByType) {
-			Logger.getGlobal().info("Examining instance: " + instanceKey);
+			LOGGER.info("Examining instance: " + instanceKey);
 			if (Util.instanceKeyCorrespondsWithInstantiationInstruction(instanceKey, this.getInstruction(),
 					this.getCallGraph()))
 				ret.add(instanceKey);
@@ -47,7 +51,7 @@ public class InstructionBasedSolver extends TrackingUniqueSolver {
 		if (ret.size() != 1)
 			throw new IllegalStateException("Tracking more or less than one instance: " + ret.size());
 
-		Logger.getGlobal().info("Tracking: " + ret);
+		LOGGER.info("Tracking: " + ret);
 		this.setTrackedInstances(ret);
 		return ret;
 	}
