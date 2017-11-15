@@ -427,14 +427,14 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				false, null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
 	}
 
+	/**
+	 * This should change once #103 is fixed.
+	 */
 	public void testNonInternalAPI() throws Exception {
 		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()",
 				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, false,
 				false, null, null, null, RefactoringStatus.ERROR,
-				EnumSet.of(PreconditionFailure.NO_TERMINAL_OPERATIONS/*
-																		 * Per #103, should be:
-																		 * PreconditionFailure.NON_INTERNAL_API
-																		 */)));
+				EnumSet.of(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
 	}
 
 	public void testCollectionFromParameter() throws Exception {
