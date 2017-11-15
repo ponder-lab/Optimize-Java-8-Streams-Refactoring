@@ -2,8 +2,10 @@ package p;
 
 import java.util.stream.Stream;
 
-class A {
+public class A {
+	
 	void m() {
-		Stream.generate(() -> 1).count();		
+		Stream.of("a")
+		.count();
 	}
 }

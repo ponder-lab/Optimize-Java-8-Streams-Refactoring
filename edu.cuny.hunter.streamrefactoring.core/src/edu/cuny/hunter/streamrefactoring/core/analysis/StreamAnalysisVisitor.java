@@ -18,11 +18,13 @@ import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.util.CancelException;
 
+import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
+
 @SuppressWarnings("restriction")
 public class StreamAnalysisVisitor extends ASTVisitor {
 	private Set<Stream> streamSet = new HashSet<>();
 
-	private static final Logger logger = Logger.getLogger("edu.cuny.hunter.streamrefactoring");
+	private static final Logger logger = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	public StreamAnalysisVisitor() {
 	}
