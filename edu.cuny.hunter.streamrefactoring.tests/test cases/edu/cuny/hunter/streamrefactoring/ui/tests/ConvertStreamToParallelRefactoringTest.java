@@ -61,13 +61,14 @@ import junit.framework.TestSuite;
 public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	/**
-	 * The name of the directory containing resources under the project directory.
+	 * The name of the directory containing resources under the project
+	 * directory.
 	 */
 	private static final String RESOURCE_PATH = "resources";
 
-	private static final Class<ConvertStreamToParallelRefactoringTest> clazz = ConvertStreamToParallelRefactoringTest.class;
+	private static final Class<ConvertStreamToParallelRefactoringTest> CLAZZ = ConvertStreamToParallelRefactoringTest.class;
 
-	private static final Logger logger = Logger.getLogger(clazz.getName());
+	private static final Logger LOGGER = Logger.getLogger(CLAZZ.getName());
 
 	private static final String REFACTORING_PATH = "ConvertStreamToParallel/";
 
@@ -76,7 +77,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	private static final int RETRY_DELAY = 1000;
 
 	static {
-		logger.setLevel(Level.FINER);
+		LOGGER.setLevel(Level.FINER);
 	}
 
 	private static boolean compiles(String source) throws IOException {
@@ -105,9 +106,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 			if (exists) {
 				if (i == MAX_RETRY - 1)
-					logger.warning("Compilation unit: " + compilationUnit.getElementName() + " exists.");
+					LOGGER.warning("Compilation unit: " + compilationUnit.getElementName() + " exists.");
 				else {
-					logger.info("Sleeping.");
+					LOGGER.info("Sleeping.");
 					Thread.sleep(RETRY_DELAY * i);
 				}
 
@@ -125,7 +126,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public static Test suite() {
-		return setUpTest(new TestSuite(clazz));
+		return setUpTest(new TestSuite(CLAZZ));
 	}
 
 	private static void tryDeletingAllJavaClassFiles(IPackageFragment pack) throws JavaModelException {
@@ -220,9 +221,10 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 *
 	 * @see
 	 * org.eclipse.jdt.ui.tests.refactoring.RefactoringTest#getFileContents(java
-	 * .lang.String) Had to override this method because, since this plug-in is a
-	 * fragment (at least I think that this is the reason), it doesn't have an
-	 * activator and the bundle is resolving to the eclipse refactoring test bundle.
+	 * .lang.String) Had to override this method because, since this plug-in is
+	 * a fragment (at least I think that this is the reason), it doesn't have an
+	 * activator and the bundle is resolving to the eclipse refactoring test
+	 * bundle.
 	 */
 	@Override
 	public String getFileContents(String fileName) throws IOException {
@@ -232,7 +234,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	protected Logger getLogger() {
-		return logger;
+		return LOGGER;
 	}
 
 	@Override
@@ -346,17 +348,10 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * @throws Exception
 	 */
 	public void testArraysAsList() throws Exception {
-		boolean passed = false;
-		try {
-			helper(new StreamAnalysisExpectedResult("Arrays.asList().stream()",
-					Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false,
-					false, false, null, null, null, RefactoringStatus.ERROR,
-					Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
-		} catch (NullPointerException e) {
-			logger.throwing(this.getClass().getName(), "testArraysAsList", e);
-			passed = true;
-		}
-		assertTrue("Should fail per #34", passed);
+		helper(new StreamAnalysisExpectedResult("Arrays.asList().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
+				false, null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
 	}
 
 	/**
@@ -442,6 +437,16 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()",
 				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, true,
 				false, null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
+	}
+
+	/**
+	 * This should change once #103 is fixed.
+	 */
+	public void testNonInternalAPI() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()",
+				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, false,
+				false, null, null, null, RefactoringStatus.ERROR,
+				EnumSet.of(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
 	}
 
 	public void testCollectionFromParameter() throws Exception {
