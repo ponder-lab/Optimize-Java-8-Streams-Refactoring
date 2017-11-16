@@ -648,6 +648,18 @@ public class Stream {
 
 	}
 
+	/**
+	 * Returns true iff all of the predecessors of all of the given {@link CGNode}s
+	 * in the {@link CallGraph} are {@link FakeRootMethod}s.
+	 * 
+	 * @param nodes
+	 *            The nodes whose predecessors to consider.
+	 * @param callGraph
+	 *            The {@link CallGraph} to search.
+	 * @return True iff all of the predecessors of all of the given {@link CGNode}s
+	 *         in the {@link CallGraph} are {@link FakeRootMethod}s.
+	 * @apiNote The may be an issue here related to #106.
+	 */
 	private static boolean allFake(Set<CGNode> nodes, CallGraph callGraph) {
 		// for each node.
 		for (CGNode cgNode : nodes) {
