@@ -25,6 +25,14 @@ public final class Util {
 
 	private Util() {
 	}
+	
+	public static String getOsName() {	
+		return System.getProperty("os.name");
+	}
+
+	public static boolean isWindows() {
+		return getOsName().startsWith("Windows");
+	}
 
 	/**
 	 * Enhance an {@link AnalysisScope} to include in a particular loader,
