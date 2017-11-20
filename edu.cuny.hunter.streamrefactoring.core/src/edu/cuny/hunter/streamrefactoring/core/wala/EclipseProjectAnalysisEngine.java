@@ -74,15 +74,15 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 			File installLocation = defaultVMInstall.getInstallLocation();
 
 			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(
-					installLocation.toPath().resolve("jre").resolve("lib").resolve("resources.jar").toFile()));
+					installLocation.toPath().resolve("lib").resolve("resources.jar").toFile()));
 			scope.addToScope(ClassLoaderReference.Primordial,
-					new JarFile(installLocation.toPath().resolve("jre").resolve("lib").resolve("rt.jar").toFile()));
+					new JarFile(installLocation.toPath().resolve("lib").resolve("rt.jar").toFile()));
 			scope.addToScope(ClassLoaderReference.Primordial,
-					new JarFile(installLocation.toPath().resolve("jre").resolve("lib").resolve("jsse.jar").toFile()));
+					new JarFile(installLocation.toPath().resolve("lib").resolve("jsse.jar").toFile()));
 			scope.addToScope(ClassLoaderReference.Primordial,
-					new JarFile(installLocation.toPath().resolve("jre").resolve("lib").resolve("jce.jar").toFile()));
+					new JarFile(installLocation.toPath().resolve("lib").resolve("jce.jar").toFile()));
 			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(
-					installLocation.toPath().resolve("jre").resolve("lib").resolve("charsets.jar").toFile()));
+					installLocation.toPath().resolve("lib").resolve("charsets.jar").toFile()));
 		}
 
 		if (getExclusionsFile() != null) {
