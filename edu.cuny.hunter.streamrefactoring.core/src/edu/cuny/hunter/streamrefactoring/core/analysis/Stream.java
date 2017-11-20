@@ -53,7 +53,6 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
-import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
 import com.ibm.wala.ipa.callgraph.impl.FakeRootMethod;
 import com.ibm.wala.ipa.callgraph.impl.FakeWorldClinitMethod;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
@@ -171,7 +170,7 @@ public class Stream {
 	private PreconditionSuccess passingPrecondition;
 
 	public Stream(MethodInvocation streamCreation) throws ClassHierarchyException, IOException, CoreException,
-			InvalidClassFileException, CallGraphBuilderCancelException, CancelException {
+			InvalidClassFileException, CallGraphBuilderCancelException, CancelException, noEntryPointException {
 		this.creation = streamCreation;
 		this.enclosingTypeDeclaration = (TypeDeclaration) ASTNodes.getParent(this.getCreation(),
 				ASTNode.TYPE_DECLARATION);
@@ -576,7 +575,7 @@ public class Stream {
 	private void inferInitialOrdering()
 			throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
 			InconsistentPossibleOrderingException, NoniterableException, NoninstantiableException,
-			CannotExtractSpliteratorException, CallGraphBuilderCancelException, CancelException {
+			CannotExtractSpliteratorException, CallGraphBuilderCancelException, CancelException, noEntryPointException {
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
@@ -772,14 +771,13 @@ public class Stream {
 	protected OrderingInference getOrderingInference() {
 		return orderingInference;
 	}
-
+	
 	protected void buildCallGraph()
-			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
+			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException, noEntryPointException {
 		if (!this.isCallGraphBuilt()) {
 			// FIXME: Do we want a different entry point?
 			// TODO: Do we need to build the call graph for each stream?
-			DefaultEntrypoint entryPoint = new DefaultEntrypoint(getEnclosingMethodReference(), getClassHierarchy());
-			Set<Entrypoint> entryPoints = Collections.singleton(entryPoint);
+			Set<Entrypoint> entryPoints = Util.findEntryPoints(getAnalysisEngine().getClassHierarchy());
 
 			// set options.
 			AnalysisOptions options = getAnalysisEngine().getDefaultOptions(entryPoints);
