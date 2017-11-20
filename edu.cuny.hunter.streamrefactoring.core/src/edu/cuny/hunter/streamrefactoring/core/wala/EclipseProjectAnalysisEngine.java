@@ -103,7 +103,7 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 
 	void addToScopeNotWindows(String fileName, java.nio.file.Path installPath) throws IOException {
 		scope.addToScope(ClassLoaderReference.Primordial,
-				new JarFile(installPath.resolve("jre").resolve("lib").resolve("jce.jar").toFile()));
+				new JarFile(installPath.resolve("jre").resolve("lib").resolve(fileName).toFile()));
 	}
 
 	@Override
