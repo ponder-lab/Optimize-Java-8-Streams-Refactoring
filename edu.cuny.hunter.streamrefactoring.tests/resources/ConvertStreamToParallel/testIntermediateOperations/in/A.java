@@ -4,6 +4,7 @@ import java.util.BitSet;
 import java.util.stream.IntStream;
 
 class A {
+	@EntryPoint
 	void m() {
 		BitSet set = new BitSet();
 		IntStream stream2 = set.stream();

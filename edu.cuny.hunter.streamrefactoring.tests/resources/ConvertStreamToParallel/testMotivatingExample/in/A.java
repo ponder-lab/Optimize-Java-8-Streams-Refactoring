@@ -35,6 +35,7 @@ class Widget {
 }
 
 class A {
+	@EntryPoint
 	void m() {
 		// an "unordered" collection of widgets.
 		Collection<Widget> unorderedWidgets = new HashSet<>();
