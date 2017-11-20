@@ -60,7 +60,7 @@ public class StreamAnalysisVisitor extends ASTVisitor {
 			try {
 				stream = new Stream(node);
 			} catch (ClassHierarchyException | IOException | CoreException | InvalidClassFileException
-					| CancelException e) {
+					| CancelException | noEntryPointException e) {
 				logger.log(Level.SEVERE, "Encountered exception while processing: " + node, e);
 				throw new RuntimeException(e);
 			}

@@ -3,7 +3,9 @@
  */
 package edu.cuny.hunter.streamrefactoring.core.utils;
 
+import java.util.Iterator;
 import java.util.Optional;
+import java.util.Set;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -24,7 +26,18 @@ import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.participants.ProcessorBasedRefactoring;
 import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
 
+import com.ibm.wala.classLoader.IClass;
+import com.ibm.wala.classLoader.ShrikeCTMethod;
+import com.ibm.wala.ipa.callgraph.Entrypoint;
+import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
+import com.ibm.wala.ipa.cha.IClassHierarchy;
+import com.ibm.wala.types.TypeName;
+import com.ibm.wala.types.annotations.Annotation;
+import com.ibm.wala.util.collections.HashSetFactory;
+
+import edu.cuny.hunter.streamrefactoring.core.analysis.noEntryPointException;
 import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
+import edu.cuny.hunter.streamrefactoring.core.wala.AnalysisUtils;
 
 /**
  * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi
@@ -148,4 +161,51 @@ public final class Util {
 		sb.append(")");
 		return sb.toString();
 	}
+	
+	/**
+	 * check whether the annotation is "EntryPoint"
+	 */
+	private static boolean isEntryPointClass(TypeName typeName) {
+		return typeName.getClassName().toString().equals("EntryPoint");
+	}
+
+	/**
+	 * Find all annotations in test cases
+	 * and check whether they are "entry point".
+	 * If yes, call DefaultEntrypoint to get entry point, 
+	 * then, add it into the result set.
+	 */
+	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) throws noEntryPointException {
+		final Set<Entrypoint> result = HashSetFactory.make();
+		Iterator<IClass> classIterator = classHierarchy.iterator();
+		while (classIterator.hasNext()) {
+			IClass klass = classIterator.next();
+			if (!AnalysisUtils.isJDKClass(klass)) {
+
+				// iterate over all declared methods
+				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
+					try {
+						if (!(method instanceof ShrikeCTMethod)) {
+							throw new RuntimeException("@EntryPoint only works for byte code.");
+						}
+						// if method has an annotation
+						for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations(true)) {
+							if (isEntryPointClass(annotation.getType().getName())) {
+								result.add(new DefaultEntrypoint(method, classHierarchy));
+								break;
+							}
+						}
+					} catch (Exception e) {
+						throw new RuntimeException(e);
+					}
+				}
+			}
+		}
+		
+		//if there is no annotation "EntryPoint", then, throw an exception.
+		if (result.isEmpty())
+			throw new noEntryPointException("Need entry point.");
+		return result;
+	}
+	
 }
