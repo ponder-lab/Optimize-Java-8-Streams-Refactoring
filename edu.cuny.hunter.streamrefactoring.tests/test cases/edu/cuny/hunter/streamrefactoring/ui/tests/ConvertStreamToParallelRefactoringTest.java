@@ -90,9 +90,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		// Compile source file.
 		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
 
-		boolean compileSuccess = false;
-
-		compileSuccess = compiler.run(null, null, null, "-classpath",
+		boolean compileSuccess = compiler.run(null, null, null, "-classpath",
 				System.getProperty("user.dir") + File.separator + "resources" + File.separator
 						+ "ConvertStreamToParallel" + File.separator + "lib" + File.separator
 						+ "stream-refactoring-annotations.jar",
@@ -251,7 +249,6 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 */
 	private void helper(StreamAnalysisExpectedResult... expectedResults) throws Exception {
 		// compute the actual results.
-
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A", this.getName());
 
 		ASTParser parser = ASTParser.newParser(AST.JLS8);
