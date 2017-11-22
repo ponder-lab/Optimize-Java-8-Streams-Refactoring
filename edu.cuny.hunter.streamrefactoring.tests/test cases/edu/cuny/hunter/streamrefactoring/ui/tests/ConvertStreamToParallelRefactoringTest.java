@@ -90,17 +90,16 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 		// Compile source file.
 		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-		
+
 		boolean compileSuccess = false;
 		if (Util.isWindows()) {
-			compileSuccess = compiler.run(null, null, null, "-classpath", 
-					System.getProperty("user.dir") + "\\resources\\ConvertStreamToParallel\\" +
-							projectName + "\\lib\\stream-refactoring-annotations.jar", 
+			compileSuccess = compiler.run(null, null, null, "-classpath",
+					System.getProperty("user.dir") + "\\resources\\ConvertStreamToParallel\\" + projectName
+							+ "\\lib\\stream-refactoring-annotations.jar",
 					sourceFile.getPath()) == 0;
 		} else {
-			compileSuccess = compiler.run(null, null, null, "-classpath", 
-					System.getProperty("user.dir") + "/resources/ConvertStreamToParallel/"
-					+ projectName + "/lib/stream-refactoring-annotations.jar", 
+			compileSuccess = compiler.run(null, null, null, "-classpath", System.getProperty("user.dir")
+					+ "/resources/ConvertStreamToParallel/" + projectName + "/lib/stream-refactoring-annotations.jar",
 					sourceFile.getPath()) == 0;
 		}
 

@@ -35,7 +35,6 @@ import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.annotations.Annotation;
 import com.ibm.wala.util.collections.HashSetFactory;
 
-import edu.cuny.hunter.streamrefactoring.core.analysis.noEntryPointException;
 import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
 import edu.cuny.hunter.streamrefactoring.core.wala.AnalysisUtils;
 
@@ -175,7 +174,7 @@ public final class Util {
 	 * If yes, call DefaultEntrypoint to get entry point, 
 	 * then, add it into the result set.
 	 */
-	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) throws noEntryPointException {
+	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) {
 		final Set<Entrypoint> result = HashSetFactory.make();
 		Iterator<IClass> classIterator = classHierarchy.iterator();
 		while (classIterator.hasNext()) {
@@ -202,9 +201,6 @@ public final class Util {
 			}
 		}
 		
-		//if there is no annotation "EntryPoint", then, throw an exception.
-		if (result.isEmpty())
-			throw new noEntryPointException("Need entry point.");
 		return result;
 	}
 	

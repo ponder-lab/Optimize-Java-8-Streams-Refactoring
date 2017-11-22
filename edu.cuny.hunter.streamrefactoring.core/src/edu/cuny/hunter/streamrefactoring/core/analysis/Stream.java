@@ -170,7 +170,7 @@ public class Stream {
 	private PreconditionSuccess passingPrecondition;
 
 	public Stream(MethodInvocation streamCreation) throws ClassHierarchyException, IOException, CoreException,
-			InvalidClassFileException, CallGraphBuilderCancelException, CancelException, noEntryPointException {
+			InvalidClassFileException, CallGraphBuilderCancelException, CancelException {
 		this.creation = streamCreation;
 		this.enclosingTypeDeclaration = (TypeDeclaration) ASTNodes.getParent(this.getCreation(),
 				ASTNode.TYPE_DECLARATION);
@@ -575,7 +575,7 @@ public class Stream {
 	private void inferInitialOrdering()
 			throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
 			InconsistentPossibleOrderingException, NoniterableException, NoninstantiableException,
-			CannotExtractSpliteratorException, CallGraphBuilderCancelException, CancelException, noEntryPointException {
+			CannotExtractSpliteratorException, CallGraphBuilderCancelException, CancelException {
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
@@ -773,7 +773,7 @@ public class Stream {
 	}
 	
 	protected void buildCallGraph()
-			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException, noEntryPointException {
+			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
 		if (!this.isCallGraphBuilt()) {
 			// FIXME: Do we want a different entry point?
 			// TODO: Do we need to build the call graph for each stream?
