@@ -251,7 +251,6 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 */
 	private void helper(StreamAnalysisExpectedResult... expectedResults) throws Exception {
 		// compute the actual results.
-
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A", this.getName());
 
 		ASTParser parser = ASTParser.newParser(AST.JLS8);
