@@ -772,8 +772,8 @@ public class Stream {
 		return orderingInference;
 	}
 
-	protected void buildCallGraph()
-			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
+	protected void buildCallGraph() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
+			InvalidClassFileException {
 		if (!this.isCallGraphBuilt()) {
 			// FIXME: Do we want a different entry point?
 			// TODO: Do we need to build the call graph for each stream?

@@ -421,8 +421,9 @@ public final class Util {
 	 * Find all annotations in test cases and check whether they are "entry point".
 	 * If yes, call DefaultEntrypoint to get entry point, then, add it into the
 	 * result set.
+	 * @throws InvalidClassFileException 
 	 */
-	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) {
+	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) throws InvalidClassFileException  {
 		final Set<Entrypoint> result = new HashSet<>();
 		Iterator<IClass> classIterator = classHierarchy.iterator();
 		while (classIterator.hasNext()) {
@@ -432,21 +433,17 @@ public final class Util {
 				// iterate over all declared methods
 				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
 
-						if (!(method instanceof ShrikeCTMethod)) {
-							throw new IllegalArgumentException("@EntryPoint only works for byte code.");
-						}
 						// if method has an annotation
-						try {
-							for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations(true)) {
-								if (isEntryPointClass(annotation.getType().getName())) {
-									result.add(new DefaultEntrypoint(method, classHierarchy));
-									break;
-								}
-							}
-						} catch (InvalidClassFileException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
+					if (!(method instanceof ShrikeCTMethod)) {
+						throw new IllegalArgumentException("@EntryPoint only works for byte code.");
+					}
+
+					for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations(true)) {
+						if (isEntryPointClass(annotation.getType().getName())) {
+							result.add(new DefaultEntrypoint(method, classHierarchy));
+							break;
 						}
+					}
 
 				}
 			}
