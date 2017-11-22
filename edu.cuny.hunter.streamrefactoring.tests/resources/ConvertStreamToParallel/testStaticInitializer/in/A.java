@@ -10,4 +10,9 @@ class A {
 		Stream<Object> stream = new HashSet<>().parallelStream();
 		stream.distinct().count();
 	}
+	
+	@EntryPoint
+	public static void main(String[] args) {
+		new A();
+	}
 }

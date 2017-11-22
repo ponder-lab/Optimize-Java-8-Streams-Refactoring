@@ -7,12 +7,11 @@ import java.util.stream.*;
 import edu.cuny.hunter.streamrefactoring.annotations.*;
 
 class A {
-
+	@EntryPoint
 	void n() {
 		m(new HashSet<Object>());
 	}
 
-	@EntryPoint
 	void m(Collection<Object> h) {
 		Stream<Object> stream = h.parallelStream();
 		stream.distinct().count();

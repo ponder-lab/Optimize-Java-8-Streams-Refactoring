@@ -771,7 +771,7 @@ public class Stream {
 	protected OrderingInference getOrderingInference() {
 		return orderingInference;
 	}
-	
+
 	protected void buildCallGraph()
 			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
 		if (!this.isCallGraphBuilt()) {
