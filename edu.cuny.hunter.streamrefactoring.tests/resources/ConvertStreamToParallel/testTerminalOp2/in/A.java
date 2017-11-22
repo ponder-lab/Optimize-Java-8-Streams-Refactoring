@@ -3,6 +3,8 @@ package p;
 import java.util.Collection;
 import java.util.HashSet;
 
+import edu.cuny.hunter.streamrefactoring.annotations.*;
+
 public class A {
 	@EntryPoint
 	void m() {

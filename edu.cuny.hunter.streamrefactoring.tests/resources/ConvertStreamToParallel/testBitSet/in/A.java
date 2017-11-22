@@ -3,6 +3,8 @@ package p;
 import java.util.BitSet;
 import java.util.OptionalDouble;
 
+import edu.cuny.hunter.streamrefactoring.annotations.*;
+
 class A {
 	@EntryPoint
 	void m() {
