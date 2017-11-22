@@ -470,7 +470,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 */
 	public void testCollectionFromParameter3() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.ORDERED), false, false, false, null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null, RefactoringStatus.ERROR,
 				EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
 	}
 
