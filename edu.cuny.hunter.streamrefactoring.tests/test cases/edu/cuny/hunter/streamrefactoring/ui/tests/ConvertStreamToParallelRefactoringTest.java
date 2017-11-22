@@ -191,7 +191,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * (org.eclipse.jdt.core.IPackageFragment, java.lang.String)
 	 */
 	@Override
-	protected ICompilationUnit createCUfromTestFile(IPackageFragment pack, String cuName, String projectName) throws Exception {
+	protected ICompilationUnit createCUfromTestFile(IPackageFragment pack, String cuName) throws Exception {
 		ICompilationUnit unit = super.createCUfromTestFile(pack, cuName);
 
 		if (!unit.isStructureKnown())
