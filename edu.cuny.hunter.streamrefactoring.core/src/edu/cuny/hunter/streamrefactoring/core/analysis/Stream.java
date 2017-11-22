@@ -777,7 +777,8 @@ public class Stream {
 		if (!this.isCallGraphBuilt()) {
 			// FIXME: Do we want a different entry point?
 			// TODO: Do we need to build the call graph for each stream?
-			Set<Entrypoint> entryPoints = Util.findEntryPoints(getAnalysisEngine().getClassHierarchy());
+			Set<Entrypoint> entryPoints = edu.cuny.hunter.streamrefactoring.core.analysis.Util
+					.findEntryPoints(getAnalysisEngine().getClassHierarchy());
 
 			// set options.
 			AnalysisOptions options = getAnalysisEngine().getDefaultOptions(entryPoints);

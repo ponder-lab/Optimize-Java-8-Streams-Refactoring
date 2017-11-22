@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -27,9 +28,12 @@ import com.ibm.wala.cast.java.translator.jdt.JDTIdentityMapper;
 import com.ibm.wala.classLoader.IBytecodeMethod;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
+import com.ibm.wala.classLoader.ShrikeCTMethod;
 import com.ibm.wala.classLoader.IMethod.SourcePosition;
 import com.ibm.wala.classLoader.SyntheticClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ipa.callgraph.Entrypoint;
+import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
 import com.ibm.wala.ipa.callgraph.propagation.HeapModel;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
@@ -45,15 +49,18 @@ import com.ibm.wala.ssa.Value;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
+import com.ibm.wala.types.annotations.Annotation;
 import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.util.strings.Atom;
 import com.ibm.wala.util.strings.StringStuff;
 
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
+import edu.cuny.hunter.streamrefactoring.core.wala.AnalysisUtils;
 
 public final class Util {
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
+	private static final String ENTRYPOINT = "edu.cuny.hunter.streamrefactoring.annotations.EntryPoint";
 
 	private static final class CorrespondingASTVisitor extends ASTVisitor {
 		private CompilationUnit unit;
@@ -401,5 +408,50 @@ public final class Util {
 
 	public static JDTIdentityMapper getJDTIdentifyMapper(ASTNode node) {
 		return new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE, node.getAST());
+	}
+	
+	/**
+	 * check whether the annotation is "EntryPoint"
+	 */
+	private static boolean isEntryPointClass(TypeName typeName) {
+		return (AnalysisUtils.walaTypeNameToJavaName(typeName).equals(ENTRYPOINT));
+	}
+
+	/**
+	 * Find all annotations in test cases and check whether they are "entry point".
+	 * If yes, call DefaultEntrypoint to get entry point, then, add it into the
+	 * result set.
+	 */
+	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) {
+		final Set<Entrypoint> result = new HashSet<>();
+		Iterator<IClass> classIterator = classHierarchy.iterator();
+		while (classIterator.hasNext()) {
+			IClass klass = classIterator.next();
+			if (!AnalysisUtils.isJDKClass(klass)) {
+
+				// iterate over all declared methods
+				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
+
+						if (!(method instanceof ShrikeCTMethod)) {
+							throw new IllegalArgumentException("@EntryPoint only works for byte code.");
+						}
+						// if method has an annotation
+						try {
+							for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations(true)) {
+								if (isEntryPointClass(annotation.getType().getName())) {
+									result.add(new DefaultEntrypoint(method, classHierarchy));
+									break;
+								}
+							}
+						} catch (InvalidClassFileException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+
+				}
+			}
+		}
+		
+		return result;
 	}
 }
