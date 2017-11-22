@@ -165,7 +165,7 @@ public final class Util {
 	 * check whether the annotation is "EntryPoint"
 	 */
 	private static boolean isEntryPointClass(TypeName typeName) {
-		return typeName.getClassName().toString().equals("EntryPoint");
+		return (AnalysisUtils.walaTypeNameToJavaName(typeName).equals("edu.cuny.hunter.streamrefactoring.annotations.EntryPoint"));
 	}
 
 	/**
