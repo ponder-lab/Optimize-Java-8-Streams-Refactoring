@@ -53,7 +53,6 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
-import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
 import com.ibm.wala.ipa.callgraph.impl.FakeRootMethod;
 import com.ibm.wala.ipa.callgraph.impl.FakeWorldClinitMethod;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
@@ -773,13 +772,13 @@ public class Stream {
 		return orderingInference;
 	}
 
-	protected void buildCallGraph()
-			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
+	protected void buildCallGraph() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
+			InvalidClassFileException {
 		if (!this.isCallGraphBuilt()) {
 			// FIXME: Do we want a different entry point?
 			// TODO: Do we need to build the call graph for each stream?
-			DefaultEntrypoint entryPoint = new DefaultEntrypoint(getEnclosingMethodReference(), getClassHierarchy());
-			Set<Entrypoint> entryPoints = Collections.singleton(entryPoint);
+			Set<Entrypoint> entryPoints = edu.cuny.hunter.streamrefactoring.core.analysis.Util
+					.findEntryPoints(getAnalysisEngine().getClassHierarchy());
 
 			// set options.
 			AnalysisOptions options = getAnalysisEngine().getDefaultOptions(entryPoints);

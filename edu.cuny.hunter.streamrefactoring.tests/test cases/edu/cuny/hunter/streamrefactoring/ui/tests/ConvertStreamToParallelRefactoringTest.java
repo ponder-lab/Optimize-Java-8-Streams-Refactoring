@@ -18,9 +18,6 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import java.util.stream.DoubleStream;
-import java.util.stream.IntStream;
-import java.util.stream.LongStream;
 
 import javax.tools.JavaCompiler;
 import javax.tools.ToolProvider;
@@ -92,7 +89,12 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 		// Compile source file.
 		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-		boolean compileSuccess = compiler.run(null, null, null, sourceFile.getPath()) == 0;
+
+		boolean compileSuccess = compiler.run(null, null, null, "-classpath",
+				System.getProperty("user.dir") + File.separator + "resources" + File.separator
+						+ "ConvertStreamToParallel" + File.separator + "lib" + File.separator
+						+ "stream-refactoring-annotations.jar",
+				sourceFile.getPath()) == 0;
 
 		sourceFile.delete();
 		return compileSuccess;
@@ -197,7 +199,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		Path directory = Paths.get(unit.getParent().getParent().getParent().getResource().getLocation().toString());
 
 		// compile it to make and store the class file.
-		compiles(unit.getSource(), directory);
+		assertTrue("Input should compile", compiles(unit.getSource(), directory));
 
 		return unit;
 	}
@@ -248,7 +250,6 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	private void helper(StreamAnalysisExpectedResult... expectedResults) throws Exception {
 		// compute the actual results.
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
-		assertTrue("Input should compile.", compiles(cu.getSource()));
 
 		ASTParser parser = ASTParser.newParser(AST.JLS8);
 		parser.setResolveBindings(true);
@@ -462,12 +463,12 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	/**
-	 * Test for #98. Ordering.ORDERED because we are falling back.
+	 * Test for #98.
 	 */
 	public void testCollectionFromParameter3() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.ORDERED), false, false, false, null, null, null, RefactoringStatus.ERROR,
-				EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
+				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null, RefactoringStatus.ERROR,
+				EnumSet.of(PreconditionFailure.UNORDERED)));
 	}
 
 	/**

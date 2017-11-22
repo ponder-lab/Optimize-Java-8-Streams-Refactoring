@@ -2,8 +2,10 @@ package p;
 
 import java.util.stream.Stream;
 
-public class A {
+import edu.cuny.hunter.streamrefactoring.annotations.*;
 
+public class A {
+	@EntryPoint
 	void m() {
 		Stream.of("a").count();
 	}

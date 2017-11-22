@@ -10,6 +10,8 @@ import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import edu.cuny.hunter.streamrefactoring.annotations.*;
+
 class Widget {
 	public enum Color {
 		RED,
@@ -35,6 +37,7 @@ class Widget {
 }
 
 class A {
+	@EntryPoint
 	void m() {
 		// an "unordered" collection of widgets.
 		Collection<Widget> unorderedWidgets = new HashSet<>();

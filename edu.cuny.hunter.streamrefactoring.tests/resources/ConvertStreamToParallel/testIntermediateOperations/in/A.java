@@ -3,7 +3,10 @@ package p;
 import java.util.BitSet;
 import java.util.stream.IntStream;
 
+import edu.cuny.hunter.streamrefactoring.annotations.*;
+
 class A {
+	@EntryPoint
 	void m() {
 		BitSet set = new BitSet();
 		IntStream stream2 = set.stream();
