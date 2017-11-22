@@ -46,6 +46,7 @@ import edu.cuny.hunter.streamrefactoring.core.analysis.Refactoring;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalysisVisitor;
 import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
+import edu.cuny.hunter.streamrefactoring.core.wala.Util;
 import junit.framework.Test;
 import junit.framework.TestSuite;
 
@@ -77,11 +78,11 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		LOGGER.setLevel(Level.FINER);
 	}
 
-	private static boolean compiles(String source) throws IOException {
-		return compiles(source, Files.createTempDirectory(null));
+	private static boolean compiles(String source, String projectName) throws IOException {
+		return compiles(source, Files.createTempDirectory(null), projectName);
 	}
 
-	private static boolean compiles(String source, Path directory) throws IOException {
+	private static boolean compiles(String source, Path directory, String projectName) throws IOException {
 		// Save source in .java file.
 		File sourceFile = new File(directory.toFile(), "bin/p/A.java");
 		sourceFile.getParentFile().mkdirs();
@@ -89,10 +90,19 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 		// Compile source file.
 		JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-		if (Util)
-		boolean compileSuccess = compiler.run(null, null, null, "-classpath", 
-				System.getProperty("user.dir") + "\\resources\\ConvertStreamToParallel\\testArraysAsList\\lib\\stream-refactoring-annotations.jar", 
-				sourceFile.getPath()) == 0;
+		
+		boolean compileSuccess = false;
+		if (Util.isWindows()) {
+			compileSuccess = compiler.run(null, null, null, "-classpath", 
+					System.getProperty("user.dir") + "\\resources\\ConvertStreamToParallel\\" +
+							projectName + "\\lib\\stream-refactoring-annotations.jar", 
+					sourceFile.getPath()) == 0;
+		} else {
+			compileSuccess = compiler.run(null, null, null, "-classpath", 
+					System.getProperty("user.dir") + "/resources/ConvertStreamToParallel/"
+					+ projectName + "/lib/stream-refactoring-annotations.jar", 
+					sourceFile.getPath()) == 0;
+		}
 
 		sourceFile.delete();
 		return compileSuccess;
@@ -187,7 +197,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * (org.eclipse.jdt.core.IPackageFragment, java.lang.String)
 	 */
 	@Override
-	protected ICompilationUnit createCUfromTestFile(IPackageFragment pack, String cuName) throws Exception {
+	protected ICompilationUnit createCUfromTestFile(IPackageFragment pack, String cuName, String projectName) throws Exception {
 		ICompilationUnit unit = super.createCUfromTestFile(pack, cuName);
 
 		if (!unit.isStructureKnown())
@@ -197,7 +207,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		Path directory = Paths.get(unit.getParent().getParent().getParent().getResource().getLocation().toString());
 
 		// compile it to make and store the class file.
-		assertTrue("Input should compile", compiles(unit.getSource(), directory));
+		assertTrue("Input should compile", compiles(unit.getSource(), directory, projectName));
 
 		return unit;
 	}
@@ -247,7 +257,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 */
 	private void helper(StreamAnalysisExpectedResult... expectedResults) throws Exception {
 		// compute the actual results.
-		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
+
+		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A", this.getName());
 //		assertTrue("Input should compile.", compiles(cu.getSource()));
 
 		ASTParser parser = ASTParser.newParser(AST.JLS8);
