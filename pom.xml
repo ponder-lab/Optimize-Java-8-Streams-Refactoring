@@ -86,6 +86,11 @@
       <layout>p2</layout>
       <url>http://download.eclipse.org/eclipse/updates/4.6</url>
     </repository>
+    <repository>
+      <id>Metrics</id>
+      <layout>p2</layout>
+      <url>http://metrics.sourceforge.net/update</url>
+    </repository>
   </repositories>
   <build>
     <plugins>
