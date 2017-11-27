@@ -10,7 +10,6 @@
   <packaging>pom</packaging>
   <modules>
     <module>edu.cuny.hunter.streamrefactoring.ui</module>
-    <module>edu.cuny.hunter.streamrefactoring.eval</module>
     <module>edu.cuny.hunter.streamrefactoring.core</module>
     <module>edu.cuny.hunter.streamrefactoring.tests</module>
     <module>edu.cuny.hunter.streamrefactoring.tests.report</module>
