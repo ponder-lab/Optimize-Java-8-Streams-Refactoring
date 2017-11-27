@@ -1,6 +1,6 @@
-<?xml version="1.0" encoding="WINDOWS-1252" standalone="no"?>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <jardesc>
-    <jar path="edu.cuny.hunter.streamrefactoring.annotations/src/edu/cuny/hunter/streamrefactoring/annotations/stream-refactoring-annotations.jar"/>
+    <jar path="stream-refactoring-annotations.jar"/>
     <options buildIfNeeded="true" compress="true" descriptionLocation="/edu.cuny.hunter.streamrefactoring.annotations/jar-export.jardesc" exportErrors="true" exportWarnings="true" includeDirectoryEntries="false" overwrite="true" saveDescription="true" storeRefactorings="false" useSourceFolders="false"/>
     <storedRefactorings deprecationInfo="true" structuralOnly="false"/>
     <selectedProjects/>
@@ -13,6 +13,5 @@
     <selectedElements exportClassFiles="true" exportJavaFiles="false" exportOutputFolder="false">
         <file path="/edu.cuny.hunter.streamrefactoring.annotations/.classpath"/>
         <file path="/edu.cuny.hunter.streamrefactoring.annotations/.project"/>
-        <javaElement handleIdentifier="=edu.cuny.hunter.streamrefactoring.annotations/src"/>
     </selectedElements>
 </jardesc>
