@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <name>Java 8 Stream Optimization Refactorings</name>
+  <url>https://github.com/ponder-lab/Java-8-Stream-Refactoring</url>
+  <description>This prototype refactoring plug-in for Eclipse represents ongoing work in developing an automated refactoring tool that would assist developers in optimizing their Java 8 stream client code.</description>
   <modelVersion>4.0.0</modelVersion>
   <groupId>edu.cuny.hunter.streamrefactoring</groupId>
   <artifactId>parent</artifactId>
