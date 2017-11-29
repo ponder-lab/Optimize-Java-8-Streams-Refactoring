@@ -414,7 +414,7 @@ public final class Util {
 	 * check whether the annotation is "EntryPoint"
 	 */
 	private static boolean isEntryPointClass(TypeName typeName) {
-		return (AnalysisUtils.walaTypeNameToJavaName(typeName).equals(ENTRYPOINT));
+		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(ENTRYPOINT);
 	}
 
 	/**
