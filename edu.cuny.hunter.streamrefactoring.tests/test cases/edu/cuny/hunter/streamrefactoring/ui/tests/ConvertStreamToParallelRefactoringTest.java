@@ -427,6 +427,14 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	}
 
+	public void testMultipleCallsToEnclosingMethod() throws Exception {
+		helper(new StreamAnalysisExpectedResult("DoubleStream.of(1.111)",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
+				false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
+				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+
+	}
+
 	public void testHashSetParallelStream() throws Exception {
 		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()",
 				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, false,

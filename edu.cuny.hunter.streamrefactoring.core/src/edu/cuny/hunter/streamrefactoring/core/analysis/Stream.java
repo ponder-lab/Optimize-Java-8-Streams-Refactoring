@@ -640,11 +640,8 @@ public class Stream {
 
 		if (nodes.isEmpty())
 			throw new NoEnclosingMethodNodeFoundException(methodReference);
-		else if (nodes.size() == 1 || nodes.size() > 1 && allFake(nodes, this.getAnalysisEngine().getCallGraph()))
-			return nodes.iterator().next(); // just return the first.
 		else
-			throw new IllegalStateException("Unexpected number of nodes: " + nodes.size());
-
+			return nodes.iterator().next(); // just return the first.
 	}
 
 	/**
