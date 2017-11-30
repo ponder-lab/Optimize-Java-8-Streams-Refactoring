@@ -468,7 +468,7 @@ public class Stream {
 		return enclosingTypeDeclaration;
 	}
 
-	private TypeReference getEnclosingTypeReference() {
+	public TypeReference getEnclosingTypeReference() {
 		JDTIdentityMapper mapper = getJDTIdentifyMapper(getEnclosingTypeDeclaration());
 		TypeReference ref = mapper.getTypeRef(getEnclosingTypeDeclaration().resolveBinding());
 
@@ -656,6 +656,7 @@ public class Stream {
 	 *         in the {@link CallGraph} are {@link FakeRootMethod}s.
 	 * @apiNote The may be an issue here related to #106.
 	 */
+	@SuppressWarnings("unused")
 	private static boolean allFake(Set<CGNode> nodes, CallGraph callGraph) {
 		// for each node.
 		for (CGNode cgNode : nodes) {
