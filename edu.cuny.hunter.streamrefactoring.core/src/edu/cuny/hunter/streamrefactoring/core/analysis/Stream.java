@@ -788,7 +788,13 @@ public class Stream {
 			// Doesn't make sense. Maybe we need to collect all enclosing
 			// methods
 			// and use those as entry points.
+			try {
 			getAnalysisEngine().buildSafeCallGraph(options);
+			} catch (IllegalStateException e) {
+				LOGGER.log(Level.SEVERE, e, () -> "Exception encountered while building call graph for Stream: " + this
+						+ " in project: " + this.getCreationJavaProject());
+				throw e;
+			}
 			// TODO: Can I slice the graph so that only nodes relevant to the
 			// instance in question are present?
 
