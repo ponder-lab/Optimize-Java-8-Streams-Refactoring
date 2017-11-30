@@ -457,6 +457,27 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				EnumSet.of(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
 	}
 
+	public void testNonInternalAPI2() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED), false, false,
+				false, null, null, null, RefactoringStatus.ERROR,
+				EnumSet.of(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
+	}
+	
+	public void testNonInternalAPI3() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED), false, false,
+				false, null, null, null, RefactoringStatus.ERROR,
+				EnumSet.of(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
+	}
+	
+	public void testNonInternalAPI4() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED), false, false,
+				false, null, null, null, RefactoringStatus.ERROR,
+				EnumSet.of(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
+	}
+
 	public void testCollectionFromParameter() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
 				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
