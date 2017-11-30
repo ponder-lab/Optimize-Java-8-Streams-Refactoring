@@ -188,27 +188,7 @@ public class Stream {
 		this.orderingInference = new OrderingInference(this.getClassHierarchy());
 
 		this.inferInitialExecution();
-
-		try {
-			this.inferInitialOrdering();
-		} catch (InconsistentPossibleOrderingException e) {
-			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
-			addStatusEntry(PreconditionFailure.INCONSISTENT_POSSIBLE_STREAM_SOURCE_ORDERING,
-					"Stream: " + streamCreation + " has inconsistent possible source orderings.");
-		} catch (NoniterableException e) {
-			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
-			addStatusEntry(PreconditionFailure.NON_ITERABLE_POSSIBLE_STREAM_SOURCE,
-					"Stream: " + streamCreation + " has a non-iterable possible source.");
-		} catch (NoninstantiableException e) {
-			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
-			addStatusEntry(PreconditionFailure.NON_INSTANTIABLE_POSSIBLE_STREAM_SOURCE, "Stream: " + streamCreation
-					+ " has a non-instantiable possible source with type: " + e.getSourceType() + ".");
-		} catch (CannotExtractSpliteratorException e) {
-			LOGGER.log(Level.WARNING, "Exception caught while processing: " + streamCreation, e);
-			addStatusEntry(PreconditionFailure.NON_DETERMINABLE_STREAM_SOURCE_ORDERING,
-					"Cannot extract spliterator from type: " + e.getFromType() + " for stream: " + streamCreation
-							+ ".");
-		}
+		this.inferInitialOrdering();
 
 		try {
 			// start the state machine.
@@ -572,10 +552,8 @@ public class Stream {
 			this.setInitialExecutionMode(ExecutionMode.SEQUENTIAL);
 	}
 
-	private void inferInitialOrdering()
-			throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
-			InconsistentPossibleOrderingException, NoniterableException, NoninstantiableException,
-			CannotExtractSpliteratorException, CallGraphBuilderCancelException, CancelException {
+	private void inferInitialOrdering() throws IOException, CoreException, ClassHierarchyException,
+			InvalidClassFileException, CallGraphBuilderCancelException, CancelException {
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
@@ -609,14 +587,37 @@ public class Stream {
 				return;
 			}
 
-			Collection<TypeAbstraction> possibleTypes = getPossibleTypesInterprocedurally(node, valueNumber,
-					this.getAnalysisEngine().getHeapGraph().getHeapModel(),
-					this.getAnalysisEngine().getPointerAnalysis(), this, LOGGER);
+			Collection<TypeAbstraction> possibleTypes = null;
+			IMethod calledMethod = null;
+			Ordering ordering = null;
+			try {
+				possibleTypes = getPossibleTypesInterprocedurally(node, valueNumber,
+						this.getAnalysisEngine().getHeapGraph().getHeapModel(),
+						this.getAnalysisEngine().getPointerAnalysis(), this, LOGGER);
 
-			// Possible types: check each one.
-			IMethod calledMethod = (IMethod) calledMethodBinding.getJavaElement();
+				// Possible types: check each one.
+				calledMethod = (IMethod) calledMethodBinding.getJavaElement();
 
-			Ordering ordering = this.getOrderingInference().inferOrdering(possibleTypes, calledMethod);
+				ordering = this.getOrderingInference().inferOrdering(possibleTypes, calledMethod);
+			} catch (NoniterableException e) {
+				LOGGER.log(Level.WARNING, "Stream: " + this.getCreation()
+						+ " has a non-iterable possible source. Falling back to: " + Ordering.ORDERED + ".", e);
+				ordering = Ordering.ORDERED;
+			} catch (NoninstantiableException e) {
+				LOGGER.log(Level.WARNING,
+						"Stream: " + this.getCreation() + " has a non-instantiable possible source with type: "
+								+ e.getSourceType() + ". Falling back to: " + Ordering.ORDERED + ".",
+						e);
+				ordering = Ordering.ORDERED;
+			} catch (CannotExtractSpliteratorException e) {
+				LOGGER.log(Level.WARNING, "Cannot extract spliterator from type: " + e.getFromType() + " for stream: "
+						+ this.getCreation() + ". Falling back to: " + Ordering.ORDERED + ".", e);
+				ordering = Ordering.ORDERED;
+			} catch (InconsistentPossibleOrderingException e) {
+				LOGGER.log(Level.WARNING, "Stream: " + this.getCreation()
+						+ " has inconsistent possible source orderings. Falling back to: " + Ordering.ORDERED + ".", e);
+				ordering = Ordering.ORDERED;
+			}
 
 			if (ordering == null) {
 				ordering = Ordering.ORDERED;
@@ -789,7 +790,7 @@ public class Stream {
 			// methods
 			// and use those as entry points.
 			try {
-			getAnalysisEngine().buildSafeCallGraph(options);
+				getAnalysisEngine().buildSafeCallGraph(options);
 			} catch (IllegalStateException e) {
 				LOGGER.log(Level.SEVERE, e, () -> "Exception encountered while building call graph for Stream: " + this
 						+ " in project: " + this.getCreationJavaProject());
