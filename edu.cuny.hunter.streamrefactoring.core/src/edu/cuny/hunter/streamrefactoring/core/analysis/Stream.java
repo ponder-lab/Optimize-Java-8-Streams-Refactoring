@@ -604,7 +604,7 @@ public class Stream {
 				node = this.getEnclosingMethodNode();
 			} catch (NoEnclosingMethodNodeFoundException e) {
 				LOGGER.log(Level.WARNING, "Can't find enclosing method node for " + this.getCreation()
-						+ ". Falling back to " + Ordering.ORDERED, e);
+						+ ". Falling back to: " + Ordering.ORDERED + ".", e);
 				this.setInitialOrdering(Ordering.ORDERED);
 				return;
 			}
