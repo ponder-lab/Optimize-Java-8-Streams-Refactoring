@@ -58,8 +58,7 @@ import junit.framework.TestSuite;
 public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	/**
-	 * The name of the directory containing resources under the project
-	 * directory.
+	 * The name of the directory containing resources under the project directory.
 	 */
 	private static final String RESOURCE_PATH = "resources";
 
@@ -223,10 +222,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 *
 	 * @see
 	 * org.eclipse.jdt.ui.tests.refactoring.RefactoringTest#getFileContents(java
-	 * .lang.String) Had to override this method because, since this plug-in is
-	 * a fragment (at least I think that this is the reason), it doesn't have an
-	 * activator and the bundle is resolving to the eclipse refactoring test
-	 * bundle.
+	 * .lang.String) Had to override this method because, since this plug-in is a
+	 * fragment (at least I think that this is the reason), it doesn't have an
+	 * activator and the bundle is resolving to the eclipse refactoring test bundle.
 	 */
 	@Override
 	public String getFileContents(String fileName) throws IOException {
@@ -474,8 +472,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 */
 	public void testCollectionFromParameter3() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null, RefactoringStatus.ERROR,
-				EnumSet.of(PreconditionFailure.UNORDERED)));
+				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
+				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
 	}
 
 	/**

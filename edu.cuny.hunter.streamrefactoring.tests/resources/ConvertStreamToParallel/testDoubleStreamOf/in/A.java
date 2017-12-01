@@ -7,7 +7,6 @@ import edu.cuny.hunter.streamrefactoring.annotations.*;
 public class A {
 	@EntryPoint
 	void m() {
-		DoubleStream.of(1.111)
-	    .count();
+		DoubleStream.of(1.111).count();
 	}
 }
