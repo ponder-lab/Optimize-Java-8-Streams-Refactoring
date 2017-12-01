@@ -477,7 +477,14 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				false, null, null, null, RefactoringStatus.ERROR,
 				EnumSet.of(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
 	}
-
+	
+	public void testNonInternalAPI5() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()",
+				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false,
+				false, false, null, null, null, RefactoringStatus.ERROR,
+				EnumSet.of(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
+	}
+	
 	public void testCollectionFromParameter() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
 				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
