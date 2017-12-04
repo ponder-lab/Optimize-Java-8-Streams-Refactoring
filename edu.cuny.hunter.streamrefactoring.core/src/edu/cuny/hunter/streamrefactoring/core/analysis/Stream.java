@@ -56,6 +56,7 @@ import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.impl.FakeRootMethod;
 import com.ibm.wala.ipa.callgraph.impl.FakeWorldClinitMethod;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
+import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
@@ -636,12 +637,30 @@ public class Stream {
 	 */
 	protected CGNode getEnclosingMethodNode() throws IOException, CoreException, NoEnclosingMethodNodeFoundException {
 		MethodReference methodReference = this.getEnclosingMethodReference();
+		return getEnclosingMethodNode(methodReference);
+	}
+
+	protected CGNode getEnclosingMethodNode(MethodReference methodReference)
+			throws IOException, CoreException, NoEnclosingMethodNodeFoundException {
 		Set<CGNode> nodes = this.getAnalysisEngine().getCallGraph().getNodes(methodReference);
 
 		if (nodes.isEmpty())
 			throw new NoEnclosingMethodNodeFoundException(methodReference);
 		else
 			return nodes.iterator().next(); // just return the first.
+	}
+
+	protected HashSet<CGNode> getEnclosingMethodNodes()
+			throws IOException, CoreException, NoEnclosingMethodNodeFoundException {
+		HashSet<CGNode> cgNodes = new HashSet<>();
+		com.ibm.wala.classLoader.IMethod[] methods = ((CallStringContext) (getEnclosingMethodNode().getContext()))
+				.getCallString().getMethods();
+
+		for (int i = 0; i < methods.length - 1; ++i) {
+			cgNodes.add(getEnclosingMethodNode(methods[i].getReference()));
+		}
+		cgNodes.add(this.getEnclosingMethodNode());
+		return cgNodes;
 	}
 
 	/**

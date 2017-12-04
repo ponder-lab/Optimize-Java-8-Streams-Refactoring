@@ -8,7 +8,7 @@ import edu.cuny.hunter.streamrefactoring.annotations.*;
 class A {
 
 	Stream<Object> m() {
-		Stream<Object> stream = new HashSet<>().parallelStream().sorted();
+		Stream<Object> stream = new HashSet<>().stream().parallel();
 		return stream;
 	}
 
