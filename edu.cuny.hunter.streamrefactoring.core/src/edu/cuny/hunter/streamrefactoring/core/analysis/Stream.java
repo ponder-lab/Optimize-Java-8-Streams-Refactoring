@@ -637,11 +637,6 @@ public class Stream {
 	 */
 	protected CGNode getEnclosingMethodNode() throws IOException, CoreException, NoEnclosingMethodNodeFoundException {
 		MethodReference methodReference = this.getEnclosingMethodReference();
-		return getEnclosingMethodNode(methodReference);
-	}
-
-	protected CGNode getEnclosingMethodNode(MethodReference methodReference)
-			throws IOException, CoreException, NoEnclosingMethodNodeFoundException {
 		Set<CGNode> nodes = this.getAnalysisEngine().getCallGraph().getNodes(methodReference);
 
 		if (nodes.isEmpty())
@@ -649,17 +644,23 @@ public class Stream {
 		else
 			return nodes.iterator().next(); // just return the first.
 	}
-
+	
+	/**
+	 * add all CGNodes in call graph to a hash set
+	 * @return a hash set of CGNode
+	 * @throws IOException
+	 * @throws CoreException
+	 * @throws NoEnclosingMethodNodeFoundException
+	 */
 	protected HashSet<CGNode> getEnclosingMethodNodes()
 			throws IOException, CoreException, NoEnclosingMethodNodeFoundException {
 		HashSet<CGNode> cgNodes = new HashSet<>();
-		com.ibm.wala.classLoader.IMethod[] methods = ((CallStringContext) (getEnclosingMethodNode().getContext()))
-				.getCallString().getMethods();
 
-		for (int i = 0; i < methods.length - 1; ++i) {
-			cgNodes.add(getEnclosingMethodNode(methods[i].getReference()));
+		Iterator<CGNode> cgNodeIterator = this.getAnalysisEngine().getCallGraph().iterator();
+		for (; cgNodeIterator.hasNext();) {
+			cgNodes.add(cgNodeIterator.next());
 		}
-		cgNodes.add(this.getEnclosingMethodNode());
+
 		return cgNodes;
 	}
 
