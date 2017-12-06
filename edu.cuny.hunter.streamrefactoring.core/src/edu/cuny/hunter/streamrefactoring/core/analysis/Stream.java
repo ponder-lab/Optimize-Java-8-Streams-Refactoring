@@ -643,24 +643,6 @@ public class Stream {
 		else
 			return nodes.iterator().next(); // just return the first.
 	}
-	
-	/**
-	 * add all CGNodes in call graph to a hash set
-	 * @return a hash set of CGNode
-	 * @throws IOException
-	 * @throws CoreException
-	 * @throws NoEnclosingMethodNodeFoundException
-	 */
-	protected HashSet<CGNode> getCGNodesInGraph() throws IOException, CoreException {
-		HashSet<CGNode> cgNodes = new HashSet<>();
-
-		Iterator<CGNode> cgNodeIterator = this.getAnalysisEngine().getCallGraph().iterator();
-		for (; cgNodeIterator.hasNext();) {
-			cgNodes.add(cgNodeIterator.next());
-		}
-
-		return cgNodes;
-	}
 
 	/**
 	 * Returns true iff all of the predecessors of all of the given {@link CGNode}s

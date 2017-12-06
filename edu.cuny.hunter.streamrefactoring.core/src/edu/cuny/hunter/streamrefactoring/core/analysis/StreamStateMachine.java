@@ -280,7 +280,9 @@ class StreamStateMachine {
 				// the node of where the stream was declared: TODO: Can this be
 				// somehow rewritten to get blocks corresponding to terminal
 				// operations?
-				for (CGNode cgNode : this.getStream().getCGNodesInGraph()) {
+				Iterator<CGNode> cgNodes = this.getStream().getAnalysisEngine().getCallGraph().iterator();
+				for (;cgNodes.hasNext();) {
+					CGNode cgNode = cgNodes.next();
 					for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
 						CallSiteReference callSiteReference = callSites.next();
 						MethodReference calledMethod = callSiteReference.getDeclaredTarget();
