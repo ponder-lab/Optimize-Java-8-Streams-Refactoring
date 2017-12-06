@@ -651,8 +651,7 @@ public class Stream {
 	 * @throws CoreException
 	 * @throws NoEnclosingMethodNodeFoundException
 	 */
-	protected HashSet<CGNode> getEnclosingMethodNodes()
-			throws IOException, CoreException, NoEnclosingMethodNodeFoundException {
+	protected HashSet<CGNode> getCGNodesInGraph() throws IOException, CoreException {
 		HashSet<CGNode> cgNodes = new HashSet<>();
 
 		Iterator<CGNode> cgNodeIterator = this.getAnalysisEngine().getCallGraph().iterator();
