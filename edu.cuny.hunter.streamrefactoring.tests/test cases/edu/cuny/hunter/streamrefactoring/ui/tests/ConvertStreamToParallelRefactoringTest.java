@@ -491,6 +491,15 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES)));
 	}
 	
+	public void testNonInternalAPI6() throws Exception {
+		HashSet<ExecutionMode> executionModes = new HashSet<>();
+		executionModes.add(ExecutionMode.PARALLEL);
+		executionModes.add(ExecutionMode.SEQUENTIAL);
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()", executionModes,
+				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
+				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES)));
+	}
+	
 	public void testCollectionFromParameter() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
 				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
