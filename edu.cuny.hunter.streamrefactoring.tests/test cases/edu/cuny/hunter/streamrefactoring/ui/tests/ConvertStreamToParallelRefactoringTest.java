@@ -472,6 +472,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
 	
+	/**
+	 * related to #126
+	 */
 	public void testNonInternalAPI4() throws Exception {
 		HashSet<Ordering> orderings = new HashSet<>();
 		orderings.add(Ordering.UNORDERED);
@@ -482,6 +485,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS)));
 	}
 	
+	/**
+	 * related to #126
+	 */
 	public void testNonInternalAPI5() throws Exception {
 		HashSet<ExecutionMode> executionModes = new HashSet<>();
 		executionModes .add(ExecutionMode.PARALLEL);
@@ -491,6 +497,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES)));
 	}
 	
+	/**
+	 * related to #126
+	 */
 	public void testNonInternalAPI6() throws Exception {
 		HashSet<ExecutionMode> executionModes = new HashSet<>();
 		executionModes.add(ExecutionMode.PARALLEL);
