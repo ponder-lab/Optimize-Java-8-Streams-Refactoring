@@ -12,6 +12,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -452,9 +453,60 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()",
 				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, false,
 				false, null, null, null, RefactoringStatus.ERROR,
-				EnumSet.of(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
+				EnumSet.of(PreconditionFailure.UNORDERED)));
 	}
 
+	public void testNonInternalAPI2() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED), false, true,
+				false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
+				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+	}
+	
+	public void testNonInternalAPI3() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL),  Collections.singleton(Ordering.UNORDERED), false, true,
+				false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
+				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+	}
+	
+	/**
+	 * related to #126
+	 */
+	public void testNonInternalAPI4() throws Exception {
+		HashSet<Ordering> orderings = new HashSet<>();
+		orderings.add(Ordering.UNORDERED);
+		orderings.add(Ordering.ORDERED);
+
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), orderings, false, true, false, null, null, null,
+				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS)));
+	}
+	
+	/**
+	 * related to #126
+	 */
+	public void testNonInternalAPI5() throws Exception {
+		HashSet<ExecutionMode> executionModes = new HashSet<>();
+		executionModes .add(ExecutionMode.PARALLEL);
+		executionModes .add(ExecutionMode.SEQUENTIAL);
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()", executionModes,
+				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
+				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES)));
+	}
+	
+	/**
+	 * related to #126
+	 */
+	public void testNonInternalAPI6() throws Exception {
+		HashSet<ExecutionMode> executionModes = new HashSet<>();
+		executionModes.add(ExecutionMode.PARALLEL);
+		executionModes.add(ExecutionMode.SEQUENTIAL);
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()", executionModes,
+				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
+				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES)));
+	}
+	
 	public void testCollectionFromParameter() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
 				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
