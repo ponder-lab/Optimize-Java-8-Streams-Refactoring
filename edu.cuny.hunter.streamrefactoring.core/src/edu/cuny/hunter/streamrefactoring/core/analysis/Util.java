@@ -36,8 +36,11 @@ import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
 import com.ibm.wala.ipa.callgraph.propagation.HeapModel;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
+import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
+import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
+import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.IR;
@@ -56,6 +59,7 @@ import com.ibm.wala.util.strings.StringStuff;
 
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 import edu.cuny.hunter.streamrefactoring.core.wala.AnalysisUtils;
+import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
 
 public final class Util {
 
@@ -450,5 +454,22 @@ public final class Util {
 		}
 		
 		return result;
+	}
+	
+	public static CallStringWithReceivers getCallString(InstanceKey instance) {
+		NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
+		return getCallString(allocationInNode);
+	}
+
+	public static CallStringWithReceivers getCallString(NormalAllocationInNode allocationInNode) {
+		CGNode node = allocationInNode.getNode();
+		return getCallString(node);
+	}
+
+	public static CallStringWithReceivers getCallString(CGNode node) {
+		CallStringContext context = (CallStringContext) node.getContext();
+		CallStringWithReceivers callString = (CallStringWithReceivers) context
+				.get(CallStringContextSelector.CALL_STRING);
+		return callString;
 	}
 }
