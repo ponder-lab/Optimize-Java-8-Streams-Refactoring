@@ -276,15 +276,16 @@ class StreamStateMachine {
 				// get the supergraph for the instance result.
 				ICFGSupergraph supergraph = instanceResult.getSupergraph();
 
-				// FIXME This doesn't make a whole lot of sense. Only looking at
-				// the node of where the stream was declared: TODO: Can this be
-				// somehow rewritten to get blocks corresponding to terminal
-				// operations?
-				Iterator<CGNode> cgNodes = this.getStream().getAnalysisEngine().getCallGraph().iterator();
-				for (;cgNodes.hasNext();) {
-					CGNode cgNode = cgNodes.next();
+				// TODO: Can this be somehow rewritten to get blocks
+				// corresponding to terminal operations?
+				// for each call graph node in the call graph.
+				for (CGNode cgNode : engine.getCallGraph()) {
+					// for each call site in the call graph node.
 					for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
+						// get the call site reference.
 						CallSiteReference callSiteReference = callSites.next();
+
+						// get the (declared) called method at the call site.
 						MethodReference calledMethod = callSiteReference.getDeclaredTarget();
 
 						// is it a terminal operation? TODO: Should this be
