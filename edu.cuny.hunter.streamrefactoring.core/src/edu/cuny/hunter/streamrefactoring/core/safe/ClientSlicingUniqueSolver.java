@@ -1,6 +1,7 @@
 package edu.cuny.hunter.streamrefactoring.core.safe;
 
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.logging.Logger;
 
 import com.ibm.safe.internal.exceptions.PropertiesException;
@@ -34,7 +35,7 @@ import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
  * @author <a href="mailto:rk1424@hunter.cuny.edu">Raffi Khatchadourian</a>
  */
 public class ClientSlicingUniqueSolver extends UniqueSolver {
-	
+
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	public ClientSlicingUniqueSolver(CallGraph cg, PointerAnalysis pointerAnalysis, ITypeStateDFA dfa,
@@ -46,8 +47,9 @@ public class ClientSlicingUniqueSolver extends UniqueSolver {
 	@Override
 	protected Collection<InstanceKey> computeTrackedInstances() throws PropertiesException {
 		Collection<InstanceKey> instances = super.computeTrackedInstances();
-		
-		for (InstanceKey instanceKey : instances) {
+
+		for (Iterator<InstanceKey> iterator = instances.iterator(); iterator.hasNext();) {
+			InstanceKey instanceKey = iterator.next();
 			CallStringWithReceivers callString = Util.getCallString(instanceKey);
 			IMethod[] callingMethods = callString.getMethods();
 			IMethod outerMostCallingMethod = callingMethods[1];
@@ -56,15 +58,15 @@ public class ClientSlicingUniqueSolver extends UniqueSolver {
 			TypeName name = declaringClass.getName();
 			Atom classPackage = name.getPackage();
 			boolean isFromAPI = classPackage.startsWith(Atom.findOrCreateAsciiAtom("java"));
-			
+
 			// if it's being called from the API.
 			if (isFromAPI) {
 				// remove it.
 				LOGGER.info(() -> "Removing instance: " + instanceKey);
-				instances.remove(instanceKey);
+				iterator.remove();
 			}
 		}
-		
+
 		return instances;
 	}
 
