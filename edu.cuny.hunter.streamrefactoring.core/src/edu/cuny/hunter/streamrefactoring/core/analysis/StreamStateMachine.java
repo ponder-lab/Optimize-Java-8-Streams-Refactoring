@@ -237,6 +237,7 @@ class StreamStateMachine {
 				new PropertiesManager.IPropertyDescriptor[] { WholeProgramProperties.Props.LIVE_ANALYSIS });
 		TypeStateOptions typeStateOptions = new TypeStateOptions(manager);
 		typeStateOptions.setBooleanValue(WholeProgramProperties.Props.LIVE_ANALYSIS.getName(), false);
+		// TODO: #127 should also set entry points.
 
 		TypeReference typeReference = this.getStream().getTypeReference();
 		IClass streamClass = engine.getClassHierarchy().lookupClass(typeReference);
