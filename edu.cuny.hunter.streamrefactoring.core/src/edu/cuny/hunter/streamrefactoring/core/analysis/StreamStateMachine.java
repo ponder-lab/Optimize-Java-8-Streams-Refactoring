@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.jdt.core.dom.MethodInvocation;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -277,118 +276,122 @@ class StreamStateMachine {
 				// get the supergraph for the instance result.
 				ICFGSupergraph supergraph = instanceResult.getSupergraph();
 
-				// FIXME This doesn't make a whole lot of sense. Only looking at
-				// the node of where the stream was declared: TODO: Can this be
-				// somehow rewritten to get blocks corresponding to terminal
-				// operations?
-				CGNode cgNode = this.getStream().getEnclosingMethodNode();
+				// TODO: Can this be somehow rewritten to get blocks
+				// corresponding to terminal operations?
+				// for each call graph node in the call graph.
+				for (CGNode cgNode : engine.getCallGraph()) {
+					// for each call site in the call graph node.
+					for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
+						// get the call site reference.
+						CallSiteReference callSiteReference = callSites.next();
 
-				for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
-					CallSiteReference callSiteReference = callSites.next();
-					MethodReference calledMethod = callSiteReference.getDeclaredTarget();
+						// get the (declared) called method at the call site.
+						MethodReference calledMethod = callSiteReference.getDeclaredTarget();
 
-					// is it a terminal operation? TODO: Should this be
-					// cached somehow? Collection of all terminal operation
-					// invocations?
-					if (isTerminalOperation(calledMethod)) {
-						// get the basic block for the call.
-						ISSABasicBlock[] blocksForCall = cgNode.getIR().getBasicBlocksForCall(callSiteReference);
+						// is it a terminal operation? TODO: Should this be
+						// cached somehow? Collection of all terminal operation
+						// invocations?
+						if (isTerminalOperation(calledMethod)) {
+							// get the basic block for the call.
 
-						assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
-								+ callSiteReference;
+							ISSABasicBlock[] blocksForCall = cgNode.getIR().getBasicBlocksForCall(callSiteReference);
 
-						for (int i = 0; i < blocksForCall.length; i++) {
-							ISSABasicBlock block = blocksForCall[i];
+							assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
+									+ callSiteReference;
 
-							BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
-									block, cgNode, supergraph)
-											.orElseThrow(() -> new IllegalStateException(
-													"No basic block in context for block: " + block));
+							for (int i = 0; i < blocksForCall.length; i++) {
+								ISSABasicBlock block = blocksForCall[i];
 
-							if (!terminalBlockToPossibleReceivers.containsKey(blockInContext)) {
-								// associate possible receivers with the
-								// blockInContext.
-								// search through each instruction in the
-								// block.
-								int processedInstructions = 0;
-								for (Iterator<SSAInstruction> it = block.iterator(); it.hasNext();) {
-									SSAInstruction instruction = it.next();
+								BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
+										block, cgNode, supergraph)
+												.orElseThrow(() -> new IllegalStateException(
+														"No basic block in context for block: " + block));
 
-									// if it's a phi instruction.
-									if (instruction instanceof SSAPhiInstruction)
-										// skip it. The pointer analysis
-										// below will handle it.
-										continue;
+								if (!terminalBlockToPossibleReceivers.containsKey(blockInContext)) {
+									// associate possible receivers with the
+									// blockInContext.
+									// search through each instruction in the
+									// block.
+									int processedInstructions = 0;
+									for (Iterator<SSAInstruction> it = block.iterator(); it.hasNext();) {
+										SSAInstruction instruction = it.next();
 
-									// Get the possible receivers. This
-									// number corresponds to the value
-									// number of the receiver of the method.
-									int valueNumberForReceiver = instruction.getUse(0);
+										// if it's a phi instruction.
+										if (instruction instanceof SSAPhiInstruction)
+											// skip it. The pointer analysis
+											// below will handle it.
+											continue;
 
-									// it should be represented by a pointer
-									// key.
-									PointerKey pointerKey = engine.getHeapGraph().getHeapModel()
-											.getPointerKeyForLocal(cgNode, valueNumberForReceiver);
+										// Get the possible receivers. This
+										// number corresponds to the value
+										// number of the receiver of the method.
+										int valueNumberForReceiver = instruction.getUse(0);
 
-									// get the points to set for the
-									// receiver. This will give us all
-									// object instances that the receiver
-									// reference points to.
-									OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis()
-											.getPointsToSet(pointerKey);
-									assert pointsToSet != null : "The points-to set (I think) should not be null for pointer: "
-											+ pointerKey;
+										// it should be represented by a pointer
+										// key.
+										PointerKey pointerKey = engine.getHeapGraph().getHeapModel()
+												.getPointerKeyForLocal(cgNode, valueNumberForReceiver);
 
-									OrdinalSet<InstanceKey> previousReceivers = terminalBlockToPossibleReceivers
-											.put(blockInContext, pointsToSet);
-									assert previousReceivers == null : "Reassociating a blockInContext: "
-											+ blockInContext + " with a new points-to set: " + pointsToSet
-											+ " that was originally: " + previousReceivers;
+										// get the points to set for the
+										// receiver. This will give us all
+										// object instances that the receiver
+										// reference points to.
+										OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis()
+												.getPointsToSet(pointerKey);
+										assert pointsToSet != null : "The points-to set (I think) should not be null for pointer: "
+												+ pointerKey;
 
-									++processedInstructions;
+										OrdinalSet<InstanceKey> previousReceivers = terminalBlockToPossibleReceivers
+												.put(blockInContext, pointsToSet);
+										assert previousReceivers == null : "Reassociating a blockInContext: "
+												+ blockInContext + " with a new points-to set: " + pointsToSet
+												+ " that was originally: " + previousReceivers;
+
+										++processedInstructions;
+									}
+
+									assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
 								}
 
-								assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
-							}
+								IntSet intSet = instanceResult.getResult().getResult(blockInContext);
+								for (IntIterator it = intSet.intIterator(); it.hasNext();) {
+									int nextInt = it.next();
 
-							IntSet intSet = instanceResult.getResult().getResult(blockInContext);
-							for (IntIterator it = intSet.intIterator(); it.hasNext();) {
-								int nextInt = it.next();
+									// retrieve the state set for this instance
+									// and block.
+									Map<TypestateRule, Set<IDFAState>> ruleToStates = instanceBlockStateTable
+											.get(instanceKey, blockInContext);
 
-								// retrieve the state set for this instance
-								// and block.
-								Map<TypestateRule, Set<IDFAState>> ruleToStates = instanceBlockStateTable
-										.get(instanceKey, blockInContext);
+									// if it doesn't yet exist.
+									if (ruleToStates == null) {
+										// allocate a new rule map.
+										ruleToStates = new HashMap<>();
 
-								// if it doesn't yet exist.
-								if (ruleToStates == null) {
-									// allocate a new rule map.
-									ruleToStates = new HashMap<>();
+										// place it in the table.
+										instanceBlockStateTable.put(instanceKey, blockInContext, ruleToStates);
+									}
 
-									// place it in the table.
-									instanceBlockStateTable.put(instanceKey, blockInContext, ruleToStates);
-								}
+									Set<IDFAState> stateSet = ruleToStates.get(rule);
 
-								Set<IDFAState> stateSet = ruleToStates.get(rule);
+									// if it does not yet exist.
+									if (stateSet == null) {
+										// allocate a new set.
+										stateSet = new HashSet<>();
 
-								// if it does not yet exist.
-								if (stateSet == null) {
-									// allocate a new set.
-									stateSet = new HashSet<>();
+										// place it in the map.
+										ruleToStates.put(rule, stateSet);
+									}
 
-									// place it in the map.
-									ruleToStates.put(rule, stateSet);
-								}
+									// get the facts.
+									Factoid factoid = instanceResult.getDomain().getMappedObject(nextInt);
+									if (factoid != DUMMY_ZERO) {
+										BaseFactoid baseFactoid = (BaseFactoid) factoid;
+										assert baseFactoid.instance.equals(
+												instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
 
-								// get the facts.
-								Factoid factoid = instanceResult.getDomain().getMappedObject(nextInt);
-								if (factoid != DUMMY_ZERO) {
-									BaseFactoid baseFactoid = (BaseFactoid) factoid;
-									assert baseFactoid.instance.equals(
-											instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
-
-									// add the encountered state to the set.
-									stateSet.add(baseFactoid.state);
+										// add the encountered state to the set.
+										stateSet.add(baseFactoid.state);
+									}
 								}
 							}
 						}
