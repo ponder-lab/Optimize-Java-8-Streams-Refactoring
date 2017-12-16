@@ -507,6 +507,17 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES)));
 	}
 	
+	/**
+	 * This is a control to testNonInternalAPI4.
+	 */
+	public void testNonInternalAPI7() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, true, false,
+				EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
+				PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet()));
+	}
+
 	public void testCollectionFromParameter() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
 				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
