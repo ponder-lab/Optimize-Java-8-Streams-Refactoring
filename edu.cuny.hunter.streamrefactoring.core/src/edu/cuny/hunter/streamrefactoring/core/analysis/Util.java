@@ -201,22 +201,22 @@ public final class Util {
 	}
 
 	public static Collection<TypeAbstraction> getPossibleTypesInterprocedurally(CGNode node, int valueNumber,
-			HeapModel heapModel, PointerAnalysis<InstanceKey> pointerAnalysis, Stream stream, Logger logger)
+			HeapModel heapModel, PointerAnalysis<InstanceKey> pointerAnalysis, Stream stream)
 			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
 		Collection<TypeAbstraction> ret = new HashSet<>();
 
 		PointerKey valueKey = heapModel.getPointerKeyForLocal(node, valueNumber);
-		logger.fine(() -> "Value pointer key is: " + valueKey);
+		LOGGER.fine(() -> "Value pointer key is: " + valueKey);
 
 		OrdinalSet<InstanceKey> pointsToSet = pointerAnalysis.getPointsToSet(valueKey);
 		assert pointsToSet != null;
-		logger.fine(() -> "PointsTo set is: " + pointsToSet);
+		LOGGER.fine(() -> "PointsTo set is: " + pointsToSet);
 
 		for (InstanceKey instanceKey : pointsToSet) {
 			IClass concreteClass = instanceKey.getConcreteType();
 
 			if (!(concreteClass instanceof SyntheticClass)) {
-				logger.fine(() -> "Found non-synthetic concrete type: " + concreteClass);
+				LOGGER.fine(() -> "Found non-synthetic concrete type: " + concreteClass);
 
 				// Workaround #38, problem seemingly with generics.
 				// Due to type erasure, we may have the problem if the return
@@ -413,7 +413,7 @@ public final class Util {
 	public static JDTIdentityMapper getJDTIdentifyMapper(ASTNode node) {
 		return new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE, node.getAST());
 	}
-	
+
 	/**
 	 * check whether the annotation is "EntryPoint"
 	 */
@@ -425,9 +425,10 @@ public final class Util {
 	 * Find all annotations in test cases and check whether they are "entry point".
 	 * If yes, call DefaultEntrypoint to get entry point, then, add it into the
 	 * result set.
-	 * @throws InvalidClassFileException 
+	 * 
+	 * @throws InvalidClassFileException
 	 */
-	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) throws InvalidClassFileException  {
+	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) throws InvalidClassFileException {
 		final Set<Entrypoint> result = new HashSet<>();
 		Iterator<IClass> classIterator = classHierarchy.iterator();
 		while (classIterator.hasNext()) {
@@ -437,7 +438,7 @@ public final class Util {
 				// iterate over all declared methods
 				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
 
-						// if method has an annotation
+					// if method has an annotation
 					if (!(method instanceof ShrikeCTMethod)) {
 						throw new IllegalArgumentException("@EntryPoint only works for byte code.");
 					}
@@ -452,10 +453,10 @@ public final class Util {
 				}
 			}
 		}
-		
+
 		return result;
 	}
-	
+
 	public static CallStringWithReceivers getCallString(InstanceKey instance) {
 		NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
 		return getCallString(allocationInNode);
