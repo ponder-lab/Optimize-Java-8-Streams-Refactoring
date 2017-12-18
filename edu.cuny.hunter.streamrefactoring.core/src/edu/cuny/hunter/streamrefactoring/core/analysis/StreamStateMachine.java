@@ -1084,7 +1084,6 @@ class StreamStateMachine {
 			ISSABasicBlock block, CGNode cgNode, ICFGSupergraph supergraph) {
 		// can we search the supergraph for the corresponding block? Do I need
 		// to search the entire graph?
-		// TODO: For #20, this will probably need to change.
 		for (BasicBlockInContext<IExplodedBasicBlock> basicBlockInContext : supergraph) {
 			CGNode blockInContextProcedure = supergraph.getProcOf(basicBlockInContext);
 			if (blockInContextProcedure == cgNode) {
