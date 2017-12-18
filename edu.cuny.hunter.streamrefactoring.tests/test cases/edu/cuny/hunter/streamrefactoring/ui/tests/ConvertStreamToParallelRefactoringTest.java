@@ -445,6 +445,12 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, true,
 				false, null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
 	}
+	
+	public void testTypesWithDifferentOrdering() throws Exception {
+		helper(new StreamAnalysisExpectedResult("col.parallelStream()",
+				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.ORDERED), false, true,
+				false, null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
+	}
 
 	/**
 	 * This should change once #103 is fixed.
