@@ -49,7 +49,7 @@ public class TypestateSolverFactory extends com.ibm.safe.typestate.core.Typestat
 			throws PropertiesException, CancelException {
 		IMergeFunctionFactory mergeFactory = makeMergeFactory(options, TypeStateSolverKind.UNIQUE);
 		ILiveObjectAnalysis live = getLiveObjectAnalysis(cg, hg, options);
-		return new ClientSlicingUniqueSolver(cg, pointerAnalysis, dfa, options, live, ora, metrics, reporter, traceReporter, mergeFactory);
+		return new UniqueSolver(cg, pointerAnalysis, dfa, options, live, ora, metrics, reporter, traceReporter, mergeFactory);
 	}
 
 	protected static ILiveObjectAnalysis getLiveObjectAnalysis(CallGraph cg, HeapGraph<?> hg, TypeStateOptions options)
