@@ -56,8 +56,6 @@ import com.ibm.wala.ipa.callgraph.propagation.InstanceFieldPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
-import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.ipa.modref.ModRef;
@@ -239,6 +237,7 @@ class StreamStateMachine {
 				new PropertiesManager.IPropertyDescriptor[] { WholeProgramProperties.Props.LIVE_ANALYSIS });
 		TypeStateOptions typeStateOptions = new TypeStateOptions(manager);
 		typeStateOptions.setBooleanValue(WholeProgramProperties.Props.LIVE_ANALYSIS.getName(), false);
+		// TODO: #127 should also set entry points.
 
 		TypeReference typeReference = this.getStream().getTypeReference();
 		IClass streamClass = engine.getClassHierarchy().lookupClass(typeReference);
@@ -415,7 +414,7 @@ class StreamStateMachine {
 			// fill the instance to predecessors map.
 			for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
 				InstanceKey instance = it.next();
-				CallStringWithReceivers callString = getCallString(instance);
+				CallStringWithReceivers callString = Util.getCallString(instance);
 				Set<InstanceKey> possibleReceivers = new HashSet<>(callString.getPossibleReceivers());
 
 				// get any additional receivers if necessary #36.
@@ -526,7 +525,7 @@ class StreamStateMachine {
 		Collection<InstanceKey> ret = new HashSet<>();
 		LOGGER.fine(() -> "Instance is: " + instance);
 
-		CallStringWithReceivers callString = getCallString(instance);
+		CallStringWithReceivers callString = Util.getCallString(instance);
 
 		// for each method in the call string.
 		for (IMethod calledMethod : callString.getMethods()) {
@@ -550,7 +549,7 @@ class StreamStateMachine {
 					LOGGER.fine(() -> "Found node: " + node);
 
 					// try to get its CallStringWithReceivers.
-					CallStringWithReceivers calledMethodCallString = getCallString(node);
+					CallStringWithReceivers calledMethodCallString = Util.getCallString(node);
 
 					// what are its receivers?
 					Set<InstanceKey> possibleReceivers = calledMethodCallString.getPossibleReceivers();
@@ -602,7 +601,7 @@ class StreamStateMachine {
 				if (!isStreamCreatedFromIntermediateOperation(instance, hierarchy, callGraph))
 					continue;
 
-				CallStringWithReceivers callString = getCallString(instance);
+				CallStringWithReceivers callString = Util.getCallString(instance);
 
 				boolean found = false;
 				for (CallSiteReference callSiteReference : callString.getCallSiteRefs()) {
@@ -645,7 +644,7 @@ class StreamStateMachine {
 
 					possibleReturnTypes = Util.getPossibleTypesInterprocedurally(block.getNode(), returnValue,
 							this.getStream().getAnalysisEngine().getHeapGraph().getHeapModel(),
-							this.getStream().getAnalysisEngine().getPointerAnalysis(), this.getStream(), LOGGER);
+							this.getStream().getAnalysisEngine().getPointerAnalysis(), this.getStream());
 
 					LOGGER.info("Possible reduce types are: " + possibleReturnTypes);
 				} else {
@@ -864,7 +863,7 @@ class StreamStateMachine {
 					engine.getCallGraph()))
 				continue;
 
-			CallStringWithReceivers callString = getCallString(instance);
+			CallStringWithReceivers callString = Util.getCallString(instance);
 			CallSiteReference[] callSiteRefs = callString.getCallSiteRefs();
 			assert callSiteRefs.length == 2 : "Expecting call sites two-deep.";
 
@@ -1026,7 +1025,7 @@ class StreamStateMachine {
 	private static boolean isStreamCreatedFromIntermediateOperation(InstanceKey instance, IClassHierarchy hierarchy,
 			CallGraph callGraph) throws IOException, CoreException {
 		// Get the immediate possible receivers of the stream instance.
-		Set<InstanceKey> receivers = getCallString(instance).getPossibleReceivers();
+		Set<InstanceKey> receivers = Util.getCallString(instance).getPossibleReceivers();
 
 		// Get any additional receivers we need to consider.
 		Collection<? extends InstanceKey> additionalReceivers = getAdditionalNecessaryReceiversFromPredecessors(
@@ -1043,23 +1042,6 @@ class StreamStateMachine {
 			IClass type = r.getConcreteType();
 			return Util.isBaseStream(type) || type.getAllImplementedInterfaces().stream().anyMatch(Util::isBaseStream);
 		});
-	}
-
-	private static CallStringWithReceivers getCallString(InstanceKey instance) {
-		NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
-		return getCallString(allocationInNode);
-	}
-
-	private static CallStringWithReceivers getCallString(NormalAllocationInNode allocationInNode) {
-		CGNode node = allocationInNode.getNode();
-		return getCallString(node);
-	}
-
-	private static CallStringWithReceivers getCallString(CGNode node) {
-		CallStringContext context = (CallStringContext) node.getContext();
-		CallStringWithReceivers callString = (CallStringWithReceivers) context
-				.get(CallStringContextSelector.CALL_STRING);
-		return callString;
 	}
 
 	/**

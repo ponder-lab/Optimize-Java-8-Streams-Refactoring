@@ -36,8 +36,11 @@ import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
 import com.ibm.wala.ipa.callgraph.propagation.HeapModel;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
+import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
+import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
+import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.IR;
@@ -56,6 +59,7 @@ import com.ibm.wala.util.strings.StringStuff;
 
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 import edu.cuny.hunter.streamrefactoring.core.wala.AnalysisUtils;
+import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
 
 public final class Util {
 
@@ -197,22 +201,22 @@ public final class Util {
 	}
 
 	public static Collection<TypeAbstraction> getPossibleTypesInterprocedurally(CGNode node, int valueNumber,
-			HeapModel heapModel, PointerAnalysis<InstanceKey> pointerAnalysis, Stream stream, Logger logger)
+			HeapModel heapModel, PointerAnalysis<InstanceKey> pointerAnalysis, Stream stream)
 			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
 		Collection<TypeAbstraction> ret = new HashSet<>();
 
 		PointerKey valueKey = heapModel.getPointerKeyForLocal(node, valueNumber);
-		logger.fine(() -> "Value pointer key is: " + valueKey);
+		LOGGER.fine(() -> "Value pointer key is: " + valueKey);
 
 		OrdinalSet<InstanceKey> pointsToSet = pointerAnalysis.getPointsToSet(valueKey);
 		assert pointsToSet != null;
-		logger.fine(() -> "PointsTo set is: " + pointsToSet);
+		LOGGER.fine(() -> "PointsTo set is: " + pointsToSet);
 
 		for (InstanceKey instanceKey : pointsToSet) {
 			IClass concreteClass = instanceKey.getConcreteType();
 
 			if (!(concreteClass instanceof SyntheticClass)) {
-				logger.fine(() -> "Found non-synthetic concrete type: " + concreteClass);
+				LOGGER.fine(() -> "Found non-synthetic concrete type: " + concreteClass);
 
 				// Workaround #38, problem seemingly with generics.
 				// Due to type erasure, we may have the problem if the return
@@ -409,7 +413,7 @@ public final class Util {
 	public static JDTIdentityMapper getJDTIdentifyMapper(ASTNode node) {
 		return new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE, node.getAST());
 	}
-	
+
 	/**
 	 * check whether the annotation is "EntryPoint"
 	 */
@@ -421,9 +425,10 @@ public final class Util {
 	 * Find all annotations in test cases and check whether they are "entry point".
 	 * If yes, call DefaultEntrypoint to get entry point, then, add it into the
 	 * result set.
-	 * @throws InvalidClassFileException 
+	 * 
+	 * @throws InvalidClassFileException
 	 */
-	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) throws InvalidClassFileException  {
+	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) throws InvalidClassFileException {
 		final Set<Entrypoint> result = new HashSet<>();
 		Iterator<IClass> classIterator = classHierarchy.iterator();
 		while (classIterator.hasNext()) {
@@ -433,7 +438,7 @@ public final class Util {
 				// iterate over all declared methods
 				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
 
-						// if method has an annotation
+					// if method has an annotation
 					if (!(method instanceof ShrikeCTMethod)) {
 						throw new IllegalArgumentException("@EntryPoint only works for byte code.");
 					}
@@ -448,7 +453,24 @@ public final class Util {
 				}
 			}
 		}
-		
+
 		return result;
+	}
+
+	public static CallStringWithReceivers getCallString(InstanceKey instance) {
+		NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
+		return getCallString(allocationInNode);
+	}
+
+	public static CallStringWithReceivers getCallString(NormalAllocationInNode allocationInNode) {
+		CGNode node = allocationInNode.getNode();
+		return getCallString(node);
+	}
+
+	public static CallStringWithReceivers getCallString(CGNode node) {
+		CallStringContext context = (CallStringContext) node.getContext();
+		CallStringWithReceivers callString = (CallStringWithReceivers) context
+				.get(CallStringContextSelector.CALL_STRING);
+		return callString;
 	}
 }

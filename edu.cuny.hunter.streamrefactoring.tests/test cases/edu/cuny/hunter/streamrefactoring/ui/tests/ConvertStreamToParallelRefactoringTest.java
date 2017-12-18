@@ -59,7 +59,8 @@ import junit.framework.TestSuite;
 public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	/**
-	 * The name of the directory containing resources under the project directory.
+	 * The name of the directory containing resources under the project
+	 * directory.
 	 */
 	private static final String RESOURCE_PATH = "resources";
 
@@ -223,9 +224,10 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 *
 	 * @see
 	 * org.eclipse.jdt.ui.tests.refactoring.RefactoringTest#getFileContents(java
-	 * .lang.String) Had to override this method because, since this plug-in is a
-	 * fragment (at least I think that this is the reason), it doesn't have an
-	 * activator and the bundle is resolving to the eclipse refactoring test bundle.
+	 * .lang.String) Had to override this method because, since this plug-in is
+	 * a fragment (at least I think that this is the reason), it doesn't have an
+	 * activator and the bundle is resolving to the eclipse refactoring test
+	 * bundle.
 	 */
 	@Override
 	public String getFileContents(String fileName) throws IOException {
@@ -452,8 +454,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	public void testNonInternalAPI() throws Exception {
 		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()",
 				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, false,
-				false, null, null, null, RefactoringStatus.ERROR,
-				EnumSet.of(PreconditionFailure.UNORDERED)));
+				false, null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
 	}
 
 	public void testNonInternalAPI2() throws Exception {
@@ -462,14 +463,14 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
-	
+
 	public void testNonInternalAPI3() throws Exception {
 		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
-				Collections.singleton(ExecutionMode.SEQUENTIAL),  Collections.singleton(Ordering.UNORDERED), false, true,
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED), false, true,
 				false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
-	
+
 	/**
 	 * related to #126
 	 */
@@ -482,19 +483,19 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				Collections.singleton(ExecutionMode.SEQUENTIAL), orderings, false, true, false, null, null, null,
 				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS)));
 	}
-	
+
 	/**
 	 * related to #126
 	 */
 	public void testNonInternalAPI5() throws Exception {
 		HashSet<ExecutionMode> executionModes = new HashSet<>();
-		executionModes .add(ExecutionMode.PARALLEL);
-		executionModes .add(ExecutionMode.SEQUENTIAL);
+		executionModes.add(ExecutionMode.PARALLEL);
+		executionModes.add(ExecutionMode.SEQUENTIAL);
 		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()", executionModes,
 				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
 				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES)));
 	}
-	
+
 	/**
 	 * related to #126
 	 */
@@ -506,7 +507,18 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
 				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES)));
 	}
-	
+
+	/**
+	 * This is a control to testNonInternalAPI4.
+	 */
+	public void testNonInternalAPI7() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, true, false,
+				EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
+				PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet()));
+	}
+
 	public void testCollectionFromParameter() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
 				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
