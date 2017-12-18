@@ -352,9 +352,9 @@ class StreamStateMachine {
 									assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
 								}
 
-								IntSet intSet = instanceResult.getResult().getResult(blockInContext);
-								for (IntIterator it = intSet.intIterator(); it.hasNext();) {
-									int nextInt = it.next();
+								IntSet resultingFacts = instanceResult.getResult().getResult(blockInContext);
+								for (IntIterator factIterator = resultingFacts.intIterator(); factIterator.hasNext();) {
+									int fact = factIterator.next();
 
 									// retrieve the state set for this instance
 									// and block.
@@ -382,7 +382,7 @@ class StreamStateMachine {
 									}
 
 									// get the facts.
-									Factoid factoid = instanceResult.getDomain().getMappedObject(nextInt);
+									Factoid factoid = instanceResult.getDomain().getMappedObject(fact);
 									if (factoid != DUMMY_ZERO) {
 										BaseFactoid baseFactoid = (BaseFactoid) factoid;
 										assert baseFactoid.instance.equals(
