@@ -389,6 +389,8 @@ class StreamStateMachine {
 												instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
 
 										// add the encountered state to the set.
+										LOGGER.info(() -> "Adding state: " + baseFactoid.state + " for instance: "
+												+ baseFactoid.instance + " for rule: " + rule.getName());
 										stateSet.add(baseFactoid.state);
 									}
 								}
