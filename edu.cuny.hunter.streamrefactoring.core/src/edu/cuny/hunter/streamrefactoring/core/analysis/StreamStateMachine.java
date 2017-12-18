@@ -421,7 +421,7 @@ class StreamStateMachine {
 				Collection<? extends InstanceKey> additionalNecessaryReceiversFromPredecessors = getAdditionalNecessaryReceiversFromPredecessors(
 						instance, this.getStream().getClassHierarchy(),
 						this.getStream().getAnalysisEngine().getCallGraph());
-				LOGGER.info(() -> "Adding additional receivers: " + additionalNecessaryReceiversFromPredecessors);
+				LOGGER.fine(() -> "Adding additional receivers: " + additionalNecessaryReceiversFromPredecessors);
 				possibleReceivers.addAll(additionalNecessaryReceiversFromPredecessors);
 
 				instanceToPredecessorsMap.merge(instance, possibleReceivers, (x, y) -> {
@@ -541,7 +541,7 @@ class StreamStateMachine {
 			if (implementsBaseStream) {
 				// look up the call string for this method.
 				NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
-				LOGGER.info(() -> "Predecessor count is: " + callGraph.getPredNodeCount(allocationInNode.getNode()));
+				LOGGER.fine(() -> "Predecessor count is: " + callGraph.getPredNodeCount(allocationInNode.getNode()));
 
 				for (Iterator<CGNode> predNodes = callGraph.getPredNodes(allocationInNode.getNode()); predNodes
 						.hasNext();) {
@@ -646,7 +646,7 @@ class StreamStateMachine {
 							this.getStream().getAnalysisEngine().getHeapGraph().getHeapModel(),
 							this.getStream().getAnalysisEngine().getPointerAnalysis(), this.getStream());
 
-					LOGGER.info("Possible reduce types are: " + possibleReturnTypes);
+					LOGGER.fine("Possible reduce types are: " + possibleReturnTypes);
 				} else {
 					// it's a void method.
 					possibleReturnTypes = Collections.singleton(JavaPrimitiveType.VOID);
