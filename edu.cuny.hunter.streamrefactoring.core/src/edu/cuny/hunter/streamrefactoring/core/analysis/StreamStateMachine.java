@@ -390,7 +390,7 @@ class StreamStateMachine {
 
 										// add the encountered state to the set.
 										LOGGER.info(() -> "Adding state: " + baseFactoid.state + " for instance: "
-												+ baseFactoid.instance + " for rule: " + rule.getName());
+												+ baseFactoid.instance + " for block: " + block + " for rule: " + rule.getName());
 										stateSet.add(baseFactoid.state);
 									}
 								}
