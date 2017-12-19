@@ -4,8 +4,13 @@ import java.util.HashSet;
 
 import edu.cuny.hunter.streamrefactoring.annotations.*;
 
+/**
+ * remove an annotation before m()
+ * from testMultipleEntryPoint
+ *
+ */
 class A {
-	@EntryPoint
+
 	void m() {
         HashSet h1 = new HashSet();
 		h1.stream().count();
