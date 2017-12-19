@@ -283,9 +283,6 @@ class StreamStateMachine {
 					// separating client from library code
 					if (!cgNode.getMethod().getDeclaringClass().getClassLoader().getReference()
 							.equals(ClassLoaderReference.Application)) {
-						continue;
-					} else {
-
 						// for each call site in the call graph node.
 						for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
 							// get the call site reference.
