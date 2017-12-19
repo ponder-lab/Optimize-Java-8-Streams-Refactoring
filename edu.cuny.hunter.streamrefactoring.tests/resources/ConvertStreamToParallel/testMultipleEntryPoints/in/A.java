@@ -7,11 +7,13 @@ import edu.cuny.hunter.streamrefactoring.annotations.*;
 class A {
 	@EntryPoint
 	void m() {
-		new HashSet().stream().count();
+                HashSet h1 = new HashSet();
+		h1.stream().count();
 	}
 	
 	@EntryPoint
 	void n() {
-		new HashSet().stream().count();
+                HashSet h2 = new HashSet();
+		h2.stream().count();
 	}
 }
