@@ -15,6 +15,8 @@ This prototype refactoring plug-in for [Eclipse](http://eclipse.org) represents 
 
 ## Contributing
 
+Please see [the wiki](http://github.com/ponder-lab/Java-8-Stream-Refactoring/wiki) for more information regarding development.
+
 ### Installation for Development
 
 The project includes a maven configuration file using the tycho plug-in, which is part of the [maven eclipse plugin](http://www.eclipse.org/m2e/). Running `mvn install` will install *most* dependencies. Note that if you are not using maven, this plugin depends on https://github.com/khatchad/edu.cuny.citytech.refactoring.common, the **Eclipse SDK**, **Eclipse SDK tests**, and the **Eclipse testing framework**. The latter three can be installed from the "Install New Software..." menu option under "Help" in Eclipse.
