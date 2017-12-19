@@ -625,4 +625,20 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 						false, false, false, null, null, null, RefactoringStatus.ERROR,
 						Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
 	}
+	
+	public void testMultipleEntryPoints() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new HashSet().stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.UNORDERED), false, true, false,
+				EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
+				PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet()));
+	}
+	
+	public void testMultipleEntryPoints1() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new HashSet().stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.UNORDERED), false, true, false,
+				EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
+				PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet()));
+	}
 }
