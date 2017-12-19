@@ -509,10 +509,48 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	/**
-	 * This is a control to testNonInternalAPI4.
+	 * This is a control to testNonInternalAPI4. It's the intraprocedural version.
+	 * Related to #126.
 	 */
 	public void testNonInternalAPI7() throws Exception {
 		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, true, false,
+				EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
+				PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet()));
+	}
+
+	/**
+	 * Related to #126 and based on testNonInternalAPI4. Try calling the
+	 * transitioning method in the entry point method, which is where the terminal
+	 * operation is called.
+	 */
+	public void testNonInternalAPI8() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, true, false,
+				EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
+				PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet()));
+	}
+
+	/**
+	 * Related to #126. Like testNonInternalAPI4 but with no local variable.
+	 */
+	public void testNonInternalAPI9() throws Exception {
+		HashSet<Ordering> orderings = new HashSet<>();
+		orderings.add(Ordering.UNORDERED);
+		orderings.add(Ordering.ORDERED);
+
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), orderings, false, true, false, null, null, null,
+				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS)));
+	}
+
+	/**
+	 * Related to #126. Suggested by @mbagherz.
+	 */
+	public void testNonInternalAPI10() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new HashSet<Object>().stream()",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, true, false,
 				EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
 				PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
