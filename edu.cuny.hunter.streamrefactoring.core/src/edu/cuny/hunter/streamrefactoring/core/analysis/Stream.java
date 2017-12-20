@@ -583,6 +583,9 @@ public class Stream {
 				else
 					this.setInitialOrdering(Ordering.ORDERED);
 				break;
+			default:
+				throw new IllegalStateException(
+						"Unhandled expression type qualified name: " + expressionTypeQualifiedName);
 			}
 		} else { // instance method.
 			int valueNumber = getUseValueNumberForCreation();
