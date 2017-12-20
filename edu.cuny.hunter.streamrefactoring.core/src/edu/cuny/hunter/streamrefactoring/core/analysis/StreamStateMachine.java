@@ -284,6 +284,10 @@ class StreamStateMachine {
 					// improve performance for #103
 					if (cgNode.getMethod().getDeclaringClass().getClassLoader().getReference()
 							.equals(ClassLoaderReference.Application)) {
+
+						// we can verify that only client nodes are being considered
+						LOGGER.log(Level.INFO, "Processing " + cgNode);
+
 						// for each call site in the call graph node.
 						for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
 							// get the call site reference.
