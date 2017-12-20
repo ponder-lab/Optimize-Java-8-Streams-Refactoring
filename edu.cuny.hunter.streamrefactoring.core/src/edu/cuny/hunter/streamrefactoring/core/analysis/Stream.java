@@ -188,7 +188,15 @@ public class Stream {
 		this.orderingInference = new OrderingInference(this.getClassHierarchy());
 
 		this.inferInitialExecution();
-		this.inferInitialOrdering();
+		
+		try {
+			this.inferInitialOrdering();
+		} catch (NoEntryPointException e) {
+			LOGGER.log(Level.WARNING, "Exception caught while processing: " + this.getCreation(), e);
+			addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
+					"Stream: " + this.getCreation() + " has no Entry Point.");
+			return;
+		}
 
 		try {
 			// start the state machine.
@@ -553,21 +561,14 @@ public class Stream {
 	}
 
 	private void inferInitialOrdering() throws IOException, CoreException, ClassHierarchyException,
-			InvalidClassFileException, CallGraphBuilderCancelException, CancelException {
+			InvalidClassFileException, CallGraphBuilderCancelException, CancelException, NoEntryPointException {
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
 
 		// build the graph.
-		try {
-			this.buildCallGraph();
-		} catch (NoEntryPointException e) {
-			LOGGER.log(Level.WARNING, "Exception caught while processing: " + this.getCreation(), e);
-			addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
-					"Stream: " + this.getCreation() + " has no Entry Point.");
-			return;
-		}
-		
+		this.buildCallGraph();
+
 		if (JdtFlags.isStatic(calledMethodBinding)) {
 			// static methods returning unordered streams.
 			if (expressionTypeQualifiedName.equals("java.util.stream.Stream")
