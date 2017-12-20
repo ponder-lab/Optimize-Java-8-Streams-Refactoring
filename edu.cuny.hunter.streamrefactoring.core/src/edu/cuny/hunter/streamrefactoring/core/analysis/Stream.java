@@ -572,15 +572,17 @@ public class Stream {
 
 		if (JdtFlags.isStatic(calledMethodBinding)) {
 			// static methods returning unordered streams.
-			if (expressionTypeQualifiedName.equals("java.util.stream.Stream")
-					|| expressionTypeQualifiedName.equals("java.util.stream.IntStream")
-					|| expressionTypeQualifiedName.equals("java.util.stream.LongStream")
-					|| expressionTypeQualifiedName.equals("java.util.stream.DoubleStream")) {
+			switch (expressionTypeQualifiedName) {
+			case "java.util.stream.Stream":
+			case "java.util.stream.IntStream":
+			case "java.util.stream.LongStream":
+			case "java.util.stream.DoubleStream":
 				String methodIdentifier = getMethodIdentifier(calledMethodBinding);
 				if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
 					this.setInitialOrdering(Ordering.UNORDERED);
 				else
 					this.setInitialOrdering(Ordering.ORDERED);
+				break;
 			}
 		} else { // instance method.
 			int valueNumber = getUseValueNumberForCreation();
