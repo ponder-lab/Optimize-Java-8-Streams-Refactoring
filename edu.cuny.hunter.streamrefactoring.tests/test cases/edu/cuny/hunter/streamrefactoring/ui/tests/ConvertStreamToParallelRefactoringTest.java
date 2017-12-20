@@ -661,4 +661,13 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 						false, false, false, null, null, null, RefactoringStatus.ERROR,
 						Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
 	}
+
+	public void testWithoutEntryPoint() throws Exception {
+		helper(new StreamAnalysisExpectedResult("h1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL), null,
+				false, false, false, null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(PreconditionFailure.NO_ENTRY_POINT)));
+		helper(new StreamAnalysisExpectedResult("h2.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL), null,
+				false, false, false, null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(PreconditionFailure.NO_ENTRY_POINT)));
+	}
 }
