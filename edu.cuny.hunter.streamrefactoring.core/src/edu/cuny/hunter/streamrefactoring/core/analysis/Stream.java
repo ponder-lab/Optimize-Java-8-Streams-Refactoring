@@ -208,9 +208,11 @@ public class Stream {
 			LOGGER.log(Level.WARNING, "Require terminal operations: " + streamCreation, e);
 			addStatusEntry(PreconditionFailure.NO_TERMINAL_OPERATIONS,
 					"Require terminal operations: " + streamCreation + ".");
-		} catch (InstanceKeyNotFoundException | NoEnclosingMethodNodeFoundException e) {
-			LOGGER.log(Level.WARNING, "Encountered probable unhandled case while processing: " + streamCreation, e);
-			addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, "Encountered probably unhandled case.");
+		} catch (InstanceKeyNotFoundException e) {
+			LOGGER.log(Level.WARNING, "Encountered unreachable code while processing: " + streamCreation, e);
+			addStatusEntry(PreconditionFailure.STREAM_CODE_NOT_REACHABLE,
+					"Either pivital code isn't reachable for stream: " + streamCreation
+							+ " or entry points are misconfigured.");
 		}
 	}
 

@@ -227,7 +227,7 @@ class StreamStateMachine {
 	public void start() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
 			InvalidClassFileException, PropertiesException, UnknownIfReduceOrderMattersException, NoniterableException,
 			NoninstantiableException, CannotExtractSpliteratorException, RequireTerminalOperationException,
-			InstanceKeyNotFoundException, NoEnclosingMethodNodeFoundException {
+			InstanceKeyNotFoundException {
 		// get the analysis engine.
 		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
