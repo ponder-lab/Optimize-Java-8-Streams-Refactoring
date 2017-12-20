@@ -286,7 +286,7 @@ class StreamStateMachine {
 							.equals(ClassLoaderReference.Application)) {
 
 						// we can verify that only client nodes are being considered
-						LOGGER.log(Level.INFO, "Processing " + cgNode);
+						LOGGER.fine(() -> "Examining client call graph node: " + cgNode);
 
 						// for each call site in the call graph node.
 						for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
