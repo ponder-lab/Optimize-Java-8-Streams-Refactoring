@@ -389,8 +389,9 @@ class StreamStateMachine {
 												instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
 
 										// add the encountered state to the set.
-										LOGGER.info(() -> "Adding state: " + baseFactoid.state + " for instance: "
-												+ baseFactoid.instance + " for block: " + block + " for rule: " + rule.getName());
+										LOGGER.fine(() -> "Adding state: " + baseFactoid.state + " for instance: "
+												+ baseFactoid.instance + " for block: " + block + " for rule: "
+												+ rule.getName());
 										stateSet.add(baseFactoid.state);
 									}
 								}
@@ -938,17 +939,18 @@ class StreamStateMachine {
 							// site from the caller.
 							Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode,
 									callSiteReference);
-							LOGGER.info("#possible targets: " + possibleTargets.size());
+							LOGGER.fine(() -> "#possible targets: " + possibleTargets.size());
 
 							if (!possibleTargets.isEmpty())
-								possibleTargets.forEach(t -> LOGGER.info(() -> "Possible target: " + t));
+								LOGGER.fine(() -> possibleTargets.stream().map(String::valueOf)
+										.collect(Collectors.joining("\n", "Possible target: ", "")));
 
 							// for each possible target node.
 							for (CGNode target : possibleTargets) {
 								// get the set of pointers (locations) it
 								// may modify
 								OrdinalSet<PointerKey> modSet = mod.get(target);
-								LOGGER.info("#original modified locations: " + modSet.size());
+								LOGGER.fine(() -> "#original modified locations: " + modSet.size());
 
 								Collection<PointerKey> filteredModSet = new HashSet<>();
 
@@ -958,7 +960,7 @@ class StreamStateMachine {
 										filteredModSet.add(pointerKey);
 								}
 
-								LOGGER.info("#filtered modified locations: " + filteredModSet.size());
+								LOGGER.fine(() -> "#filtered modified locations: " + filteredModSet.size());
 
 								// if it's non-empty.
 								if (!filteredModSet.isEmpty()) {
