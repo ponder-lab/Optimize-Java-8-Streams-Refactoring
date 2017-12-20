@@ -148,7 +148,7 @@ public class Stream {
 	private Ordering initialOrdering;
 
 	/**
-	 * This should be the ordering of the stream when it is consumed by a terimal
+	 * This should be the ordering of the stream when it is consumed by a terminal
 	 * operation.
 	 */
 	private Set<Ordering> possibleOrderings = new HashSet<>();
