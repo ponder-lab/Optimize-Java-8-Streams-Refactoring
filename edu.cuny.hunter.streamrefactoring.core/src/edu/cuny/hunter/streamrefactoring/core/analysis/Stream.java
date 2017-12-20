@@ -559,8 +559,15 @@ public class Stream {
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
 
 		// build the graph.
-		this.buildCallGraph();
-
+		try {
+			this.buildCallGraph();
+		} catch (NoEntryPointException e) {
+			LOGGER.log(Level.WARNING, "Exception caught while processing: " + this.getCreation(), e);
+			addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
+					"Stream: " + this.getCreation() + " has no Entry Point.");
+			return;
+		}
+		
 		if (JdtFlags.isStatic(calledMethodBinding)) {
 			// static methods returning unordered streams.
 			if (expressionTypeQualifiedName.equals("java.util.stream.Stream")
@@ -772,7 +779,7 @@ public class Stream {
 	}
 
 	protected void buildCallGraph() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
-			InvalidClassFileException {
+			InvalidClassFileException, NoEntryPointException {
 		if (!this.isCallGraphBuilt()) {
 			// FIXME: Do we want a different entry point?
 			// TODO: Do we need to build the call graph for each stream?
