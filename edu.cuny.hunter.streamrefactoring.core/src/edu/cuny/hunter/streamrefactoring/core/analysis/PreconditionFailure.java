@@ -15,7 +15,7 @@ public enum PreconditionFailure {
 	UNORDERED(12), // P4 or P4.
 	NO_TERMINAL_OPERATIONS(13),
 	CURRENTLY_NOT_HANDLED(14),
-	NO_ENTRY_POINT(15);
+	NO_ENTRY_POINT(16);
 
 	private int code;
 
