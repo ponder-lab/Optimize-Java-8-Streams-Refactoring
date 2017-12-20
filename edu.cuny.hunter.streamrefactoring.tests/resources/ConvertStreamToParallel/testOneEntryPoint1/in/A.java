@@ -6,8 +6,7 @@ import java.util.stream.*;
 import edu.cuny.hunter.streamrefactoring.annotations.*;
 
 /**
- * remove an entry point before m()
- * from testMultipleEntryPoint1
+ * remove an entry point before m() from testMultipleEntryPoint1
  */
 class A {
 
