@@ -690,4 +690,14 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
+
+	/**
+	 * Test #129. A test case includes a field.
+	 */
+	public void testField() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
+				false, null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
+	}
 }
