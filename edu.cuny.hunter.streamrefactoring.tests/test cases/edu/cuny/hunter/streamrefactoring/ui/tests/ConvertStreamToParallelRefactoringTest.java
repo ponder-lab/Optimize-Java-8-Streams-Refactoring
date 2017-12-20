@@ -661,4 +661,11 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 						false, false, false, null, null, null, RefactoringStatus.ERROR,
 						Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
 	}
+	
+	public void testField() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
+				false, null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
+	}
 }
