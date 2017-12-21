@@ -23,9 +23,8 @@ public class Util {
 
 	/**
 	 * True iff the given {@link InstanceKey} corresponds with the given
-	 * {@link SSAInvokeInstruction} in the given {@link CallGraph}. In other
-	 * words, the result is true iff the instruction is used to create the
-	 * instance.
+	 * {@link SSAInvokeInstruction} in the given {@link CallGraph}. In other words,
+	 * the result is true iff the instruction is used to create the instance.
 	 * 
 	 * @param instanceKey
 	 *            An instance in question.
