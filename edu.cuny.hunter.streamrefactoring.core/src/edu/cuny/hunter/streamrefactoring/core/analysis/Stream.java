@@ -584,8 +584,11 @@ public class Stream {
 					this.setInitialOrdering(Ordering.ORDERED);
 				break;
 			default:
-				throw new IllegalStateException(
-						"Unhandled expression type qualified name: " + expressionTypeQualifiedName);
+				// Fall back for now #136.
+				Ordering defaultOrdering = Ordering.ORDERED;
+				LOGGER.warning(() -> "Unhandled expression type qualified name: " + expressionTypeQualifiedName
+						+ ". Falling back to: " + defaultOrdering + ".");
+				this.setInitialOrdering(defaultOrdering);
 			}
 		} else { // instance method.
 			int valueNumber = getUseValueNumberForCreation();
@@ -611,7 +614,6 @@ public class Stream {
 
 				// Possible types: check each one.
 				calledMethod = (IMethod) calledMethodBinding.getJavaElement();
-
 				ordering = this.getOrderingInference().inferOrdering(possibleTypes, calledMethod);
 			} catch (NoniterableException e) {
 				LOGGER.log(Level.WARNING, "Stream: " + this.getCreation()
