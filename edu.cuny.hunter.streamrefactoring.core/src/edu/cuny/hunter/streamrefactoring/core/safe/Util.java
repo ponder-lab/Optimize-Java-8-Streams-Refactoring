@@ -11,7 +11,10 @@ import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallString;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
+import com.ibm.wala.types.MethodReference;
+import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.collections.Pair;
+import com.ibm.wala.util.strings.Atom;
 
 public class Util {
 
@@ -52,11 +55,28 @@ public class Util {
 			CallSiteReference[] callSiteRefs = callString.getCallSiteRefs();
 
 			// for each call site reference.
-			for (CallSiteReference callSiteReference : callSiteRefs)
+			for (CallSiteReference callSiteReference : callSiteRefs) {
+				CallSiteReference instructionCallSite = instruction.getCallSite();
+
 				// if the call site reference equals the call site corresponding
 				// to the creation instruction.
-				if (callSiteReference.equals(instruction.getCallSite()))
+				if (callSiteReference.equals(instructionCallSite))
 					return true;
+				// workaround #80.
+				else if (callSiteReference.getProgramCounter() == instructionCallSite.getProgramCounter()) {
+					// compare declared targets.
+					MethodReference callSiteDeclaredTarget = callSiteReference.getDeclaredTarget();
+					MethodReference instructionCallDeclaredTarget = instructionCallSite.getDeclaredTarget();
+
+					if (callSiteDeclaredTarget.getDeclaringClass().getName()
+							.equals(instructionCallDeclaredTarget.getDeclaringClass().getName())
+							&& callSiteDeclaredTarget.getDeclaringClass().getName()
+									.equals(TypeName.string2TypeName("Ljava/util/Arrays"))
+							&& callSiteDeclaredTarget.getName().equals(instructionCallDeclaredTarget.getName())
+							&& callSiteDeclaredTarget.getName().equals(Atom.findOrCreateAsciiAtom("stream")))
+						return true;
+				}
+			}
 		}
 		return false;
 	}
