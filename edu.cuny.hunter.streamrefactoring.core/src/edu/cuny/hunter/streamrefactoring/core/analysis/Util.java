@@ -427,8 +427,10 @@ public final class Util {
 	 * result set.
 	 * 
 	 * @throws InvalidClassFileException
+	 * @throws NoEntryPointException
 	 */
-	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) throws InvalidClassFileException {
+	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy)
+			throws InvalidClassFileException, NoEntryPointException {
 		final Set<Entrypoint> result = new HashSet<>();
 		Iterator<IClass> classIterator = classHierarchy.iterator();
 		while (classIterator.hasNext()) {
@@ -453,6 +455,8 @@ public final class Util {
 				}
 			}
 		}
+		if (result.isEmpty())
+			throw new NoEntryPointException("Require Entry Point!");
 
 		return result;
 	}

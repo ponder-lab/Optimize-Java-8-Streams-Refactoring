@@ -17,8 +17,9 @@ public enum PreconditionFailure {
 	UNORDERED(12), // P4 or P4.
 	NO_TERMINAL_OPERATIONS(13),
 	CURRENTLY_NOT_HANDLED(14), // should just be #97 currently.
-	STREAM_CODE_NOT_REACHABLE(15); // either pivotal code isn't reachable or
+	STREAM_CODE_NOT_REACHABLE(15), // either pivotal code isn't reachable or
 									// entry points are misconfigured.
+	NO_ENTRY_POINT(16); // user didn't specify entry points.
 
 	private int code;
 

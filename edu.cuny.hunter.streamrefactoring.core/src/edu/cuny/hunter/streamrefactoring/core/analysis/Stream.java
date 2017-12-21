@@ -188,7 +188,15 @@ public class Stream {
 		this.orderingInference = new OrderingInference(this.getClassHierarchy());
 
 		this.inferInitialExecution();
-		this.inferInitialOrdering();
+		
+		try {
+			this.inferInitialOrdering();
+		} catch (NoEntryPointException e) {
+			LOGGER.log(Level.WARNING, "Exception caught while processing: " + this.getCreation(), e);
+			addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
+					"Stream: " + this.getCreation() + " has no Entry Point.");
+			return;
+		}
 
 		try {
 			// start the state machine.
@@ -562,7 +570,7 @@ public class Stream {
 	}
 
 	private void inferInitialOrdering() throws IOException, CoreException, ClassHierarchyException,
-			InvalidClassFileException, CallGraphBuilderCancelException, CancelException {
+			InvalidClassFileException, CallGraphBuilderCancelException, CancelException, NoEntryPointException {
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
@@ -781,7 +789,7 @@ public class Stream {
 	}
 
 	protected void buildCallGraph() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
-			InvalidClassFileException {
+			InvalidClassFileException, NoEntryPointException {
 		if (!this.isCallGraphBuilt()) {
 			// FIXME: Do we want a different entry point?
 			// TODO: Do we need to build the call graph for each stream?
