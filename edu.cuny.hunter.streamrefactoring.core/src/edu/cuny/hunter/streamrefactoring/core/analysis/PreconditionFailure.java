@@ -1,5 +1,7 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
+import java.util.Arrays;
+
 public enum PreconditionFailure {
 	INCONSISTENT_POSSIBLE_STREAM_SOURCE_ORDERING(1),
 	NON_ITERABLE_POSSIBLE_STREAM_SOURCE(2),
@@ -14,10 +16,19 @@ public enum PreconditionFailure {
 	NO_STATEFUL_INTERMEDIATE_OPERATIONS(11), // P4 or P5.
 	UNORDERED(12), // P4 or P4.
 	NO_TERMINAL_OPERATIONS(13),
-	CURRENTLY_NOT_HANDLED(14),
-	NO_ENTRY_POINT(16);
+	CURRENTLY_NOT_HANDLED(14), // should just be #97 currently.
+	STREAM_CODE_NOT_REACHABLE(15); // either pivotal code isn't reachable or
+									// entry points are misconfigured.
+  NO_ENTRY_POINT(16);
 
 	private int code;
+
+	static {
+		// check that the codes are unique.
+		if (Arrays.stream(PreconditionFailure.values()).map(PreconditionFailure::getCode).distinct()
+				.count() != PreconditionFailure.values().length)
+			throw new IllegalStateException("Codes aren't unique.");
+	}
 
 	private PreconditionFailure(int code) {
 		this.code = code;
