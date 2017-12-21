@@ -582,7 +582,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	public void testCollectionFromParameter4() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
 				Collections.singleton(Ordering.ORDERED), false, false, false, null, null, null, RefactoringStatus.ERROR,
-				EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
+				EnumSet.of(PreconditionFailure.STREAM_CODE_NOT_REACHABLE)));
 	}
 
 	public void testStaticInitializer() throws Exception {
@@ -660,5 +660,34 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 						Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED),
 						false, false, false, null, null, null, RefactoringStatus.ERROR,
 						Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
+	}
+
+  	/**
+	 * Test #119.
+	 */
+	public void testWithoutEntryPoint() throws Exception {
+		helper(new StreamAnalysisExpectedResult("h1.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL), null,
+				false, false, false, null, null, null, RefactoringStatus.ERROR,
+				EnumSet.of(PreconditionFailure.NO_ENTRY_POINT)));
+	}
+	
+	/**
+	 * Test #122.
+	 */
+	public void testMultipleEntryPoints() throws Exception {
+		helper(new StreamAnalysisExpectedResult("h1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.UNORDERED), false, false, false,
+				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
+				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+	}
+	
+	/**
+	 * Test #122. Remove an annotation from testMultipleEntryPoints().
+	 */
+	public void testOneEntryPoint() throws Exception {
+		helper(new StreamAnalysisExpectedResult("h2.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.UNORDERED), false, false, false,
+				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
+				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
 }

@@ -148,7 +148,7 @@ public class Stream {
 	private Ordering initialOrdering;
 
 	/**
-	 * This should be the ordering of the stream when it is consumed by a terimal
+	 * This should be the ordering of the stream when it is consumed by a terminal
 	 * operation.
 	 */
 	private Set<Ordering> possibleOrderings = new HashSet<>();
@@ -188,7 +188,15 @@ public class Stream {
 		this.orderingInference = new OrderingInference(this.getClassHierarchy());
 
 		this.inferInitialExecution();
-		this.inferInitialOrdering();
+		
+		try {
+			this.inferInitialOrdering();
+		} catch (NoEntryPointException e) {
+			LOGGER.log(Level.WARNING, "Exception caught while processing: " + this.getCreation(), e);
+			addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
+					"Stream: " + this.getCreation() + " has no Entry Point.");
+			return;
+		}
 
 		try {
 			// start the state machine.
@@ -208,9 +216,18 @@ public class Stream {
 			LOGGER.log(Level.WARNING, "Require terminal operations: " + streamCreation, e);
 			addStatusEntry(PreconditionFailure.NO_TERMINAL_OPERATIONS,
 					"Require terminal operations: " + streamCreation + ".");
-		} catch (InstanceKeyNotFoundException | NoEnclosingMethodNodeFoundException e) {
-			LOGGER.log(Level.WARNING, "Encountered probable unhandled case while processing: " + streamCreation, e);
-			addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, "Encountered probably unhandled case.");
+		} catch (InstanceKeyNotFoundException e) {
+			// workaround for #80.
+			if (streamCreation.toString().contains("Arrays.stream")) {
+				String msg = "Encountered possible unhandled case (#80) while processing: " + streamCreation;
+				LOGGER.log(Level.WARNING, msg, e);
+				addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, msg);
+			} else {
+				LOGGER.log(Level.WARNING, "Encountered unreachable code while processing: " + streamCreation, e);
+				addStatusEntry(PreconditionFailure.STREAM_CODE_NOT_REACHABLE,
+						"Either pivital code isn't reachable for stream: " + streamCreation
+								+ " or entry points are misconfigured.");
+			}
 		}
 	}
 
@@ -553,7 +570,7 @@ public class Stream {
 	}
 
 	private void inferInitialOrdering() throws IOException, CoreException, ClassHierarchyException,
-			InvalidClassFileException, CallGraphBuilderCancelException, CancelException {
+			InvalidClassFileException, CallGraphBuilderCancelException, CancelException, NoEntryPointException {
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
@@ -772,7 +789,7 @@ public class Stream {
 	}
 
 	protected void buildCallGraph() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
-			InvalidClassFileException {
+			InvalidClassFileException, NoEntryPointException {
 		if (!this.isCallGraphBuilt()) {
 			// FIXME: Do we want a different entry point?
 			// TODO: Do we need to build the call graph for each stream?
