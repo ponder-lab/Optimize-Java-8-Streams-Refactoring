@@ -7,16 +7,16 @@ import edu.cuny.hunter.streamrefactoring.annotations.*;
 
 class A {
 
-    Stream<Object> stream;
-    
-    void m() {
-        stream = new HashSet<>().stream().parallel();
-    }
+	Stream<Object> stream;
 
-    @EntryPoint
-    void n() {
-    	m();
-        stream.distinct().count();
-    }
+	void m() {
+		stream = new HashSet<>().stream().parallel();
+	}
+
+	@EntryPoint
+	void n() {
+		m();
+		stream.distinct().count();
+	}
 
 }
