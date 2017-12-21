@@ -15,6 +15,7 @@ class A {
 
     @EntryPoint
     void n() {
+    	m();
         stream.distinct().count();
     }
 
