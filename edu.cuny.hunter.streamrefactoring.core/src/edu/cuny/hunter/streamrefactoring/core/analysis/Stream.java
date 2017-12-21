@@ -591,6 +591,7 @@ public class Stream {
 				this.setInitialOrdering(defaultOrdering);
 			}
 		} else { // instance method.
+			// get the use value number for the stream creation.
 			int valueNumber = getUseValueNumberForCreation();
 
 			// get the enclosing method node.
@@ -604,6 +605,7 @@ public class Stream {
 				return;
 			}
 
+			// possible types of the stream creation.
 			Collection<TypeAbstraction> possibleTypes = null;
 			IMethod calledMethod = null;
 			Ordering ordering = null;
