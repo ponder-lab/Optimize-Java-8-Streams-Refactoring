@@ -994,7 +994,7 @@ class StreamStateMachine {
 	 *         and <code>false</code> otherwise.
 	 * @apiNote The current filtering mechanism excludes field {@link PointerKey}s
 	 *          whose instance is being assigned with the stream package. Basically,
-	 *          we are looking for modifications to the client code,
+	 *          we are looking for modifications to the client code.
 	 */
 	private static boolean filterPointerKey(PointerKey pointerKey, EclipseProjectAnalysisEngine<InstanceKey> engine) {
 		Boolean ret = null;
