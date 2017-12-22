@@ -10,7 +10,7 @@ class A {
 	Stream<Object> stream;
 
 	void m() {
-		stream = new HashSet<>().stream().parallel();
+		stream = new HashSet<>().stream();
 	}
 
 	@EntryPoint
