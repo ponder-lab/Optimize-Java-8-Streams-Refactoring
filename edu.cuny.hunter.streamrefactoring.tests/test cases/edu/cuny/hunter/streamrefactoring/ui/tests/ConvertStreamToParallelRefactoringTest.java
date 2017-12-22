@@ -692,7 +692,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	/**
-	 * Test #129. A test case includes a field.
+	 * Test #125. A test case that includes a field.
 	 */
 	public void testField() throws Exception {
 		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
