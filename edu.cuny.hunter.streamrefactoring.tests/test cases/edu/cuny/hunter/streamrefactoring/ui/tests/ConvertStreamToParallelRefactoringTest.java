@@ -695,11 +695,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * Test #129. A test case includes a field.
 	 */
 	public void testField() throws Exception {
-		HashSet<ExecutionMode> executionModes = new HashSet<>();
-		executionModes.add(ExecutionMode.PARALLEL);
-		executionModes.add(ExecutionMode.SEQUENTIAL);
-		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()", executionModes,
-				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
-				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES)));
+		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED), false, true,
+				false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
+				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
 }
