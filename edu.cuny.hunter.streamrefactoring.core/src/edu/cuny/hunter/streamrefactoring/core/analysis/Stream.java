@@ -433,7 +433,7 @@ public class Stream {
 			if (ir == null)
 				throw new IllegalStateException("IR is null for: " + resolvedMethod);
 
-			LOGGER.info("IR is: " + ir.toString());
+			LOGGER.fine("IR is: " + ir);
 
 			methodDeclarationToIRMap.put(getEnclosingMethodDeclaration(), ir);
 		}
@@ -580,17 +580,26 @@ public class Stream {
 
 		if (JdtFlags.isStatic(calledMethodBinding)) {
 			// static methods returning unordered streams.
-			if (expressionTypeQualifiedName.equals("java.util.stream.Stream")
-					|| expressionTypeQualifiedName.equals("java.util.stream.IntStream")
-					|| expressionTypeQualifiedName.equals("java.util.stream.LongStream")
-					|| expressionTypeQualifiedName.equals("java.util.stream.DoubleStream")) {
+			switch (expressionTypeQualifiedName) {
+			case "java.util.stream.Stream":
+			case "java.util.stream.IntStream":
+			case "java.util.stream.LongStream":
+			case "java.util.stream.DoubleStream":
 				String methodIdentifier = getMethodIdentifier(calledMethodBinding);
 				if (methodIdentifier.equals("generate(java.util.function.Supplier)"))
 					this.setInitialOrdering(Ordering.UNORDERED);
 				else
 					this.setInitialOrdering(Ordering.ORDERED);
+				break;
+			default:
+				// Fall back for now #136.
+				Ordering defaultOrdering = Ordering.ORDERED;
+				LOGGER.warning(() -> "Unhandled expression type qualified name: " + expressionTypeQualifiedName
+						+ ". Falling back to: " + defaultOrdering + ".");
+				this.setInitialOrdering(defaultOrdering);
 			}
 		} else { // instance method.
+			// get the use value number for the stream creation.
 			int valueNumber = getUseValueNumberForCreation();
 
 			// get the enclosing method node.
@@ -604,6 +613,7 @@ public class Stream {
 				return;
 			}
 
+			// possible types of the stream creation.
 			Collection<TypeAbstraction> possibleTypes = null;
 			IMethod calledMethod = null;
 			Ordering ordering = null;
@@ -614,7 +624,6 @@ public class Stream {
 
 				// Possible types: check each one.
 				calledMethod = (IMethod) calledMethodBinding.getJavaElement();
-
 				ordering = this.getOrderingInference().inferOrdering(possibleTypes, calledMethod);
 			} catch (NoniterableException e) {
 				LOGGER.log(Level.WARNING, "Stream: " + this.getCreation()

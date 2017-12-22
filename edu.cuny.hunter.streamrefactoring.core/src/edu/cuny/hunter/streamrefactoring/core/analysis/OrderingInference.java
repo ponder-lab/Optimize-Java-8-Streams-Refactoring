@@ -185,7 +185,7 @@ class OrderingInference {
 			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
 		TypeReference typeReference = type.getTypeReference();
 
-		// special case. Arrays are always ordered.
+		// special case: arrays are always ordered.
 		if (typeReference.isArrayType())
 			return Ordering.ORDERED;
 
