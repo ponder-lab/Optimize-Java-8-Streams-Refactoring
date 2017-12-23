@@ -1,0 +1,1 @@
+-Dosgi.requiredJavaVersion=1.8 -XX:MaxPermSize=256m -Xms1024m -Xmx8192m -Doomph.update.url=http://download.eclipse.org/oomph/updates/milestone/latest -Doomph.redirection.index.redirection=index:/->http://git.eclipse.org/c/oomph/org.eclipse.oomph.git/plain/setups/ -ea
