@@ -73,7 +73,7 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 /**
  * An abstract notion of a stream in memory.
- * 
+ *
  * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi
  *         Khatchadourian</a>
  *
@@ -90,6 +90,37 @@ public class Stream {
 	private static Map<MethodDeclaration, IR> methodDeclarationToIRMap = new HashMap<>();
 
 	private static final String PLUGIN_ID = FrameworkUtil.getBundle(Stream.class).getSymbolicName();
+
+	/**
+	 * Returns true iff all of the predecessors of all of the given {@link CGNode}s
+	 * in the {@link CallGraph} are {@link FakeRootMethod}s.
+	 *
+	 * @param nodes
+	 *            The nodes whose predecessors to consider.
+	 * @param callGraph
+	 *            The {@link CallGraph} to search.
+	 * @return True iff all of the predecessors of all of the given {@link CGNode}s
+	 *         in the {@link CallGraph} are {@link FakeRootMethod}s.
+	 * @apiNote The may be an issue here related to #106.
+	 */
+	@SuppressWarnings("unused")
+	private static boolean allFake(Set<CGNode> nodes, CallGraph callGraph) {
+		// for each node.
+		for (CGNode cgNode : nodes) {
+			// for each predecessor.
+			for (Iterator<CGNode> it = callGraph.getPredNodes(cgNode); it.hasNext();) {
+				CGNode predNode = it.next();
+				com.ibm.wala.classLoader.IMethod predMethod = predNode.getMethod();
+
+				boolean isFakeMethod = predMethod instanceof FakeRootMethod
+						|| predMethod instanceof FakeWorldClinitMethod;
+
+				if (!isFakeMethod)
+					return false;
+			}
+		}
+		return true;
+	}
 
 	public static void clearCaches() {
 		javaProjectToClassHierarchyMap.clear();
@@ -111,6 +142,10 @@ public class Stream {
 		return lineNumberFromIR;
 	}
 
+	static Map<MethodDeclaration, IR> getMethodDeclarationToIRMap() {
+		return Collections.unmodifiableMap(methodDeclarationToIRMap);
+	}
+
 	private static String getMethodIdentifier(IMethodBinding methodBinding) {
 		IMethod method = (IMethod) methodBinding.getJavaElement();
 
@@ -123,11 +158,19 @@ public class Stream {
 		return methodIdentifier;
 	}
 
+	private Set<TransformationAction> actions;
+
+	private boolean callGraphBuilt;
+
 	private final MethodInvocation creation;
 
 	private final MethodDeclaration enclosingMethodDeclaration;
 
 	private final TypeDeclaration enclosingTypeDeclaration;
+
+	private boolean hasPossibleSideEffects;
+
+	private boolean hasPossibleStatefulIntermediateOperations;
 
 	/**
 	 * The execution mode derived from the declaration of the stream.
@@ -135,17 +178,19 @@ public class Stream {
 	private ExecutionMode initialExecutionMode;
 
 	/**
+	 * The ordering derived from the declaration of the stream.
+	 */
+	private Ordering initialOrdering;
+
+	private OrderingInference orderingInference;
+
+	private PreconditionSuccess passingPrecondition;
+
+	/**
 	 * This should be the possible execution modes when the stream is consumed by a
 	 * terminal operation. Does not include the initial mode.
 	 */
 	private Set<ExecutionMode> possibleExecutionModes = new HashSet<>();
-
-	private OrderingInference orderingInference;
-
-	/**
-	 * The ordering derived from the declaration of the stream.
-	 */
-	private Ordering initialOrdering;
 
 	/**
 	 * This should be the ordering of the stream when it is consumed by a terminal
@@ -153,21 +198,11 @@ public class Stream {
 	 */
 	private Set<Ordering> possibleOrderings = new HashSet<>();
 
-	private boolean hasPossibleSideEffects;
-
-	private boolean hasPossibleStatefulIntermediateOperations;
-
 	private boolean reduceOrderingPossiblyMatters;
-
-	private RefactoringStatus status = new RefactoringStatus();
-
-	private boolean callGraphBuilt;
 
 	private Refactoring refactoring;
 
-	private Set<TransformationAction> actions;
-
-	private PreconditionSuccess passingPrecondition;
+	private RefactoringStatus status = new RefactoringStatus();
 
 	public Stream(MethodInvocation streamCreation) throws ClassHierarchyException, IOException, CoreException,
 			InvalidClassFileException, CallGraphBuilderCancelException, CancelException {
@@ -188,7 +223,7 @@ public class Stream {
 		this.orderingInference = new OrderingInference(this.getClassHierarchy());
 
 		this.inferInitialExecution();
-		
+
 		try {
 			this.inferInitialOrdering();
 		} catch (NoEntryPointException e) {
@@ -228,6 +263,58 @@ public class Stream {
 						"Either pivital code isn't reachable for stream: " + streamCreation
 								+ " or entry points are misconfigured.");
 			}
+		}
+	}
+
+	protected void addPossibleExecutionMode(ExecutionMode executionMode) {
+		this.possibleExecutionModes.add(executionMode);
+	}
+
+	protected void addPossibleExecutionModeCollection(Collection<? extends ExecutionMode> executionModeCollection) {
+		this.possibleExecutionModes.addAll(executionModeCollection);
+	}
+
+	protected void addPossibleOrderingCollection(Collection<? extends Ordering> orderingCollection) {
+		this.possibleOrderings.addAll(orderingCollection);
+	}
+
+	void addStatusEntry(PreconditionFailure failure, String message) {
+		MethodInvocation creation = this.getCreation();
+		CompilationUnit compilationUnit = (CompilationUnit) ASTNodes.getParent(creation, ASTNode.COMPILATION_UNIT);
+		ICompilationUnit compilationUnit2 = (ICompilationUnit) compilationUnit.getJavaElement();
+		RefactoringStatusContext context = JavaStatusContext.create(compilationUnit2, creation);
+		this.getStatus().addEntry(RefactoringStatus.ERROR, message, context, PLUGIN_ID, failure.getCode(), this);
+	}
+
+	protected void buildCallGraph() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
+			InvalidClassFileException, NoEntryPointException {
+		if (!this.isCallGraphBuilt()) {
+			// FIXME: Do we want a different entry point?
+			// TODO: Do we need to build the call graph for each stream?
+			Set<Entrypoint> entryPoints = edu.cuny.hunter.streamrefactoring.core.analysis.Util
+					.findEntryPoints(getAnalysisEngine().getClassHierarchy());
+
+			// set options.
+			AnalysisOptions options = getAnalysisEngine().getDefaultOptions(entryPoints);
+			// TODO turn off reflection analysis for now.
+			options.setReflectionOptions(ReflectionOptions.NONE);
+			options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
+
+			// FIXME: Do we need to build a new call graph for each entry point?
+			// Doesn't make sense. Maybe we need to collect all enclosing
+			// methods
+			// and use those as entry points.
+			try {
+				getAnalysisEngine().buildSafeCallGraph(options);
+			} catch (IllegalStateException e) {
+				LOGGER.log(Level.SEVERE, e, () -> "Exception encountered while building call graph for Stream: " + this
+						+ " in project: " + this.getCreationJavaProject());
+				throw e;
+			}
+			// TODO: Can I slice the graph so that only nodes relevant to the
+			// instance in question are present?
+
+			this.setCallGraphBuilt(true);
 		}
 	}
 
@@ -335,43 +422,11 @@ public class Stream {
 		}
 	}
 
-	private void setPassingPrecondition(PreconditionSuccess succcess) {
-		if (this.passingPrecondition == null)
-			this.passingPrecondition = succcess;
+	public Set<TransformationAction> getActions() {
+		if (this.actions != null)
+			return Collections.unmodifiableSet(this.actions);
 		else
-			throw new IllegalStateException("Passing precondition being set twice.");
-
-	}
-
-	protected void setTransformationAction(TransformationAction... actions) {
-		if (this.actions == null)
-			this.actions = new HashSet<>(Arrays.asList(actions));
-		else
-			throw new IllegalStateException("Tranformation being set twice.");
-	}
-
-	protected void setRefactoring(Refactoring refactoring) {
-		if (this.refactoring == null)
-			this.refactoring = refactoring;
-		else
-			throw new IllegalStateException("Refactoring being set twice.");
-	}
-
-	private boolean isConsistent(Collection<?> collection, PreconditionFailure failure, String failureMessage,
-			MethodInvocation streamCreation) {
-		if (!allEqual(collection)) {
-			addStatusEntry(failure, failureMessage);
-			return false;
-		} else
-			return true;
-	}
-
-	void addStatusEntry(PreconditionFailure failure, String message) {
-		MethodInvocation creation = this.getCreation();
-		CompilationUnit compilationUnit = (CompilationUnit) ASTNodes.getParent(creation, ASTNode.COMPILATION_UNIT);
-		ICompilationUnit compilationUnit2 = (ICompilationUnit) compilationUnit.getJavaElement();
-		RefactoringStatusContext context = JavaStatusContext.create(compilationUnit2, creation);
-		this.getStatus().addEntry(RefactoringStatus.ERROR, message, context, PLUGIN_ID, failure.getCode(), this);
+			return null;
 	}
 
 	EclipseProjectAnalysisEngine<InstanceKey> getAnalysisEngine() throws IOException, CoreException {
@@ -410,16 +465,16 @@ public class Stream {
 		return this.getEnclosingEclipseMethod().getJavaProject();
 	}
 
+	public CompilationUnit getEnclosingCompilationUnit() {
+		return (CompilationUnit) ASTNodes.getParent(this.getEnclosingTypeDeclaration(), ASTNode.COMPILATION_UNIT);
+	}
+
 	public IMethod getEnclosingEclipseMethod() {
 		return (IMethod) getEnclosingMethodDeclaration().resolveBinding().getJavaElement();
 	}
 
 	public MethodDeclaration getEnclosingMethodDeclaration() {
 		return enclosingMethodDeclaration;
-	}
-
-	public CompilationUnit getEnclosingCompilationUnit() {
-		return (CompilationUnit) ASTNodes.getParent(this.getEnclosingTypeDeclaration(), ASTNode.COMPILATION_UNIT);
 	}
 
 	private IR getEnclosingMethodIR() throws IOException, CoreException {
@@ -440,11 +495,20 @@ public class Stream {
 		return ir;
 	}
 
-	public com.ibm.wala.classLoader.IMethod getEnclosingWalaMethod() throws IOException, CoreException {
-		IClassHierarchy classHierarchy = getClassHierarchy();
-		MethodReference methodRef = getEnclosingMethodReference();
-		com.ibm.wala.classLoader.IMethod resolvedMethod = classHierarchy.resolveMethod(methodRef);
-		return resolvedMethod;
+	/**
+	 * @return The {@link CGNode} representing the enclosing method of this stream.
+	 * @throws NoEnclosingMethodNodeFoundException
+	 *             If the call graph doesn't contain a node for the enclosing
+	 *             method.
+	 */
+	protected CGNode getEnclosingMethodNode() throws IOException, CoreException, NoEnclosingMethodNodeFoundException {
+		MethodReference methodReference = this.getEnclosingMethodReference();
+		Set<CGNode> nodes = this.getAnalysisEngine().getCallGraph().getNodes(methodReference);
+
+		if (nodes.isEmpty())
+			throw new NoEnclosingMethodNodeFoundException(methodReference);
+		else
+			return nodes.iterator().next(); // just return the first.
 	}
 
 	MethodReference getEnclosingMethodReference() {
@@ -473,6 +537,65 @@ public class Stream {
 			throw new IllegalStateException(
 					"Could not get type reference for: " + getEnclosingTypeDeclaration().getName());
 		return ref;
+	}
+
+	public com.ibm.wala.classLoader.IMethod getEnclosingWalaMethod() throws IOException, CoreException {
+		IClassHierarchy classHierarchy = getClassHierarchy();
+		MethodReference methodRef = getEnclosingMethodReference();
+		com.ibm.wala.classLoader.IMethod resolvedMethod = classHierarchy.resolveMethod(methodRef);
+		return resolvedMethod;
+	}
+
+	protected ExecutionMode getInitialExecutionMode() {
+		return initialExecutionMode;
+	}
+
+	protected Ordering getInitialOrdering() {
+		return initialOrdering;
+	}
+
+	// TODO: Cache this with a table?
+	public InstanceKey getInstanceKey(Collection<InstanceKey> trackedInstances, CallGraph callGraph)
+			throws InvalidClassFileException, IOException, CoreException, InstanceKeyNotFoundException {
+		return this.getInstructionForCreation()
+				.flatMap(instruction -> trackedInstances.stream()
+						.filter(ik -> instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction, callGraph))
+						.findFirst())
+				.orElseThrow(() -> new InstanceKeyNotFoundException("Can't find instance key for: " + this.getCreation()
+						+ " using tracked instances: " + trackedInstances));
+	}
+
+	Optional<SSAInvokeInstruction> getInstructionForCreation()
+			throws InvalidClassFileException, IOException, CoreException {
+		IBytecodeMethod method = (IBytecodeMethod) this.getEnclosingMethodIR().getMethod();
+		SimpleName methodName = this.getCreation().getName();
+
+		for (Iterator<SSAInstruction> it = this.getEnclosingMethodIR().iterateNormalInstructions(); it.hasNext();) {
+			SSAInstruction instruction = it.next();
+
+			int lineNumberFromIR = getLineNumberFromIR(method, instruction);
+			int lineNumberFromAST = getLineNumberFromAST(methodName);
+
+			if (lineNumberFromIR == lineNumberFromAST) {
+				// lines from the AST and the IR match. Let's dive a little
+				// deeper to be more confident of the correspondence.
+				if (matches(instruction, this.getCreation(), Optional.of(LOGGER)))
+					return Optional.of((SSAInvokeInstruction) instruction);
+			}
+		}
+		return Optional.empty();
+	}
+
+	private JDTIdentityMapper getJDTIdentifyMapperForCreation() {
+		return getJDTIdentifyMapper(this.getCreation());
+	}
+
+	protected OrderingInference getOrderingInference() {
+		return orderingInference;
+	}
+
+	public PreconditionSuccess getPassingPrecondition() {
+		return this.passingPrecondition;
 	}
 
 	public Set<ExecutionMode> getPossibleExecutionModes() {
@@ -508,29 +631,8 @@ public class Stream {
 		return possibleOrderings.stream().map(e -> e == null ? initialOrdering : e).collect(Collectors.toSet());
 	}
 
-	Optional<SSAInvokeInstruction> getInstructionForCreation()
-			throws InvalidClassFileException, IOException, CoreException {
-		IBytecodeMethod method = (IBytecodeMethod) this.getEnclosingMethodIR().getMethod();
-		SimpleName methodName = this.getCreation().getName();
-
-		for (Iterator<SSAInstruction> it = this.getEnclosingMethodIR().iterateNormalInstructions(); it.hasNext();) {
-			SSAInstruction instruction = it.next();
-
-			int lineNumberFromIR = getLineNumberFromIR(method, instruction);
-			int lineNumberFromAST = getLineNumberFromAST(methodName);
-
-			if (lineNumberFromIR == lineNumberFromAST) {
-				// lines from the AST and the IR match. Let's dive a little
-				// deeper to be more confident of the correspondence.
-				if (matches(instruction, this.getCreation(), Optional.of(LOGGER)))
-					return Optional.of((SSAInvokeInstruction) instruction);
-			}
-		}
-		return Optional.empty();
-	}
-
-	private JDTIdentityMapper getJDTIdentifyMapperForCreation() {
-		return getJDTIdentifyMapper(this.getCreation());
+	public Refactoring getRefactoring() {
+		return this.refactoring;
 	}
 
 	public RefactoringStatus getStatus() {
@@ -558,6 +660,23 @@ public class Stream {
 
 	private int getUseValueNumberForCreation() throws InvalidClassFileException, IOException, CoreException {
 		return getInstructionForCreation().map(i -> i.getUse(0)).orElse(-1);
+	}
+
+	/**
+	 * Returns true iff any behavioral parameters (λ-expressions) associated with
+	 * any operations in the stream's pipeline has side-effects on any possible
+	 * path. TODO: What if one path has side-effects and the other doesn't?
+	 *
+	 * @return true iff any behavioral parameters (λ-expressions) associated with
+	 *         any operations in the stream's pipeline has side-effects on any
+	 *         possible path.
+	 */
+	public boolean hasPossibleSideEffects() {
+		return hasPossibleSideEffects;
+	}
+
+	public boolean hasPossibleStatefulIntermediateOperations() {
+		return hasPossibleStatefulIntermediateOperations;
 	}
 
 	private void inferInitialExecution() {
@@ -655,63 +774,69 @@ public class Stream {
 		}
 	}
 
-	/**
-	 * @return The {@link CGNode} representing the enclosing method of this stream.
-	 * @throws NoEnclosingMethodNodeFoundException
-	 *             If the call graph doesn't contain a node for the enclosing
-	 *             method.
-	 */
-	protected CGNode getEnclosingMethodNode() throws IOException, CoreException, NoEnclosingMethodNodeFoundException {
-		MethodReference methodReference = this.getEnclosingMethodReference();
-		Set<CGNode> nodes = this.getAnalysisEngine().getCallGraph().getNodes(methodReference);
+	protected boolean isCallGraphBuilt() {
+		return callGraphBuilt;
+	}
 
-		if (nodes.isEmpty())
-			throw new NoEnclosingMethodNodeFoundException(methodReference);
+	private boolean isConsistent(Collection<?> collection, PreconditionFailure failure, String failureMessage,
+			MethodInvocation streamCreation) {
+		if (!allEqual(collection)) {
+			addStatusEntry(failure, failureMessage);
+			return false;
+		} else
+			return true;
+	}
+
+	public boolean reduceOrderingPossiblyMatters() {
+		return this.reduceOrderingPossiblyMatters;
+	}
+
+	protected void setCallGraphBuilt(boolean callGraphBuilt) {
+		this.callGraphBuilt = callGraphBuilt;
+	}
+
+	protected void setHasPossibleSideEffects(boolean hasPossibleSideEffects) {
+		this.hasPossibleSideEffects = hasPossibleSideEffects;
+	}
+
+	protected void setHasPossibleStatefulIntermediateOperations(boolean hasPossibleStatefulIntermediateOperations) {
+		this.hasPossibleStatefulIntermediateOperations = hasPossibleStatefulIntermediateOperations;
+	}
+
+	protected void setInitialExecutionMode(ExecutionMode initialExecutionMode) {
+		Objects.requireNonNull(initialExecutionMode);
+		this.initialExecutionMode = initialExecutionMode;
+	}
+
+	protected void setInitialOrdering(Ordering initialOrdering) {
+		Objects.requireNonNull(initialOrdering);
+		this.initialOrdering = initialOrdering;
+	}
+
+	private void setPassingPrecondition(PreconditionSuccess succcess) {
+		if (this.passingPrecondition == null)
+			this.passingPrecondition = succcess;
 		else
-			return nodes.iterator().next(); // just return the first.
+			throw new IllegalStateException("Passing precondition being set twice.");
+
 	}
 
-	/**
-	 * Returns true iff all of the predecessors of all of the given {@link CGNode}s
-	 * in the {@link CallGraph} are {@link FakeRootMethod}s.
-	 * 
-	 * @param nodes
-	 *            The nodes whose predecessors to consider.
-	 * @param callGraph
-	 *            The {@link CallGraph} to search.
-	 * @return True iff all of the predecessors of all of the given {@link CGNode}s
-	 *         in the {@link CallGraph} are {@link FakeRootMethod}s.
-	 * @apiNote The may be an issue here related to #106.
-	 */
-	@SuppressWarnings("unused")
-	private static boolean allFake(Set<CGNode> nodes, CallGraph callGraph) {
-		// for each node.
-		for (CGNode cgNode : nodes) {
-			// for each predecessor.
-			for (Iterator<CGNode> it = callGraph.getPredNodes(cgNode); it.hasNext();) {
-				CGNode predNode = it.next();
-				com.ibm.wala.classLoader.IMethod predMethod = predNode.getMethod();
-
-				boolean isFakeMethod = predMethod instanceof FakeRootMethod
-						|| predMethod instanceof FakeWorldClinitMethod;
-
-				if (!isFakeMethod)
-					return false;
-			}
-		}
-		return true;
+	protected void setReduceOrderingPossiblyMatters(boolean reduceOrderingPossiblyMatters) {
+		this.reduceOrderingPossiblyMatters = reduceOrderingPossiblyMatters;
 	}
 
-	protected void addPossibleExecutionMode(ExecutionMode executionMode) {
-		this.possibleExecutionModes.add(executionMode);
+	protected void setRefactoring(Refactoring refactoring) {
+		if (this.refactoring == null)
+			this.refactoring = refactoring;
+		else
+			throw new IllegalStateException("Refactoring being set twice.");
 	}
 
-	protected void addPossibleExecutionModeCollection(Collection<? extends ExecutionMode> executionModeCollection) {
-		this.possibleExecutionModes.addAll(executionModeCollection);
-	}
-
-	protected void addPossibleOrderingCollection(Collection<? extends Ordering> orderingCollection) {
-		this.possibleOrderings.addAll(orderingCollection);
+	protected void setTransformationAction(TransformationAction... actions) {
+		if (this.actions == null)
+			this.actions = new HashSet<>(Arrays.asList(actions));
+		else
+			throw new IllegalStateException("Tranformation being set twice.");
 	}
 
 	@Override
@@ -729,130 +854,5 @@ public class Stream {
 		builder.append(this.getStatus().getSeverity());
 		builder.append("]");
 		return builder.toString();
-	}
-
-	// TODO: Cache this with a table?
-	public InstanceKey getInstanceKey(Collection<InstanceKey> trackedInstances, CallGraph callGraph)
-			throws InvalidClassFileException, IOException, CoreException, InstanceKeyNotFoundException {
-		return this.getInstructionForCreation()
-				.flatMap(instruction -> trackedInstances.stream()
-						.filter(ik -> instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction, callGraph))
-						.findFirst())
-				.orElseThrow(() -> new InstanceKeyNotFoundException("Can't find instance key for: " + this.getCreation()
-						+ " using tracked instances: " + trackedInstances));
-	}
-
-	protected ExecutionMode getInitialExecutionMode() {
-		return initialExecutionMode;
-	}
-
-	protected void setInitialExecutionMode(ExecutionMode initialExecutionMode) {
-		Objects.requireNonNull(initialExecutionMode);
-		this.initialExecutionMode = initialExecutionMode;
-	}
-
-	protected Ordering getInitialOrdering() {
-		return initialOrdering;
-	}
-
-	protected void setInitialOrdering(Ordering initialOrdering) {
-		Objects.requireNonNull(initialOrdering);
-		this.initialOrdering = initialOrdering;
-	}
-
-	/**
-	 * Returns true iff any behavioral parameters (λ-expressions) associated with
-	 * any operations in the stream's pipeline has side-effects on any possible
-	 * path. TODO: What if one path has side-effects and the other doesn't?
-	 * 
-	 * @return true iff any behavioral parameters (λ-expressions) associated with
-	 *         any operations in the stream's pipeline has side-effects on any
-	 *         possible path.
-	 */
-	public boolean hasPossibleSideEffects() {
-		return hasPossibleSideEffects;
-	}
-
-	protected void setHasPossibleSideEffects(boolean hasPossibleSideEffects) {
-		this.hasPossibleSideEffects = hasPossibleSideEffects;
-	}
-
-	public boolean hasPossibleStatefulIntermediateOperations() {
-		return hasPossibleStatefulIntermediateOperations;
-	}
-
-	protected void setHasPossibleStatefulIntermediateOperations(boolean hasPossibleStatefulIntermediateOperations) {
-		this.hasPossibleStatefulIntermediateOperations = hasPossibleStatefulIntermediateOperations;
-	}
-
-	public boolean reduceOrderingPossiblyMatters() {
-		return this.reduceOrderingPossiblyMatters;
-	}
-
-	protected void setReduceOrderingPossiblyMatters(boolean reduceOrderingPossiblyMatters) {
-		this.reduceOrderingPossiblyMatters = reduceOrderingPossiblyMatters;
-	}
-
-	protected OrderingInference getOrderingInference() {
-		return orderingInference;
-	}
-
-	protected void buildCallGraph() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
-			InvalidClassFileException, NoEntryPointException {
-		if (!this.isCallGraphBuilt()) {
-			// FIXME: Do we want a different entry point?
-			// TODO: Do we need to build the call graph for each stream?
-			Set<Entrypoint> entryPoints = edu.cuny.hunter.streamrefactoring.core.analysis.Util
-					.findEntryPoints(getAnalysisEngine().getClassHierarchy());
-
-			// set options.
-			AnalysisOptions options = getAnalysisEngine().getDefaultOptions(entryPoints);
-			// TODO turn off reflection analysis for now.
-			options.setReflectionOptions(ReflectionOptions.NONE);
-			options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
-
-			// FIXME: Do we need to build a new call graph for each entry point?
-			// Doesn't make sense. Maybe we need to collect all enclosing
-			// methods
-			// and use those as entry points.
-			try {
-				getAnalysisEngine().buildSafeCallGraph(options);
-			} catch (IllegalStateException e) {
-				LOGGER.log(Level.SEVERE, e, () -> "Exception encountered while building call graph for Stream: " + this
-						+ " in project: " + this.getCreationJavaProject());
-				throw e;
-			}
-			// TODO: Can I slice the graph so that only nodes relevant to the
-			// instance in question are present?
-
-			this.setCallGraphBuilt(true);
-		}
-	}
-
-	protected boolean isCallGraphBuilt() {
-		return callGraphBuilt;
-	}
-
-	protected void setCallGraphBuilt(boolean callGraphBuilt) {
-		this.callGraphBuilt = callGraphBuilt;
-	}
-
-	public Refactoring getRefactoring() {
-		return this.refactoring;
-	}
-
-	public Set<TransformationAction> getActions() {
-		if (this.actions != null)
-			return Collections.unmodifiableSet(this.actions);
-		else
-			return null;
-	}
-
-	public PreconditionSuccess getPassingPrecondition() {
-		return this.passingPrecondition;
-	}
-
-	static Map<MethodDeclaration, IR> getMethodDeclarationToIRMap() {
-		return Collections.unmodifiableMap(methodDeclarationToIRMap);
 	}
 }
