@@ -289,7 +289,6 @@ public class Stream {
 	protected void buildCallGraph() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
 			InvalidClassFileException, NoEntryPointException {
 		if (!this.isCallGraphBuilt()) {
-			// FIXME: Do we want a different entry point?
 			// TODO: Do we need to build the call graph for each stream?
 			Set<Entrypoint> entryPoints = edu.cuny.hunter.streamrefactoring.core.analysis.Util
 					.findEntryPoints(getAnalysisEngine().getClassHierarchy());
@@ -300,10 +299,6 @@ public class Stream {
 			options.setReflectionOptions(ReflectionOptions.NONE);
 			options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
 
-			// FIXME: Do we need to build a new call graph for each entry point?
-			// Doesn't make sense. Maybe we need to collect all enclosing
-			// methods
-			// and use those as entry points.
 			try {
 				getAnalysisEngine().buildSafeCallGraph(options);
 			} catch (IllegalStateException e) {
