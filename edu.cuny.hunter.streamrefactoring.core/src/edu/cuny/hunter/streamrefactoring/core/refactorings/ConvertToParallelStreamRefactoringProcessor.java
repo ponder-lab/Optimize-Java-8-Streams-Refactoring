@@ -276,6 +276,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	public void clearCaches() {
 		getTypeToTypeHierarchyMap().clear();
 		getCompilationUnitToCompilationUnitRewriteMap().clear();
+		getTypeRootToCompilationUnitMap().clear();
 		Stream.clearCaches();
 	}
 
@@ -333,12 +334,12 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	}
 
 	private CompilationUnit getCompilationUnit(ITypeRoot root, IProgressMonitor pm) {
-		CompilationUnit compilationUnit = this.typeRootToCompilationUnitMap.get(root);
+		CompilationUnit compilationUnit = this.getTypeRootToCompilationUnitMap().get(root);
 		if (compilationUnit == null) {
 			this.getExcludedTimeCollector().start();
 			compilationUnit = RefactoringASTParser.parseWithASTProvider(root, true, pm);
 			this.getExcludedTimeCollector().stop();
-			this.typeRootToCompilationUnitMap.put(root, compilationUnit);
+			this.getTypeRootToCompilationUnitMap().put(root, compilationUnit);
 		}
 		return compilationUnit;
 	}
@@ -399,6 +400,10 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	private Map<IType, ITypeHierarchy> getTypeToTypeHierarchyMap() {
 		return typeToTypeHierarchyMap;
+	}
+
+	protected Map<ITypeRoot, CompilationUnit> getTypeRootToCompilationUnitMap() {
+		return typeRootToCompilationUnitMap;
 	}
 
 	@Override
