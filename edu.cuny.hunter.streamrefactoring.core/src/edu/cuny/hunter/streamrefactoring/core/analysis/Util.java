@@ -278,20 +278,16 @@ public final class Util {
 					// ConvertToParallelStreamRefactoringProcessor #141.
 					CompilationUnit unit = RefactoringASTParser.parseWithASTProvider(type.getTypeRoot(), true, null);
 
-					// we have the CompilationUnit corresponding to the
-					// instruction's file.
-					// can we correlate the instruction to the method
-					// invocation in the AST?
+					// We have the CompilationUnit corresponding to the instruction's file. Can we
+					// correlate the instruction to the method invocation in the AST?
 					MethodInvocation correspondingInvocation = findCorrespondingMethodInvocation(unit, sourcePosition,
 							def.getCallSite().getDeclaredTarget());
 
 					// what does the method return?
 					ITypeBinding genericReturnType = correspondingInvocation.resolveMethodBinding().getReturnType();
 
-					// Is it compatible with the concrete type we got from
-					// WALA?
-					// But first, we'll need to translate the Eclipse JDT
-					// type over to a IClass.
+					// Is it compatible with the concrete type we got from WALA? But first, we'll
+					// need to translate the Eclipse JDT type over to a IClass.
 					TypeReference genericTypeRef = getJDTIdentifyMapper(correspondingInvocation)
 							.getTypeRef(genericReturnType);
 					IClass genericClass = node.getClassHierarchy().lookupClass(genericTypeRef);
