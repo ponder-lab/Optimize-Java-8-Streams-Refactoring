@@ -744,11 +744,13 @@ class StreamStateMachine {
 								"Can't derive ROM for possible return types: " + possibleReturnTypes);
 				}
 
+				// if reduce ordering matters.
 				if (rom) {
 					LOGGER.fine(() -> "Reduce ordering matters for: " + invokeInstruction);
 					OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
 					possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
 				} else
+					// otherwise, just log.
 					LOGGER.fine(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
 
 				++processedInstructions;
