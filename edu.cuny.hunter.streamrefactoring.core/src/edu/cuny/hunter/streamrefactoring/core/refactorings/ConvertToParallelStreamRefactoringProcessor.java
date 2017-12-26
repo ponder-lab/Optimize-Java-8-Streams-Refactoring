@@ -398,7 +398,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		}
 	}
 
-	private Map<IType, ITypeHierarchy> getTypeToTypeHierarchyMap() {
+	protected Map<IType, ITypeHierarchy> getTypeToTypeHierarchyMap() {
 		return typeToTypeHierarchyMap;
 	}
 
