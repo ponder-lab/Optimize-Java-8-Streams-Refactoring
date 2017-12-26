@@ -274,6 +274,8 @@ public final class Util {
 					String fqn = method.getDeclaringClass().getName().getPackage().toUnicodeString() + "."
 							+ method.getDeclaringClass().getName().getClassName().toUnicodeString();
 					IType type = enclosingProject.findType(fqn);
+					// FIXME: Need to (i) exclude from result timer and (ii) use the cache in
+					// ConvertToParallelStreamRefactoringProcessor #141.
 					CompilationUnit unit = RefactoringASTParser.parseWithASTProvider(type.getTypeRoot(), true, null);
 
 					// we have the CompilationUnit corresponding to the
