@@ -15,6 +15,7 @@ import java.util.stream.BaseStream;
 
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.ITypeRoot;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
@@ -268,15 +269,27 @@ public final class Util {
 								e);
 					}
 
-					// let's assume that the source file is in the same project.
-					IJavaProject enclosingProject = stream.getEnclosingEclipseMethod().getJavaProject();
+					// ensure that the file names are the same.
+					// FIXME: Do we need to worry about paths? Maybe it would
+					// suffice to check packages.
+					CompilationUnit unit = stream.getEnclosingCompilationUnit();
+					ITypeRoot typeRoot = unit.getTypeRoot();
+					String typeRootFileName = typeRoot.getElementName();
+					String sourcePositionFileName = sourcePosition.getFileName();
 
-					String fqn = method.getDeclaringClass().getName().getPackage().toUnicodeString() + "."
-							+ method.getDeclaringClass().getName().getClassName().toUnicodeString();
-					IType type = enclosingProject.findType(fqn);
-					// FIXME: Need to (i) exclude from result timer and (ii) use the cache in
-					// ConvertToParallelStreamRefactoringProcessor #141.
-					CompilationUnit unit = RefactoringASTParser.parseWithASTProvider(type.getTypeRoot(), true, null);
+					// if the files aren't the same.
+					if (!typeRootFileName.equals(sourcePositionFileName)) {
+						// we're in the interprocedural case.
+						// let's assume that the source file is in the same project.
+						IJavaProject enclosingProject = stream.getEnclosingEclipseMethod().getJavaProject();
+
+						String fqn = method.getDeclaringClass().getName().getPackage().toUnicodeString() + "."
+								+ method.getDeclaringClass().getName().getClassName().toUnicodeString();
+						IType type = enclosingProject.findType(fqn);
+						// FIXME: Need to (i) exclude from result timer and (ii) use the cache in
+						// ConvertToParallelStreamRefactoringProcessor #141.
+						unit = RefactoringASTParser.parseWithASTProvider(type.getTypeRoot(), true, null);
+					}
 
 					// We have the CompilationUnit corresponding to the instruction's file. Can we
 					// correlate the instruction to the method invocation in the AST?
