@@ -745,11 +745,11 @@ class StreamStateMachine {
 				}
 
 				if (rom) {
-					LOGGER.info(() -> "Reduce ordering matters for: " + invokeInstruction);
+					LOGGER.fine(() -> "Reduce ordering matters for: " + invokeInstruction);
 					OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
 					possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
 				} else
-					LOGGER.info(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
+					LOGGER.fine(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
 
 				++processedInstructions;
 			}
