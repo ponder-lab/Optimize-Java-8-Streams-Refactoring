@@ -300,7 +300,7 @@ public final class Util {
 						if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), concreteType,
 								stream.getOrderingInference())) {
 							// if so, add it.
-							LOGGER.info("Add type straight up: " + concreteType);
+							LOGGER.fine("Add type straight up: " + concreteType);
 							ret.add(concreteType);
 						} else {
 							// otherwise, would the generic type cause the
@@ -309,11 +309,11 @@ public final class Util {
 
 							if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), genericType,
 									stream.getOrderingInference())) {
-								LOGGER.info("Defaulting to generic type: " + genericType);
+								LOGGER.fine("Defaulting to generic type: " + genericType);
 								ret.add(genericType);
 							} else {
 								// fall back to the concrete type.
-								LOGGER.info(
+								LOGGER.fine(
 										"Defaulting to concrete type eventhough it isn't consistent: " + concreteType);
 								ret.add(concreteType);
 							}
@@ -321,7 +321,7 @@ public final class Util {
 					}
 				} else {
 					// just add it.
-					LOGGER.info("Add type straight up: " + concreteType);
+					LOGGER.fine("Add type straight up: " + concreteType);
 					ret.add(concreteType);
 				}
 			}
