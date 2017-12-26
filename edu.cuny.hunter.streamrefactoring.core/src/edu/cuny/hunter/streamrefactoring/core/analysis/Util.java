@@ -1,5 +1,6 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
+import java.io.UTFDataFormatException;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -12,13 +13,16 @@ import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.BaseStream;
 
-import org.eclipse.jdt.core.ITypeRoot;
+import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SimpleName;
+import org.eclipse.jdt.internal.corext.refactoring.util.RefactoringASTParser;
 
 import com.ibm.wala.analysis.typeInference.PointType;
 import com.ibm.wala.analysis.typeInference.TypeAbstraction;
@@ -61,6 +65,7 @@ import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 import edu.cuny.hunter.streamrefactoring.core.wala.AnalysisUtils;
 import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
 
+@SuppressWarnings("restriction")
 public final class Util {
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
@@ -202,7 +207,8 @@ public final class Util {
 
 	public static Collection<TypeAbstraction> getPossibleTypesInterprocedurally(CGNode node, int valueNumber,
 			HeapModel heapModel, PointerAnalysis<InstanceKey> pointerAnalysis, Stream stream)
-			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
+			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException,
+			UTFDataFormatException, JavaModelException {
 		Collection<TypeAbstraction> ret = new HashSet<>();
 
 		PointerKey valueKey = heapModel.getPointerKeyForLocal(node, valueNumber);
@@ -262,64 +268,58 @@ public final class Util {
 								e);
 					}
 
-					// ensure that the file names are the same.
-					// FIXME: Do we need to worry about paths? Maybe it would
-					// suffice to check packages.
-					CompilationUnit unit = stream.getEnclosingCompilationUnit();
-					ITypeRoot typeRoot = unit.getTypeRoot();
-					String typeRootFileName = typeRoot.getElementName();
-					String sourcePositionFileName = sourcePosition.getFileName();
+					// let's assume that the source file is in the same project.
+					IJavaProject enclosingProject = stream.getEnclosingEclipseMethod().getJavaProject();
 
-					if (typeRootFileName.equals(sourcePositionFileName)) {
-						// same file.
-						// we have the CompilationUnit corresponding to the
-						// instruction's file.
-						// can we correlate the instruction to the method
-						// invocation in the AST?
-						MethodInvocation correspondingInvocation = findCorrespondingMethodInvocation(unit,
-								sourcePosition, def.getCallSite().getDeclaredTarget());
+					String fqn = method.getDeclaringClass().getName().getPackage().toUnicodeString() + "."
+							+ method.getDeclaringClass().getName().getClassName().toUnicodeString();
+					IType type = enclosingProject.findType(fqn);
+					CompilationUnit unit = RefactoringASTParser.parseWithASTProvider(type.getTypeRoot(), true, null);
 
-						// what does the method return?
-						ITypeBinding genericReturnType = correspondingInvocation.resolveMethodBinding().getReturnType();
+					// we have the CompilationUnit corresponding to the
+					// instruction's file.
+					// can we correlate the instruction to the method
+					// invocation in the AST?
+					MethodInvocation correspondingInvocation = findCorrespondingMethodInvocation(unit, sourcePosition,
+							def.getCallSite().getDeclaredTarget());
 
-						// Is it compatible with the concrete type we got from
-						// WALA?
-						// But first, we'll need to translate the Eclipse JDT
-						// type over to a IClass.
-						TypeReference genericTypeRef = getJDTIdentifyMapper(correspondingInvocation)
-								.getTypeRef(genericReturnType);
-						IClass genericClass = node.getClassHierarchy().lookupClass(genericTypeRef);
+					// what does the method return?
+					ITypeBinding genericReturnType = correspondingInvocation.resolveMethodBinding().getReturnType();
 
-						boolean assignableFrom = node.getClassHierarchy().isAssignableFrom(genericClass, concreteClass);
+					// Is it compatible with the concrete type we got from
+					// WALA?
+					// But first, we'll need to translate the Eclipse JDT
+					// type over to a IClass.
+					TypeReference genericTypeRef = getJDTIdentifyMapper(correspondingInvocation)
+							.getTypeRef(genericReturnType);
+					IClass genericClass = node.getClassHierarchy().lookupClass(genericTypeRef);
 
-						// if it's assignable.
-						if (assignableFrom) {
-							// would the ordering be consistent?
-							if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), concreteType,
+					boolean assignableFrom = node.getClassHierarchy().isAssignableFrom(genericClass, concreteClass);
+
+					// if it's assignable.
+					if (assignableFrom) {
+						// would the ordering be consistent?
+						if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), concreteType,
+								stream.getOrderingInference())) {
+							// if so, add it.
+							LOGGER.info("Add type straight up: " + concreteType);
+							ret.add(concreteType);
+						} else {
+							// otherwise, would the generic type cause the
+							// ordering to be inconsistent?
+							PointType genericType = new PointType(genericClass);
+
+							if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), genericType,
 									stream.getOrderingInference())) {
-								// if so, add it.
-								LOGGER.info("Add type straight up: " + concreteType);
-								ret.add(concreteType);
+								LOGGER.info("Defaulting to generic type: " + genericType);
+								ret.add(genericType);
 							} else {
-								// otherwise, would the generic type cause the
-								// ordering to be inconsistent?
-								PointType genericType = new PointType(genericClass);
-
-								if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), genericType,
-										stream.getOrderingInference())) {
-									LOGGER.info("Defaulting to generic type: " + genericType);
-									ret.add(genericType);
-								} else {
-									// fall back to the concrete type.
-									LOGGER.info("Defaulting to concrete type eventhough it isn't consistent: "
-											+ concreteType);
-									ret.add(concreteType);
-								}
+								// fall back to the concrete type.
+								LOGGER.info(
+										"Defaulting to concrete type eventhough it isn't consistent: " + concreteType);
+								ret.add(concreteType);
 							}
 						}
-					} else {
-						// FIXME: Interprocedural?
-						throw new IllegalStateException("Can't find corresponding file.");
 					}
 				} else {
 					// just add it.
