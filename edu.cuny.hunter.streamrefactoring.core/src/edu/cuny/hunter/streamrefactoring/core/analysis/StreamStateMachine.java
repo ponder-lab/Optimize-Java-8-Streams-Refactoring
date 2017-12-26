@@ -714,6 +714,7 @@ class StreamStateMachine {
 				assert numOfRetVals <= 1 : "How could you possibly return " + numOfRetVals + " values?";
 
 				Collection<TypeAbstraction> possibleReturnTypes = null;
+				Boolean rom = null;
 
 				// if it's a non-void method.
 				if (numOfRetVals > 0) {
@@ -724,24 +725,33 @@ class StreamStateMachine {
 							this.getStream().getAnalysisEngine().getPointerAnalysis(), this.getStream());
 
 					LOGGER.fine("Possible reduce types are: " + possibleReturnTypes);
+
+					if (possibleReturnTypes.isEmpty()) {
+						rom = true;
+						LOGGER.warning("Cannot deduce possible return types of non-void method for node: "
+								+ block.getNode() + ", return value: " + returnValue
+								+ ". To be safe, falling back ROM to: " + rom + ".");
+					}
 				} else {
 					// it's a void method.
 					possibleReturnTypes = Collections.singleton(JavaPrimitiveType.VOID);
 				}
 
-				boolean rom = false;
-
-				if (isVoid(possibleReturnTypes))
-					rom = deriveRomForVoidMethod(invokeInstruction);
-				else {
-					boolean scalar = isScalar(possibleReturnTypes);
-					if (scalar)
-						rom = deriveRomForScalarMethod(invokeInstruction);
-					else if (!scalar)
-						rom = deriveRomForNonScalarMethod(possibleReturnTypes);
-					else
-						throw new IllegalStateException(
-								"Can't derive ROM for possible return types: " + possibleReturnTypes);
+				// if we haven't yet determined ROM.
+				if (rom == null) {
+					// determine it.
+					if (isVoid(possibleReturnTypes))
+						rom = deriveRomForVoidMethod(invokeInstruction);
+					else {
+						boolean scalar = isScalar(possibleReturnTypes);
+						if (scalar)
+							rom = deriveRomForScalarMethod(invokeInstruction);
+						else if (!scalar)
+							rom = deriveRomForNonScalarMethod(possibleReturnTypes);
+						else
+							throw new IllegalStateException(
+									"Can't derive ROM for possible return types: " + possibleReturnTypes);
+					}
 				}
 
 				// if reduce ordering matters.
