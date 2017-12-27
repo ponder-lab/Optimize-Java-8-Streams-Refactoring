@@ -285,7 +285,7 @@ public final class Util {
 
 						String fqn = method.getDeclaringClass().getName().getPackage().toUnicodeString() + "."
 								+ method.getDeclaringClass().getName().getClassName().toUnicodeString();
-						IType type = enclosingProject.findType(fqn);
+						IType type = enclosingProject.findType(fqn.replace('/', '.'));
 						// FIXME: Need to (i) exclude from result timer and (ii) use the cache in
 						// ConvertToParallelStreamRefactoringProcessor #141.
 						unit = RefactoringASTParser.parseWithASTProvider(type.getTypeRoot(), true, null);
