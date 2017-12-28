@@ -3,6 +3,8 @@
  */
 package edu.cuny.hunter.streamrefactoring.ui.tests;
 
+import static java.util.stream.Stream.concat;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -440,6 +442,13 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()",
 				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, true,
 				false, null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
+	}
+
+	// Test #65,
+	public void testConcat() throws Exception {
+		helper(new StreamAnalysisExpectedResult("concat(new HashSet().parallelStream(),new HashSet().parallelStream())",
+				EnumSet.of(ExecutionMode.SEQUENTIAL), null, false, false, false, null, null, null,
+				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
 	}
 
 	/**
