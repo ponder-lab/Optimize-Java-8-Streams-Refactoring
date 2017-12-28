@@ -231,6 +231,11 @@ public class Stream {
 			addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
 					"Stream: " + this.getCreation() + " has no Entry Point.");
 			return;
+		} catch (UnhandledCaseException e) {
+			LOGGER.log(Level.WARNING, "Exception caught while processing: " + this.getCreation(), e);
+			addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED,
+					"Stream: " + this.getCreation() + " has an unhandled case: " + e.getMessage());
+			return;
 		}
 
 		try {
@@ -683,8 +688,12 @@ public class Stream {
 			this.setInitialExecutionMode(ExecutionMode.SEQUENTIAL);
 	}
 
-	private void inferInitialOrdering() throws IOException, CoreException, ClassHierarchyException,
-			InvalidClassFileException, CallGraphBuilderCancelException, CancelException, NoEntryPointException {
+	private void inferInitialOrdering()
+			throws IOException, CoreException, ClassHierarchyException, InvalidClassFileException,
+			CallGraphBuilderCancelException, CancelException, NoEntryPointException, UnhandledCaseException {
+		if (this.getCreation().getExpression() == null && this.getCreation().toString().startsWith("concat("))
+			throw new UnhandledCaseException("concat() is not yet implemented.");
+
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
