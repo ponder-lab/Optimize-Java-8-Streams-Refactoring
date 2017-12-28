@@ -295,7 +295,8 @@ public class Stream {
 
 			// set options.
 			AnalysisOptions options = getAnalysisEngine().getDefaultOptions(entryPoints);
-			options.setReflectionOptions(ReflectionOptions.FULL);
+			// Turn off reflection analysis.
+			options.setReflectionOptions(ReflectionOptions.NONE);
 			options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
 
 			try {
