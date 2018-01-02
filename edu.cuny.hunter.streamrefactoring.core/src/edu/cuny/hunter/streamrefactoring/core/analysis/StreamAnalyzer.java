@@ -1,0 +1,224 @@
+package edu.cuny.hunter.streamrefactoring.core.analysis;
+
+import java.io.IOException;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.IMethodBinding;
+import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
+import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.internal.corext.util.JdtFlags;
+
+import com.ibm.safe.dfa.IDFAState;
+import com.ibm.safe.internal.exceptions.PropertiesException;
+import com.ibm.wala.ipa.callgraph.AnalysisOptions;
+import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
+import com.ibm.wala.ipa.callgraph.Entrypoint;
+import com.ibm.wala.ipa.callgraph.AnalysisOptions.ReflectionOptions;
+import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
+import com.ibm.wala.ipa.cha.ClassHierarchyException;
+import com.ibm.wala.shrikeCT.InvalidClassFileException;
+import com.ibm.wala.ssa.IR;
+import com.ibm.wala.ssa.SSAOptions;
+import com.ibm.wala.util.CancelException;
+
+import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
+import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
+
+@SuppressWarnings("restriction")
+public class StreamAnalyzer extends ASTVisitor {
+
+	private static final String ARRAYS_STREAM_CREATION_METHOD_NAME = "Arrays.stream";
+
+	private static final Logger logger = Logger.getLogger(LoggerNames.LOGGER_NAME);
+
+	private static Map<MethodDeclaration, IR> methodDeclarationToIRMap = new HashMap<>();
+
+	private Set<EclipseProjectAnalysisEngine<InstanceKey>> enginesWithBuiltCallGraphs = new HashSet<>();
+
+	protected void buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine) throws IOException, CoreException,
+			CallGraphBuilderCancelException, CancelException, InvalidClassFileException, NoEntryPointException {
+		// if we haven't built the call graph yet.
+		if (!enginesWithBuiltCallGraphs.contains(engine)) {
+			// find the entry points.
+			Set<Entrypoint> entryPoints = edu.cuny.hunter.streamrefactoring.core.analysis.Util
+					.findEntryPoints(engine.getClassHierarchy());
+
+			// set options.
+			AnalysisOptions options = engine.getDefaultOptions(entryPoints);
+			options.setReflectionOptions(ReflectionOptions.NONE);
+			options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
+
+			try {
+				engine.buildSafeCallGraph(options);
+			} catch (IllegalStateException e) {
+				logger.log(Level.SEVERE, e,
+						() -> "Exception encountered while building call graph for project: " + engine.getProject());
+				throw e;
+			}
+			// TODO: Can I slice the graph so that only nodes relevant to the
+			// instance in question are present?
+			enginesWithBuiltCallGraphs.add(engine);
+		}
+	}
+
+	public static void clearCaches() {
+		methodDeclarationToIRMap.clear();
+	}
+
+	private Set<Stream> streamSet = new HashSet<>();
+
+	public StreamAnalyzer() {
+	}
+
+	public StreamAnalyzer(boolean visitDocTags) {
+		super(visitDocTags);
+	}
+
+	public void analyze() throws ClassHierarchyException, IOException, CoreException, InvalidClassFileException,
+			CallGraphBuilderCancelException, CancelException {
+		// collect the projects to be analyzed.
+		Map<IJavaProject, Set<Stream>> projectToStreams = this.getStreamSet().stream()
+				.collect(Collectors.groupingBy(Stream::getCreationJavaProject, Collectors.toSet()));
+
+		// process each project.
+		for (IJavaProject project : projectToStreams.keySet()) {
+			// create the analysis engine for the project.
+			EclipseProjectAnalysisEngine<InstanceKey> engine = new EclipseProjectAnalysisEngine<>(project);
+
+			// build the call graph for the project.
+			try {
+				buildCallGraph(engine);
+			} catch (NoEntryPointException e) {
+				logger.log(Level.WARNING, "Exception caught while processing: " + engine.getProject(), e);
+
+				// add a status entry for each stream in the project
+				for (Stream stream : projectToStreams.get(project))
+					stream.addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
+							"Project: " + engine.getProject() + " has no entry points.");
+				return;
+			}
+
+			OrderingInference orderingInference = new OrderingInference(engine.getClassHierarchy());
+
+			// infer the initial attributes of each stream in the project.
+			for (Stream stream : projectToStreams.get(project)) {
+				stream.inferInitialAttributes(engine, orderingInference);
+			}
+
+			// start the state machine for each stream in the project.
+			StreamStateMachine stateMachine = new StreamStateMachine();
+			StreamAttributeTypestateRule[] rules = stateMachine.start(engine, orderingInference);
+
+			// assign states to each stream for the current rule.
+			for (Stream stream : streamSet) {
+				// get the instance key for the current stream.
+				InstanceKey instanceKey = null;
+				try {
+					instanceKey = stream.getInstanceKey(stateMachine.getTrackedInstances(), engine);
+				} catch (InstanceKeyNotFoundException e) { // workaround for #80.
+					if (stream.getCreation().toString().contains(ARRAYS_STREAM_CREATION_METHOD_NAME)) {
+						String msg = "Encountered possible unhandled case (#80) while processing: "
+								+ stream.getCreation();
+						logger.log(Level.WARNING, msg, e);
+						stream.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, msg);
+					} else {
+						logger.log(Level.WARNING,
+								"Encountered unreachable code while processing: " + stream.getCreation(), e);
+						stream.addStatusEntry(PreconditionFailure.STREAM_CODE_NOT_REACHABLE,
+								"Either pivital code isn't reachable for stream: " + stream.getCreation()
+										+ " or entry points are misconfigured.");
+					}
+				}
+
+				// for each typestate rule.
+				for (StreamAttributeTypestateRule rule : rules) {
+					// get the states.
+					Collection<IDFAState> states = stateMachine.getStates(rule, instanceKey);
+
+					// Map IDFAState to StreamExecutionMode, etc., and add them to the
+					// possible stream states but only if they're not bottom (for those,
+					// we fall back to the initial state).
+					rule.addPossibleAttributes(stream, states);
+				} // for each rule.
+
+				try {
+				} catch (PropertiesException | CancelException | NoniterableException | NoninstantiableException
+						| CannotExtractSpliteratorException e) {
+					logger.log(Level.SEVERE, "Error while building stream.", e);
+					throw new RuntimeException(e);
+				} catch (UnknownIfReduceOrderMattersException e) {
+					logger.log(Level.WARNING, "Exception caught while processing: " + stream.getCreation(), e);
+					stream.addStatusEntry(PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
+							"Cannot derive reduction ordering for stream: " + stream.getCreation() + ".");
+				} catch (RequireTerminalOperationException e) {
+					logger.log(Level.WARNING, "Require terminal operations: " + stream.getCreation(), e);
+					stream.addStatusEntry(PreconditionFailure.NO_TERMINAL_OPERATIONS,
+							"Require terminal operations: " + stream.getCreation() + ".");
+				}
+
+				// check preconditions.
+				stream.check();
+			} // end for each stream.
+		}
+	}
+
+	public Set<Stream> getStreamSet() {
+		return streamSet;
+	}
+
+	/**
+	 * @see org.eclipse.jdt.core.dom.ASTVisitor#visit(org.eclipse.jdt.core.dom.MethodInvocation)
+	 */
+	@Override
+	public boolean visit(MethodInvocation node) {
+		IMethodBinding methodBinding = node.resolveMethodBinding();
+		ITypeBinding returnType = methodBinding.getReturnType();
+		boolean returnTypeImplementsBaseStream = Util.implementsBaseStream(returnType);
+
+		ITypeBinding declaringClass = methodBinding.getDeclaringClass();
+		boolean declaringClassImplementsBaseStream = Util.implementsBaseStream(declaringClass);
+
+		// Try to limit the analyzed methods to those of the API. In other
+		// words, don't process methods returning streams that are declared in
+		// the client application. TODO: This could be problematic if the API
+		// implementation treats itself as a "client."
+		String[] declaringClassPackageNameComponents = declaringClass.getPackage().getNameComponents();
+		boolean isFromAPI = declaringClassPackageNameComponents.length > 0
+				&& declaringClassPackageNameComponents[0].equals("java");
+
+		boolean instanceMethod = !JdtFlags.isStatic(methodBinding);
+		boolean intermediateOperation = instanceMethod && declaringClassImplementsBaseStream;
+
+		// java.util.stream.BaseStream is the top-level interface for all
+		// streams. Make sure we don't include intermediate operations.
+		if (returnTypeImplementsBaseStream && !intermediateOperation && isFromAPI) {
+			Stream stream = null;
+			try {
+				stream = new Stream(node);
+			} catch (ClassHierarchyException | IOException | CoreException | InvalidClassFileException
+					| CancelException e) {
+				logger.log(Level.SEVERE, "Encountered exception while processing: " + node, e);
+				throw new RuntimeException(e);
+			}
+			this.getStreamSet().add(stream);
+		}
+
+		return super.visit(node);
+	}
+
+	private static Map<MethodDeclaration, IR> getMethodDeclarationToIRMap() {
+		return Collections.unmodifiableMap(methodDeclarationToIRMap);
+	}
+}

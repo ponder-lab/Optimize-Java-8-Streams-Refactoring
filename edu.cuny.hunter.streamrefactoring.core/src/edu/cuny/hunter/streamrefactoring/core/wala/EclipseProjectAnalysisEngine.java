@@ -42,7 +42,7 @@ import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
  */
 public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJavaSourceAnalysisEngine<I> {
 
-	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
+	private static final Logger logger = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	/**
 	 * The N value used to create the {@link nCFABuilder}.
@@ -51,14 +51,20 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 
 	private CallGraphBuilder<?> callGraphBuilder;
 
+	/**
+	 * The project used to create this engine.
+	 */
+	private IJavaProject project;
+
 	public EclipseProjectAnalysisEngine(IJavaProject project) throws IOException, CoreException {
 		super(project);
+		this.project = project;
 	}
 
 	@Override
 	public void buildAnalysisScope() throws IOException {
 		try {
-			ePath = createProjectPath(project);
+			ePath = createProjectPath(getProject());
 		} catch (CoreException e) {
 			e.printStackTrace();
 			throw new RuntimeException(e);
@@ -127,15 +133,15 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 
 	public CallGraph buildSafeCallGraph(AnalysisOptions options)
 			throws CallGraphBuilderCancelException, CancelException {
-		LOGGER.entering(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
+		logger.entering(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
 
 		if (callGraphBuilder == null) {
-			LOGGER.info("Creating new call graph builder.");
+			logger.info("Creating new call graph builder.");
 			callGraphBuilder = buildCallGraph(this.getClassHierarchy(), options, true, null);
 		} else
-			LOGGER.info("Reusing call graph builder.");
+			logger.info("Reusing call graph builder.");
 
-		LOGGER.exiting(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
+		logger.exiting(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
 		return callGraphBuilder.makeCallGraph(options, null);
 	}
 
@@ -156,5 +162,14 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 
 	public void clearCallGraphBuilder() {
 		this.callGraphBuilder = null;
+	}
+
+	/**
+	 * Get the project used to create this engine.
+	 * 
+	 * @return The project used to create this engine.
+	 */
+	public IJavaProject getProject() {
+		return project;
 	}
 }

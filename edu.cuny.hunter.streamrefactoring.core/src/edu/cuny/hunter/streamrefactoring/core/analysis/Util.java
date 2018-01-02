@@ -3,6 +3,7 @@ package edu.cuny.hunter.streamrefactoring.core.analysis;
 import java.io.UTFDataFormatException;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
@@ -20,9 +21,11 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SimpleName;
+import org.eclipse.jdt.internal.corext.dom.ASTNodes;
 import org.eclipse.jdt.internal.corext.refactoring.util.RefactoringASTParser;
 
 import com.ibm.wala.analysis.typeInference.PointType;
@@ -37,8 +40,11 @@ import com.ibm.wala.classLoader.ShrikeCTMethod;
 import com.ibm.wala.classLoader.IMethod.SourcePosition;
 import com.ibm.wala.classLoader.SyntheticClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
+import com.ibm.wala.ipa.callgraph.impl.FakeRootMethod;
+import com.ibm.wala.ipa.callgraph.impl.FakeWorldClinitMethod;
 import com.ibm.wala.ipa.callgraph.propagation.HeapModel;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
@@ -65,6 +71,7 @@ import com.ibm.wala.util.strings.StringStuff;
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 import edu.cuny.hunter.streamrefactoring.core.wala.AnalysisUtils;
 import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
+import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 @SuppressWarnings("restriction")
 public final class Util {
@@ -207,15 +214,15 @@ public final class Util {
 	}
 
 	public static Collection<TypeAbstraction> getPossibleTypesInterprocedurally(CGNode node, int valueNumber,
-			HeapModel heapModel, PointerAnalysis<InstanceKey> pointerAnalysis, Stream stream)
+			EclipseProjectAnalysisEngine<InstanceKey> engine, OrderingInference orderingInference)
 			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException,
 			UTFDataFormatException, JavaModelException {
 		Collection<TypeAbstraction> ret = new HashSet<>();
 
-		PointerKey valueKey = heapModel.getPointerKeyForLocal(node, valueNumber);
+		PointerKey valueKey = engine.getHeapGraph().getHeapModel().getPointerKeyForLocal(node, valueNumber);
 		LOGGER.fine(() -> "Value pointer key is: " + valueKey);
 
-		OrdinalSet<InstanceKey> pointsToSet = pointerAnalysis.getPointsToSet(valueKey);
+		OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis().getPointsToSet(valueKey);
 		assert pointsToSet != null;
 		LOGGER.fine(() -> "PointsTo set is: " + pointsToSet);
 
@@ -269,27 +276,15 @@ public final class Util {
 								e);
 					}
 
-					// ensure that the file names are the same.
-					// FIXME: Do we need to worry about paths? Maybe it would
-					// suffice to check packages.
-					CompilationUnit unit = stream.getEnclosingCompilationUnit();
-					ITypeRoot typeRoot = unit.getTypeRoot();
-					String typeRootFileName = typeRoot.getElementName();
-					String sourcePositionFileName = sourcePosition.getFileName();
+					// let's assume that the source file is in the same project.
+					IJavaProject enclosingProject = engine.getProject();
 
-					// if the files aren't the same.
-					if (!typeRootFileName.equals(sourcePositionFileName)) {
-						// we're in the interprocedural case.
-						// let's assume that the source file is in the same project.
-						IJavaProject enclosingProject = stream.getEnclosingEclipseMethod().getJavaProject();
-
-						String fqn = method.getDeclaringClass().getName().getPackage().toUnicodeString() + "."
-								+ method.getDeclaringClass().getName().getClassName().toUnicodeString();
-						IType type = enclosingProject.findType(fqn.replace('/', '.'));
-						// FIXME: Need to (i) exclude from result timer and (ii) use the cache in
-						// ConvertToParallelStreamRefactoringProcessor #141.
-						unit = RefactoringASTParser.parseWithASTProvider(type.getTypeRoot(), true, null);
-					}
+					String fqn = method.getDeclaringClass().getName().getPackage().toUnicodeString() + "."
+							+ method.getDeclaringClass().getName().getClassName().toUnicodeString();
+					IType type = enclosingProject.findType(fqn.replace('/', '.'));
+					// FIXME: Need to (i) exclude from result timer and (ii) use the cache in
+					// ConvertToParallelStreamRefactoringProcessor #141.
+					CompilationUnit unit = RefactoringASTParser.parseWithASTProvider(type.getTypeRoot(), true, null);
 
 					// We have the CompilationUnit corresponding to the instruction's file. Can we
 					// correlate the instruction to the method invocation in the AST?
@@ -311,7 +306,7 @@ public final class Util {
 					if (assignableFrom) {
 						// would the ordering be consistent?
 						if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), concreteType,
-								stream.getOrderingInference())) {
+								orderingInference)) {
 							// if so, add it.
 							LOGGER.fine("Add type straight up: " + concreteType);
 							ret.add(concreteType);
@@ -321,7 +316,7 @@ public final class Util {
 							PointType genericType = new PointType(genericClass);
 
 							if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), genericType,
-									stream.getOrderingInference())) {
+									orderingInference)) {
 								LOGGER.fine("Defaulting to generic type: " + genericType);
 								ret.add(genericType);
 							} else {
@@ -486,5 +481,76 @@ public final class Util {
 		CallStringWithReceivers callString = (CallStringWithReceivers) context
 				.get(CallStringContextSelector.CALL_STRING);
 		return callString;
+	}
+
+	/**
+	 * Returns true iff all of the predecessors of all of the given {@link CGNode}s
+	 * in the {@link CallGraph} are {@link FakeRootMethod}s.
+	 *
+	 * @param nodes
+	 *            The nodes whose predecessors to consider.
+	 * @param callGraph
+	 *            The {@link CallGraph} to search.
+	 * @return True iff all of the predecessors of all of the given {@link CGNode}s
+	 *         in the {@link CallGraph} are {@link FakeRootMethod}s.
+	 * @apiNote The may be an issue here related to #106.
+	 */
+	@SuppressWarnings("unused")
+	private static boolean allFake(Set<CGNode> nodes, CallGraph callGraph) {
+		// for each node.
+		for (CGNode cgNode : nodes) {
+			// for each predecessor.
+			for (Iterator<CGNode> it = callGraph.getPredNodes(cgNode); it.hasNext();) {
+				CGNode predNode = it.next();
+				com.ibm.wala.classLoader.IMethod predMethod = predNode.getMethod();
+
+				boolean isFakeMethod = predMethod instanceof FakeRootMethod
+						|| predMethod instanceof FakeWorldClinitMethod;
+
+				if (!isFakeMethod)
+					return false;
+			}
+		}
+		return true;
+	}
+
+	static Set<ITypeBinding> getAllInterfaces(ITypeBinding type) {
+		Set<ITypeBinding> ret = new HashSet<>();
+		ITypeBinding[] interfaces = type.getInterfaces();
+		ret.addAll(Arrays.asList(interfaces));
+
+		for (ITypeBinding interfaceBinding : interfaces)
+			ret.addAll(getAllInterfaces(interfaceBinding));
+
+		return ret;
+	}
+
+	static Set<ITypeBinding> getImplementedInterfaces(ITypeBinding type) {
+		Set<ITypeBinding> ret = new HashSet<>();
+
+		if (type.isInterface())
+			ret.add(type);
+
+		ret.addAll(getAllInterfaces(type));
+		return ret;
+	}
+
+	static boolean implementsBaseStream(ITypeBinding type) {
+		Set<ITypeBinding> implementedInterfaces = getImplementedInterfaces(type);
+		return implementedInterfaces.stream()
+				.anyMatch(i -> i.getErasure().getQualifiedName().equals("java.util.stream.BaseStream"));
+	}
+
+	static int getLineNumberFromAST(SimpleName methodName) {
+		CompilationUnit compilationUnit = (CompilationUnit) ASTNodes.getParent(methodName, ASTNode.COMPILATION_UNIT);
+		int lineNumberFromAST = compilationUnit.getLineNumber(methodName.getStartPosition());
+		return lineNumberFromAST;
+	}
+
+	static int getLineNumberFromIR(IBytecodeMethod method, SSAInstruction instruction)
+			throws InvalidClassFileException {
+		int bytecodeIndex = method.getBytecodeIndex(instruction.iindex);
+		int lineNumberFromIR = method.getLineNumber(bytecodeIndex);
+		return lineNumberFromIR;
 	}
 }

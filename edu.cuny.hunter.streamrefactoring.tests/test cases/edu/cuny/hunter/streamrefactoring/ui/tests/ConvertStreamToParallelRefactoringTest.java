@@ -45,7 +45,7 @@ import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionSuccess;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Refactoring;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
-import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalysisVisitor;
+import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalyzer;
 import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
 import junit.framework.Test;
 import junit.framework.TestSuite;
@@ -256,10 +256,10 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 		ASTNode ast = parser.createAST(new NullProgressMonitor());
 
-		StreamAnalysisVisitor visitor = new StreamAnalysisVisitor();
-		ast.accept(visitor);
+		StreamAnalyzer analyzer = new StreamAnalyzer();
+		ast.accept(analyzer);
 
-		Set<Stream> resultingStreams = visitor.getStreamSet();
+		Set<Stream> resultingStreams = analyzer.getStreamSet();
 		assertNotNull(resultingStreams);
 
 		Map<String, List<Stream>> creationStringToStreams = resultingStreams.stream()
@@ -338,7 +338,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		if (pExists)
 			tryDeletingAllJavaClassFiles(getPackageP());
 
-		Stream.clearCaches();
+		StreamAnalyzer.clearCaches();
 		super.tearDown();
 	}
 
@@ -658,15 +658,14 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 						Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
 	}
 
-  	/**
+	/**
 	 * Test #119.
 	 */
 	public void testWithoutEntryPoint() throws Exception {
-		helper(new StreamAnalysisExpectedResult("h1.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL), null,
-				false, false, false, null, null, null, RefactoringStatus.ERROR,
-				EnumSet.of(PreconditionFailure.NO_ENTRY_POINT)));
+		helper(new StreamAnalysisExpectedResult("h1.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL), null, false, false,
+				false, null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.NO_ENTRY_POINT)));
 	}
-	
+
 	/**
 	 * Test #122.
 	 */
@@ -676,7 +675,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
-	
+
 	/**
 	 * Test #122. Remove an annotation from testMultipleEntryPoints().
 	 */
