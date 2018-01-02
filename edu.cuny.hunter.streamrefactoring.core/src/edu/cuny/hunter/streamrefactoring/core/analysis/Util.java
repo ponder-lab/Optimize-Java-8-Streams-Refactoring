@@ -16,12 +16,10 @@ import java.util.stream.BaseStream;
 
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
-import org.eclipse.jdt.core.ITypeRoot;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SimpleName;
@@ -45,10 +43,8 @@ import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
 import com.ibm.wala.ipa.callgraph.impl.FakeRootMethod;
 import com.ibm.wala.ipa.callgraph.impl.FakeWorldClinitMethod;
-import com.ibm.wala.ipa.callgraph.propagation.HeapModel;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
-import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
@@ -154,18 +150,6 @@ public final class Util {
 		}
 
 		return ret;
-	}
-
-	static boolean isBaseStream(IClass clazz) {
-		return isType(clazz, "java/util/stream", "BaseStream");
-	}
-
-	static boolean isCollector(IClass clazz) {
-		return isType(clazz, "java/util/stream", "Collector");
-	}
-
-	static boolean isIterable(IClass clazz) {
-		return isType(clazz, "java/lang", "Iterable");
 	}
 
 	static boolean isType(IClass clazz, String packagePath, String typeName) {
@@ -552,5 +536,49 @@ public final class Util {
 		int bytecodeIndex = method.getBytecodeIndex(instruction.iindex);
 		int lineNumberFromIR = method.getLineNumber(bytecodeIndex);
 		return lineNumberFromIR;
+	}
+
+	public static boolean isScalar(TypeAbstraction typeAbstraction) {
+		TypeReference typeReference = typeAbstraction.getTypeReference();
+
+		if (typeReference.isArrayType())
+			return false;
+		else if (typeReference.equals(TypeReference.Void))
+			throw new IllegalArgumentException("Void is neither scalar or nonscalar.");
+		else if (typeReference.isPrimitiveType())
+			return true;
+		else if (typeReference.isReferenceType()) {
+			IClass type = typeAbstraction.getType();
+			return !edu.cuny.hunter.streamrefactoring.core.analysis.Util.isIterable(type)
+					&& type.getAllImplementedInterfaces().stream().noneMatch(Util::isIterable);
+		} else
+			throw new IllegalArgumentException("Can't tell if type is scalar: " + typeAbstraction);
+	}
+
+	public static boolean isScalar(Collection<TypeAbstraction> types) {
+		Boolean ret = null;
+
+		for (TypeAbstraction typeAbstraction : types) {
+			boolean scalar = isScalar(typeAbstraction);
+
+			if (ret == null)
+				ret = scalar;
+			else if (ret != scalar)
+				throw new IllegalArgumentException("Inconsistent types: " + types);
+		}
+
+		return ret;
+	}
+
+	public static boolean isBaseStream(IClass clazz) {
+		return Util.isType(clazz, "java/util/stream", "BaseStream");
+	}
+
+	public static boolean isCollector(IClass clazz) {
+		return Util.isType(clazz, "java/util/stream", "Collector");
+	}
+
+	public static boolean isIterable(IClass clazz) {
+		return Util.isType(clazz, "java/lang", "Iterable");
 	}
 }

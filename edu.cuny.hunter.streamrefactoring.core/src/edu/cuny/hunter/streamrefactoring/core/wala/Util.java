@@ -7,8 +7,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 
-import com.ibm.wala.analysis.typeInference.TypeAbstraction;
-import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.Module;
 import com.ibm.wala.ide.util.EclipseProjectPath;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
@@ -21,7 +19,6 @@ import com.ibm.wala.ipa.callgraph.propagation.SSAPropagationCallGraphBuilder;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.ZeroXInstanceKeys;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.types.ClassLoaderReference;
-import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.collections.HashSetFactory;
 
 public final class Util {
@@ -102,35 +99,4 @@ public final class Util {
 	        | ZeroXInstanceKeys.SMUSH_THROWABLES));
 	    return result;
 	  }
-
-	public static boolean isScalar(TypeAbstraction typeAbstraction) {
-		TypeReference typeReference = typeAbstraction.getTypeReference();
-	
-		if (typeReference.isArrayType())
-			return false;
-		else if (typeReference.equals(TypeReference.Void))
-			throw new IllegalArgumentException("Void is neither scalar or nonscalar.");
-		else if (typeReference.isPrimitiveType())
-			return true;
-		else if (typeReference.isReferenceType()) {
-			IClass type = typeAbstraction.getType();
-			return !Util.isIterable(type) && type.getAllImplementedInterfaces().stream().noneMatch(Util::isIterable);
-		} else
-			throw new IllegalArgumentException("Can't tell if type is scalar: " + typeAbstraction);
-	}
-
-	public static boolean isScalar(Collection<TypeAbstraction> types) {
-		Boolean ret = null;
-	
-		for (TypeAbstraction typeAbstraction : types) {
-			boolean scalar = isScalar(typeAbstraction);
-	
-			if (ret == null)
-				ret = scalar;
-			else if (ret != scalar)
-				throw new IllegalArgumentException("Inconsistent types: " + types);
-		}
-	
-		return ret;
-	}
 }

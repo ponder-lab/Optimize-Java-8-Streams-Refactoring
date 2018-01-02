@@ -279,7 +279,6 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		getTypeToTypeHierarchyMap().clear();
 		getCompilationUnitToCompilationUnitRewriteMap().clear();
 		getTypeRootToCompilationUnitMap().clear();
-		StreamAnalyzer.clearCaches();
 	}
 
 	@Override

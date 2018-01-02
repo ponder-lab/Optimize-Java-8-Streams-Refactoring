@@ -53,7 +53,6 @@ import com.ibm.wala.classLoader.NewSiteReference;
 import com.ibm.wala.client.AnalysisEngine;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
-import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceFieldPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
@@ -90,6 +89,8 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 public class StreamStateMachine {
 
+	private static final String ARRAYS_STREAM_CREATION_METHOD_NAME = "Arrays.stream";
+
 	/**
 	 * A table mapping an instance and a block to the instance's possible states at
 	 * that block.
@@ -125,7 +126,7 @@ public class StreamStateMachine {
 	 */
 	private Map<InstanceKey, Boolean> instanceToStatefulIntermediateOperationContainment = new HashMap<>();
 
-	private static final Logger logger = Logger.getLogger(LoggerNames.LOGGER_NAME);
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private Map<InstanceKey, Map<TypestateRule, Set<IDFAState>>> originStreamToMergedTypeStateMap = new HashMap<>();
 
@@ -214,6 +215,8 @@ public class StreamStateMachine {
 	// @formatter:on
 
 	private Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers = new HashMap<>();
+
+	private Map<InstanceKey, Stream> instanceKeyToStream;
 
 	private Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
 			BasicBlockInContext<IExplodedBasicBlock> block, StreamAttributeTypestateRule rule) {
@@ -321,10 +324,10 @@ public class StreamStateMachine {
 							// site from the caller.
 							Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode,
 									callSiteReference);
-							logger.fine(() -> "#possible targets: " + possibleTargets.size());
+							LOGGER.fine(() -> "#possible targets: " + possibleTargets.size());
 
 							if (!possibleTargets.isEmpty())
-								logger.fine(() -> possibleTargets.stream().map(String::valueOf)
+								LOGGER.fine(() -> possibleTargets.stream().map(String::valueOf)
 										.collect(Collectors.joining("\n", "Possible target: ", "")));
 
 							// for each possible target node.
@@ -332,7 +335,7 @@ public class StreamStateMachine {
 								// get the set of pointers (locations) it
 								// may modify
 								OrdinalSet<PointerKey> modSet = mod.get(target);
-								logger.fine(() -> "#original modified locations: " + modSet.size());
+								LOGGER.fine(() -> "#original modified locations: " + modSet.size());
 
 								Collection<PointerKey> filteredModSet = new HashSet<>();
 
@@ -341,12 +344,12 @@ public class StreamStateMachine {
 										filteredModSet.add(pointerKey);
 								}
 
-								logger.fine(() -> "#filtered modified locations: " + filteredModSet.size());
+								LOGGER.fine(() -> "#filtered modified locations: " + filteredModSet.size());
 
 								// if it's non-empty.
 								if (!filteredModSet.isEmpty()) {
 									filteredModSet
-											.forEach(pk -> logger.fine(() -> "Filtered modified location: " + pk));
+											.forEach(pk -> LOGGER.fine(() -> "Filtered modified location: " + pk));
 
 									// mark the instances whose pipeline may
 									// have side-effects.
@@ -361,7 +364,7 @@ public class StreamStateMachine {
 					}
 				}
 			} else
-				logger.warning("Def was an instance of a: " + def.getClass());
+				LOGGER.warning("Def was an instance of a: " + def.getClass());
 		}
 	}
 
@@ -435,37 +438,37 @@ public class StreamStateMachine {
 	private static Collection<? extends InstanceKey> getAdditionalNecessaryReceiversFromPredecessors(
 			InstanceKey instance, IClassHierarchy hierarchy, CallGraph callGraph) throws IOException, CoreException {
 		Collection<InstanceKey> ret = new HashSet<>();
-		logger.fine(() -> "Instance is: " + instance);
+		LOGGER.fine(() -> "Instance is: " + instance);
 
 		CallStringWithReceivers callString = Util.getCallString(instance);
 
 		// for each method in the call string.
 		for (IMethod calledMethod : callString.getMethods()) {
 			// who's the caller?
-			logger.fine(() -> "Called method is: " + calledMethod);
+			LOGGER.fine(() -> "Called method is: " + calledMethod);
 
 			TypeReference returnType = calledMethod.getReturnType();
-			logger.fine(() -> "Return type is: " + returnType);
+			LOGGER.fine(() -> "Return type is: " + returnType);
 
 			boolean implementsBaseStream = Util.implementsBaseStream(returnType, hierarchy);
-			logger.fine(() -> "Is it a stream? " + implementsBaseStream);
+			LOGGER.fine(() -> "Is it a stream? " + implementsBaseStream);
 
 			if (implementsBaseStream) {
 				// look up the call string for this method.
 				NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
-				logger.fine(() -> "Predecessor count is: " + callGraph.getPredNodeCount(allocationInNode.getNode()));
+				LOGGER.fine(() -> "Predecessor count is: " + callGraph.getPredNodeCount(allocationInNode.getNode()));
 
 				for (Iterator<CGNode> predNodes = callGraph.getPredNodes(allocationInNode.getNode()); predNodes
 						.hasNext();) {
 					CGNode node = predNodes.next();
-					logger.fine(() -> "Found node: " + node);
+					LOGGER.fine(() -> "Found node: " + node);
 
 					// try to get its CallStringWithReceivers.
 					CallStringWithReceivers calledMethodCallString = Util.getCallString(node);
 
 					// what are its receivers?
 					Set<InstanceKey> possibleReceivers = calledMethodCallString.getPossibleReceivers();
-					logger.fine(() -> "It's receivers are: " + possibleReceivers);
+					LOGGER.fine(() -> "It's receivers are: " + possibleReceivers);
 
 					// filter out ones that aren't streams.
 					for (InstanceKey receiver : possibleReceivers) {
@@ -559,7 +562,8 @@ public class StreamStateMachine {
 		// each receiver must be a stream.
 		return receivers.stream().allMatch(r -> {
 			IClass type = r.getConcreteType();
-			return Util.isBaseStream(type) || type.getAllImplementedInterfaces().stream().anyMatch(Util::isBaseStream);
+			return edu.cuny.hunter.streamrefactoring.core.analysis.Util.isBaseStream(type)
+					|| type.getAllImplementedInterfaces().stream().anyMatch(Util::isBaseStream);
 		});
 	}
 
@@ -626,11 +630,11 @@ public class StreamStateMachine {
 		} catch (InconsistentPossibleOrderingException e) {
 			// default to ordered #55.
 			ordering = Ordering.ORDERED;
-			logger.log(Level.WARNING, "Inconsistently ordered possible return types encountered: " + possibleReturnTypes
+			LOGGER.log(Level.WARNING, "Inconsistently ordered possible return types encountered: " + possibleReturnTypes
 					+ ". Defaulting to: " + ordering, e);
 		}
 
-		logger.info("Ordering of reduction type is: " + ordering);
+		LOGGER.info("Ordering of reduction type is: " + ordering);
 
 		switch (ordering) {
 		case UNORDERED:
@@ -669,20 +673,34 @@ public class StreamStateMachine {
 					possibleReturnTypes = Util.getPossibleTypesInterprocedurally(block.getNode(), returnValue, engine,
 							orderingInference);
 
-					logger.fine("Possible reduce types are: " + possibleReturnTypes);
+					LOGGER.fine("Possible reduce types are: " + possibleReturnTypes);
 				} else {
 					// it's a void method.
 					possibleReturnTypes = Collections.singleton(JavaPrimitiveType.VOID);
 				}
 
-				boolean rom = false;
+				Boolean rom = null;
 
 				if (isVoid(possibleReturnTypes))
 					rom = deriveRomForVoidMethod(invokeInstruction);
 				else {
-					boolean scalar = edu.cuny.hunter.streamrefactoring.core.wala.Util.isScalar(possibleReturnTypes);
+					boolean scalar = Util.isScalar(possibleReturnTypes);
 					if (scalar)
-						rom = deriveRomForScalarMethod(invokeInstruction);
+						try {
+							rom = deriveRomForScalarMethod(invokeInstruction);
+						} catch (UnknownIfReduceOrderMattersException e) {
+							// for each possible receiver associated with the terminal block.
+							OrdinalSet<InstanceKey> receivers = terminalBlockToPossibleReceivers.get(block);
+
+							for (InstanceKey instanceKey : receivers) {
+								// get the stream for the instance key.
+								Stream stream = instanceKeyToStream.get(instanceKey);
+
+								LOGGER.log(Level.WARNING, "Unable to derive ROM for : " + stream.getCreation(), e);
+								stream.addStatusEntry(PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
+										"Cannot derive reduction ordering for stream: " + stream.getCreation() + ".");
+							}
+						}
 					else if (!scalar)
 						rom = deriveRomForNonScalarMethod(possibleReturnTypes, orderingInference);
 					else
@@ -691,13 +709,14 @@ public class StreamStateMachine {
 				}
 
 				// if reduce ordering matters.
-				if (rom) {
-					logger.fine(() -> "Reduce ordering matters for: " + invokeInstruction);
-					OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
-					possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
-				} else
-					// otherwise, just log.
-					logger.fine(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
+				if (rom != null)
+					if (rom) {
+						LOGGER.fine(() -> "Reduce ordering matters for: " + invokeInstruction);
+						OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
+						possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
+					} else
+						// otherwise, just log.
+						LOGGER.fine(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
 
 				++processedInstructions;
 			}
@@ -766,18 +785,18 @@ public class StreamStateMachine {
 			boolean fallback = false;
 
 			if (callerTargetMethod == null) {
-				logger.warning("Cannot resolve caller declared target method: " + callerDeclaredTarget);
+				LOGGER.warning("Cannot resolve caller declared target method: " + callerDeclaredTarget);
 
 				// fall back.
 				callerTargetMethod = callString.getMethods()[1];
-				logger.warning("Falling back to method: " + callerTargetMethod);
+				LOGGER.warning("Falling back to method: " + callerTargetMethod);
 				fallback = true;
 			}
 
 			IR ir = engine.getCache().getIR(callerTargetMethod);
 
 			if (ir == null) {
-				logger.warning("Can't find IR for target: " + callerTargetMethod);
+				LOGGER.warning("Can't find IR for target: " + callerTargetMethod);
 				continue; // next instance.
 			}
 
@@ -827,10 +846,13 @@ public class StreamStateMachine {
 		this.instancesWithoutTerminalOperations.addAll(badStreamInstances);
 	}
 
-	public StreamAttributeTypestateRule[] start(EclipseProjectAnalysisEngine<InstanceKey> engine,
+	public StreamStateMachine() {
+	}
+
+	public void start(Set<Stream> streamSet, EclipseProjectAnalysisEngine<InstanceKey> engine,
 			OrderingInference orderingInference)
 			throws PropertiesException, CancelException, IOException, CoreException, NoniterableException,
-			NoninstantiableException, CannotExtractSpliteratorException, UnknownIfReduceOrderMattersException {
+			NoninstantiableException, CannotExtractSpliteratorException, InvalidClassFileException {
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
 
 		PropertiesManager manager = PropertiesManager.initFromMap(Collections.emptyMap());
@@ -851,7 +873,7 @@ public class StreamStateMachine {
 			TypeStateProperty dfa = new TypeStateProperty(rule, engine.getClassHierarchy());
 
 			// this gets a solver that tracks all streams.
-			logger.info(() -> "Starting solver for: " + engine.getProject());
+			LOGGER.info(() -> "Starting solver for: " + engine.getProject());
 			ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getOptions(), engine.getCallGraph(),
 					engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null);
 
@@ -882,7 +904,7 @@ public class StreamStateMachine {
 							.equals(ClassLoaderReference.Application)) {
 
 						// we can verify that only client nodes are being considered
-						logger.fine(() -> "Examining client call graph node: " + cgNode);
+						LOGGER.fine(() -> "Examining client call graph node: " + cgNode);
 
 						// for each call site in the call graph node.
 						for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
@@ -992,7 +1014,7 @@ public class StreamStateMachine {
 													instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
 
 											// add the encountered state to the set.
-											logger.fine(() -> "Adding state: " + baseFactoid.state + " for instance: "
+											LOGGER.fine(() -> "Adding state: " + baseFactoid.state + " for instance: "
 													+ baseFactoid.instance + " for block: " + block + " for rule: "
 													+ rule.getName());
 											stateSet.add(baseFactoid.state);
@@ -1044,6 +1066,10 @@ public class StreamStateMachine {
 			}
 		} // end for each rule.
 
+		// create a mapping between stream instances (from the analysis) and stream
+		// objects (from the refactoring).
+		createInstanceKeyStreamMap(streamSet, engine);
+
 		discoverTerminalOperations();
 
 		// fill the instance side-effect set.
@@ -1064,7 +1090,7 @@ public class StreamStateMachine {
 			// get any additional receivers if necessary #36.
 			Collection<? extends InstanceKey> additionalNecessaryReceiversFromPredecessors = getAdditionalNecessaryReceiversFromPredecessors(
 					instance, engine.getClassHierarchy(), engine.getCallGraph());
-			logger.fine(() -> "Adding additional receivers: " + additionalNecessaryReceiversFromPredecessors);
+			LOGGER.fine(() -> "Adding additional receivers: " + additionalNecessaryReceiversFromPredecessors);
 			possibleReceivers.addAll(additionalNecessaryReceiversFromPredecessors);
 
 			instanceToPredecessorsMap.merge(instance, possibleReceivers, (x, y) -> {
@@ -1098,23 +1124,61 @@ public class StreamStateMachine {
 		// propagate the instances whose reduce ordering possibly matters.
 		propagateStreamInstanceProperty(instancesWhoseReduceOrderingPossiblyMatters);
 
-		/*
-		 * TODO: Terminal operations.
-		 * 
-		 * TODO: Get out. // determine if this stream has possible side-effects.
-		 * this.getStream().setHasPossibleSideEffects(instancesWithSideEffects.contains(
-		 * streamInstanceKey));
-		 * 
-		 * // determine if this stream has possible stateful intermediate // operations.
-		 * this.getStream().setHasPossibleStatefulIntermediateOperations(
-		 * instanceToStatefulIntermediateOperationContainment.getOrDefault(
-		 * streamInstanceKey, false));
-		 * 
-		 * // determine if this stream reduce ordering possibly matters
-		 * this.getStream().setReduceOrderingPossiblyMatters(
-		 * instancesWhoseReduceOrderingPossiblyMatters.contains(streamInstanceKey));
-		 */
-		return ruleArray;
+		// for stream instance key.
+		for (InstanceKey streamInstanceKey : instanceKeyToStream.keySet()) {
+			Stream stream = instanceKeyToStream.get(streamInstanceKey);
+
+			// assign states to the current stream for each typestate rule.
+			for (StreamAttributeTypestateRule rule : ruleArray) {
+				// get the states.
+				Collection<IDFAState> states = this.getStates(rule, streamInstanceKey);
+
+				// Map IDFAState to StreamExecutionMode, etc., and add them to the
+				// possible stream states but only if they're not bottom (for those,
+				// we fall back to the initial state).
+				rule.addPossibleAttributes(stream, states);
+			} // for each rule.
+
+			// determine possible side-effects.
+			stream.setHasPossibleSideEffects(instancesWithSideEffects.contains(streamInstanceKey));
+
+			// determine if the stream has possible stateful intermediate operations.
+			stream.setHasPossibleStatefulIntermediateOperations(
+					instanceToStatefulIntermediateOperationContainment.getOrDefault(streamInstanceKey, false));
+
+			// determine if the stream reduce ordering possibly matters.
+			stream.setReduceOrderingPossiblyMatters(
+					instancesWhoseReduceOrderingPossiblyMatters.contains(streamInstanceKey));
+
+			// determine if the stream is not associated with a terminal operation.
+			stream.setHasNoTerminalOperation(instancesWithoutTerminalOperations.contains(streamInstanceKey));
+		}
+	}
+
+	private void createInstanceKeyStreamMap(Set<Stream> streamSet, EclipseProjectAnalysisEngine<InstanceKey> engine)
+			throws InvalidClassFileException, IOException, CoreException {
+		instanceKeyToStream = new HashMap<>();
+
+		for (Stream stream : streamSet) {
+			InstanceKey instanceKey = null;
+			try {
+				instanceKey = stream.getInstanceKey(instanceBlockStateTable.rowKeySet(), engine);
+			} catch (InstanceKeyNotFoundException e) { // workaround for #80.
+				if (stream.getCreation().toString().contains(ARRAYS_STREAM_CREATION_METHOD_NAME)) {
+					String msg = "Encountered possible unhandled case (#80) while processing: " + stream.getCreation();
+					LOGGER.log(Level.WARNING, msg, e);
+					stream.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, msg);
+				} else {
+					LOGGER.log(Level.WARNING, "Encountered unreachable code while processing: " + stream.getCreation(),
+							e);
+					stream.addStatusEntry(PreconditionFailure.STREAM_CODE_NOT_REACHABLE,
+							"Either pivital code isn't reachable for stream: " + stream.getCreation()
+									+ " or entry points are misconfigured.");
+				}
+				continue; // next stream.
+			}
+			instanceKeyToStream.put(instanceKey, stream);
+		} // end each stream.
 	}
 
 	public Collection<InstanceKey> getTrackedInstances() {

@@ -43,9 +43,6 @@ import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.RefactoringStatusContext;
 import org.osgi.framework.FrameworkUtil;
 
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.Table;
-import com.ibm.safe.internal.exceptions.PropertiesException;
 import com.ibm.wala.analysis.typeInference.TypeAbstraction;
 import com.ibm.wala.cast.java.translator.jdt.JDTIdentityMapper;
 import com.ibm.wala.classLoader.IBytecodeMethod;
@@ -86,13 +83,11 @@ public class Stream {
 
 	private static final String JAVA_UTIL_STREAM_STREAM = "java.util.stream.Stream";
 
-	private static final String ARRAYS_STREAM_CREATION_METHOD_NAME = "Arrays.stream";
-
 	private static final String PARALLEL_STREAM_CREATION_METHOD_ID = "parallelStream()";
 
 	private static final String BASE_STREAM_TYPE_NAME = "BaseStream";
 
-	private static final Logger logger = Logger.getLogger(LoggerNames.LOGGER_NAME);
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private static final String PLUGIN_ID = FrameworkUtil.getBundle(Stream.class).getSymbolicName();
 
@@ -109,6 +104,8 @@ public class Stream {
 	private boolean hasPossibleSideEffects;
 
 	private boolean hasPossibleStatefulIntermediateOperations;
+
+	private boolean hasNoTerminalOperation;
 
 	/**
 	 * The execution mode derived from the declaration of the stream.
@@ -156,10 +153,9 @@ public class Stream {
 
 		// Work around #97.
 		if (this.enclosingMethodDeclaration == null) {
-			logger.warning("Stream: " + creation + " not handled.");
+			LOGGER.warning("Stream: " + creation + " not handled.");
 			this.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, "Stream: " + creation
 					+ " is most likely used in a context that is currently not handled by this plug-in.");
-			return;
 		}
 	}
 
@@ -198,18 +194,27 @@ public class Stream {
 		boolean hasPossibleSideEffects = this.hasPossibleSideEffects();
 		boolean hasPossibleStatefulIntermediateOperations = this.hasPossibleStatefulIntermediateOperations();
 		boolean reduceOrderingPossiblyMatters = this.reduceOrderingPossiblyMatters();
+		boolean hasNoTerminalOperation = this.hasNoTerminalOperation();
 
-		logger.info("Execution modes: " + possibleExecutionModes);
-		logger.info("Orderings: " + possibleOrderings);
-		logger.info("Side-effects: " + hasPossibleSideEffects);
-		logger.info("Stateful intermediate operations: " + hasPossibleStatefulIntermediateOperations);
-		logger.info("Reduce ordering matters: " + reduceOrderingPossiblyMatters);
+		LOGGER.fine("Execution modes: " + possibleExecutionModes);
+		LOGGER.fine("Orderings: " + possibleOrderings);
+		LOGGER.fine("Side-effects: " + hasPossibleSideEffects);
+		LOGGER.fine("Stateful intermediate operations: " + hasPossibleStatefulIntermediateOperations);
+		LOGGER.fine("Reduce ordering matters: " + reduceOrderingPossiblyMatters);
+		LOGGER.fine("Terminal operation: " + hasNoTerminalOperation);
 
 		// basically implement the tables.
-
-		// first, let's check that execution modes are consistent.
 		MethodInvocation creation = this.getCreation();
 
+		if (hasNoTerminalOperation) {
+			// can't do much without a terminal operation.
+			LOGGER.warning(() -> "Require terminal operations: " + creation);
+			this.addStatusEntry(PreconditionFailure.NO_TERMINAL_OPERATIONS,
+					"Require terminal operations: " + creation + ".");
+			return;
+		}
+
+		// let's check that execution modes are consistent.
 		if (isConsistent(possibleExecutionModes, PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES,
 				"Stream: " + creation + " has inconsitent possible execution modes.", creation)) {
 			// do we have consistent ordering?
@@ -330,7 +335,7 @@ public class Stream {
 			if (enclosingMethodDeclarationIR == null)
 				throw new IllegalStateException("IR is null for: " + resolvedMethod);
 
-			logger.fine("IR is: " + enclosingMethodDeclarationIR);
+			LOGGER.fine("IR is: " + enclosingMethodDeclarationIR);
 		}
 		return enclosingMethodDeclarationIR;
 	}
@@ -426,7 +431,7 @@ public class Stream {
 			if (lineNumberFromIR == lineNumberFromAST) {
 				// lines from the AST and the IR match. Let's dive a little
 				// deeper to be more confident of the correspondence.
-				if (matches(instruction, this.getCreation(), Optional.of(logger)))
+				if (matches(instruction, this.getCreation(), Optional.of(LOGGER)))
 					return Optional.of((SSAInvokeInstruction) instruction);
 			}
 		}
@@ -523,6 +528,10 @@ public class Stream {
 		return hasPossibleStatefulIntermediateOperations;
 	}
 
+	public boolean hasNoTerminalOperation() {
+		return hasNoTerminalOperation;
+	}
+
 	private void inferInitialExecution() throws JavaModelException {
 		String methodIdentifier = Util
 				.getMethodIdentifier((IMethod) this.getCreation().resolveMethodBinding().getJavaElement());
@@ -555,7 +564,7 @@ public class Stream {
 			default:
 				// Fall back for now #136.
 				Ordering defaultOrdering = Ordering.ORDERED;
-				logger.warning(() -> "Unhandled expression type qualified name: " + expressionTypeQualifiedName
+				LOGGER.warning(() -> "Unhandled expression type qualified name: " + expressionTypeQualifiedName
 						+ ". Falling back to: " + defaultOrdering + ".");
 				this.setInitialOrdering(defaultOrdering);
 			}
@@ -568,7 +577,7 @@ public class Stream {
 			try {
 				node = this.getEnclosingMethodNode(engine);
 			} catch (NoEnclosingMethodNodeFoundException e) {
-				logger.log(Level.WARNING, "Can't find enclosing method node for " + this.getCreation()
+				LOGGER.log(Level.WARNING, "Can't find enclosing method node for " + this.getCreation()
 						+ ". Falling back to: " + Ordering.ORDERED + ".", e);
 				this.setInitialOrdering(Ordering.ORDERED);
 				return;
@@ -585,28 +594,28 @@ public class Stream {
 				calledMethod = (IMethod) calledMethodBinding.getJavaElement();
 				ordering = orderingInference.inferOrdering(possibleTypes, calledMethod);
 			} catch (NoniterableException e) {
-				logger.log(Level.WARNING, "Stream: " + this.getCreation()
+				LOGGER.log(Level.WARNING, "Stream: " + this.getCreation()
 						+ " has a non-iterable possible source. Falling back to: " + Ordering.ORDERED + ".", e);
 				ordering = Ordering.ORDERED;
 			} catch (NoninstantiableException e) {
-				logger.log(Level.WARNING,
+				LOGGER.log(Level.WARNING,
 						"Stream: " + this.getCreation() + " has a non-instantiable possible source with type: "
 								+ e.getSourceType() + ". Falling back to: " + Ordering.ORDERED + ".",
 						e);
 				ordering = Ordering.ORDERED;
 			} catch (CannotExtractSpliteratorException e) {
-				logger.log(Level.WARNING, "Cannot extract spliterator from type: " + e.getFromType() + " for stream: "
+				LOGGER.log(Level.WARNING, "Cannot extract spliterator from type: " + e.getFromType() + " for stream: "
 						+ this.getCreation() + ". Falling back to: " + Ordering.ORDERED + ".", e);
 				ordering = Ordering.ORDERED;
 			} catch (InconsistentPossibleOrderingException e) {
-				logger.log(Level.WARNING, "Stream: " + this.getCreation()
+				LOGGER.log(Level.WARNING, "Stream: " + this.getCreation()
 						+ " has inconsistent possible source orderings. Falling back to: " + Ordering.ORDERED + ".", e);
 				ordering = Ordering.ORDERED;
 			}
 
 			if (ordering == null) {
 				ordering = Ordering.ORDERED;
-				logger.warning("Can't find ordering for: " + possibleTypes + " using: " + calledMethod
+				LOGGER.warning("Can't find ordering for: " + possibleTypes + " using: " + calledMethod
 						+ ". Falling back to: " + ordering);
 			}
 
@@ -633,6 +642,10 @@ public class Stream {
 
 	protected void setHasPossibleStatefulIntermediateOperations(boolean hasPossibleStatefulIntermediateOperations) {
 		this.hasPossibleStatefulIntermediateOperations = hasPossibleStatefulIntermediateOperations;
+	}
+
+	public void setHasNoTerminalOperation(boolean hasNoTerminalOperation) {
+		this.hasNoTerminalOperation = hasNoTerminalOperation;
 	}
 
 	protected void setInitialExecutionMode(ExecutionMode initialExecutionMode) {
@@ -684,6 +697,8 @@ public class Stream {
 		builder.append(hasPossibleSideEffects);
 		builder.append(", hasPossibleStatefulIntermediateOperations=");
 		builder.append(hasPossibleStatefulIntermediateOperations);
+		builder.append(", hasNoTerminalOperation=");
+		builder.append(hasNoTerminalOperation);
 		builder.append(", initialExecutionMode=");
 		builder.append(initialExecutionMode);
 		builder.append(", initialOrdering=");

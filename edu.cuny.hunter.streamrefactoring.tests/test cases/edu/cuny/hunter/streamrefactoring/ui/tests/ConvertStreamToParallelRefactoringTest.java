@@ -258,6 +258,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 		StreamAnalyzer analyzer = new StreamAnalyzer();
 		ast.accept(analyzer);
+		
+		analyzer.analyze();
 
 		Set<Stream> resultingStreams = analyzer.getStreamSet();
 		assertNotNull(resultingStreams);
@@ -338,7 +340,6 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		if (pExists)
 			tryDeletingAllJavaClassFiles(getPackageP());
 
-		StreamAnalyzer.clearCaches();
 		super.tearDown();
 	}
 

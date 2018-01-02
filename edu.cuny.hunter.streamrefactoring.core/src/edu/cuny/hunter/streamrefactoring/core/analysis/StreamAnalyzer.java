@@ -1,9 +1,6 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -16,11 +13,9 @@ import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
-import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
 
-import com.ibm.safe.dfa.IDFAState;
 import com.ibm.safe.internal.exceptions.PropertiesException;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
@@ -29,7 +24,6 @@ import com.ibm.wala.ipa.callgraph.AnalysisOptions.ReflectionOptions;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
-import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.SSAOptions;
 import com.ibm.wala.util.CancelException;
 
@@ -39,11 +33,7 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 @SuppressWarnings("restriction")
 public class StreamAnalyzer extends ASTVisitor {
 
-	private static final String ARRAYS_STREAM_CREATION_METHOD_NAME = "Arrays.stream";
-
-	private static final Logger logger = Logger.getLogger(LoggerNames.LOGGER_NAME);
-
-	private static Map<MethodDeclaration, IR> methodDeclarationToIRMap = new HashMap<>();
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private Set<EclipseProjectAnalysisEngine<InstanceKey>> enginesWithBuiltCallGraphs = new HashSet<>();
 
@@ -52,8 +42,7 @@ public class StreamAnalyzer extends ASTVisitor {
 		// if we haven't built the call graph yet.
 		if (!enginesWithBuiltCallGraphs.contains(engine)) {
 			// find the entry points.
-			Set<Entrypoint> entryPoints = edu.cuny.hunter.streamrefactoring.core.analysis.Util
-					.findEntryPoints(engine.getClassHierarchy());
+			Set<Entrypoint> entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
 
 			// set options.
 			AnalysisOptions options = engine.getDefaultOptions(entryPoints);
@@ -63,7 +52,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			try {
 				engine.buildSafeCallGraph(options);
 			} catch (IllegalStateException e) {
-				logger.log(Level.SEVERE, e,
+				LOGGER.log(Level.SEVERE, e,
 						() -> "Exception encountered while building call graph for project: " + engine.getProject());
 				throw e;
 			}
@@ -71,10 +60,6 @@ public class StreamAnalyzer extends ASTVisitor {
 			// instance in question are present?
 			enginesWithBuiltCallGraphs.add(engine);
 		}
-	}
-
-	public static void clearCaches() {
-		methodDeclarationToIRMap.clear();
 	}
 
 	private Set<Stream> streamSet = new HashSet<>();
@@ -86,8 +71,7 @@ public class StreamAnalyzer extends ASTVisitor {
 		super(visitDocTags);
 	}
 
-	public void analyze() throws ClassHierarchyException, IOException, CoreException, InvalidClassFileException,
-			CallGraphBuilderCancelException, CancelException {
+	public void analyze() throws CoreException {
 		// collect the projects to be analyzed.
 		Map<IJavaProject, Set<Stream>> projectToStreams = this.getStreamSet().stream()
 				.collect(Collectors.groupingBy(Stream::getCreationJavaProject, Collectors.toSet()));
@@ -95,83 +79,58 @@ public class StreamAnalyzer extends ASTVisitor {
 		// process each project.
 		for (IJavaProject project : projectToStreams.keySet()) {
 			// create the analysis engine for the project.
-			EclipseProjectAnalysisEngine<InstanceKey> engine = new EclipseProjectAnalysisEngine<>(project);
+			EclipseProjectAnalysisEngine<InstanceKey> engine = null;
+			try {
+				engine = new EclipseProjectAnalysisEngine<>(project);
+				engine.buildAnalysisScope();
+			} catch (IOException e) {
+				LOGGER.log(Level.SEVERE, "Could not create analysis engine for: " + project, e);
+				throw new RuntimeException(e);
+			}
 
 			// build the call graph for the project.
 			try {
 				buildCallGraph(engine);
 			} catch (NoEntryPointException e) {
-				logger.log(Level.WARNING, "Exception caught while processing: " + engine.getProject(), e);
+				LOGGER.log(Level.WARNING, "Exception caught while processing: " + engine.getProject(), e);
 
 				// add a status entry for each stream in the project
 				for (Stream stream : projectToStreams.get(project))
 					stream.addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
 							"Project: " + engine.getProject() + " has no entry points.");
 				return;
+			} catch (IOException | CoreException | InvalidClassFileException | CancelException e) {
+				LOGGER.log(Level.SEVERE, "Exception encountered while building call graph for: " + project + ".", e);
+				throw new RuntimeException(e);
 			}
 
 			OrderingInference orderingInference = new OrderingInference(engine.getClassHierarchy());
 
 			// infer the initial attributes of each stream in the project.
 			for (Stream stream : projectToStreams.get(project)) {
-				stream.inferInitialAttributes(engine, orderingInference);
+				try {
+					stream.inferInitialAttributes(engine, orderingInference);
+				} catch (InvalidClassFileException | IOException e) {
+					LOGGER.log(Level.SEVERE, "Exception encountered while processing: " + stream.getCreation() + ".",
+							e);
+					throw new RuntimeException(e);
+				}
 			}
 
 			// start the state machine for each stream in the project.
 			StreamStateMachine stateMachine = new StreamStateMachine();
-			StreamAttributeTypestateRule[] rules = stateMachine.start(engine, orderingInference);
+			try {
+				stateMachine.start(streamSet, engine, orderingInference);
+			} catch (PropertiesException | CancelException | NoniterableException | NoninstantiableException
+					| CannotExtractSpliteratorException | InvalidClassFileException | IOException e) {
+				LOGGER.log(Level.SEVERE, "Error while starting state machine.", e);
+				throw new RuntimeException(e);
+			}
 
-			// assign states to each stream for the current rule.
-			for (Stream stream : streamSet) {
-				// get the instance key for the current stream.
-				InstanceKey instanceKey = null;
-				try {
-					instanceKey = stream.getInstanceKey(stateMachine.getTrackedInstances(), engine);
-				} catch (InstanceKeyNotFoundException e) { // workaround for #80.
-					if (stream.getCreation().toString().contains(ARRAYS_STREAM_CREATION_METHOD_NAME)) {
-						String msg = "Encountered possible unhandled case (#80) while processing: "
-								+ stream.getCreation();
-						logger.log(Level.WARNING, msg, e);
-						stream.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, msg);
-					} else {
-						logger.log(Level.WARNING,
-								"Encountered unreachable code while processing: " + stream.getCreation(), e);
-						stream.addStatusEntry(PreconditionFailure.STREAM_CODE_NOT_REACHABLE,
-								"Either pivital code isn't reachable for stream: " + stream.getCreation()
-										+ " or entry points are misconfigured.");
-					}
-				}
-
-				// for each typestate rule.
-				for (StreamAttributeTypestateRule rule : rules) {
-					// get the states.
-					Collection<IDFAState> states = stateMachine.getStates(rule, instanceKey);
-
-					// Map IDFAState to StreamExecutionMode, etc., and add them to the
-					// possible stream states but only if they're not bottom (for those,
-					// we fall back to the initial state).
-					rule.addPossibleAttributes(stream, states);
-				} // for each rule.
-
-				try {
-				} catch (PropertiesException | CancelException | NoniterableException | NoninstantiableException
-						| CannotExtractSpliteratorException e) {
-					logger.log(Level.SEVERE, "Error while building stream.", e);
-					throw new RuntimeException(e);
-				} catch (UnknownIfReduceOrderMattersException e) {
-					logger.log(Level.WARNING, "Exception caught while processing: " + stream.getCreation(), e);
-					stream.addStatusEntry(PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
-							"Cannot derive reduction ordering for stream: " + stream.getCreation() + ".");
-				} catch (RequireTerminalOperationException e) {
-					logger.log(Level.WARNING, "Require terminal operations: " + stream.getCreation(), e);
-					stream.addStatusEntry(PreconditionFailure.NO_TERMINAL_OPERATIONS,
-							"Require terminal operations: " + stream.getCreation() + ".");
-				}
-
-				// check preconditions.
+			// check preconditions.
+			for (Stream stream : projectToStreams.get(project))
 				stream.check();
-			} // end for each stream.
-		}
+		} // end for each stream.
 	}
 
 	public Set<Stream> getStreamSet() {
@@ -209,16 +168,12 @@ public class StreamAnalyzer extends ASTVisitor {
 				stream = new Stream(node);
 			} catch (ClassHierarchyException | IOException | CoreException | InvalidClassFileException
 					| CancelException e) {
-				logger.log(Level.SEVERE, "Encountered exception while processing: " + node, e);
+				LOGGER.log(Level.SEVERE, "Encountered exception while processing: " + node, e);
 				throw new RuntimeException(e);
 			}
 			this.getStreamSet().add(stream);
 		}
 
 		return super.visit(node);
-	}
-
-	private static Map<MethodDeclaration, IR> getMethodDeclarationToIRMap() {
-		return Collections.unmodifiableMap(methodDeclarationToIRMap);
 	}
 }
