@@ -271,6 +271,10 @@ public class Stream {
 						"Either pivital code isn't reachable for stream: " + streamCreation
 								+ " or entry points are misconfigured.");
 			}
+		} catch (NullPointerException e) {
+			LOGGER.log(Level.WARNING, "Require terminal operations: " + streamCreation, e);
+			addStatusEntry(PreconditionFailure.CONCURRENT_REDUCTION_ISSUE,
+					"Conccurent refuction issue: " + streamCreation + ".");
 		}
 	}
 

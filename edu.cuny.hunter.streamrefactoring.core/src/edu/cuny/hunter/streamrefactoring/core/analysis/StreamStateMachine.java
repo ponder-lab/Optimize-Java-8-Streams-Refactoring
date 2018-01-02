@@ -697,7 +697,7 @@ class StreamStateMachine {
 	private void discoverIfReduceOrderingPossiblyMatters(
 			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers)
 			throws IOException, CoreException, UnknownIfReduceOrderMattersException, NoniterableException,
-			NoninstantiableException, CannotExtractSpliteratorException {
+			NoninstantiableException, CannotExtractSpliteratorException, NullPointerException {
 		// for each terminal operation call, I think?
 		for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 			int processedInstructions = 0;
@@ -906,7 +906,7 @@ class StreamStateMachine {
 	public void start() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
 			InvalidClassFileException, PropertiesException, UnknownIfReduceOrderMattersException, NoniterableException,
 			NoninstantiableException, CannotExtractSpliteratorException, RequireTerminalOperationException,
-			InstanceKeyNotFoundException {
+			InstanceKeyNotFoundException, NullPointerException {
 		// get the analysis engine.
 		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());

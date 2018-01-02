@@ -704,4 +704,45 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
+	
+	/**
+	 * Test #64. Test concurrent reductions.
+	 */
+	public void testConcurrentReduction() throws Exception {
+		helper(new StreamAnalysisExpectedResult("orderedWidgets.parallelStream()",
+				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.ORDERED), false, false,
+				false, null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(PreconditionFailure.CONCURRENT_REDUCTION_ISSUE)));
+	}
+
+	/**
+	 * Test #64. Test concurrent reductions.
+	 */
+	public void testConcurrentReduction1() throws Exception {
+		helper(new StreamAnalysisExpectedResult("unorderedWidgets.stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED), false, false,
+				false, null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(PreconditionFailure.CONCURRENT_REDUCTION_ISSUE)));
+	}
+	
+	/**
+	 * Test #64. Test concurrent reductions.
+	 */
+	public void testConcurrentReduction2() throws Exception {
+		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
+				false, null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(PreconditionFailure.CONCURRENT_REDUCTION_ISSUE)));
+	}
+	
+	/**
+	 * Test #64. Test concurrent reductions.
+	 */
+	public void testConcurrentReduction3() throws Exception {
+		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
+				false, null, null, null, RefactoringStatus.ERROR,
+				Collections.singleton(PreconditionFailure.CONCURRENT_REDUCTION_ISSUE)));
+	}
+	
 }

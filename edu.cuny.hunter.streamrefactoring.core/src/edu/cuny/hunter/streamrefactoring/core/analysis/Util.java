@@ -343,8 +343,8 @@ public final class Util {
 	}
 
 	private static boolean wouldOrderingBeConsistent(final Collection<TypeAbstraction> types,
-			TypeAbstraction additionalType, OrderingInference inference)
-			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
+			TypeAbstraction additionalType, OrderingInference inference) throws NoniterableException,
+			NoninstantiableException, CannotExtractSpliteratorException, NullPointerException {
 		// make a copy.
 		Collection<TypeAbstraction> copy = new ArrayList<>(types);
 
