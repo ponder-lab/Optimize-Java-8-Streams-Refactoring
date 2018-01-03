@@ -708,13 +708,13 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 	
 	/**
-	 * Test #64. Test concurrent reductions.
+	 * Test #64. Test P6 in table3.
 	 */
-	@Rule
-	public ExpectedException thrown = ExpectedException.none();
-
 	public void testConcurrentReduction() throws Exception {
-		thrown.expect(NullPointerException.class);
+		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, true,
+				true, EnumSet.of(TransformationAction.CONVERT_TO_NON_CONCURRENT), PreconditionSuccess.P1,
+				Refactoring.CONVERT_CONCURRENT_COLLECTOR_TO_NONCONCURRENT, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	/**
