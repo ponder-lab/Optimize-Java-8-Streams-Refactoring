@@ -579,7 +579,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	public void testCollectionFromParameter4() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
 				Collections.singleton(Ordering.ORDERED), false, false, false, null, null, null, RefactoringStatus.ERROR,
-				EnumSet.of(PreconditionFailure.STREAM_CODE_NOT_REACHABLE)));
+				EnumSet.of(PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS,
+						PreconditionFailure.STREAM_CODE_NOT_REACHABLE)));
 	}
 
 	public void testStaticInitializer() throws Exception {
