@@ -2,8 +2,10 @@ package p;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import edu.cuny.hunter.streamrefactoring.annotations.*;
@@ -22,12 +24,12 @@ public class A {
 	}
 
 	/**
-	 * P6 in table 3
+	 * P10 in table 3
 	 */
 	@EntryPoint
 	void m() {
 		Collection<Widget> orderedWidgets = new ArrayList<>();
-		Map<Color, List<Widget>> widgetsByColor = orderedWidgets.stream()
-				.collect(Collectors.groupingByConcurrent(Widget::getColor));
+		Map<Color, Set<Widget>> widgetsByColor = orderedWidgets.stream().collect(Collectors.groupingByConcurrent(
+				Widget::getColor, ConcurrentHashMap::new, Collectors.toCollection(LinkedHashSet::new)));
 	}
 }

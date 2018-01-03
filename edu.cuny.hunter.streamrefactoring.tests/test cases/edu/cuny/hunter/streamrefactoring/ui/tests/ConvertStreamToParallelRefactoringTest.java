@@ -40,6 +40,8 @@ import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.ui.tests.refactoring.Java18Setup;
 import org.eclipse.jdt.ui.tests.refactoring.RefactoringTest;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
+import org.junit.Rule;
+import org.junit.rules.ExpectedException;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.ExecutionMode;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Ordering;
@@ -708,41 +710,45 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	/**
 	 * Test #64. Test concurrent reductions.
 	 */
+	@Rule
+	public ExpectedException thrown = ExpectedException.none();
+
 	public void testConcurrentReduction() throws Exception {
-		helper(new StreamAnalysisExpectedResult("orderedWidgets.parallelStream()",
-				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.ORDERED), false, false,
-				false, null, null, null, RefactoringStatus.ERROR,
-				Collections.singleton(PreconditionFailure.CONCURRENT_REDUCTION_ISSUE)));
+		thrown.expect(NullPointerException.class);
 	}
 
 	/**
 	 * Test #64. Test concurrent reductions.
 	 */
 	public void testConcurrentReduction1() throws Exception {
-		helper(new StreamAnalysisExpectedResult("unorderedWidgets.stream()",
-				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED), false, false,
-				false, null, null, null, RefactoringStatus.ERROR,
-				Collections.singleton(PreconditionFailure.CONCURRENT_REDUCTION_ISSUE)));
+		thrown.expect(NullPointerException.class);
 	}
-	
+
 	/**
 	 * Test #64. Test concurrent reductions.
 	 */
 	public void testConcurrentReduction2() throws Exception {
-		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()",
-				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
-				false, null, null, null, RefactoringStatus.ERROR,
-				Collections.singleton(PreconditionFailure.CONCURRENT_REDUCTION_ISSUE)));
+		thrown.expect(NullPointerException.class);
+	}
+
+	/**
+	 * Test #64. Test concurrent reductions.
+	 */
+	public void testConcurrentReduction3() throws Exception {
+		thrown.expect(NullPointerException.class);
 	}
 	
 	/**
 	 * Test #64. Test concurrent reductions.
 	 */
-	public void testConcurrentReduction3() throws Exception {
-		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()",
-				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
-				false, null, null, null, RefactoringStatus.ERROR,
-				Collections.singleton(PreconditionFailure.CONCURRENT_REDUCTION_ISSUE)));
+	public void testConcurrentReduction4() throws Exception {
+		thrown.expect(NullPointerException.class);
+	}
+	/**
+	 * Test #64. Test concurrent reductions.
+	 */
+	public void testConcurrentReduction5() throws Exception {
+		thrown.expect(NullPointerException.class);
 	}
 	
 }

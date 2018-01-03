@@ -1,7 +1,7 @@
 package p;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -21,11 +21,13 @@ public class A {
 		}
 	}
 
+	/**
+	 * P7 in table 3
+	 */
 	@EntryPoint
 	void m() {
-		Collection<Widget> unorderedWidgets = new HashSet<>();
-
-		Map<Color, List<Widget>> widgetsByColor = unorderedWidgets.stream()
+		Collection<Widget> orderedWidgets = new ArrayList<>();
+		Map<Color, List<Widget>> widgetsByColor = orderedWidgets.parallelStream()
 				.collect(Collectors.groupingBy(Widget::getColor));
 	}
 }
