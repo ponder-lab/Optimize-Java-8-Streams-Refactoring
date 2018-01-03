@@ -1118,17 +1118,6 @@ public class StreamStateMachine {
 		for (InstanceKey streamInstanceKey : instanceKeyToStream.keySet()) {
 			Stream stream = instanceKeyToStream.get(streamInstanceKey);
 
-			// assign states to the current stream for each typestate rule.
-			for (StreamAttributeTypestateRule rule : ruleArray) {
-				// get the states.
-				Collection<IDFAState> states = this.getStates(rule, streamInstanceKey);
-
-				// Map IDFAState to StreamExecutionMode, etc., and add them to the
-				// possible stream states but only if they're not bottom (for those,
-				// we fall back to the initial state).
-				rule.addPossibleAttributes(stream, states);
-			} // for each rule.
-
 			// determine possible side-effects.
 			stream.setHasPossibleSideEffects(instancesWithSideEffects.contains(streamInstanceKey));
 
@@ -1136,12 +1125,26 @@ public class StreamStateMachine {
 			stream.setHasPossibleStatefulIntermediateOperations(
 					instanceToStatefulIntermediateOperationContainment.getOrDefault(streamInstanceKey, false));
 
-			// determine if the stream reduce ordering possibly matters.
-			stream.setReduceOrderingPossiblyMatters(
-					instancesWhoseReduceOrderingPossiblyMatters.contains(streamInstanceKey));
-
 			// determine if the stream is not associated with a terminal operation.
 			stream.setHasNoTerminalOperation(instancesWithoutTerminalOperations.contains(streamInstanceKey));
+
+			// if the stream is terminated.
+			if (!stream.hasNoTerminalOperation()) {
+				// assign states to the current stream for each typestate rule.
+				for (StreamAttributeTypestateRule rule : ruleArray) {
+					// get the states.
+					Collection<IDFAState> states = this.getStates(rule, streamInstanceKey);
+
+					// Map IDFAState to StreamExecutionMode, etc., and add them to the
+					// possible stream states but only if they're not bottom (for those,
+					// we fall back to the initial state).
+					rule.addPossibleAttributes(stream, states);
+				} // for each rule.
+
+				// determine if the stream reduce ordering possibly matters.
+				stream.setReduceOrderingPossiblyMatters(
+						instancesWhoseReduceOrderingPossiblyMatters.contains(streamInstanceKey));
+			}
 		}
 	}
 
