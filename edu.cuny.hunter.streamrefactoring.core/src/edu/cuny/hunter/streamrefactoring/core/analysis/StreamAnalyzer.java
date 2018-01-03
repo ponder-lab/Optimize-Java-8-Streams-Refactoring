@@ -45,6 +45,7 @@ public class StreamAnalyzer extends ASTVisitor {
 		if (!enginesWithBuiltCallGraphs.contains(engine)) {
 			// find explicit entry points.
 			Set<Entrypoint> entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
+			LOGGER.info(() -> "Using explicit entry points: " + entryPoints);
 
 			// also find implicit entry points.
 			Iterable<Entrypoint> mainEntrypoints = makeMainEntrypoints(engine.getClassHierarchy().getScope(),
@@ -53,11 +54,12 @@ public class StreamAnalyzer extends ASTVisitor {
 			// add them as well.
 			for (Entrypoint implicitEntryPoint : mainEntrypoints) {
 				LOGGER.info(() -> "Adding implicit entry point: " + implicitEntryPoint);
-//				entryPoints.add(implicitEntryPoint);
+				// entryPoints.add(implicitEntryPoint);
 			}
 
 			if (entryPoints.isEmpty())
-				throw new NoEntryPointException("Require Entry Point!");
+				throw new NoEntryPointException(
+						"Project: " + engine.getProject().getElementName() + " has no entry points.");
 
 			// set options.
 			AnalysisOptions options = engine.getDefaultOptions(entryPoints);
@@ -67,8 +69,8 @@ public class StreamAnalyzer extends ASTVisitor {
 			try {
 				engine.buildSafeCallGraph(options);
 			} catch (IllegalStateException e) {
-				LOGGER.log(Level.SEVERE, e,
-						() -> "Exception encountered while building call graph for project: " + engine.getProject());
+				LOGGER.log(Level.SEVERE, e, () -> "Exception encountered while building call graph for project: "
+						+ engine.getProject().getElementName());
 				throw e;
 			}
 			// TODO: Can I slice the graph so that only nodes relevant to the
@@ -107,12 +109,13 @@ public class StreamAnalyzer extends ASTVisitor {
 			try {
 				buildCallGraph(engine);
 			} catch (NoEntryPointException e) {
-				LOGGER.log(Level.WARNING, "Exception caught while processing: " + engine.getProject(), e);
+				LOGGER.log(Level.WARNING, "Exception caught while processing: " + engine.getProject().getElementName(),
+						e);
 
 				// add a status entry for each stream in the project
 				for (Stream stream : projectToStreams.get(project))
 					stream.addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
-							"Project: " + engine.getProject() + " has no entry points.");
+							"Project: " + engine.getProject().getElementName() + " has no entry points.");
 				return;
 			} catch (IOException | CoreException | InvalidClassFileException | CancelException e) {
 				LOGGER.log(Level.SEVERE, "Exception encountered while building call graph for: " + project + ".", e);

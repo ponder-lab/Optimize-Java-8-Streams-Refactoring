@@ -873,7 +873,7 @@ public class StreamStateMachine {
 			TypeStateProperty dfa = new TypeStateProperty(rule, engine.getClassHierarchy());
 
 			// this gets a solver that tracks all streams.
-			LOGGER.info(() -> "Starting solver for: " + engine.getProject().getElementName());
+			LOGGER.info(() -> "Starting " + rule.getName() + " solver for: " + engine.getProject().getElementName());
 			ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getOptions(), engine.getCallGraph(),
 					engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null);
 
