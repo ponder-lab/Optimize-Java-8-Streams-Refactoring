@@ -19,9 +19,7 @@ public enum PreconditionFailure {
 	CURRENTLY_NOT_HANDLED(14), // should just be #97 currently.
 	STREAM_CODE_NOT_REACHABLE(15), // either pivotal code isn't reachable or
 									// entry points are misconfigured.
-	NO_ENTRY_POINT(16), // user didn't specify entry points.
-	CONCURRENT_REDUCTION_ISSUE(17); // The project throws NPE, which is needed to be fixed later.
-	
+	NO_ENTRY_POINT(16); // user didn't specify entry points.
 
 	private int code;
 
