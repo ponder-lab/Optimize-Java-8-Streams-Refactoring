@@ -1,23 +1,30 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
+import java.io.UTFDataFormatException;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.BaseStream;
 
-import org.eclipse.jdt.core.ITypeRoot;
+import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.IType;
+import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.CompilationUnit;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SimpleName;
+import org.eclipse.jdt.internal.corext.dom.ASTNodes;
+import org.eclipse.jdt.internal.corext.refactoring.util.RefactoringASTParser;
 
 import com.ibm.wala.analysis.typeInference.PointType;
 import com.ibm.wala.analysis.typeInference.TypeAbstraction;
@@ -27,13 +34,20 @@ import com.ibm.wala.cast.java.translator.jdt.JDTIdentityMapper;
 import com.ibm.wala.classLoader.IBytecodeMethod;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
+import com.ibm.wala.classLoader.ShrikeCTMethod;
 import com.ibm.wala.classLoader.IMethod.SourcePosition;
 import com.ibm.wala.classLoader.SyntheticClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
-import com.ibm.wala.ipa.callgraph.propagation.HeapModel;
+import com.ibm.wala.ipa.callgraph.CallGraph;
+import com.ibm.wala.ipa.callgraph.Entrypoint;
+import com.ibm.wala.ipa.callgraph.impl.DefaultEntrypoint;
+import com.ibm.wala.ipa.callgraph.impl.FakeRootMethod;
+import com.ibm.wala.ipa.callgraph.impl.FakeWorldClinitMethod;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
-import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
+import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
+import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
+import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.IR;
@@ -45,15 +59,21 @@ import com.ibm.wala.ssa.Value;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
+import com.ibm.wala.types.annotations.Annotation;
 import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.util.strings.Atom;
 import com.ibm.wala.util.strings.StringStuff;
 
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
+import edu.cuny.hunter.streamrefactoring.core.wala.AnalysisUtils;
+import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
+import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
+@SuppressWarnings("restriction")
 public final class Util {
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
+	private static final String ENTRYPOINT = "edu.cuny.hunter.streamrefactoring.annotations.EntryPoint";
 
 	private static final class CorrespondingASTVisitor extends ASTVisitor {
 		private CompilationUnit unit;
@@ -132,18 +152,6 @@ public final class Util {
 		return ret;
 	}
 
-	static boolean isBaseStream(IClass clazz) {
-		return isType(clazz, "java/util/stream", "BaseStream");
-	}
-
-	static boolean isCollector(IClass clazz) {
-		return isType(clazz, "java/util/stream", "Collector");
-	}
-
-	static boolean isIterable(IClass clazz) {
-		return isType(clazz, "java/lang", "Iterable");
-	}
-
 	static boolean isType(IClass clazz, String packagePath, String typeName) {
 		if (clazz.isInterface()) {
 			Atom typePackage = clazz.getName().getPackage();
@@ -190,22 +198,23 @@ public final class Util {
 	}
 
 	public static Collection<TypeAbstraction> getPossibleTypesInterprocedurally(CGNode node, int valueNumber,
-			HeapModel heapModel, PointerAnalysis<InstanceKey> pointerAnalysis, Stream stream, Logger logger)
-			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
+			EclipseProjectAnalysisEngine<InstanceKey> engine, OrderingInference orderingInference)
+			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException,
+			UTFDataFormatException, JavaModelException {
 		Collection<TypeAbstraction> ret = new HashSet<>();
 
-		PointerKey valueKey = heapModel.getPointerKeyForLocal(node, valueNumber);
-		logger.fine(() -> "Value pointer key is: " + valueKey);
+		PointerKey valueKey = engine.getHeapGraph().getHeapModel().getPointerKeyForLocal(node, valueNumber);
+		LOGGER.fine(() -> "Value pointer key is: " + valueKey);
 
-		OrdinalSet<InstanceKey> pointsToSet = pointerAnalysis.getPointsToSet(valueKey);
+		OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis().getPointsToSet(valueKey);
 		assert pointsToSet != null;
-		logger.fine(() -> "PointsTo set is: " + pointsToSet);
+		LOGGER.fine(() -> "PointsTo set is: " + pointsToSet);
 
 		for (InstanceKey instanceKey : pointsToSet) {
 			IClass concreteClass = instanceKey.getConcreteType();
 
 			if (!(concreteClass instanceof SyntheticClass)) {
-				logger.fine(() -> "Found non-synthetic concrete type: " + concreteClass);
+				LOGGER.fine(() -> "Found non-synthetic concrete type: " + concreteClass);
 
 				// Workaround #38, problem seemingly with generics.
 				// Due to type erasure, we may have the problem if the return
@@ -251,69 +260,60 @@ public final class Util {
 								e);
 					}
 
-					// ensure that the file names are the same.
-					// FIXME: Do we need to worry about paths? Maybe it would
-					// suffice to check packages.
-					CompilationUnit unit = stream.getEnclosingCompilationUnit();
-					ITypeRoot typeRoot = unit.getTypeRoot();
-					String typeRootFileName = typeRoot.getElementName();
-					String sourcePositionFileName = sourcePosition.getFileName();
+					// let's assume that the source file is in the same project.
+					IJavaProject enclosingProject = engine.getProject();
 
-					if (typeRootFileName.equals(sourcePositionFileName)) {
-						// same file.
-						// we have the CompilationUnit corresponding to the
-						// instruction's file.
-						// can we correlate the instruction to the method
-						// invocation in the AST?
-						MethodInvocation correspondingInvocation = findCorrespondingMethodInvocation(unit,
-								sourcePosition, def.getCallSite().getDeclaredTarget());
+					String fqn = method.getDeclaringClass().getName().getPackage().toUnicodeString() + "."
+							+ method.getDeclaringClass().getName().getClassName().toUnicodeString();
+					IType type = enclosingProject.findType(fqn.replace('/', '.'));
+					// FIXME: Need to (i) exclude from result timer and (ii) use the cache in
+					// ConvertToParallelStreamRefactoringProcessor #141.
+					CompilationUnit unit = RefactoringASTParser.parseWithASTProvider(type.getTypeRoot(), true, null);
 
-						// what does the method return?
-						ITypeBinding genericReturnType = correspondingInvocation.resolveMethodBinding().getReturnType();
+					// We have the CompilationUnit corresponding to the instruction's file. Can we
+					// correlate the instruction to the method invocation in the AST?
+					MethodInvocation correspondingInvocation = findCorrespondingMethodInvocation(unit, sourcePosition,
+							def.getCallSite().getDeclaredTarget());
 
-						// Is it compatible with the concrete type we got from
-						// WALA?
-						// But first, we'll need to translate the Eclipse JDT
-						// type over to a IClass.
-						TypeReference genericTypeRef = getJDTIdentifyMapper(correspondingInvocation)
-								.getTypeRef(genericReturnType);
-						IClass genericClass = node.getClassHierarchy().lookupClass(genericTypeRef);
+					// what does the method return?
+					ITypeBinding genericReturnType = correspondingInvocation.resolveMethodBinding().getReturnType();
 
-						boolean assignableFrom = node.getClassHierarchy().isAssignableFrom(genericClass, concreteClass);
+					// Is it compatible with the concrete type we got from WALA? But first, we'll
+					// need to translate the Eclipse JDT type over to a IClass.
+					TypeReference genericTypeRef = getJDTIdentifyMapper(correspondingInvocation)
+							.getTypeRef(genericReturnType);
+					IClass genericClass = node.getClassHierarchy().lookupClass(genericTypeRef);
 
-						// if it's assignable.
-						if (assignableFrom) {
-							// would the ordering be consistent?
-							if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), concreteType,
-									stream.getOrderingInference())) {
-								// if so, add it.
-								LOGGER.info("Add type straight up: " + concreteType);
-								ret.add(concreteType);
+					boolean assignableFrom = node.getClassHierarchy().isAssignableFrom(genericClass, concreteClass);
+
+					// if it's assignable.
+					if (assignableFrom) {
+						// would the ordering be consistent?
+						if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), concreteType,
+								orderingInference)) {
+							// if so, add it.
+							LOGGER.fine("Add type straight up: " + concreteType);
+							ret.add(concreteType);
+						} else {
+							// otherwise, would the generic type cause the
+							// ordering to be inconsistent?
+							PointType genericType = new PointType(genericClass);
+
+							if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), genericType,
+									orderingInference)) {
+								LOGGER.fine("Defaulting to generic type: " + genericType);
+								ret.add(genericType);
 							} else {
-								// otherwise, would the generic type cause the
-								// ordering to be inconsistent?
-								PointType genericType = new PointType(genericClass);
-
-								if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), genericType,
-										stream.getOrderingInference())) {
-									LOGGER.info("Defaulting to generic type: " + genericType);
-									ret.add(genericType);
-								} else {
-									// fall back to the concrete type.
-									LOGGER.info("Defaulting to concrete type eventhough it isn't consistent: "
-											+ concreteType);
-									ret.add(concreteType);
-								}
+								// fall back to the concrete type.
+								LOGGER.fine(
+										"Defaulting to concrete type eventhough it isn't consistent: " + concreteType);
+								ret.add(concreteType);
 							}
 						}
-
-					} else {
-						// FIXME: Interprocedural?
-						throw new IllegalStateException("Can't find corresponding file.");
 					}
 				} else {
 					// just add it.
-					LOGGER.info("Add type straight up: " + concreteType);
+					LOGGER.fine("Add type straight up: " + concreteType);
 					ret.add(concreteType);
 				}
 			}
@@ -401,5 +401,175 @@ public final class Util {
 
 	public static JDTIdentityMapper getJDTIdentifyMapper(ASTNode node) {
 		return new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE, node.getAST());
+	}
+
+	/**
+	 * check whether the annotation is "EntryPoint"
+	 */
+	private static boolean isEntryPointClass(TypeName typeName) {
+		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(ENTRYPOINT);
+	}
+
+	/**
+	 * Find all annotations in test cases and check whether they are "entry point".
+	 * If yes, call DefaultEntrypoint to get entry point, then, add it into the
+	 * result set.
+	 * 
+	 * @throws InvalidClassFileException
+	 * @throws NoEntryPointException
+	 */
+	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) throws InvalidClassFileException {
+		final Set<Entrypoint> result = new HashSet<>();
+
+		for (Iterator<IClass> classIterator = classHierarchy.iterator(); classIterator.hasNext();) {
+			IClass klass = classIterator.next();
+			if (!AnalysisUtils.isJDKClass(klass))
+				// iterate over all declared methods
+				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
+					// if method has an annotation
+					if (!(method instanceof ShrikeCTMethod))
+						throw new IllegalArgumentException("@EntryPoint only works for byte code.");
+
+					for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations(true))
+						if (isEntryPointClass(annotation.getType().getName())) {
+							result.add(new DefaultEntrypoint(method, classHierarchy));
+							break;
+						}
+				}
+		}
+
+		return result;
+	}
+
+	public static CallStringWithReceivers getCallString(InstanceKey instance) {
+		NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
+		return getCallString(allocationInNode);
+	}
+
+	public static CallStringWithReceivers getCallString(NormalAllocationInNode allocationInNode) {
+		CGNode node = allocationInNode.getNode();
+		return getCallString(node);
+	}
+
+	public static CallStringWithReceivers getCallString(CGNode node) {
+		CallStringContext context = (CallStringContext) node.getContext();
+		CallStringWithReceivers callString = (CallStringWithReceivers) context
+				.get(CallStringContextSelector.CALL_STRING);
+		return callString;
+	}
+
+	/**
+	 * Returns true iff all of the predecessors of all of the given {@link CGNode}s
+	 * in the {@link CallGraph} are {@link FakeRootMethod}s.
+	 *
+	 * @param nodes
+	 *            The nodes whose predecessors to consider.
+	 * @param callGraph
+	 *            The {@link CallGraph} to search.
+	 * @return True iff all of the predecessors of all of the given {@link CGNode}s
+	 *         in the {@link CallGraph} are {@link FakeRootMethod}s.
+	 * @apiNote The may be an issue here related to #106.
+	 */
+	@SuppressWarnings("unused")
+	private static boolean allFake(Set<CGNode> nodes, CallGraph callGraph) {
+		// for each node.
+		for (CGNode cgNode : nodes) {
+			// for each predecessor.
+			for (Iterator<CGNode> it = callGraph.getPredNodes(cgNode); it.hasNext();) {
+				CGNode predNode = it.next();
+				com.ibm.wala.classLoader.IMethod predMethod = predNode.getMethod();
+
+				boolean isFakeMethod = predMethod instanceof FakeRootMethod
+						|| predMethod instanceof FakeWorldClinitMethod;
+
+				if (!isFakeMethod)
+					return false;
+			}
+		}
+		return true;
+	}
+
+	static Set<ITypeBinding> getAllInterfaces(ITypeBinding type) {
+		Set<ITypeBinding> ret = new HashSet<>();
+		ITypeBinding[] interfaces = type.getInterfaces();
+		ret.addAll(Arrays.asList(interfaces));
+
+		for (ITypeBinding interfaceBinding : interfaces)
+			ret.addAll(getAllInterfaces(interfaceBinding));
+
+		return ret;
+	}
+
+	static Set<ITypeBinding> getImplementedInterfaces(ITypeBinding type) {
+		Set<ITypeBinding> ret = new HashSet<>();
+
+		if (type.isInterface())
+			ret.add(type);
+
+		ret.addAll(getAllInterfaces(type));
+		return ret;
+	}
+
+	static boolean implementsBaseStream(ITypeBinding type) {
+		Set<ITypeBinding> implementedInterfaces = getImplementedInterfaces(type);
+		return implementedInterfaces.stream()
+				.anyMatch(i -> i.getErasure().getQualifiedName().equals("java.util.stream.BaseStream"));
+	}
+
+	static int getLineNumberFromAST(SimpleName methodName) {
+		CompilationUnit compilationUnit = (CompilationUnit) ASTNodes.getParent(methodName, ASTNode.COMPILATION_UNIT);
+		int lineNumberFromAST = compilationUnit.getLineNumber(methodName.getStartPosition());
+		return lineNumberFromAST;
+	}
+
+	static int getLineNumberFromIR(IBytecodeMethod method, SSAInstruction instruction)
+			throws InvalidClassFileException {
+		int bytecodeIndex = method.getBytecodeIndex(instruction.iindex);
+		int lineNumberFromIR = method.getLineNumber(bytecodeIndex);
+		return lineNumberFromIR;
+	}
+
+	public static boolean isScalar(TypeAbstraction typeAbstraction) {
+		TypeReference typeReference = typeAbstraction.getTypeReference();
+
+		if (typeReference.isArrayType())
+			return false;
+		else if (typeReference.equals(TypeReference.Void))
+			throw new IllegalArgumentException("Void is neither scalar or nonscalar.");
+		else if (typeReference.isPrimitiveType())
+			return true;
+		else if (typeReference.isReferenceType()) {
+			IClass type = typeAbstraction.getType();
+			return !edu.cuny.hunter.streamrefactoring.core.analysis.Util.isIterable(type)
+					&& type.getAllImplementedInterfaces().stream().noneMatch(Util::isIterable);
+		} else
+			throw new IllegalArgumentException("Can't tell if type is scalar: " + typeAbstraction);
+	}
+
+	public static boolean isScalar(Collection<TypeAbstraction> types) {
+		Boolean ret = null;
+
+		for (TypeAbstraction typeAbstraction : types) {
+			boolean scalar = isScalar(typeAbstraction);
+
+			if (ret == null)
+				ret = scalar;
+			else if (ret != scalar)
+				throw new IllegalArgumentException("Inconsistent types: " + types);
+		}
+
+		return ret;
+	}
+
+	public static boolean isBaseStream(IClass clazz) {
+		return Util.isType(clazz, "java/util/stream", "BaseStream");
+	}
+
+	public static boolean isCollector(IClass clazz) {
+		return Util.isType(clazz, "java/util/stream", "Collector");
+	}
+
+	public static boolean isIterable(IClass clazz) {
+		return Util.isType(clazz, "java/lang", "Iterable");
 	}
 }

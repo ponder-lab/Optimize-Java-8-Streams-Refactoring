@@ -12,6 +12,8 @@ import java.util.stream.Collectors;
 
 import p.Widget.Color;
 
+import edu.cuny.hunter.streamrefactoring.annotations.*;
+
 class Widget {
 	public enum Color {
 		RED,
@@ -37,6 +39,7 @@ class Widget {
 }
 
 class A {
+	@EntryPoint
 	void m() {
 		// an "unordered" collection of widgets.
 		Collection<Widget> unorderedWidgets = new HashSet<>();

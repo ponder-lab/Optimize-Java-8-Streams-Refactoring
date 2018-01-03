@@ -51,14 +51,20 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 
 	private CallGraphBuilder<?> callGraphBuilder;
 
+	/**
+	 * The project used to create this engine.
+	 */
+	private IJavaProject project;
+
 	public EclipseProjectAnalysisEngine(IJavaProject project) throws IOException, CoreException {
 		super(project);
+		this.project = project;
 	}
 
 	@Override
 	public void buildAnalysisScope() throws IOException {
 		try {
-			ePath = createProjectPath(project);
+			ePath = createProjectPath(getProject());
 		} catch (CoreException e) {
 			e.printStackTrace();
 			throw new RuntimeException(e);
@@ -72,23 +78,38 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 
 			IVMInstall defaultVMInstall = JavaRuntime.getDefaultVMInstall();
 			File installLocation = defaultVMInstall.getInstallLocation();
+			java.nio.file.Path installPath = installLocation.toPath();
 
-			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(
-					installLocation.toPath().resolve("jre").resolve("lib").resolve("resources.jar").toFile()));
-			scope.addToScope(ClassLoaderReference.Primordial,
-					new JarFile(installLocation.toPath().resolve("jre").resolve("lib").resolve("rt.jar").toFile()));
-			scope.addToScope(ClassLoaderReference.Primordial,
-					new JarFile(installLocation.toPath().resolve("jre").resolve("lib").resolve("jsse.jar").toFile()));
-			scope.addToScope(ClassLoaderReference.Primordial,
-					new JarFile(installLocation.toPath().resolve("jre").resolve("lib").resolve("jce.jar").toFile()));
-			scope.addToScope(ClassLoaderReference.Primordial, new JarFile(
-					installLocation.toPath().resolve("jre").resolve("lib").resolve("charsets.jar").toFile()));
+			if (Util.isWindows()) {
+				addToScopeWindows("resources.jar", installPath);
+				addToScopeWindows("rt.jar", installPath);
+				addToScopeWindows("jsse.jar", installPath);
+				addToScopeWindows("jce.jar", installPath);
+				addToScopeWindows("charsets.jar", installPath);
+			} else {
+				addToScopeNotWindows("resources.jar", installPath);
+				addToScopeNotWindows("rt.jar", installPath);
+				addToScopeNotWindows("jsse.jar", installPath);
+				addToScopeNotWindows("jce.jar", installPath);
+				addToScopeNotWindows("charsets.jar", installPath);
+			}
+
 		}
 
 		if (getExclusionsFile() != null) {
 			InputStream stream = this.getClass().getResourceAsStream("/EclipseDefaultExclusions.txt");
 			scope.setExclusions(new FileOfClasses(stream));
 		}
+	}
+
+	void addToScopeWindows(String fileName, java.nio.file.Path installPath) throws IOException {
+		scope.addToScope(ClassLoaderReference.Primordial,
+				new JarFile(installPath.resolve("lib").resolve(fileName).toFile()));
+	}
+
+	void addToScopeNotWindows(String fileName, java.nio.file.Path installPath) throws IOException {
+		scope.addToScope(ClassLoaderReference.Primordial,
+				new JarFile(installPath.resolve("jre").resolve("lib").resolve(fileName).toFile()));
 	}
 
 	@Override
@@ -111,7 +132,7 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	}
 
 	public CallGraph buildSafeCallGraph(AnalysisOptions options)
-			throws IllegalArgumentException, CallGraphBuilderCancelException, CancelException {
+			throws CallGraphBuilderCancelException, CancelException {
 		LOGGER.entering(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
 
 		if (callGraphBuilder == null) {
@@ -141,5 +162,14 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 
 	public void clearCallGraphBuilder() {
 		this.callGraphBuilder = null;
+	}
+
+	/**
+	 * Get the project used to create this engine.
+	 * 
+	 * @return The project used to create this engine.
+	 */
+	public IJavaProject getProject() {
+		return project;
 	}
 }

@@ -26,7 +26,7 @@ public class ModifiedBenignOracle extends BenignOracle {
 
 	@Override
 	public void addBenignInstanceKey(InstanceKey ik) {
-		LOGGER.info(() -> "Was requested to ignore \"benign\" instance with key: " + ik);
+		LOGGER.fine(() -> "Was requested to ignore \"benign\" instance with key: " + ik);
 	}
 
 	@Override

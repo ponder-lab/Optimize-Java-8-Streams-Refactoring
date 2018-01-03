@@ -4,6 +4,7 @@ import static com.ibm.safe.typestate.core.AbstractWholeProgramSolver.DUMMY_ZERO;
 import static edu.cuny.hunter.streamrefactoring.core.analysis.StreamAttributeTypestateRule.BOTTOM_STATE_NAME;
 
 import java.io.IOException;
+import java.io.UTFDataFormatException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -22,7 +23,7 @@ import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
-import org.eclipse.jdt.core.dom.MethodInvocation;
+import org.eclipse.jdt.core.JavaModelException;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -52,13 +53,10 @@ import com.ibm.wala.classLoader.NewSiteReference;
 import com.ibm.wala.client.AnalysisEngine;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
-import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceFieldPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
-import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.ipa.modref.ModRef;
@@ -71,6 +69,7 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSAPhiInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
+import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
@@ -88,9 +87,50 @@ import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
-class StreamStateMachine {
+public class StreamStateMachine {
+
+	private static final String ARRAYS_STREAM_CREATION_METHOD_NAME = "Arrays.stream";
+
+	/**
+	 * A table mapping an instance and a block to the instance's possible states at
+	 * that block.
+	 */
+	private Table<InstanceKey, BasicBlockInContext<IExplodedBasicBlock>, Map<TypestateRule, Set<IDFAState>>> instanceBlockStateTable = HashBasedTable
+			.create();
+
+	private Set<InstanceKey> trackedInstances = new HashSet<>();
+
+	/**
+	 * A set of instances whose reduce ordering may matter.
+	 */
+	private Set<InstanceKey> instancesWhoseReduceOrderingPossiblyMatters = new HashSet<>();
+
+	/**
+	 * A set of instances whose pipelines contain behavioral parameters that may
+	 * have side-effects.
+	 */
+	private Set<InstanceKey> instancesWithSideEffects = new HashSet<>();
+
+	private Set<InstanceKey> instancesWithoutTerminalOperations = new HashSet<>();
+
+	/**
+	 * All of the stream's predecessors.
+	 */
+	private Map<InstanceKey, Set<InstanceKey>> instanceToAllPredecessorsMap = new HashMap<>();
+
+	/**
+	 * A stream's immediate predecessor.
+	 */
+	private Map<InstanceKey, Set<InstanceKey>> instanceToPredecessorsMap = new HashMap<>();
+
+	/**
+	 * Instances whose pipelines may contain stateful intermediate operations.
+	 */
+	private Map<InstanceKey, Boolean> instanceToStatefulIntermediateOperationContainment = new HashMap<>();
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
+
+	private Map<InstanceKey, Map<TypestateRule, Set<IDFAState>>> originStreamToMergedTypeStateMap = new HashMap<>();
 
 	/**
 	 * A list of stateful intermediate operation signatures.
@@ -176,346 +216,225 @@ class StreamStateMachine {
 			"java.util.stream.LongStream.collect", "java.util.stream.Stream.collect", };
 	// @formatter:on
 
-	/**
-	 * A table mapping an instance and a block to the instance's possible states at
-	 * that block.
-	 */
-	private static Table<InstanceKey, BasicBlockInContext<IExplodedBasicBlock>, Map<TypestateRule, Set<IDFAState>>> instanceBlockStateTable = HashBasedTable
-			.create();
+	private Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers = new HashMap<>();
 
-	/**
-	 * A stream's immediate predecessor.
-	 */
-	private static Map<InstanceKey, Set<InstanceKey>> instanceToPredecessorsMap = new HashMap<>();
+	private Map<InstanceKey, Stream> instanceKeyToStream;
 
-	/**
-	 * All of the stream's predecessors.
-	 */
-	private static Map<InstanceKey, Set<InstanceKey>> instanceToAllPredecessorsMap = new HashMap<>();
+	private Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
+			BasicBlockInContext<IExplodedBasicBlock> block, StreamAttributeTypestateRule rule) {
+		Set<InstanceKey> predecessors = instanceToPredecessorsMap.get(instanceKey);
+		Map<TypestateRule, Set<IDFAState>> ruleToStates = instanceBlockStateTable.get(instanceKey, block);
 
-	private static Map<InstanceKey, Map<TypestateRule, Set<IDFAState>>> originStreamToMergedTypeStateMap = new HashMap<>();
+		if (ruleToStates == null)
+			return Collections.emptySet();
 
-	/**
-	 * A set of instances whose pipelines contain behavioral parameters that may
-	 * have side-effects.
-	 */
-	private static Set<InstanceKey> instancesWithSideEffects = new HashSet<>();
+		Set<IDFAState> possibleInstanceStates = ruleToStates.get(rule);
 
-	/**
-	 * Instances whose pipelines may contain stateful intermediate operations.
-	 */
-	private static Map<InstanceKey, Boolean> instanceToStatefulIntermediateOperationContainment = new HashMap<>();
+		if (predecessors.isEmpty())
+			return possibleInstanceStates;
 
-	/**
-	 * A set of instances whose reduce ordering may matter.
-	 */
-	private static Set<InstanceKey> instancesWhoseReduceOrderingPossiblyMatters = new HashSet<>();
+		Set<IDFAState> ret = new HashSet<>();
+		for (InstanceKey pred : predecessors) {
+			ret.addAll(mergeTypeStates(possibleInstanceStates, computeMergedTypeState(pred, block, rule)));
+		}
 
-	/**
-	 * The stream that this state machine represents.
-	 */
-	private final Stream stream;
-
-	/**
-	 * Constructs a new {@link StreamStateMachine} given a {@link Stream} to
-	 * represent.
-	 * 
-	 * @param stream
-	 *            The representing stream.
-	 */
-	StreamStateMachine(Stream stream) {
-		this.stream = stream;
+		return ret;
 	}
 
-	public void start() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
-			InvalidClassFileException, PropertiesException, UnknownIfReduceOrderMattersException, NoniterableException,
-			NoninstantiableException, CannotExtractSpliteratorException, RequireTerminalOperationException,
-			InstanceKeyNotFoundException, NoEnclosingMethodNodeFoundException {
-		// get the analysis engine.
-		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
-		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
+	// TODO: This should probably be cached.
+	private Set<InstanceKey> computePossibleOriginStreams(InstanceKey instanceKey) {
+		// if there is no instance.
+		if (instanceKey == null)
+			// there are no origins.
+			return Collections.emptySet();
 
-		PropertiesManager manager = PropertiesManager.initFromMap(Collections.emptyMap());
-		PropertiesManager.registerProperties(
-				new PropertiesManager.IPropertyDescriptor[] { WholeProgramProperties.Props.LIVE_ANALYSIS });
-		TypeStateOptions typeStateOptions = new TypeStateOptions(manager);
-		typeStateOptions.setBooleanValue(WholeProgramProperties.Props.LIVE_ANALYSIS.getName(), false);
+		// otherwise, retrieve the predecessors of the instance.
+		Set<InstanceKey> predecessors = instanceToPredecessorsMap.get(instanceKey);
 
-		TypeReference typeReference = this.getStream().getTypeReference();
-		IClass streamClass = engine.getClassHierarchy().lookupClass(typeReference);
-		StreamAttributeTypestateRule[] ruleArray = createStreamAttributeTypestateRules(streamClass);
+		// if there are no predecessors for this instance.
+		if (predecessors.isEmpty())
+			// then this instance must be its own origin.
+			return Collections.singleton(instanceKey);
 
-		// for each rule.
-		for (StreamAttributeTypestateRule rule : ruleArray) {
-			// create a DFA based on the rule.
-			TypeStateProperty dfa = new TypeStateProperty(rule, engine.getClassHierarchy());
+		// otherwise, we have a situation where the instance in question has one
+		// or more predecessors.
+		// In this case, the possible origins of the given instance are the
+		// possible origins of each of its predecessors.
+		return predecessors.stream().map(this::computePossibleOriginStreams).flatMap(os -> os.stream())
+				.collect(Collectors.toSet());
+	}
 
-			// this gets a solver that tracks all streams. TODO may need to do
-			// some caching at some point here. NOTE: Seems to be more difficult
-			// than initially imagined.
-			LOGGER.info(() -> "Starting solver for stream: " + this.getStream());
-			ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getOptions(), engine.getCallGraph(),
-					engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null);
+	/**
+	 * The typestate rules to use.
+	 */
+	protected static StreamAttributeTypestateRule[] createStreamAttributeTypestateRules(IClass streamClass) {
+		// @formatter:off
+		return new StreamAttributeTypestateRule[] { new StreamExecutionModeTypeStateRule(streamClass),
+				new StreamOrderingTypeStateRule(streamClass) };
+		// @formatter:on
+	}
 
-			AggregateSolverResult result;
-			try {
-				result = (AggregateSolverResult) solver.perform(new NullProgressMonitor());
-			} catch (SolverTimeoutException | MaxFindingsException | SetUpException | WalaException e) {
-				throw new RuntimeException("Exception caught during typestate analysis.", e);
-			}
+	private static boolean deriveRomForScalarMethod(SSAInvokeInstruction invokeInstruction)
+			throws UnknownIfReduceOrderMattersException {
+		MethodReference declaredTarget = invokeInstruction.getCallSite().getDeclaredTarget();
 
-			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers = new HashMap<>();
+		if (isTerminalOperationWhereReduceOrderMattersIsUnknown(declaredTarget))
+			throw new UnknownIfReduceOrderMattersException(
+					"Cannot decifer whether ordering matters for method: " + declaredTarget);
+		else
+			// otherwise, it's the same as the void case.
+			return deriveRomForVoidMethod(invokeInstruction);
+	}
 
-			// for each instance in the typestate analysis result.
-			for (Iterator<InstanceKey> iterator = result.iterateInstances(); iterator.hasNext();) {
-				// get the instance's key.
-				InstanceKey instanceKey = iterator.next();
+	private static boolean deriveRomForVoidMethod(SSAInvokeInstruction invokeInstruction) {
+		MethodReference declaredTarget = invokeInstruction.getCallSite().getDeclaredTarget();
 
-				// get the result for that instance.
-				TypeStateResult instanceResult = (TypeStateResult) result.getInstanceResult(instanceKey);
+		if (isTerminalOperationWhereReduceOrderMatters(declaredTarget))
+			return true;
+		else if (isTerminalOperationWhereReduceOrderDoesNotMatter(declaredTarget))
+			return false;
+		else
+			throw new IllegalStateException("Can't decipher ROM for method: " + declaredTarget);
+	}
 
-				// get the supergraph for the instance result.
-				ICFGSupergraph supergraph = instanceResult.getSupergraph();
+	private void discoverLambdaSideEffects(EclipseProjectAnalysisEngine<InstanceKey> engine,
+			Map<CGNode, OrdinalSet<PointerKey>> mod, Iterable<InstanceKey> instances,
+			MethodReference declaredTargetOfCaller, IR ir, int use) {
+		// look up it's definition.
+		DefUse defUse = engine.getCache().getDefUse(ir);
+		// it should be a call.
+		SSAInstruction def = defUse.getDef(use);
 
-				// FIXME This doesn't make a whole lot of sense. Only looking at
-				// the node of where the stream was declared: TODO: Can this be
-				// somehow rewritten to get blocks corresponding to terminal
-				// operations?
-				CGNode cgNode = this.getStream().getEnclosingMethodNode();
+		// if we found it.
+		if (def != null) {
+			if (def instanceof SSAAbstractInvokeInstruction) {
+				SSAAbstractInvokeInstruction instruction = (SSAAbstractInvokeInstruction) def;
 
-				for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
-					CallSiteReference callSiteReference = callSites.next();
-					MethodReference calledMethod = callSiteReference.getDeclaredTarget();
+				// take a look at the nodes in the caller.
+				Set<CGNode> nodes = engine.getCallGraph().getNodes(declaredTargetOfCaller);
 
-					// is it a terminal operation? TODO: Should this be
-					// cached somehow? Collection of all terminal operation
-					// invocations?
-					if (isTerminalOperation(calledMethod)) {
-						// get the basic block for the call.
-						ISSABasicBlock[] blocksForCall = cgNode.getIR().getBasicBlocksForCall(callSiteReference);
+				// for each caller node.
+				for (CGNode cgNode : nodes) {
+					// for each call site.
+					for (Iterator<CallSiteReference> callSiteIt = cgNode.iterateCallSites(); callSiteIt.hasNext();) {
+						CallSiteReference callSiteReference = callSiteIt.next();
 
-						assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
-								+ callSiteReference;
+						// if the call site is the as the one in the
+						// behavioral parameter definition.
+						if (callSiteReference.equals(instruction.getCallSite())) {
+							// look up the possible target nodes of the call
+							// site from the caller.
+							Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode,
+									callSiteReference);
+							LOGGER.fine(() -> "#possible targets: " + possibleTargets.size());
 
-						for (int i = 0; i < blocksForCall.length; i++) {
-							ISSABasicBlock block = blocksForCall[i];
+							if (!possibleTargets.isEmpty())
+								LOGGER.fine(() -> possibleTargets.stream().map(String::valueOf)
+										.collect(Collectors.joining("\n", "Possible target: ", "")));
 
-							BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
-									block, cgNode, supergraph)
-											.orElseThrow(() -> new IllegalStateException(
-													"No basic block in context for block: " + block));
+							// for each possible target node.
+							for (CGNode target : possibleTargets) {
+								// get the set of pointers (locations) it
+								// may modify
+								OrdinalSet<PointerKey> modSet = mod.get(target);
+								LOGGER.fine(() -> "#original modified locations: " + modSet.size());
 
-							if (!terminalBlockToPossibleReceivers.containsKey(blockInContext)) {
-								// associate possible receivers with the
-								// blockInContext.
-								// search through each instruction in the
-								// block.
-								int processedInstructions = 0;
-								for (Iterator<SSAInstruction> it = block.iterator(); it.hasNext();) {
-									SSAInstruction instruction = it.next();
+								Collection<PointerKey> filteredModSet = new HashSet<>();
 
-									// if it's a phi instruction.
-									if (instruction instanceof SSAPhiInstruction)
-										// skip it. The pointer analysis
-										// below will handle it.
-										continue;
-
-									// Get the possible receivers. This
-									// number corresponds to the value
-									// number of the receiver of the method.
-									int valueNumberForReceiver = instruction.getUse(0);
-
-									// it should be represented by a pointer
-									// key.
-									PointerKey pointerKey = engine.getHeapGraph().getHeapModel()
-											.getPointerKeyForLocal(cgNode, valueNumberForReceiver);
-
-									// get the points to set for the
-									// receiver. This will give us all
-									// object instances that the receiver
-									// reference points to.
-									OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis()
-											.getPointsToSet(pointerKey);
-									assert pointsToSet != null : "The points-to set (I think) should not be null for pointer: "
-											+ pointerKey;
-
-									OrdinalSet<InstanceKey> previousReceivers = terminalBlockToPossibleReceivers
-											.put(blockInContext, pointsToSet);
-									assert previousReceivers == null : "Reassociating a blockInContext: "
-											+ blockInContext + " with a new points-to set: " + pointsToSet
-											+ " that was originally: " + previousReceivers;
-
-									++processedInstructions;
+								for (PointerKey pointerKey : modSet) {
+									if (!filterPointerKey(pointerKey, engine))
+										filteredModSet.add(pointerKey);
 								}
 
-								assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
-							}
+								LOGGER.fine(() -> "#filtered modified locations: " + filteredModSet.size());
 
-							IntSet intSet = instanceResult.getResult().getResult(blockInContext);
-							for (IntIterator it = intSet.intIterator(); it.hasNext();) {
-								int nextInt = it.next();
+								// if it's non-empty.
+								if (!filteredModSet.isEmpty()) {
+									filteredModSet
+											.forEach(pk -> LOGGER.fine(() -> "Filtered modified location: " + pk));
 
-								// retrieve the state set for this instance
-								// and block.
-								Map<TypestateRule, Set<IDFAState>> ruleToStates = instanceBlockStateTable
-										.get(instanceKey, blockInContext);
-
-								// if it doesn't yet exist.
-								if (ruleToStates == null) {
-									// allocate a new rule map.
-									ruleToStates = new HashMap<>();
-
-									// place it in the table.
-									instanceBlockStateTable.put(instanceKey, blockInContext, ruleToStates);
-								}
-
-								Set<IDFAState> stateSet = ruleToStates.get(rule);
-
-								// if it does not yet exist.
-								if (stateSet == null) {
-									// allocate a new set.
-									stateSet = new HashSet<>();
-
-									// place it in the map.
-									ruleToStates.put(rule, stateSet);
-								}
-
-								// get the facts.
-								Factoid factoid = instanceResult.getDomain().getMappedObject(nextInt);
-								if (factoid != DUMMY_ZERO) {
-									BaseFactoid baseFactoid = (BaseFactoid) factoid;
-									assert baseFactoid.instance.equals(
-											instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
-
-									// add the encountered state to the set.
-									stateSet.add(baseFactoid.state);
+									// mark the instances whose pipeline may
+									// have side-effects.
+									instances.forEach(instancesWithSideEffects::add);
 								}
 							}
+							// we found a match between the graph call site
+							// and the one in the definition. No need to
+							// continue.
+							break;
 						}
 					}
 				}
+			} else
+				LOGGER.warning("Def was an instance of a: " + def.getClass());
+		}
+	}
+
+	private void discoverPossibleStatefulIntermediateOperations(IClassHierarchy hierarchy, CallGraph callGraph)
+			throws IOException, CoreException {
+		// for each instance in the analysis result (these should be the
+		// "intermediate" streams).
+		for (InstanceKey instance : this.trackedInstances) {
+			if (!instanceToStatefulIntermediateOperationContainment.containsKey(instance)) {
+				// make sure that the stream is the result of an intermediate
+				// operation.
+				if (!isStreamCreatedFromIntermediateOperation(instance, hierarchy, callGraph))
+					continue;
+
+				CallStringWithReceivers callString = Util.getCallString(instance);
+
+				boolean found = false;
+				for (CallSiteReference callSiteReference : callString.getCallSiteRefs()) {
+					if (isStatefulIntermediateOperation(callSiteReference.getDeclaredTarget())) {
+						found = true; // found one.
+						break; // no need to continue checking.
+					}
+				}
+				instanceToStatefulIntermediateOperationContainment.put(instance, found);
 			}
+		}
+	}
 
-			// fill the instance side-effect set.
-			// FIXME: I don't think that this belongs in the typestate rule
-			// loop.
-			discoverPossibleSideEffects(result, terminalBlockToPossibleReceivers);
+	/**
+	 * Returns true if the given {@link PointerKey} should be filtered from the
+	 * {@link ModRef} analysis.
+	 *
+	 * @param pointerKey
+	 *            The {@link PointerKey} in question.
+	 * @param engine
+	 *            The {@link AnalysisEngine} to use.
+	 * @return <code>true</code> if the given {@link PointerKey} should be filtered
+	 *         and <code>false</code> otherwise.
+	 * @apiNote The current filtering mechanism excludes field {@link PointerKey}s
+	 *          whose instance is being assigned with the stream package. Basically,
+	 *          we are looking for modifications to the client code.
+	 */
+	private static boolean filterPointerKey(PointerKey pointerKey, EclipseProjectAnalysisEngine<InstanceKey> engine) {
+		Boolean ret = null;
 
-			// discover whether any stateful intermediate operations are
-			// present.
-			discoverPossibleStatefulIntermediateOperations(result, this.getStream().getClassHierarchy(),
-					this.getStream().getAnalysisEngine().getCallGraph());
+		if (pointerKey instanceof InstanceFieldPointerKey) {
+			InstanceFieldPointerKey fieldPointerKey = (InstanceFieldPointerKey) pointerKey;
+			InstanceKey instanceKey = fieldPointerKey.getInstanceKey();
 
-			// does reduction order matter?
-			discoverIfReduceOrderingPossiblyMatters(terminalBlockToPossibleReceivers);
+			for (Iterator<Pair<CGNode, NewSiteReference>> creationSiteIterator = instanceKey
+					.getCreationSites(engine.getCallGraph()); creationSiteIterator.hasNext();) {
+				Pair<CGNode, NewSiteReference> creationSite = creationSiteIterator.next();
+				TypeReference declaredType = creationSite.snd.getDeclaredType();
+				TypeName name = declaredType.getName();
+				Atom packageAtom = name.getPackage();
+				boolean fromStreamPackage = packageAtom.startsWith(Atom.findOrCreateUnicodeAtom("java/util/stream"));
 
-			// fill the instance to predecessors map.
-			for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
-				InstanceKey instance = it.next();
-				CallStringWithReceivers callString = getCallString(instance);
-				Set<InstanceKey> possibleReceivers = new HashSet<>(callString.getPossibleReceivers());
-
-				// get any additional receivers if necessary #36.
-				Collection<? extends InstanceKey> additionalNecessaryReceiversFromPredecessors = getAdditionalNecessaryReceiversFromPredecessors(
-						instance, this.getStream().getClassHierarchy(),
-						this.getStream().getAnalysisEngine().getCallGraph());
-				LOGGER.info(() -> "Adding additional receivers: " + additionalNecessaryReceiversFromPredecessors);
-				possibleReceivers.addAll(additionalNecessaryReceiversFromPredecessors);
-
-				instanceToPredecessorsMap.merge(instance, possibleReceivers, (x, y) -> {
-					x.addAll(y);
-					return x;
-				});
-			}
-
-			// for each terminal operation call, I think?
-			for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
-				OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
-				// for each possible receiver of the terminal operation call.
-				// FIXME why mess with all blocks here? Why not just those with
-				// receivers related to the stream in question?
-				for (InstanceKey instanceKey : possibleReceivers) {
-					Set<IDFAState> possibleStates = computeMergedTypeState(instanceKey, block, rule);
-					Set<InstanceKey> possibleOriginStreams = computePossibleOriginStreams(instanceKey);
-					possibleOriginStreams.forEach(os -> {
-						// create a new map.
-						Map<TypestateRule, Set<IDFAState>> ruleToStates = new HashMap<>();
-						ruleToStates.put(rule, new HashSet<>(possibleStates));
-
-						// merge it.
-						originStreamToMergedTypeStateMap.merge(os, ruleToStates, (m1, m2) -> {
-							Set<IDFAState> states1 = m1.get(rule);
-							Set<IDFAState> states2 = m2.get(rule);
-
-							// if the states in for this rule are empty.
-							if (states1 == null) {
-								// create a new set.
-								states1 = new HashSet<>();
-
-								// put it in the map.
-								m1.put(rule, states1);
-							}
-
-							// since we're merging the second map into the
-							// first, nothing to do if the second map is empty.
-							if (states2 != null)
-								states1.addAll(states2);
-
-							// finally, return the second map.
-							return m1;
-						});
-					});
+				if (ret == null) {
+					// haven't decided yet. Initialize.
+					ret = fromStreamPackage;
+				} else if (ret != fromStreamPackage) {
+					// we have a discrepancy.
+					throw new IllegalArgumentException("Can't determine consistent write location package");
 				}
 			}
-
-			InstanceKey streamInQuestionInstanceKey = this.getStream()
-					.getInstanceKey(instanceToPredecessorsMap.keySet(), engine.getCallGraph());
-
-			discoverTerminalOperations(result, terminalBlockToPossibleReceivers, streamInQuestionInstanceKey);
-
-			Collection<IDFAState> states = originStreamToMergedTypeStateMap.get(streamInQuestionInstanceKey).get(rule);
-			// Map IDFAState to StreamExecutionMode, etc., and add them to the
-			// possible stream states but only if they're not bottom (for those,
-			// we fall back to the initial state).
-			rule.addPossibleAttributes(this.getStream(), states);
 		}
 
-		InstanceKey streamInstanceKey = this.getStream().getInstanceKey(instanceToPredecessorsMap.keySet(),
-				engine.getCallGraph());
-
-		// propagate the instances with side-effects.
-		propagateStreamInstanceProperty(instancesWithSideEffects);
-
-		// propagate the instances with stateful intermediate operations.
-		BinaryOperator<Boolean> remappingFunction = (v1, v2) -> {
-			// if they're the same value, just use the first one.
-			if (v1 == v2)
-				return v2;
-			else
-				// otherwise, if we have either previously seen an SIO
-				// or see one now, we should remember that.
-				return true;
-		};
-
-		instanceToStatefulIntermediateOperationContainment.entrySet().stream().filter(Entry::getValue)
-				.map(Entry::getKey).flatMap(ik -> getAllPredecessors(ik).stream())
-				.collect(Collectors.toMap(Function.identity(), v -> true, remappingFunction))
-				.forEach((k, v) -> instanceToStatefulIntermediateOperationContainment.merge(k, v, remappingFunction));
-
-		// propagate the instances whose reduce ordering possibly matters.
-		propagateStreamInstanceProperty(instancesWhoseReduceOrderingPossiblyMatters);
-
-		// determine if this stream has possible side-effects.
-		this.getStream().setHasPossibleSideEffects(instancesWithSideEffects.contains(streamInstanceKey));
-
-		// determine if this stream has possible stateful intermediate
-		// operations.
-		this.getStream().setHasPossibleStatefulIntermediateOperations(
-				instanceToStatefulIntermediateOperationContainment.getOrDefault(streamInstanceKey, false));
-
-		// determine if this stream reduce ordering possibly matters
-		this.getStream().setReduceOrderingPossiblyMatters(
-				instancesWhoseReduceOrderingPossiblyMatters.contains(streamInstanceKey));
+		return ret;
 	}
 
 	private static Collection<? extends InstanceKey> getAdditionalNecessaryReceiversFromPredecessors(
@@ -523,7 +442,7 @@ class StreamStateMachine {
 		Collection<InstanceKey> ret = new HashSet<>();
 		LOGGER.fine(() -> "Instance is: " + instance);
 
-		CallStringWithReceivers callString = getCallString(instance);
+		CallStringWithReceivers callString = Util.getCallString(instance);
 
 		// for each method in the call string.
 		for (IMethod calledMethod : callString.getMethods()) {
@@ -539,7 +458,7 @@ class StreamStateMachine {
 			if (implementsBaseStream) {
 				// look up the call string for this method.
 				NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
-				LOGGER.info(() -> "Predecessor count is: " + callGraph.getPredNodeCount(allocationInNode.getNode()));
+				LOGGER.fine(() -> "Predecessor count is: " + callGraph.getPredNodeCount(allocationInNode.getNode()));
 
 				for (Iterator<CGNode> predNodes = callGraph.getPredNodes(allocationInNode.getNode()); predNodes
 						.hasNext();) {
@@ -547,7 +466,7 @@ class StreamStateMachine {
 					LOGGER.fine(() -> "Found node: " + node);
 
 					// try to get its CallStringWithReceivers.
-					CallStringWithReceivers calledMethodCallString = getCallString(node);
+					CallStringWithReceivers calledMethodCallString = Util.getCallString(node);
 
 					// what are its receivers?
 					Set<InstanceKey> possibleReceivers = calledMethodCallString.getPossibleReceivers();
@@ -564,12 +483,7 @@ class StreamStateMachine {
 		return ret;
 	}
 
-	private static void propagateStreamInstanceProperty(Collection<InstanceKey> streamInstancesWithProperty) {
-		streamInstancesWithProperty.addAll(streamInstancesWithProperty.stream()
-				.flatMap(ik -> getAllPredecessors(ik).stream()).collect(Collectors.toSet()));
-	}
-
-	private static Set<InstanceKey> getAllPredecessors(InstanceKey instanceKey) {
+	private Set<InstanceKey> getAllPredecessors(InstanceKey instanceKey) {
 		if (!instanceToAllPredecessorsMap.containsKey(instanceKey)) {
 			Set<InstanceKey> ret = new HashSet<>();
 
@@ -586,103 +500,135 @@ class StreamStateMachine {
 			return instanceToAllPredecessorsMap.get(instanceKey);
 	}
 
-	private static void discoverPossibleStatefulIntermediateOperations(AggregateSolverResult result,
-			IClassHierarchy hierarchy, CallGraph callGraph) throws IOException, CoreException {
-		// for each instance in the analysis result (these should be the
-		// "intermediate" streams).
-		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
-			InstanceKey instance = it.next();
-
-			if (!instanceToStatefulIntermediateOperationContainment.containsKey(instance)) {
-				// make sure that the stream is the result of an intermediate
-				// operation.
-				if (!isStreamCreatedFromIntermediateOperation(instance, hierarchy, callGraph))
-					continue;
-
-				CallStringWithReceivers callString = getCallString(instance);
-
-				boolean found = false;
-				for (CallSiteReference callSiteReference : callString.getCallSiteRefs()) {
-					if (isStatefulIntermediateOperation(callSiteReference.getDeclaredTarget())) {
-						found = true; // found one.
-						break; // no need to continue checking.
-					}
-				}
-				instanceToStatefulIntermediateOperationContainment.put(instance, found);
+	// FIXME: The performance of this method is not good. We should build a map
+	// between block numbers and the corresponding basicBlockInContext. But,
+	// when do we populate the map? In other words, we need a map of block
+	// numbers to BasicBlockInContexts whose delegate's original block number
+	// matches the key for a given supergraph. Should it be a table? Or, maybe
+	// it's just a collection of maps, one for each supergraph? ICFGSupergraph
+	// -> Map. Then, Integer -> BasicBlockInContext. But, now must also consider
+	// the cgNode. Also note though that there is not a one-to-one mapping
+	// between blocks and blocks in context. #21.
+	/**
+	 * Return the basic block in context for the given block in the procedure
+	 * represented by the given call graph node in the given supergraph.
+	 *
+	 * @param block
+	 *            The block in which to find the corresponding block in context in
+	 *            the supergraph.
+	 * @param cgNode
+	 *            The call graph node representing the procedure that contains the
+	 *            block.
+	 * @param supergraph
+	 *            The supergraph in which to look up the corresponding block in
+	 *            context.
+	 * @return The block in context in the given supergraph that corresponds to the
+	 *         given block with the procedure represented by the given call graph
+	 *         node.
+	 */
+	private static Optional<BasicBlockInContext<IExplodedBasicBlock>> getBasicBlockInContextForBlock(
+			ISSABasicBlock block, CGNode cgNode, ICFGSupergraph supergraph) {
+		// can we search the supergraph for the corresponding block? Do I need
+		// to search the entire graph?
+		for (BasicBlockInContext<IExplodedBasicBlock> basicBlockInContext : supergraph) {
+			CGNode blockInContextProcedure = supergraph.getProcOf(basicBlockInContext);
+			if (blockInContextProcedure == cgNode) {
+				IExplodedBasicBlock delegate = basicBlockInContext.getDelegate();
+				if (!delegate.isEntryBlock() && !delegate.isExitBlock()
+						&& delegate.getOriginalNumber() == block.getNumber() && delegate.getInstruction() != null)
+					return Optional.of(basicBlockInContext);
 			}
 		}
+		return Optional.empty();
 	}
 
-	private void discoverIfReduceOrderingPossiblyMatters(
-			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers)
-			throws IOException, CoreException, UnknownIfReduceOrderMattersException, NoniterableException,
-			NoninstantiableException, CannotExtractSpliteratorException {
-		// for each terminal operation call, I think?
-		for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
-			int processedInstructions = 0;
-			for (Iterator<SSAInstruction> it = block.iterator(); it.hasNext();) {
-				SSAInstruction instruction = it.next();
+	private static boolean isStatefulIntermediateOperation(MethodReference method) {
+		return signatureMatches(STATEFUL_INTERMEDIATE_OPERATIONS, method);
+	}
 
-				// if it's a phi instruction.
-				if (instruction instanceof SSAPhiInstruction)
-					continue;
+	private static boolean isStreamCreatedFromIntermediateOperation(InstanceKey instance, IClassHierarchy hierarchy,
+			CallGraph callGraph) throws IOException, CoreException {
+		// Get the immediate possible receivers of the stream instance.
+		Set<InstanceKey> receivers = Util.getCallString(instance).getPossibleReceivers();
 
-				assert instruction instanceof SSAInvokeInstruction : "Expecting SSAInvokeInstruction, was: "
-						+ instruction.getClass();
-				SSAInvokeInstruction invokeInstruction = (SSAInvokeInstruction) instruction;
+		// Get any additional receivers we need to consider.
+		Collection<? extends InstanceKey> additionalReceivers = getAdditionalNecessaryReceiversFromPredecessors(
+				instance, hierarchy, callGraph);
 
-				int numOfRetVals = invokeInstruction.getNumberOfReturnValues();
-				assert numOfRetVals <= 1 : "How could you possibly return " + numOfRetVals + " values?";
+		// Add them to the receivers set.
+		receivers.addAll(additionalReceivers);
 
-				Collection<TypeAbstraction> possibleReturnTypes = null;
+		if (receivers.isEmpty())
+			return false;
 
-				// if it's a non-void method.
-				if (numOfRetVals > 0) {
-					int returnValue = invokeInstruction.getReturnValue(0);
+		// each receiver must be a stream.
+		return receivers.stream().allMatch(r -> {
+			IClass type = r.getConcreteType();
+			return edu.cuny.hunter.streamrefactoring.core.analysis.Util.isBaseStream(type)
+					|| type.getAllImplementedInterfaces().stream().anyMatch(Util::isBaseStream);
+		});
+	}
 
-					possibleReturnTypes = Util.getPossibleTypesInterprocedurally(block.getNode(), returnValue,
-							this.getStream().getAnalysisEngine().getHeapGraph().getHeapModel(),
-							this.getStream().getAnalysisEngine().getPointerAnalysis(), this.getStream(), LOGGER);
+	private static boolean isTerminalOperation(MethodReference method) {
+		return signatureMatches(TERMINAL_OPERATIONS, method);
+	}
 
-					LOGGER.info("Possible reduce types are: " + possibleReturnTypes);
-				} else {
-					// it's a void method.
-					possibleReturnTypes = Collections.singleton(JavaPrimitiveType.VOID);
-				}
+	private static boolean isTerminalOperationWhereReduceOrderDoesNotMatter(MethodReference method) {
+		return signatureMatches(TERMINAL_OPERATIONS_WHERE_REDUCE_ORDERING_DOES_NOT_MATTER, method);
+	}
 
-				boolean rom = false;
+	private static boolean isTerminalOperationWhereReduceOrderMatters(MethodReference method) {
+		return signatureMatches(TERMINAL_OPERATIONS_WERE_REDUCE_ORDERING_MATTERS, method);
+	}
 
-				if (isVoid(possibleReturnTypes))
-					rom = deriveRomForVoidMethod(invokeInstruction);
-				else {
-					boolean scalar = isScalar(possibleReturnTypes);
-					if (scalar)
-						rom = deriveRomForScalarMethod(invokeInstruction);
-					else if (!scalar)
-						rom = deriveRomForNonScalarMethod(possibleReturnTypes);
-					else
-						throw new IllegalStateException(
-								"Can't derive ROM for possible return types: " + possibleReturnTypes);
-				}
+	private static boolean isTerminalOperationWhereReduceOrderMattersIsUnknown(MethodReference method) {
+		return signatureMatches(TERMINAL_OPERATIONS_WHERE_REDUCE_ORDERING_MATTERS_IS_UNKNOWN, method);
+	}
 
-				if (rom) {
-					LOGGER.info(() -> "Reduce ordering matters for: " + invokeInstruction);
-					OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
-					possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
-				} else
-					LOGGER.info(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
+	private static boolean isVoid(Collection<TypeAbstraction> types) {
+		return types.stream().map(TypeAbstraction::getTypeReference).allMatch(tr -> tr.equals(TypeReference.Void));
+	}
 
-				++processedInstructions;
+	private static Collection<? extends IDFAState> mergeTypeStates(Set<IDFAState> set1, Set<IDFAState> set2) {
+		if (set1.isEmpty())
+			return set2;
+		else if (set2.isEmpty())
+			return set1;
+
+		Set<IDFAState> ret = new HashSet<>();
+
+		for (IDFAState state1 : set1) {
+			for (IDFAState state2 : set2) {
+				ret.add(selectState(state1, state2));
 			}
-			assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
 		}
+
+		return ret;
 	}
 
-	private boolean deriveRomForNonScalarMethod(Collection<TypeAbstraction> possibleReturnTypes)
+	private void propagateStreamInstanceProperty(Collection<InstanceKey> streamInstancesWithProperty) {
+		streamInstancesWithProperty.addAll(streamInstancesWithProperty.stream()
+				.flatMap(ik -> getAllPredecessors(ik).stream()).collect(Collectors.toSet()));
+	}
+
+	private static IDFAState selectState(IDFAState state1, IDFAState state2) {
+		if (state1.getName().equals(BOTTOM_STATE_NAME))
+			return state2;
+		else
+			return state1;
+	}
+
+	private static boolean signatureMatches(String[] operations, MethodReference method) {
+		String signature = method.getSignature();
+		return Arrays.stream(operations).map(o -> o + "(").anyMatch(signature::startsWith);
+	}
+
+	private boolean deriveRomForNonScalarMethod(Collection<TypeAbstraction> possibleReturnTypes,
+			OrderingInference orderingInference)
 			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
 		Ordering ordering;
 		try {
-			ordering = this.getStream().getOrderingInference().inferOrdering(possibleReturnTypes);
+			ordering = orderingInference.inferOrdering(possibleReturnTypes);
 		} catch (InconsistentPossibleOrderingException e) {
 			// default to ordered #55.
 			ordering = Ordering.ORDERED;
@@ -702,113 +648,86 @@ class StreamStateMachine {
 		}
 	}
 
-	private static boolean deriveRomForVoidMethod(SSAInvokeInstruction invokeInstruction) {
-		MethodReference declaredTarget = invokeInstruction.getCallSite().getDeclaredTarget();
+	private void discoverIfReduceOrderingPossiblyMatters(EclipseProjectAnalysisEngine<InstanceKey> engine,
+			OrderingInference orderingInference) throws UTFDataFormatException, JavaModelException,
+			NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
+		// for each terminal operation call, I think?
+		for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
+			int processedInstructions = 0;
+			for (SSAInstruction instruction : block) {
+				// if it's a phi instruction.
+				if (instruction instanceof SSAPhiInstruction)
+					continue;
 
-		if (isTerminalOperationWhereReduceOrderMatters(declaredTarget))
-			return true;
-		else if (isTerminalOperationWhereReduceOrderDoesNotMatter(declaredTarget))
-			return false;
-		else
-			throw new IllegalStateException("Can't decipher ROM for method: " + declaredTarget);
-	}
+				assert instruction instanceof SSAInvokeInstruction : "Expecting SSAInvokeInstruction, was: "
+						+ instruction.getClass();
+				SSAInvokeInstruction invokeInstruction = (SSAInvokeInstruction) instruction;
 
-	private static boolean deriveRomForScalarMethod(SSAInvokeInstruction invokeInstruction)
-			throws UnknownIfReduceOrderMattersException {
-		MethodReference declaredTarget = invokeInstruction.getCallSite().getDeclaredTarget();
+				int numOfRetVals = invokeInstruction.getNumberOfReturnValues();
+				assert numOfRetVals <= 1 : "How could you possibly return " + numOfRetVals + " values?";
 
-		if (isTerminalOperationWhereReduceOrderMattersIsUnknown(declaredTarget))
-			throw new UnknownIfReduceOrderMattersException(
-					"Cannot decifer whether ordering matters for method: " + declaredTarget);
-		else
-			// otherwise, it's the same as the void case.
-			return deriveRomForVoidMethod(invokeInstruction);
-	}
+				Collection<TypeAbstraction> possibleReturnTypes = null;
 
-	private static boolean isScalar(Collection<TypeAbstraction> types) {
-		Boolean ret = null;
+				// if it's a non-void method.
+				if (numOfRetVals > 0) {
+					int returnValue = invokeInstruction.getReturnValue(0);
 
-		for (TypeAbstraction typeAbstraction : types) {
-			boolean scalar = isScalar(typeAbstraction);
+					possibleReturnTypes = Util.getPossibleTypesInterprocedurally(block.getNode(), returnValue, engine,
+							orderingInference);
 
-			if (ret == null)
-				ret = scalar;
-			else if (ret != scalar)
-				throw new IllegalArgumentException("Inconsistent types: " + types);
-		}
+					LOGGER.fine("Possible reduce types are: " + possibleReturnTypes);
+				} else {
+					// it's a void method.
+					possibleReturnTypes = Collections.singleton(JavaPrimitiveType.VOID);
+				}
 
-		return ret;
-	}
+				Boolean rom = null;
 
-	private static boolean isScalar(TypeAbstraction typeAbstraction) {
-		TypeReference typeReference = typeAbstraction.getTypeReference();
+				if (isVoid(possibleReturnTypes))
+					rom = deriveRomForVoidMethod(invokeInstruction);
+				else {
+					boolean scalar = Util.isScalar(possibleReturnTypes);
+					if (scalar)
+						try {
+							rom = deriveRomForScalarMethod(invokeInstruction);
+						} catch (UnknownIfReduceOrderMattersException e) {
+							// for each possible receiver associated with the terminal block.
+							OrdinalSet<InstanceKey> receivers = terminalBlockToPossibleReceivers.get(block);
 
-		if (typeReference.isArrayType())
-			return false;
-		else if (typeReference.equals(TypeReference.Void))
-			throw new IllegalArgumentException("Void is neither scalar or nonscalar.");
-		else if (typeReference.isPrimitiveType())
-			return true;
-		else if (typeReference.isReferenceType()) {
-			IClass type = typeAbstraction.getType();
-			return !Util.isIterable(type) && type.getAllImplementedInterfaces().stream().noneMatch(Util::isIterable);
-		} else
-			throw new IllegalArgumentException("Can't tell if type is scalar: " + typeAbstraction);
-	}
+							for (InstanceKey instanceKey : receivers) {
+								// get the stream for the instance key.
+								Stream stream = instanceKeyToStream.get(instanceKey);
 
-	private static boolean isVoid(Collection<TypeAbstraction> types) {
-		return types.stream().map(TypeAbstraction::getTypeReference).allMatch(tr -> tr.equals(TypeReference.Void));
-	}
+								LOGGER.log(Level.WARNING, "Unable to derive ROM for : " + stream.getCreation(), e);
+								stream.addStatusEntry(PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
+										"Cannot derive reduction ordering for stream: " + stream.getCreation() + ".");
+							}
+						}
+					else if (!scalar)
+						rom = deriveRomForNonScalarMethod(possibleReturnTypes, orderingInference);
+					else
+						throw new IllegalStateException(
+								"Can't derive ROM for possible return types: " + possibleReturnTypes);
+				}
 
-	private void discoverTerminalOperations(AggregateSolverResult result,
-			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers,
-			InstanceKey streamInstanceInQuestion) throws RequireTerminalOperationException {
-		Collection<OrdinalSet<InstanceKey>> receiverSetsThatHaveTerminalOperations = terminalBlockToPossibleReceivers
-				.values();
+				// if reduce ordering matters.
+				if (rom != null)
+					if (rom) {
+						LOGGER.fine(() -> "Reduce ordering matters for: " + invokeInstruction);
+						OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
+						possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
+					} else
+						// otherwise, just log.
+						LOGGER.fine(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
 
-		// This will be the OK set.
-		Collection<InstanceKey> validStreams = new HashSet<InstanceKey>();
-
-		// Now, we need to flatten the receiver sets.
-		for (Iterator<OrdinalSet<InstanceKey>> pre = receiverSetsThatHaveTerminalOperations.iterator(); pre
-				.hasNext();) {
-			OrdinalSet<InstanceKey> receiverSet = pre.next();
-
-			// for each receiver set
-			for (InstanceKey instance : receiverSet) {
-				// add it to the OK set.
-				validStreams.add(instance);
+				++processedInstructions;
 			}
+			assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
 		}
-
-		// Now, we have the OK set. Let's propagate it.
-		propagateStreamInstanceProperty(validStreams);
-
-		// Now, we will find the set containing all stream instances.
-		Set<InstanceKey> allStreamInstances = new HashSet<InstanceKey>();
-
-		// for each instance in the typestate analysis result.
-		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
-			// add the current instance to the set.
-			allStreamInstances.add(it.next());
-		}
-
-		// Now, we have the set of all stream instances.
-
-		// Let's now find the bad set.
-		allStreamInstances.removeAll(validStreams);
-		Set<InstanceKey> badStreamInstances = allStreamInstances;
-
-		// if the stream in question is "bad".
-		if (badStreamInstances.contains(streamInstanceInQuestion))
-			throw new RequireTerminalOperationException("Require terminal operations.");
 	}
 
-	private void discoverPossibleSideEffects(AggregateSolverResult result,
-			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers)
+	private void discoverPossibleSideEffects(EclipseProjectAnalysisEngine<InstanceKey> engine)
 			throws IOException, CoreException {
-		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
-
 		// create the ModRef analysis.
 		ModRef<InstanceKey> modRef = ModRef.make();
 
@@ -820,9 +739,7 @@ class StreamStateMachine {
 		// for each terminal operation call, I think?
 		for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 			int processedInstructions = 0;
-			for (Iterator<SSAInstruction> it = block.iterator(); it.hasNext();) {
-				SSAInstruction instruction = it.next();
-
+			for (SSAInstruction instruction : block) {
 				// if it's a phi instruction.
 				if (instruction instanceof SSAPhiInstruction)
 					continue;
@@ -852,16 +769,13 @@ class StreamStateMachine {
 
 		// for each instance in the analysis result (these should be the
 		// "intermediate" streams).
-		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
-			InstanceKey instance = it.next();
-
+		for (InstanceKey instance : this.trackedInstances) {
 			// make sure that the stream is the result of an intermediate
 			// operation.
-			if (!isStreamCreatedFromIntermediateOperation(instance, this.getStream().getClassHierarchy(),
-					engine.getCallGraph()))
+			if (!isStreamCreatedFromIntermediateOperation(instance, engine.getClassHierarchy(), engine.getCallGraph()))
 				continue;
 
-			CallStringWithReceivers callString = getCallString(instance);
+			CallStringWithReceivers callString = Util.getCallString(instance);
 			CallSiteReference[] callSiteRefs = callString.getCallSiteRefs();
 			assert callSiteRefs.length == 2 : "Expecting call sites two-deep.";
 
@@ -905,317 +819,382 @@ class StreamStateMachine {
 		}
 	}
 
-	private static void discoverLambdaSideEffects(EclipseProjectAnalysisEngine<InstanceKey> engine,
-			Map<CGNode, OrdinalSet<PointerKey>> mod, Iterable<InstanceKey> instances,
-			MethodReference declaredTargetOfCaller, IR ir, int use) {
-		// look up it's definition.
-		DefUse defUse = engine.getCache().getDefUse(ir);
-		// it should be a call.
-		SSAInstruction def = defUse.getDef(use);
+	private void discoverTerminalOperations() {
+		Collection<OrdinalSet<InstanceKey>> receiverSetsThatHaveTerminalOperations = terminalBlockToPossibleReceivers
+				.values();
 
-		// if we found it.
-		if (def != null) {
-			if (def instanceof SSAAbstractInvokeInstruction) {
-				SSAAbstractInvokeInstruction instruction = (SSAAbstractInvokeInstruction) def;
+		// This will be the OK set.
+		Collection<InstanceKey> validStreams = new HashSet<InstanceKey>();
 
-				// take a look at the nodes in the caller.
-				Set<CGNode> nodes = engine.getCallGraph().getNodes(declaredTargetOfCaller);
+		// Now, we need to flatten the receiver sets.
+		for (OrdinalSet<InstanceKey> receiverSet : receiverSetsThatHaveTerminalOperations) {
+			// for each receiver set
+			for (InstanceKey instance : receiverSet) {
+				// add it to the OK set.
+				validStreams.add(instance);
+			}
+		}
 
-				// for each caller node.
-				for (CGNode cgNode : nodes) {
-					// for each call site.
-					for (Iterator<CallSiteReference> callSiteIt = cgNode.iterateCallSites(); callSiteIt.hasNext();) {
-						CallSiteReference callSiteReference = callSiteIt.next();
+		// Now, we have the OK set. Let's propagate it.
+		propagateStreamInstanceProperty(validStreams);
 
-						// if the call site is the as the one in the
-						// behavioral parameter definition.
-						if (callSiteReference.equals(instruction.getCallSite())) {
-							// look up the possible target nodes of the call
-							// site from the caller.
-							Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode,
-									callSiteReference);
-							LOGGER.info("#possible targets: " + possibleTargets.size());
+		// Now, we will find the set containing all stream instances.
+		Set<InstanceKey> allStreamInstances = new HashSet<InstanceKey>(this.trackedInstances);
 
-							if (!possibleTargets.isEmpty())
-								possibleTargets.forEach(t -> LOGGER.info(() -> "Possible target: " + t));
+		// Let's now find the bad set.
+		allStreamInstances.removeAll(validStreams);
+		Set<InstanceKey> badStreamInstances = allStreamInstances;
 
-							// for each possible target node.
-							for (CGNode target : possibleTargets) {
-								// get the set of pointers (locations) it
-								// may modify
-								OrdinalSet<PointerKey> modSet = mod.get(target);
-								LOGGER.info("#original modified locations: " + modSet.size());
+		this.instancesWithoutTerminalOperations.addAll(badStreamInstances);
+	}
 
-								Collection<PointerKey> filteredModSet = new HashSet<>();
+	public void start(Set<Stream> streamSet, EclipseProjectAnalysisEngine<InstanceKey> engine,
+			OrderingInference orderingInference)
+			throws PropertiesException, CancelException, IOException, CoreException, NoniterableException,
+			NoninstantiableException, CannotExtractSpliteratorException, InvalidClassFileException {
+		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
 
-								for (Iterator<PointerKey> iterator = modSet.iterator(); iterator.hasNext();) {
-									PointerKey pointerKey = iterator.next();
-									if (!filterPointerKey(pointerKey, engine))
-										filteredModSet.add(pointerKey);
-								}
+		PropertiesManager manager = PropertiesManager.initFromMap(Collections.emptyMap());
+		PropertiesManager.registerProperties(
+				new PropertiesManager.IPropertyDescriptor[] { WholeProgramProperties.Props.LIVE_ANALYSIS });
+		TypeStateOptions typeStateOptions = new TypeStateOptions(manager);
+		typeStateOptions.setBooleanValue(WholeProgramProperties.Props.LIVE_ANALYSIS.getName(), false);
+		// TODO: #127 should also set entry points.
 
-								LOGGER.info("#filtered modified locations: " + filteredModSet.size());
+		TypeReference typeReference = TypeReference.findOrCreate(ClassLoaderReference.Primordial,
+				"Ljava/util/stream/BaseStream");
+		IClass streamClass = engine.getClassHierarchy().lookupClass(typeReference);
 
-								// if it's non-empty.
-								if (!filteredModSet.isEmpty()) {
-									filteredModSet
-											.forEach(pk -> LOGGER.fine(() -> "Filtered modified location: " + pk));
+		StreamAttributeTypestateRule[] ruleArray = createStreamAttributeTypestateRules(streamClass);
 
-									// mark the instances whose pipeline may
-									// have side-effects.
-									instances.forEach(instancesWithSideEffects::add);
+		// for each rule.
+		for (StreamAttributeTypestateRule rule : ruleArray) {
+			// create a DFA based on the rule.
+			TypeStateProperty dfa = new TypeStateProperty(rule, engine.getClassHierarchy());
+
+			// this gets a solver that tracks all streams.
+			LOGGER.info(() -> "Starting " + rule.getName() + " solver for: " + engine.getProject().getElementName());
+			ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getOptions(), engine.getCallGraph(),
+					engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null);
+
+			AggregateSolverResult result;
+			try {
+				result = (AggregateSolverResult) solver.perform(new NullProgressMonitor());
+			} catch (SolverTimeoutException | MaxFindingsException | SetUpException | WalaException e) {
+				throw new RuntimeException("Exception caught during typestate analysis.", e);
+			}
+
+			// for each instance in the typestate analysis result.
+			for (Iterator<InstanceKey> iterator = result.iterateInstances(); iterator.hasNext();) {
+				// get the instance's key.
+				InstanceKey instanceKey = iterator.next();
+
+				// add to tracked instances.
+				this.trackedInstances.add(instanceKey);
+
+				// get the result for that instance.
+				TypeStateResult instanceResult = (TypeStateResult) result.getInstanceResult(instanceKey);
+
+				// get the supergraph for the instance result.
+				ICFGSupergraph supergraph = instanceResult.getSupergraph();
+
+				// TODO: Can this be somehow rewritten to get blocks corresponding to terminal
+				// operations?
+				// for each call graph node in the call graph.
+				for (CGNode cgNode : engine.getCallGraph()) {
+					// separating client from library code, improving performance #103.
+					if (cgNode.getMethod().getDeclaringClass().getClassLoader().getReference()
+							.equals(ClassLoaderReference.Application)) {
+
+						// we can verify that only client nodes are being considered
+						LOGGER.fine(() -> "Examining client call graph node: " + cgNode);
+
+						// for each call site in the call graph node.
+						for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
+							// get the call site reference.
+							CallSiteReference callSiteReference = callSites.next();
+
+							// get the (declared) called method at the call site.
+							MethodReference calledMethod = callSiteReference.getDeclaredTarget();
+
+							// is it a terminal operation? TODO: Should this be
+							// cached somehow? Collection of all terminal operation
+							// invocations?
+							if (isTerminalOperation(calledMethod)) {
+								// get the basic block for the call.
+
+								ISSABasicBlock[] blocksForCall = cgNode.getIR()
+										.getBasicBlocksForCall(callSiteReference);
+
+								assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
+										+ callSiteReference;
+
+								for (ISSABasicBlock block : blocksForCall) {
+									BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
+											block, cgNode, supergraph)
+													.orElseThrow(() -> new IllegalStateException(
+															"No basic block in context for block: " + block));
+
+									if (!terminalBlockToPossibleReceivers.containsKey(blockInContext)) {
+										// associate possible receivers with the
+										// blockInContext.
+										// search through each instruction in the
+										// block.
+										int processedInstructions = 0;
+										for (SSAInstruction instruction : block) {
+											// if it's a phi instruction.
+											if (instruction instanceof SSAPhiInstruction)
+												// skip it. The pointer analysis
+												// below will handle it.
+												continue;
+
+											// Get the possible receivers. This
+											// number corresponds to the value
+											// number of the receiver of the method.
+											int valueNumberForReceiver = instruction.getUse(0);
+
+											// it should be represented by a pointer
+											// key.
+											PointerKey pointerKey = engine.getHeapGraph().getHeapModel()
+													.getPointerKeyForLocal(cgNode, valueNumberForReceiver);
+
+											// get the points to set for the
+											// receiver. This will give us all
+											// object instances that the receiver
+											// reference points to.
+											OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis()
+													.getPointsToSet(pointerKey);
+											assert pointsToSet != null : "The points-to set (I think) should not be null for pointer: "
+													+ pointerKey;
+
+											OrdinalSet<InstanceKey> previousReceivers = terminalBlockToPossibleReceivers
+													.put(blockInContext, pointsToSet);
+											assert previousReceivers == null : "Reassociating a blockInContext: "
+													+ blockInContext + " with a new points-to set: " + pointsToSet
+													+ " that was originally: " + previousReceivers;
+
+											++processedInstructions;
+										}
+
+										assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
+									}
+
+									IntSet resultingFacts = instanceResult.getResult().getResult(blockInContext);
+									for (IntIterator factIterator = resultingFacts.intIterator(); factIterator
+											.hasNext();) {
+										int fact = factIterator.next();
+
+										// retrieve the state set for this instance
+										// and block.
+										Map<TypestateRule, Set<IDFAState>> ruleToStates = instanceBlockStateTable
+												.get(instanceKey, blockInContext);
+
+										// if it doesn't yet exist.
+										if (ruleToStates == null) {
+											// allocate a new rule map.
+											ruleToStates = new HashMap<>();
+
+											// place it in the table.
+											instanceBlockStateTable.put(instanceKey, blockInContext, ruleToStates);
+										}
+
+										Set<IDFAState> stateSet = ruleToStates.get(rule);
+
+										// if it does not yet exist.
+										if (stateSet == null) {
+											// allocate a new set.
+											stateSet = new HashSet<>();
+
+											// place it in the map.
+											ruleToStates.put(rule, stateSet);
+										}
+
+										// get the facts.
+										Factoid factoid = instanceResult.getDomain().getMappedObject(fact);
+										if (factoid != DUMMY_ZERO) {
+											BaseFactoid baseFactoid = (BaseFactoid) factoid;
+											assert baseFactoid.instance.equals(
+													instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
+
+											// add the encountered state to the set.
+											LOGGER.fine(() -> "Adding state: " + baseFactoid.state + " for instance: "
+													+ baseFactoid.instance + " for block: " + block + " for rule: "
+													+ rule.getName());
+											stateSet.add(baseFactoid.state);
+										}
+									}
 								}
 							}
-							// we found a match between the graph call site
-							// and the one in the definition. No need to
-							// continue.
-							break;
 						}
 					}
 				}
-			} else
-				LOGGER.warning("Def was an instance of a: " + def.getClass());
-		}
-	}
+			} // end for each instance in the typestate analysis result.
 
-	/**
-	 * Returns true if the given {@link PointerKey} should be filtered from the
-	 * {@link ModRef} analysis.
-	 * 
-	 * @param pointerKey
-	 *            The {@link PointerKey} in question.
-	 * @param engine
-	 *            The {@link AnalysisEngine} to use.
-	 * @return <code>true</code> if the given {@link PointerKey} should be filtered
-	 *         and <code>false</code> otherwise.
-	 * @apiNote The current filtering mechanism excludes field {@link PointerKey}s
-	 *          whose instance is being assigned with the stream package. Basically,
-	 *          we are looking for modifications to the client code,
-	 */
-	private static boolean filterPointerKey(PointerKey pointerKey, EclipseProjectAnalysisEngine<InstanceKey> engine) {
-		Boolean ret = null;
+			// fill the instance to predecessors map if it's empty.
+			if (instanceToPredecessorsMap.isEmpty())
+				fillInstanceToPredecessorMap(engine);
 
-		if (pointerKey instanceof InstanceFieldPointerKey) {
-			InstanceFieldPointerKey fieldPointerKey = (InstanceFieldPointerKey) pointerKey;
-			InstanceKey instanceKey = fieldPointerKey.getInstanceKey();
+			// for each terminal operation call.
+			for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
+				OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
+				// for each possible receiver of the terminal operation call.
+				for (InstanceKey instanceKey : possibleReceivers) {
+					Set<IDFAState> possibleStates = computeMergedTypeState(instanceKey, block, rule);
+					Set<InstanceKey> possibleOriginStreams = computePossibleOriginStreams(instanceKey);
+					possibleOriginStreams.forEach(os -> {
+						// create a new map.
+						Map<TypestateRule, Set<IDFAState>> ruleToStates = new HashMap<>();
+						ruleToStates.put(rule, new HashSet<>(possibleStates));
 
-			for (Iterator<Pair<CGNode, NewSiteReference>> creationSiteIterator = instanceKey
-					.getCreationSites(engine.getCallGraph()); creationSiteIterator.hasNext();) {
-				Pair<CGNode, NewSiteReference> creationSite = creationSiteIterator.next();
-				TypeReference declaredType = creationSite.snd.getDeclaredType();
-				TypeName name = declaredType.getName();
-				Atom packageAtom = name.getPackage();
-				boolean fromStreamPackage = packageAtom.startsWith(Atom.findOrCreateUnicodeAtom("java/util/stream"));
+						// merge it.
+						originStreamToMergedTypeStateMap.merge(os, ruleToStates, (m1, m2) -> {
+							Set<IDFAState> states1 = m1.get(rule);
+							Set<IDFAState> states2 = m2.get(rule);
 
-				if (ret == null) {
-					// haven't decided yet. Initialize.
-					ret = fromStreamPackage;
-				} else if (ret != fromStreamPackage) {
-					// we have a discrepancy.
-					throw new IllegalArgumentException("Can't determine consistent write location package");
+							// if the states in for this rule are empty.
+							if (states1 == null) {
+								// create a new set.
+								states1 = new HashSet<>();
+
+								// put it in the map.
+								m1.put(rule, states1);
+							}
+
+							// since we're merging the second map into the
+							// first, nothing to do if the second map is empty.
+							if (states2 != null)
+								states1.addAll(states2);
+
+							// finally, return the second map.
+							return m1;
+						});
+					});
 				}
 			}
-		}
+		} // end for each rule.
 
-		return ret;
-	}
+		// create a mapping between stream instances (from the analysis) and stream
+		// objects (from the refactoring).
+		createInstanceKeyStreamMap(streamSet, engine);
 
-	private static boolean isStreamCreatedFromIntermediateOperation(InstanceKey instance, IClassHierarchy hierarchy,
-			CallGraph callGraph) throws IOException, CoreException {
-		// Get the immediate possible receivers of the stream instance.
-		Set<InstanceKey> receivers = getCallString(instance).getPossibleReceivers();
+		discoverTerminalOperations();
 
-		// Get any additional receivers we need to consider.
-		Collection<? extends InstanceKey> additionalReceivers = getAdditionalNecessaryReceiversFromPredecessors(
-				instance, hierarchy, callGraph);
+		// fill the instance side-effect set.
+		discoverPossibleSideEffects(engine);
 
-		// Add them to the receivers set.
-		receivers.addAll(additionalReceivers);
+		// discover whether any stateful intermediate operations are
+		// present.
+		discoverPossibleStatefulIntermediateOperations(engine.getClassHierarchy(), engine.getCallGraph());
 
-		if (receivers.isEmpty())
-			return false;
+		// does reduction order matter?
+		discoverIfReduceOrderingPossiblyMatters(engine, orderingInference);
 
-		// each receiver must be a stream.
-		return receivers.stream().allMatch(r -> {
-			IClass type = r.getConcreteType();
-			return Util.isBaseStream(type) || type.getAllImplementedInterfaces().stream().anyMatch(Util::isBaseStream);
-		});
-	}
+		// propagate the instances with side-effects.
+		propagateStreamInstanceProperty(instancesWithSideEffects);
 
-	private static CallStringWithReceivers getCallString(InstanceKey instance) {
-		NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
-		return getCallString(allocationInNode);
-	}
+		// propagate the instances with stateful intermediate operations.
+		BinaryOperator<Boolean> remappingFunction = (v1, v2) -> {
+			// if they're the same value, just use the first one.
+			if (v1 == v2)
+				return v2;
+			else
+				// otherwise, if we have either previously seen an SIO
+				// or see one now, we should remember that.
+				return true;
+		};
 
-	private static CallStringWithReceivers getCallString(NormalAllocationInNode allocationInNode) {
-		CGNode node = allocationInNode.getNode();
-		return getCallString(node);
-	}
+		instanceToStatefulIntermediateOperationContainment.entrySet().stream().filter(Entry::getValue)
+				.map(Entry::getKey).flatMap(ik -> getAllPredecessors(ik).stream())
+				.collect(Collectors.toMap(Function.identity(), v -> true, remappingFunction))
+				.forEach((k, v) -> instanceToStatefulIntermediateOperationContainment.merge(k, v, remappingFunction));
 
-	private static CallStringWithReceivers getCallString(CGNode node) {
-		CallStringContext context = (CallStringContext) node.getContext();
-		CallStringWithReceivers callString = (CallStringWithReceivers) context
-				.get(CallStringContextSelector.CALL_STRING);
-		return callString;
-	}
+		// propagate the instances whose reduce ordering possibly matters.
+		propagateStreamInstanceProperty(instancesWhoseReduceOrderingPossiblyMatters);
 
-	/**
-	 * The typestate rules to use.
-	 */
-	protected static StreamAttributeTypestateRule[] createStreamAttributeTypestateRules(IClass streamClass) {
-		// @formatter:off
-		return new StreamAttributeTypestateRule[] { new StreamExecutionModeTypeStateRule(streamClass),
-				new StreamOrderingTypeStateRule(streamClass) };
-		// @formatter:on
-	}
+		// for stream instance key.
+		for (InstanceKey streamInstanceKey : instanceKeyToStream.keySet()) {
+			Stream stream = instanceKeyToStream.get(streamInstanceKey);
 
-	// FIXME: The performance of this method is not good. We should build a map
-	// between block numbers and the corresponding basicBlockInContext. But,
-	// when do we populate the map? In other words, we need a map of block
-	// numbers to BasicBlockInContexts whose delegate's original block number
-	// matches the key for a given supergraph. Should it be a table? Or, maybe
-	// it's just a collection of maps, one for each supergraph? ICFGSupergraph
-	// -> Map. Then, Integer -> BasicBlockInContext. But, now must also consider
-	// the cgNode. Also note though that there is not a one-to-one mapping
-	// between blocks and blocks in context. #21.
-	/**
-	 * Return the basic block in context for the given block in the procedure
-	 * represented by the given call graph node in the given supergraph.
-	 * 
-	 * @param block
-	 *            The block in which to find the corresponding block in context in
-	 *            the supergraph.
-	 * @param cgNode
-	 *            The call graph node representing the procedure that contains the
-	 *            block.
-	 * @param supergraph
-	 *            The supergraph in which to look up the corresponding block in
-	 *            context.
-	 * @return The block in context in the given supergraph that corresponds to the
-	 *         given block with the procedure represented by the given call graph
-	 *         node.
-	 */
-	private static Optional<BasicBlockInContext<IExplodedBasicBlock>> getBasicBlockInContextForBlock(
-			ISSABasicBlock block, CGNode cgNode, ICFGSupergraph supergraph) {
-		// can we search the supergraph for the corresponding block? Do I need
-		// to search the entire graph?
-		// TODO: For #20, this will probably need to change.
-		for (BasicBlockInContext<IExplodedBasicBlock> basicBlockInContext : supergraph) {
-			CGNode blockInContextProcedure = supergraph.getProcOf(basicBlockInContext);
-			if (blockInContextProcedure == cgNode) {
-				IExplodedBasicBlock delegate = basicBlockInContext.getDelegate();
-				if (!delegate.isEntryBlock() && !delegate.isExitBlock()
-						&& delegate.getOriginalNumber() == block.getNumber() && delegate.getInstruction() != null)
-					return Optional.of(basicBlockInContext);
+			// determine possible side-effects.
+			stream.setHasPossibleSideEffects(instancesWithSideEffects.contains(streamInstanceKey));
+
+			// determine if the stream has possible stateful intermediate operations.
+			stream.setHasPossibleStatefulIntermediateOperations(
+					instanceToStatefulIntermediateOperationContainment.getOrDefault(streamInstanceKey, false));
+
+			// determine if the stream is not associated with a terminal operation.
+			stream.setHasNoTerminalOperation(instancesWithoutTerminalOperations.contains(streamInstanceKey));
+
+			// if the stream is terminated.
+			if (!stream.hasNoTerminalOperation()) {
+				// assign states to the current stream for each typestate rule.
+				for (StreamAttributeTypestateRule rule : ruleArray) {
+					// get the states.
+					Collection<IDFAState> states = this.getStates(rule, streamInstanceKey);
+
+					// Map IDFAState to StreamExecutionMode, etc., and add them to the
+					// possible stream states but only if they're not bottom (for those,
+					// we fall back to the initial state).
+					rule.addPossibleAttributes(stream, states);
+				} // for each rule.
+
+				// determine if the stream reduce ordering possibly matters.
+				stream.setReduceOrderingPossiblyMatters(
+						instancesWhoseReduceOrderingPossiblyMatters.contains(streamInstanceKey));
 			}
 		}
-		return Optional.empty();
 	}
 
-	// TODO: This should probably be cached.
-	private static Set<InstanceKey> computePossibleOriginStreams(InstanceKey instanceKey) {
-		// if there is no instance.
-		if (instanceKey == null)
-			// there are no origins.
-			return Collections.emptySet();
+	private void fillInstanceToPredecessorMap(EclipseProjectAnalysisEngine<InstanceKey> engine)
+			throws IOException, CoreException {
+		for (InstanceKey instance : this.trackedInstances) {
+			CallStringWithReceivers callString = Util.getCallString(instance);
+			Set<InstanceKey> possibleReceivers = new HashSet<>(callString.getPossibleReceivers());
 
-		// otherwise, retrieve the predecessors of the instance.
-		Set<InstanceKey> predecessors = instanceToPredecessorsMap.get(instanceKey);
+			// get any additional receivers if necessary #36.
+			Collection<? extends InstanceKey> additionalNecessaryReceiversFromPredecessors = getAdditionalNecessaryReceiversFromPredecessors(
+					instance, engine.getClassHierarchy(), engine.getCallGraph());
+			LOGGER.fine(() -> "Adding additional receivers: " + additionalNecessaryReceiversFromPredecessors);
+			possibleReceivers.addAll(additionalNecessaryReceiversFromPredecessors);
 
-		// if there are no predecessors for this instance.
-		if (predecessors.isEmpty())
-			// then this instance must be its own origin.
-			return Collections.singleton(instanceKey);
-
-		// otherwise, we have a situation where the instance in question has one
-		// or more predecessors.
-		// In this case, the possible origins of the given instance are the
-		// possible origins of each of its predecessors.
-		return predecessors.stream().map(StreamStateMachine::computePossibleOriginStreams).flatMap(os -> os.stream())
-				.collect(Collectors.toSet());
-	}
-
-	private static Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
-			BasicBlockInContext<IExplodedBasicBlock> block, StreamAttributeTypestateRule rule) {
-		Set<InstanceKey> predecessors = instanceToPredecessorsMap.get(instanceKey);
-		Map<TypestateRule, Set<IDFAState>> ruleToStates = instanceBlockStateTable.get(instanceKey, block);
-
-		if (ruleToStates == null)
-			return Collections.emptySet();
-
-		Set<IDFAState> possibleInstanceStates = ruleToStates.get(rule);
-
-		if (predecessors.isEmpty())
-			return possibleInstanceStates;
-
-		Set<IDFAState> ret = new HashSet<>();
-		for (InstanceKey pred : predecessors) {
-			ret.addAll(mergeTypeStates(possibleInstanceStates, computeMergedTypeState(pred, block, rule)));
+			instanceToPredecessorsMap.merge(instance, possibleReceivers, (x, y) -> {
+				x.addAll(y);
+				return x;
+			});
 		}
-
-		return ret;
 	}
 
-	private static Collection<? extends IDFAState> mergeTypeStates(Set<IDFAState> set1, Set<IDFAState> set2) {
-		if (set1.isEmpty())
-			return set2;
-		else if (set2.isEmpty())
-			return set1;
+	private void createInstanceKeyStreamMap(Set<Stream> streamSet, EclipseProjectAnalysisEngine<InstanceKey> engine)
+			throws InvalidClassFileException, IOException, CoreException {
+		instanceKeyToStream = new HashMap<>();
 
-		Set<IDFAState> ret = new HashSet<>();
-
-		for (IDFAState state1 : set1) {
-			for (IDFAState state2 : set2) {
-				ret.add(selectState(state1, state2));
+		for (Stream stream : streamSet) {
+			InstanceKey instanceKey = null;
+			try {
+				instanceKey = stream.getInstanceKey(this.trackedInstances, engine);
+			} catch (InstanceKeyNotFoundException e) { // workaround for #80.
+				if (stream.getCreation().toString().contains(ARRAYS_STREAM_CREATION_METHOD_NAME)) {
+					String msg = "Encountered possible unhandled case (#80) while processing: " + stream.getCreation();
+					LOGGER.log(Level.WARNING, msg, e);
+					stream.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, msg);
+				} else {
+					LOGGER.log(Level.WARNING, "Encountered unreachable code while processing: " + stream.getCreation(),
+							e);
+					stream.addStatusEntry(PreconditionFailure.STREAM_CODE_NOT_REACHABLE,
+							"Either pivital code isn't reachable for stream: " + stream.getCreation()
+									+ " or entry points are misconfigured.");
+				}
+				continue; // next stream.
 			}
-		}
-
-		return ret;
+			instanceKeyToStream.put(instanceKey, stream);
+		} // end each stream.
 	}
 
-	private static IDFAState selectState(IDFAState state1, IDFAState state2) {
-		if (state1.getName().equals(BOTTOM_STATE_NAME))
-			return state2;
-		else
-			return state1;
+	public Collection<InstanceKey> getTrackedInstances() {
+		return Collections.unmodifiableCollection(this.trackedInstances);
 	}
 
-	private static boolean isTerminalOperation(MethodReference method) {
-		return signatureMatches(TERMINAL_OPERATIONS, method);
-	}
-
-	private static boolean signatureMatches(String[] operations, MethodReference method) {
-		String signature = method.getSignature();
-		return Arrays.stream(operations).map(o -> o + "(").anyMatch(signature::startsWith);
-	}
-
-	private static boolean isTerminalOperationWhereReduceOrderMatters(MethodReference method) {
-		return signatureMatches(TERMINAL_OPERATIONS_WERE_REDUCE_ORDERING_MATTERS, method);
-	}
-
-	private static boolean isTerminalOperationWhereReduceOrderDoesNotMatter(MethodReference method) {
-		return signatureMatches(TERMINAL_OPERATIONS_WHERE_REDUCE_ORDERING_DOES_NOT_MATTER, method);
-	}
-
-	private static boolean isTerminalOperationWhereReduceOrderMattersIsUnknown(MethodReference method) {
-		return signatureMatches(TERMINAL_OPERATIONS_WHERE_REDUCE_ORDERING_MATTERS_IS_UNKNOWN, method);
-	}
-
-	private static boolean isStatefulIntermediateOperation(MethodReference method) {
-		return signatureMatches(STATEFUL_INTERMEDIATE_OPERATIONS, method);
-	}
-
-	protected Stream getStream() {
-		return stream;
-	}
-
-	public static void clearCaches() {
-		instanceBlockStateTable.clear();
-		instanceToPredecessorsMap.clear();
-		instanceToAllPredecessorsMap.clear();
-		originStreamToMergedTypeStateMap.clear();
-		instancesWithSideEffects.clear();
-		instanceToStatefulIntermediateOperationContainment.clear();
-		instancesWhoseReduceOrderingPossiblyMatters.clear();
+	public Collection<IDFAState> getStates(StreamAttributeTypestateRule rule, InstanceKey instanceKey) {
+		return originStreamToMergedTypeStateMap.get(instanceKey).get(rule);
 	}
 }
