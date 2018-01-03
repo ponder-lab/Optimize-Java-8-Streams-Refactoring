@@ -1,5 +1,7 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
+import static com.ibm.wala.ipa.callgraph.impl.Util.makeMainEntrypoints;
+
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Map;
@@ -41,8 +43,18 @@ public class StreamAnalyzer extends ASTVisitor {
 			CallGraphBuilderCancelException, CancelException, InvalidClassFileException, NoEntryPointException {
 		// if we haven't built the call graph yet.
 		if (!enginesWithBuiltCallGraphs.contains(engine)) {
-			// find the entry points.
+			// find explicit entry points.
 			Set<Entrypoint> entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
+
+			// also find implicit entry points.
+			Iterable<Entrypoint> mainEntrypoints = makeMainEntrypoints(engine.getClassHierarchy().getScope(),
+					engine.getClassHierarchy());
+
+			// add them as well.
+			for (Entrypoint implicitEntryPoint : mainEntrypoints) {
+				LOGGER.info(() -> "Adding implicit entry point: " + implicitEntryPoint);
+//				entryPoints.add(implicitEntryPoint);
+			}
 
 			if (entryPoints.isEmpty())
 				throw new NoEntryPointException("Require Entry Point!");
