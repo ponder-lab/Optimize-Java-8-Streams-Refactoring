@@ -418,34 +418,25 @@ public final class Util {
 	 * @throws InvalidClassFileException
 	 * @throws NoEntryPointException
 	 */
-	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy)
-			throws InvalidClassFileException, NoEntryPointException {
+	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) throws InvalidClassFileException {
 		final Set<Entrypoint> result = new HashSet<>();
-		Iterator<IClass> classIterator = classHierarchy.iterator();
-		while (classIterator.hasNext()) {
-			IClass klass = classIterator.next();
-			if (!AnalysisUtils.isJDKClass(klass)) {
 
+		for (Iterator<IClass> classIterator = classHierarchy.iterator(); classIterator.hasNext();) {
+			IClass klass = classIterator.next();
+			if (!AnalysisUtils.isJDKClass(klass))
 				// iterate over all declared methods
 				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
-
 					// if method has an annotation
-					if (!(method instanceof ShrikeCTMethod)) {
+					if (!(method instanceof ShrikeCTMethod))
 						throw new IllegalArgumentException("@EntryPoint only works for byte code.");
-					}
 
-					for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations(true)) {
+					for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations(true))
 						if (isEntryPointClass(annotation.getType().getName())) {
 							result.add(new DefaultEntrypoint(method, classHierarchy));
 							break;
 						}
-					}
-
 				}
-			}
 		}
-		if (result.isEmpty())
-			throw new NoEntryPointException("Require Entry Point!");
 
 		return result;
 	}

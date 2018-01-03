@@ -44,6 +44,9 @@ public class StreamAnalyzer extends ASTVisitor {
 			// find the entry points.
 			Set<Entrypoint> entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
 
+			if (entryPoints.isEmpty())
+				throw new NoEntryPointException("Require Entry Point!");
+
 			// set options.
 			AnalysisOptions options = engine.getDefaultOptions(entryPoints);
 			options.setReflectionOptions(ReflectionOptions.NONE);
