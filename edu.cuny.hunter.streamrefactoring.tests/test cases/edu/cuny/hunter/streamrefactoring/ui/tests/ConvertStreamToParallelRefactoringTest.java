@@ -3,8 +3,6 @@
  */
 package edu.cuny.hunter.streamrefactoring.ui.tests;
 
-import static java.util.stream.Stream.concat;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -79,6 +77,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		LOGGER.setLevel(Level.FINER);
 	}
 
+	@SuppressWarnings("unused")
 	private static boolean compiles(String source) throws IOException {
 		return compiles(source, Files.createTempDirectory(null));
 	}
