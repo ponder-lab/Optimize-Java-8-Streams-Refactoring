@@ -863,7 +863,7 @@ public class StreamStateMachine {
 		// TODO: #127 should also set entry points.
 
 		TypeReference typeReference = TypeReference.findOrCreate(ClassLoaderReference.Primordial,
-				TypeName.findOrCreateClassName("java.util.stream", "BaseStream"));// this.getStream().getTypeReference();
+				"Ljava/util/stream/BaseStream");
 		IClass streamClass = engine.getClassHierarchy().lookupClass(typeReference);
 		StreamAttributeTypestateRule[] ruleArray = createStreamAttributeTypestateRules(streamClass);
 
@@ -1027,6 +1027,10 @@ public class StreamStateMachine {
 				}
 			} // end for each instance in the typestate analysis result.
 
+			// fill the instance to predecessors map if it's empty.
+			if (instanceToPredecessorsMap.isEmpty())
+				fillInstanceToPredecessorMap(engine);
+
 			// for each terminal operation call.
 			for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 				OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
@@ -1082,26 +1086,6 @@ public class StreamStateMachine {
 		// does reduction order matter?
 		discoverIfReduceOrderingPossiblyMatters(engine, orderingInference);
 
-		// fill the instance to predecessors map.
-		for (InstanceKey instance : instanceBlockStateTable.rowKeySet()) {
-			CallStringWithReceivers callString = Util.getCallString(instance);
-			Set<InstanceKey> possibleReceivers = new HashSet<>(callString.getPossibleReceivers());
-
-			// get any additional receivers if necessary #36.
-			Collection<? extends InstanceKey> additionalNecessaryReceiversFromPredecessors = getAdditionalNecessaryReceiversFromPredecessors(
-					instance, engine.getClassHierarchy(), engine.getCallGraph());
-			LOGGER.fine(() -> "Adding additional receivers: " + additionalNecessaryReceiversFromPredecessors);
-			possibleReceivers.addAll(additionalNecessaryReceiversFromPredecessors);
-
-			instanceToPredecessorsMap.merge(instance, possibleReceivers, (x, y) -> {
-				x.addAll(y);
-				return x;
-			});
-		}
-
-		// propagate the instances without terminal operations.
-		propagateStreamInstanceProperty(instancesWithoutTerminalOperations);
-
 		// propagate the instances with side-effects.
 		propagateStreamInstanceProperty(instancesWithSideEffects);
 
@@ -1152,6 +1136,25 @@ public class StreamStateMachine {
 
 			// determine if the stream is not associated with a terminal operation.
 			stream.setHasNoTerminalOperation(instancesWithoutTerminalOperations.contains(streamInstanceKey));
+		}
+	}
+
+	private void fillInstanceToPredecessorMap(EclipseProjectAnalysisEngine<InstanceKey> engine)
+			throws IOException, CoreException {
+		for (InstanceKey instance : instanceBlockStateTable.rowKeySet()) {
+			CallStringWithReceivers callString = Util.getCallString(instance);
+			Set<InstanceKey> possibleReceivers = new HashSet<>(callString.getPossibleReceivers());
+
+			// get any additional receivers if necessary #36.
+			Collection<? extends InstanceKey> additionalNecessaryReceiversFromPredecessors = getAdditionalNecessaryReceiversFromPredecessors(
+					instance, engine.getClassHierarchy(), engine.getCallGraph());
+			LOGGER.fine(() -> "Adding additional receivers: " + additionalNecessaryReceiversFromPredecessors);
+			possibleReceivers.addAll(additionalNecessaryReceiversFromPredecessors);
+
+			instanceToPredecessorsMap.merge(instance, possibleReceivers, (x, y) -> {
+				x.addAll(y);
+				return x;
+			});
 		}
 	}
 
