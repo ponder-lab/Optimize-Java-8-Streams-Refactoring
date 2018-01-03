@@ -344,7 +344,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	/**
-	 * Fix https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/34.
+	 * Test #34.
 	 */
 	public void testArraysAsList() throws Exception {
 		helper(new StreamAnalysisExpectedResult("Arrays.asList().stream()",
