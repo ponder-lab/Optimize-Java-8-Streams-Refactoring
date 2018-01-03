@@ -40,6 +40,8 @@ import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.ui.tests.refactoring.Java18Setup;
 import org.eclipse.jdt.ui.tests.refactoring.RefactoringTest;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
+import org.junit.Rule;
+import org.junit.rules.ExpectedException;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.ExecutionMode;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Ordering;
@@ -705,4 +707,49 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
+	
+	/**
+	 * Test #64. Test concurrent reductions.
+	 */
+	@Rule
+	public ExpectedException thrown = ExpectedException.none();
+
+	public void testConcurrentReduction() throws Exception {
+		thrown.expect(NullPointerException.class);
+	}
+
+	/**
+	 * Test #64. Test concurrent reductions.
+	 */
+	public void testConcurrentReduction1() throws Exception {
+		thrown.expect(NullPointerException.class);
+	}
+
+	/**
+	 * Test #64. Test concurrent reductions.
+	 */
+	public void testConcurrentReduction2() throws Exception {
+		thrown.expect(NullPointerException.class);
+	}
+
+	/**
+	 * Test #64. Test concurrent reductions.
+	 */
+	public void testConcurrentReduction3() throws Exception {
+		thrown.expect(NullPointerException.class);
+	}
+	
+	/**
+	 * Test #64. Test concurrent reductions.
+	 */
+	public void testConcurrentReduction4() throws Exception {
+		thrown.expect(NullPointerException.class);
+	}
+	/**
+	 * Test #64. Test concurrent reductions.
+	 */
+	public void testConcurrentReduction5() throws Exception {
+		thrown.expect(NullPointerException.class);
+	}
+	
 }
