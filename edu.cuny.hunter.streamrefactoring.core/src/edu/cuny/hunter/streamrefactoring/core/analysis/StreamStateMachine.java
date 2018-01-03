@@ -98,6 +98,8 @@ public class StreamStateMachine {
 	private Table<InstanceKey, BasicBlockInContext<IExplodedBasicBlock>, Map<TypestateRule, Set<IDFAState>>> instanceBlockStateTable = HashBasedTable
 			.create();
 
+	private Set<InstanceKey> trackedInstances = new HashSet<>();
+
 	/**
 	 * A set of instances whose reduce ordering may matter.
 	 */
@@ -372,7 +374,7 @@ public class StreamStateMachine {
 			throws IOException, CoreException {
 		// for each instance in the analysis result (these should be the
 		// "intermediate" streams).
-		for (InstanceKey instance : instanceBlockStateTable.rowKeySet()) {
+		for (InstanceKey instance : this.trackedInstances) {
 			if (!instanceToStatefulIntermediateOperationContainment.containsKey(instance)) {
 				// make sure that the stream is the result of an intermediate
 				// operation.
@@ -767,7 +769,7 @@ public class StreamStateMachine {
 
 		// for each instance in the analysis result (these should be the
 		// "intermediate" streams).
-		for (InstanceKey instance : instanceBlockStateTable.rowKeySet()) {
+		for (InstanceKey instance : this.trackedInstances) {
 			// make sure that the stream is the result of an intermediate
 			// operation.
 			if (!isStreamCreatedFromIntermediateOperation(instance, engine.getClassHierarchy(), engine.getCallGraph()))
@@ -837,7 +839,7 @@ public class StreamStateMachine {
 		propagateStreamInstanceProperty(validStreams);
 
 		// Now, we will find the set containing all stream instances.
-		Set<InstanceKey> allStreamInstances = new HashSet<InstanceKey>(instanceBlockStateTable.rowKeySet());
+		Set<InstanceKey> allStreamInstances = new HashSet<InstanceKey>(this.trackedInstances);
 
 		// Let's now find the bad set.
 		allStreamInstances.removeAll(validStreams);
@@ -865,6 +867,7 @@ public class StreamStateMachine {
 		TypeReference typeReference = TypeReference.findOrCreate(ClassLoaderReference.Primordial,
 				"Ljava/util/stream/BaseStream");
 		IClass streamClass = engine.getClassHierarchy().lookupClass(typeReference);
+
 		StreamAttributeTypestateRule[] ruleArray = createStreamAttributeTypestateRules(streamClass);
 
 		// for each rule.
@@ -888,6 +891,9 @@ public class StreamStateMachine {
 			for (Iterator<InstanceKey> iterator = result.iterateInstances(); iterator.hasNext();) {
 				// get the instance's key.
 				InstanceKey instanceKey = iterator.next();
+
+				// add to tracked instances.
+				this.trackedInstances.add(instanceKey);
 
 				// get the result for that instance.
 				TypeStateResult instanceResult = (TypeStateResult) result.getInstanceResult(instanceKey);
@@ -1141,7 +1147,7 @@ public class StreamStateMachine {
 
 	private void fillInstanceToPredecessorMap(EclipseProjectAnalysisEngine<InstanceKey> engine)
 			throws IOException, CoreException {
-		for (InstanceKey instance : instanceBlockStateTable.rowKeySet()) {
+		for (InstanceKey instance : this.trackedInstances) {
 			CallStringWithReceivers callString = Util.getCallString(instance);
 			Set<InstanceKey> possibleReceivers = new HashSet<>(callString.getPossibleReceivers());
 
@@ -1165,7 +1171,7 @@ public class StreamStateMachine {
 		for (Stream stream : streamSet) {
 			InstanceKey instanceKey = null;
 			try {
-				instanceKey = stream.getInstanceKey(instanceBlockStateTable.rowKeySet(), engine);
+				instanceKey = stream.getInstanceKey(this.trackedInstances, engine);
 			} catch (InstanceKeyNotFoundException e) { // workaround for #80.
 				if (stream.getCreation().toString().contains(ARRAYS_STREAM_CREATION_METHOD_NAME)) {
 					String msg = "Encountered possible unhandled case (#80) while processing: " + stream.getCreation();
@@ -1185,7 +1191,7 @@ public class StreamStateMachine {
 	}
 
 	public Collection<InstanceKey> getTrackedInstances() {
-		return instanceToPredecessorsMap.keySet();
+		return Collections.unmodifiableCollection(this.trackedInstances);
 	}
 
 	public Collection<IDFAState> getStates(StreamAttributeTypestateRule rule, InstanceKey instanceKey) {
