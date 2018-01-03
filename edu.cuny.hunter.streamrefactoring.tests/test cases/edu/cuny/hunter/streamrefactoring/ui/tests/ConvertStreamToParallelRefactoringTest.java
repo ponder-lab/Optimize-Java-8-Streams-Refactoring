@@ -258,7 +258,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 		StreamAnalyzer analyzer = new StreamAnalyzer();
 		ast.accept(analyzer);
-		
+
 		analyzer.analyze();
 
 		Set<Stream> resultingStreams = analyzer.getStreamSet();
@@ -663,8 +663,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * Test #119.
 	 */
 	public void testWithoutEntryPoint() throws Exception {
-		helper(new StreamAnalysisExpectedResult("h1.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL), null, false, false,
-				false, null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.NO_ENTRY_POINT)));
+		helper(new StreamAnalysisExpectedResult("h1.stream()", null, null, false, false, false, null, null, null,
+				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.NO_ENTRY_POINT)));
 	}
 
 	/**
