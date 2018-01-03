@@ -51,14 +51,20 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 
 	private CallGraphBuilder<?> callGraphBuilder;
 
+	/**
+	 * The project used to create this engine.
+	 */
+	private IJavaProject project;
+
 	public EclipseProjectAnalysisEngine(IJavaProject project) throws IOException, CoreException {
 		super(project);
+		this.project = project;
 	}
 
 	@Override
 	public void buildAnalysisScope() throws IOException {
 		try {
-			ePath = createProjectPath(project);
+			ePath = createProjectPath(getProject());
 		} catch (CoreException e) {
 			e.printStackTrace();
 			throw new RuntimeException(e);
@@ -156,5 +162,14 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 
 	public void clearCallGraphBuilder() {
 		this.callGraphBuilder = null;
+	}
+
+	/**
+	 * Get the project used to create this engine.
+	 * 
+	 * @return The project used to create this engine.
+	 */
+	public IJavaProject getProject() {
+		return project;
 	}
 }

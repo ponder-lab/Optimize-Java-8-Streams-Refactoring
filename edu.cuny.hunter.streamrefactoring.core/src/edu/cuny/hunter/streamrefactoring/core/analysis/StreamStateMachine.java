@@ -4,6 +4,7 @@ import static com.ibm.safe.typestate.core.AbstractWholeProgramSolver.DUMMY_ZERO;
 import static edu.cuny.hunter.streamrefactoring.core.analysis.StreamAttributeTypestateRule.BOTTOM_STATE_NAME;
 
 import java.io.IOException;
+import java.io.UTFDataFormatException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.jdt.core.JavaModelException;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
@@ -51,7 +53,6 @@ import com.ibm.wala.classLoader.NewSiteReference;
 import com.ibm.wala.client.AnalysisEngine;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
-import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceFieldPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
@@ -86,44 +87,50 @@ import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
-class StreamStateMachine {
+public class StreamStateMachine {
+
+	private static final String ARRAYS_STREAM_CREATION_METHOD_NAME = "Arrays.stream";
 
 	/**
 	 * A table mapping an instance and a block to the instance's possible states at
 	 * that block.
 	 */
-	private static Table<InstanceKey, BasicBlockInContext<IExplodedBasicBlock>, Map<TypestateRule, Set<IDFAState>>> instanceBlockStateTable = HashBasedTable
+	private Table<InstanceKey, BasicBlockInContext<IExplodedBasicBlock>, Map<TypestateRule, Set<IDFAState>>> instanceBlockStateTable = HashBasedTable
 			.create();
+
+	private Set<InstanceKey> trackedInstances = new HashSet<>();
 
 	/**
 	 * A set of instances whose reduce ordering may matter.
 	 */
-	private static Set<InstanceKey> instancesWhoseReduceOrderingPossiblyMatters = new HashSet<>();
+	private Set<InstanceKey> instancesWhoseReduceOrderingPossiblyMatters = new HashSet<>();
 
 	/**
 	 * A set of instances whose pipelines contain behavioral parameters that may
 	 * have side-effects.
 	 */
-	private static Set<InstanceKey> instancesWithSideEffects = new HashSet<>();
+	private Set<InstanceKey> instancesWithSideEffects = new HashSet<>();
+
+	private Set<InstanceKey> instancesWithoutTerminalOperations = new HashSet<>();
 
 	/**
 	 * All of the stream's predecessors.
 	 */
-	private static Map<InstanceKey, Set<InstanceKey>> instanceToAllPredecessorsMap = new HashMap<>();
+	private Map<InstanceKey, Set<InstanceKey>> instanceToAllPredecessorsMap = new HashMap<>();
 
 	/**
 	 * A stream's immediate predecessor.
 	 */
-	private static Map<InstanceKey, Set<InstanceKey>> instanceToPredecessorsMap = new HashMap<>();
+	private Map<InstanceKey, Set<InstanceKey>> instanceToPredecessorsMap = new HashMap<>();
 
 	/**
 	 * Instances whose pipelines may contain stateful intermediate operations.
 	 */
-	private static Map<InstanceKey, Boolean> instanceToStatefulIntermediateOperationContainment = new HashMap<>();
+	private Map<InstanceKey, Boolean> instanceToStatefulIntermediateOperationContainment = new HashMap<>();
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
-	private static Map<InstanceKey, Map<TypestateRule, Set<IDFAState>>> originStreamToMergedTypeStateMap = new HashMap<>();
+	private Map<InstanceKey, Map<TypestateRule, Set<IDFAState>>> originStreamToMergedTypeStateMap = new HashMap<>();
 
 	/**
 	 * A list of stateful intermediate operation signatures.
@@ -209,17 +216,11 @@ class StreamStateMachine {
 			"java.util.stream.LongStream.collect", "java.util.stream.Stream.collect", };
 	// @formatter:on
 
-	public static void clearCaches() {
-		instanceBlockStateTable.clear();
-		instanceToPredecessorsMap.clear();
-		instanceToAllPredecessorsMap.clear();
-		originStreamToMergedTypeStateMap.clear();
-		instancesWithSideEffects.clear();
-		instanceToStatefulIntermediateOperationContainment.clear();
-		instancesWhoseReduceOrderingPossiblyMatters.clear();
-	}
+	private Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers = new HashMap<>();
 
-	private static Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
+	private Map<InstanceKey, Stream> instanceKeyToStream;
+
+	private Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
 			BasicBlockInContext<IExplodedBasicBlock> block, StreamAttributeTypestateRule rule) {
 		Set<InstanceKey> predecessors = instanceToPredecessorsMap.get(instanceKey);
 		Map<TypestateRule, Set<IDFAState>> ruleToStates = instanceBlockStateTable.get(instanceKey, block);
@@ -241,7 +242,7 @@ class StreamStateMachine {
 	}
 
 	// TODO: This should probably be cached.
-	private static Set<InstanceKey> computePossibleOriginStreams(InstanceKey instanceKey) {
+	private Set<InstanceKey> computePossibleOriginStreams(InstanceKey instanceKey) {
 		// if there is no instance.
 		if (instanceKey == null)
 			// there are no origins.
@@ -259,7 +260,7 @@ class StreamStateMachine {
 		// or more predecessors.
 		// In this case, the possible origins of the given instance are the
 		// possible origins of each of its predecessors.
-		return predecessors.stream().map(StreamStateMachine::computePossibleOriginStreams).flatMap(os -> os.stream())
+		return predecessors.stream().map(this::computePossibleOriginStreams).flatMap(os -> os.stream())
 				.collect(Collectors.toSet());
 	}
 
@@ -296,7 +297,7 @@ class StreamStateMachine {
 			throw new IllegalStateException("Can't decipher ROM for method: " + declaredTarget);
 	}
 
-	private static void discoverLambdaSideEffects(EclipseProjectAnalysisEngine<InstanceKey> engine,
+	private void discoverLambdaSideEffects(EclipseProjectAnalysisEngine<InstanceKey> engine,
 			Map<CGNode, OrdinalSet<PointerKey>> mod, Iterable<InstanceKey> instances,
 			MethodReference declaredTargetOfCaller, IR ir, int use) {
 		// look up it's definition.
@@ -369,13 +370,11 @@ class StreamStateMachine {
 		}
 	}
 
-	private static void discoverPossibleStatefulIntermediateOperations(AggregateSolverResult result,
-			IClassHierarchy hierarchy, CallGraph callGraph) throws IOException, CoreException {
+	private void discoverPossibleStatefulIntermediateOperations(IClassHierarchy hierarchy, CallGraph callGraph)
+			throws IOException, CoreException {
 		// for each instance in the analysis result (these should be the
 		// "intermediate" streams).
-		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
-			InstanceKey instance = it.next();
-
+		for (InstanceKey instance : this.trackedInstances) {
 			if (!instanceToStatefulIntermediateOperationContainment.containsKey(instance)) {
 				// make sure that the stream is the result of an intermediate
 				// operation.
@@ -484,7 +483,7 @@ class StreamStateMachine {
 		return ret;
 	}
 
-	private static Set<InstanceKey> getAllPredecessors(InstanceKey instanceKey) {
+	private Set<InstanceKey> getAllPredecessors(InstanceKey instanceKey) {
 		if (!instanceToAllPredecessorsMap.containsKey(instanceKey)) {
 			Set<InstanceKey> ret = new HashSet<>();
 
@@ -543,37 +542,6 @@ class StreamStateMachine {
 		return Optional.empty();
 	}
 
-	private static boolean isScalar(Collection<TypeAbstraction> types) {
-		Boolean ret = null;
-
-		for (TypeAbstraction typeAbstraction : types) {
-			boolean scalar = isScalar(typeAbstraction);
-
-			if (ret == null)
-				ret = scalar;
-			else if (ret != scalar)
-				throw new IllegalArgumentException("Inconsistent types: " + types);
-		}
-
-		return ret;
-	}
-
-	private static boolean isScalar(TypeAbstraction typeAbstraction) {
-		TypeReference typeReference = typeAbstraction.getTypeReference();
-
-		if (typeReference.isArrayType())
-			return false;
-		else if (typeReference.equals(TypeReference.Void))
-			throw new IllegalArgumentException("Void is neither scalar or nonscalar.");
-		else if (typeReference.isPrimitiveType())
-			return true;
-		else if (typeReference.isReferenceType()) {
-			IClass type = typeAbstraction.getType();
-			return !Util.isIterable(type) && type.getAllImplementedInterfaces().stream().noneMatch(Util::isIterable);
-		} else
-			throw new IllegalArgumentException("Can't tell if type is scalar: " + typeAbstraction);
-	}
-
 	private static boolean isStatefulIntermediateOperation(MethodReference method) {
 		return signatureMatches(STATEFUL_INTERMEDIATE_OPERATIONS, method);
 	}
@@ -596,7 +564,8 @@ class StreamStateMachine {
 		// each receiver must be a stream.
 		return receivers.stream().allMatch(r -> {
 			IClass type = r.getConcreteType();
-			return Util.isBaseStream(type) || type.getAllImplementedInterfaces().stream().anyMatch(Util::isBaseStream);
+			return edu.cuny.hunter.streamrefactoring.core.analysis.Util.isBaseStream(type)
+					|| type.getAllImplementedInterfaces().stream().anyMatch(Util::isBaseStream);
 		});
 	}
 
@@ -637,7 +606,7 @@ class StreamStateMachine {
 		return ret;
 	}
 
-	private static void propagateStreamInstanceProperty(Collection<InstanceKey> streamInstancesWithProperty) {
+	private void propagateStreamInstanceProperty(Collection<InstanceKey> streamInstancesWithProperty) {
 		streamInstancesWithProperty.addAll(streamInstancesWithProperty.stream()
 				.flatMap(ik -> getAllPredecessors(ik).stream()).collect(Collectors.toSet()));
 	}
@@ -654,27 +623,12 @@ class StreamStateMachine {
 		return Arrays.stream(operations).map(o -> o + "(").anyMatch(signature::startsWith);
 	}
 
-	/**
-	 * The stream that this state machine represents.
-	 */
-	private final Stream stream;
-
-	/**
-	 * Constructs a new {@link StreamStateMachine} given a {@link Stream} to
-	 * represent.
-	 *
-	 * @param stream
-	 *            The representing stream.
-	 */
-	StreamStateMachine(Stream stream) {
-		this.stream = stream;
-	}
-
-	private boolean deriveRomForNonScalarMethod(Collection<TypeAbstraction> possibleReturnTypes)
+	private boolean deriveRomForNonScalarMethod(Collection<TypeAbstraction> possibleReturnTypes,
+			OrderingInference orderingInference)
 			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
 		Ordering ordering;
 		try {
-			ordering = this.getStream().getOrderingInference().inferOrdering(possibleReturnTypes);
+			ordering = orderingInference.inferOrdering(possibleReturnTypes);
 		} catch (InconsistentPossibleOrderingException e) {
 			// default to ordered #55.
 			ordering = Ordering.ORDERED;
@@ -694,10 +648,9 @@ class StreamStateMachine {
 		}
 	}
 
-	private void discoverIfReduceOrderingPossiblyMatters(
-			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers)
-			throws IOException, CoreException, UnknownIfReduceOrderMattersException, NoniterableException,
-			NoninstantiableException, CannotExtractSpliteratorException {
+	private void discoverIfReduceOrderingPossiblyMatters(EclipseProjectAnalysisEngine<InstanceKey> engine,
+			OrderingInference orderingInference) throws UTFDataFormatException, JavaModelException,
+			NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
 		// for each terminal operation call, I think?
 		for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 			int processedInstructions = 0;
@@ -719,9 +672,8 @@ class StreamStateMachine {
 				if (numOfRetVals > 0) {
 					int returnValue = invokeInstruction.getReturnValue(0);
 
-					possibleReturnTypes = Util.getPossibleTypesInterprocedurally(block.getNode(), returnValue,
-							this.getStream().getAnalysisEngine().getHeapGraph().getHeapModel(),
-							this.getStream().getAnalysisEngine().getPointerAnalysis(), this.getStream());
+					possibleReturnTypes = Util.getPossibleTypesInterprocedurally(block.getNode(), returnValue, engine,
+							orderingInference);
 
 					LOGGER.fine("Possible reduce types are: " + possibleReturnTypes);
 				} else {
@@ -729,29 +681,44 @@ class StreamStateMachine {
 					possibleReturnTypes = Collections.singleton(JavaPrimitiveType.VOID);
 				}
 
-				boolean rom = false;
+				Boolean rom = null;
 
 				if (isVoid(possibleReturnTypes))
 					rom = deriveRomForVoidMethod(invokeInstruction);
 				else {
-					boolean scalar = isScalar(possibleReturnTypes);
+					boolean scalar = Util.isScalar(possibleReturnTypes);
 					if (scalar)
-						rom = deriveRomForScalarMethod(invokeInstruction);
+						try {
+							rom = deriveRomForScalarMethod(invokeInstruction);
+						} catch (UnknownIfReduceOrderMattersException e) {
+							// for each possible receiver associated with the terminal block.
+							OrdinalSet<InstanceKey> receivers = terminalBlockToPossibleReceivers.get(block);
+
+							for (InstanceKey instanceKey : receivers) {
+								// get the stream for the instance key.
+								Stream stream = instanceKeyToStream.get(instanceKey);
+
+								LOGGER.log(Level.WARNING, "Unable to derive ROM for : " + stream.getCreation(), e);
+								stream.addStatusEntry(PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
+										"Cannot derive reduction ordering for stream: " + stream.getCreation() + ".");
+							}
+						}
 					else if (!scalar)
-						rom = deriveRomForNonScalarMethod(possibleReturnTypes);
+						rom = deriveRomForNonScalarMethod(possibleReturnTypes, orderingInference);
 					else
 						throw new IllegalStateException(
 								"Can't derive ROM for possible return types: " + possibleReturnTypes);
 				}
 
 				// if reduce ordering matters.
-				if (rom) {
-					LOGGER.fine(() -> "Reduce ordering matters for: " + invokeInstruction);
-					OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
-					possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
-				} else
-					// otherwise, just log.
-					LOGGER.fine(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
+				if (rom != null)
+					if (rom) {
+						LOGGER.fine(() -> "Reduce ordering matters for: " + invokeInstruction);
+						OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
+						possibleReceivers.forEach(instancesWhoseReduceOrderingPossiblyMatters::add);
+					} else
+						// otherwise, just log.
+						LOGGER.fine(() -> "Reduce ordering doesn't matter for: " + invokeInstruction);
 
 				++processedInstructions;
 			}
@@ -759,11 +726,8 @@ class StreamStateMachine {
 		}
 	}
 
-	private void discoverPossibleSideEffects(AggregateSolverResult result,
-			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers)
+	private void discoverPossibleSideEffects(EclipseProjectAnalysisEngine<InstanceKey> engine)
 			throws IOException, CoreException {
-		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
-
 		// create the ModRef analysis.
 		ModRef<InstanceKey> modRef = ModRef.make();
 
@@ -805,13 +769,10 @@ class StreamStateMachine {
 
 		// for each instance in the analysis result (these should be the
 		// "intermediate" streams).
-		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
-			InstanceKey instance = it.next();
-
+		for (InstanceKey instance : this.trackedInstances) {
 			// make sure that the stream is the result of an intermediate
 			// operation.
-			if (!isStreamCreatedFromIntermediateOperation(instance, this.getStream().getClassHierarchy(),
-					engine.getCallGraph()))
+			if (!isStreamCreatedFromIntermediateOperation(instance, engine.getClassHierarchy(), engine.getCallGraph()))
 				continue;
 
 			CallStringWithReceivers callString = Util.getCallString(instance);
@@ -858,9 +819,7 @@ class StreamStateMachine {
 		}
 	}
 
-	private void discoverTerminalOperations(AggregateSolverResult result,
-			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers,
-			InstanceKey streamInstanceInQuestion) throws RequireTerminalOperationException {
+	private void discoverTerminalOperations() {
 		Collection<OrdinalSet<InstanceKey>> receiverSetsThatHaveTerminalOperations = terminalBlockToPossibleReceivers
 				.values();
 
@@ -880,35 +839,19 @@ class StreamStateMachine {
 		propagateStreamInstanceProperty(validStreams);
 
 		// Now, we will find the set containing all stream instances.
-		Set<InstanceKey> allStreamInstances = new HashSet<InstanceKey>();
-
-		// for each instance in the typestate analysis result.
-		for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
-			// add the current instance to the set.
-			allStreamInstances.add(it.next());
-		}
-
-		// Now, we have the set of all stream instances.
+		Set<InstanceKey> allStreamInstances = new HashSet<InstanceKey>(this.trackedInstances);
 
 		// Let's now find the bad set.
 		allStreamInstances.removeAll(validStreams);
 		Set<InstanceKey> badStreamInstances = allStreamInstances;
 
-		// if the stream in question is "bad".
-		if (badStreamInstances.contains(streamInstanceInQuestion))
-			throw new RequireTerminalOperationException("Require terminal operations.");
+		this.instancesWithoutTerminalOperations.addAll(badStreamInstances);
 	}
 
-	protected Stream getStream() {
-		return stream;
-	}
-
-	public void start() throws IOException, CoreException, CallGraphBuilderCancelException, CancelException,
-			InvalidClassFileException, PropertiesException, UnknownIfReduceOrderMattersException, NoniterableException,
-			NoninstantiableException, CannotExtractSpliteratorException, RequireTerminalOperationException,
-			InstanceKeyNotFoundException {
-		// get the analysis engine.
-		EclipseProjectAnalysisEngine<InstanceKey> engine = this.getStream().getAnalysisEngine();
+	public void start(Set<Stream> streamSet, EclipseProjectAnalysisEngine<InstanceKey> engine,
+			OrderingInference orderingInference)
+			throws PropertiesException, CancelException, IOException, CoreException, NoniterableException,
+			NoninstantiableException, CannotExtractSpliteratorException, InvalidClassFileException {
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
 
 		PropertiesManager manager = PropertiesManager.initFromMap(Collections.emptyMap());
@@ -918,8 +861,10 @@ class StreamStateMachine {
 		typeStateOptions.setBooleanValue(WholeProgramProperties.Props.LIVE_ANALYSIS.getName(), false);
 		// TODO: #127 should also set entry points.
 
-		TypeReference typeReference = this.getStream().getTypeReference();
+		TypeReference typeReference = TypeReference.findOrCreate(ClassLoaderReference.Primordial,
+				"Ljava/util/stream/BaseStream");
 		IClass streamClass = engine.getClassHierarchy().lookupClass(typeReference);
+
 		StreamAttributeTypestateRule[] ruleArray = createStreamAttributeTypestateRules(streamClass);
 
 		// for each rule.
@@ -927,10 +872,8 @@ class StreamStateMachine {
 			// create a DFA based on the rule.
 			TypeStateProperty dfa = new TypeStateProperty(rule, engine.getClassHierarchy());
 
-			// this gets a solver that tracks all streams. TODO may need to do
-			// some caching at some point here. NOTE: Seems to be more difficult
-			// than initially imagined.
-			LOGGER.info(() -> "Starting solver for stream: " + this.getStream());
+			// this gets a solver that tracks all streams.
+			LOGGER.info(() -> "Starting " + rule.getName() + " solver for: " + engine.getProject().getElementName());
 			ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getOptions(), engine.getCallGraph(),
 					engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null);
 
@@ -941,12 +884,13 @@ class StreamStateMachine {
 				throw new RuntimeException("Exception caught during typestate analysis.", e);
 			}
 
-			Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers = new HashMap<>();
-
 			// for each instance in the typestate analysis result.
 			for (Iterator<InstanceKey> iterator = result.iterateInstances(); iterator.hasNext();) {
 				// get the instance's key.
 				InstanceKey instanceKey = iterator.next();
+
+				// add to tracked instances.
+				this.trackedInstances.add(instanceKey);
 
 				// get the result for that instance.
 				TypeStateResult instanceResult = (TypeStateResult) result.getInstanceResult(instanceKey);
@@ -954,12 +898,11 @@ class StreamStateMachine {
 				// get the supergraph for the instance result.
 				ICFGSupergraph supergraph = instanceResult.getSupergraph();
 
-				// TODO: Can this be somehow rewritten to get blocks
-				// corresponding to terminal operations?
+				// TODO: Can this be somehow rewritten to get blocks corresponding to terminal
+				// operations?
 				// for each call graph node in the call graph.
 				for (CGNode cgNode : engine.getCallGraph()) {
-					// separating client from library code
-					// improve performance for #103
+					// separating client from library code, improving performance #103.
 					if (cgNode.getMethod().getDeclaringClass().getClassLoader().getReference()
 							.equals(ClassLoaderReference.Application)) {
 
@@ -1085,46 +1028,16 @@ class StreamStateMachine {
 						}
 					}
 				}
-			}
+			} // end for each instance in the typestate analysis result.
 
-			// fill the instance side-effect set.
-			// FIXME: I don't think that this belongs in the typestate rule
-			// loop.
-			discoverPossibleSideEffects(result, terminalBlockToPossibleReceivers);
+			// fill the instance to predecessors map if it's empty.
+			if (instanceToPredecessorsMap.isEmpty())
+				fillInstanceToPredecessorMap(engine);
 
-			// discover whether any stateful intermediate operations are
-			// present.
-			discoverPossibleStatefulIntermediateOperations(result, this.getStream().getClassHierarchy(),
-					this.getStream().getAnalysisEngine().getCallGraph());
-
-			// does reduction order matter?
-			discoverIfReduceOrderingPossiblyMatters(terminalBlockToPossibleReceivers);
-
-			// fill the instance to predecessors map.
-			for (Iterator<InstanceKey> it = result.iterateInstances(); it.hasNext();) {
-				InstanceKey instance = it.next();
-				CallStringWithReceivers callString = Util.getCallString(instance);
-				Set<InstanceKey> possibleReceivers = new HashSet<>(callString.getPossibleReceivers());
-
-				// get any additional receivers if necessary #36.
-				Collection<? extends InstanceKey> additionalNecessaryReceiversFromPredecessors = getAdditionalNecessaryReceiversFromPredecessors(
-						instance, this.getStream().getClassHierarchy(),
-						this.getStream().getAnalysisEngine().getCallGraph());
-				LOGGER.fine(() -> "Adding additional receivers: " + additionalNecessaryReceiversFromPredecessors);
-				possibleReceivers.addAll(additionalNecessaryReceiversFromPredecessors);
-
-				instanceToPredecessorsMap.merge(instance, possibleReceivers, (x, y) -> {
-					x.addAll(y);
-					return x;
-				});
-			}
-
-			// for each terminal operation call, I think?
+			// for each terminal operation call.
 			for (BasicBlockInContext<IExplodedBasicBlock> block : terminalBlockToPossibleReceivers.keySet()) {
 				OrdinalSet<InstanceKey> possibleReceivers = terminalBlockToPossibleReceivers.get(block);
 				// for each possible receiver of the terminal operation call.
-				// FIXME why mess with all blocks here? Why not just those with
-				// receivers related to the stream in question?
 				for (InstanceKey instanceKey : possibleReceivers) {
 					Set<IDFAState> possibleStates = computeMergedTypeState(instanceKey, block, rule);
 					Set<InstanceKey> possibleOriginStreams = computePossibleOriginStreams(instanceKey);
@@ -1158,21 +1071,23 @@ class StreamStateMachine {
 					});
 				}
 			}
+		} // end for each rule.
 
-			InstanceKey streamInQuestionInstanceKey = this.getStream()
-					.getInstanceKey(instanceToPredecessorsMap.keySet(), engine.getCallGraph());
+		// create a mapping between stream instances (from the analysis) and stream
+		// objects (from the refactoring).
+		createInstanceKeyStreamMap(streamSet, engine);
 
-			discoverTerminalOperations(result, terminalBlockToPossibleReceivers, streamInQuestionInstanceKey);
+		discoverTerminalOperations();
 
-			Collection<IDFAState> states = originStreamToMergedTypeStateMap.get(streamInQuestionInstanceKey).get(rule);
-			// Map IDFAState to StreamExecutionMode, etc., and add them to the
-			// possible stream states but only if they're not bottom (for those,
-			// we fall back to the initial state).
-			rule.addPossibleAttributes(this.getStream(), states);
-		}
+		// fill the instance side-effect set.
+		discoverPossibleSideEffects(engine);
 
-		InstanceKey streamInstanceKey = this.getStream().getInstanceKey(instanceToPredecessorsMap.keySet(),
-				engine.getCallGraph());
+		// discover whether any stateful intermediate operations are
+		// present.
+		discoverPossibleStatefulIntermediateOperations(engine.getClassHierarchy(), engine.getCallGraph());
+
+		// does reduction order matter?
+		discoverIfReduceOrderingPossiblyMatters(engine, orderingInference);
 
 		// propagate the instances with side-effects.
 		propagateStreamInstanceProperty(instancesWithSideEffects);
@@ -1196,16 +1111,90 @@ class StreamStateMachine {
 		// propagate the instances whose reduce ordering possibly matters.
 		propagateStreamInstanceProperty(instancesWhoseReduceOrderingPossiblyMatters);
 
-		// determine if this stream has possible side-effects.
-		this.getStream().setHasPossibleSideEffects(instancesWithSideEffects.contains(streamInstanceKey));
+		// for stream instance key.
+		for (InstanceKey streamInstanceKey : instanceKeyToStream.keySet()) {
+			Stream stream = instanceKeyToStream.get(streamInstanceKey);
 
-		// determine if this stream has possible stateful intermediate
-		// operations.
-		this.getStream().setHasPossibleStatefulIntermediateOperations(
-				instanceToStatefulIntermediateOperationContainment.getOrDefault(streamInstanceKey, false));
+			// determine possible side-effects.
+			stream.setHasPossibleSideEffects(instancesWithSideEffects.contains(streamInstanceKey));
 
-		// determine if this stream reduce ordering possibly matters
-		this.getStream().setReduceOrderingPossiblyMatters(
-				instancesWhoseReduceOrderingPossiblyMatters.contains(streamInstanceKey));
+			// determine if the stream has possible stateful intermediate operations.
+			stream.setHasPossibleStatefulIntermediateOperations(
+					instanceToStatefulIntermediateOperationContainment.getOrDefault(streamInstanceKey, false));
+
+			// determine if the stream is not associated with a terminal operation.
+			stream.setHasNoTerminalOperation(instancesWithoutTerminalOperations.contains(streamInstanceKey));
+
+			// if the stream is terminated.
+			if (!stream.hasNoTerminalOperation()) {
+				// assign states to the current stream for each typestate rule.
+				for (StreamAttributeTypestateRule rule : ruleArray) {
+					// get the states.
+					Collection<IDFAState> states = this.getStates(rule, streamInstanceKey);
+
+					// Map IDFAState to StreamExecutionMode, etc., and add them to the
+					// possible stream states but only if they're not bottom (for those,
+					// we fall back to the initial state).
+					rule.addPossibleAttributes(stream, states);
+				} // for each rule.
+
+				// determine if the stream reduce ordering possibly matters.
+				stream.setReduceOrderingPossiblyMatters(
+						instancesWhoseReduceOrderingPossiblyMatters.contains(streamInstanceKey));
+			}
+		}
+	}
+
+	private void fillInstanceToPredecessorMap(EclipseProjectAnalysisEngine<InstanceKey> engine)
+			throws IOException, CoreException {
+		for (InstanceKey instance : this.trackedInstances) {
+			CallStringWithReceivers callString = Util.getCallString(instance);
+			Set<InstanceKey> possibleReceivers = new HashSet<>(callString.getPossibleReceivers());
+
+			// get any additional receivers if necessary #36.
+			Collection<? extends InstanceKey> additionalNecessaryReceiversFromPredecessors = getAdditionalNecessaryReceiversFromPredecessors(
+					instance, engine.getClassHierarchy(), engine.getCallGraph());
+			LOGGER.fine(() -> "Adding additional receivers: " + additionalNecessaryReceiversFromPredecessors);
+			possibleReceivers.addAll(additionalNecessaryReceiversFromPredecessors);
+
+			instanceToPredecessorsMap.merge(instance, possibleReceivers, (x, y) -> {
+				x.addAll(y);
+				return x;
+			});
+		}
+	}
+
+	private void createInstanceKeyStreamMap(Set<Stream> streamSet, EclipseProjectAnalysisEngine<InstanceKey> engine)
+			throws InvalidClassFileException, IOException, CoreException {
+		instanceKeyToStream = new HashMap<>();
+
+		for (Stream stream : streamSet) {
+			InstanceKey instanceKey = null;
+			try {
+				instanceKey = stream.getInstanceKey(this.trackedInstances, engine);
+			} catch (InstanceKeyNotFoundException e) { // workaround for #80.
+				if (stream.getCreation().toString().contains(ARRAYS_STREAM_CREATION_METHOD_NAME)) {
+					String msg = "Encountered possible unhandled case (#80) while processing: " + stream.getCreation();
+					LOGGER.log(Level.WARNING, msg, e);
+					stream.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, msg);
+				} else {
+					LOGGER.log(Level.WARNING, "Encountered unreachable code while processing: " + stream.getCreation(),
+							e);
+					stream.addStatusEntry(PreconditionFailure.STREAM_CODE_NOT_REACHABLE,
+							"Either pivital code isn't reachable for stream: " + stream.getCreation()
+									+ " or entry points are misconfigured.");
+				}
+				continue; // next stream.
+			}
+			instanceKeyToStream.put(instanceKey, stream);
+		} // end each stream.
+	}
+
+	public Collection<InstanceKey> getTrackedInstances() {
+		return Collections.unmodifiableCollection(this.trackedInstances);
+	}
+
+	public Collection<IDFAState> getStates(StreamAttributeTypestateRule rule, InstanceKey instanceKey) {
+		return originStreamToMergedTypeStateMap.get(instanceKey).get(rule);
 	}
 }

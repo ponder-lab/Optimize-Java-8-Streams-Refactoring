@@ -68,8 +68,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	private static final boolean PERFORM_CHANGE_DEFAULT = false;
 
 	/**
-	 * the command has been executed, so extract extract the needed information
-	 * from the application context.
+	 * the command has been executed, so extract extract the needed information from
+	 * the application context.
 	 */
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
@@ -101,7 +101,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 								"#failed preconditions", "time (s)" });
 
 				candidateStreamPrinter = createCSVPrinter("candidate_streams.csv",
-						new String[] { "stream", "start pos", "length", "method", "type FQN" });
+						new String[] { "subject", "stream", "start pos", "length", "method", "type FQN" });
 
 				optimizedStreamPrinter = createCSVPrinter("optimizable_streams.csv",
 						new String[] { "subject", "stream", "start pos", "length", "method", "type FQN" });
@@ -109,17 +109,18 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 				nonOptimizedStreamPrinter = createCSVPrinter("unoptimizable_streams.csv",
 						new String[] { "subject", "stream", "start pos", "length", "method", "type FQN" });
 
-				errorPrinter = createCSVPrinter("failed_preconditions.csv",
-						new String[] { "stream", "start pos", "length", "method", "type FQN", "code", "message" });
+				errorPrinter = createCSVPrinter("failed_preconditions.csv", new String[] { "subject", "stream",
+						"start pos", "length", "method", "type FQN", "code", "message" });
 
 				streamAttributesPrinter = createCSVPrinter("stream_attributes.csv",
-						new String[] { "stream", "start pos", "length", "method", "type FQN", "side-effects?",
-								"stateful intermediate operations", "reduce ordering possibly matters", "refactoring",
-								"passingPrecondition", "status" });
+						new String[] { "subject", "stream", "start pos", "length", "method", "type FQN",
+								"side-effects?", "stateful intermediate operations", "reduce ordering possibly matters",
+								"refactoring", "passingPrecondition", "status" });
 
 				streamActionsPrinter = createCSVPrinter("stream_actions.csv", buildAttributeColumns("actions"));
 
-				streamExecutionModePrinter = createCSVPrinter("stream_execution_modes.csv", buildAttributeColumns("execution mode"));
+				streamExecutionModePrinter = createCSVPrinter("stream_execution_modes.csv",
+						buildAttributeColumns("execution mode"));
 
 				streamOrderingPrinter = createCSVPrinter("stream_orderings.csv", buildAttributeColumns("ordering"));
 
@@ -148,17 +149,17 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					// #streams.
 					resultsPrinter.print(processor.getStreamSet().size());
 
-					// #optimization available streams.
+					// #optimization available streams. FIXME
 					resultsPrinter.print(processor.getOptimizableStreams().size());
 
 					// candidate streams and their attributes.
 					for (Stream stream : processor.getStreamSet()) {
-						candidateStreamPrinter.printRecord(stream.getCreation(),
+						candidateStreamPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
 								stream.getEnclosingType().getFullyQualifiedName());
 
-						streamAttributesPrinter.printRecord(stream.getCreation(),
+						streamAttributesPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
 								stream.getEnclosingType().getFullyQualifiedName(), stream.hasPossibleSideEffects(),
@@ -169,11 +170,11 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 						String method = Util.getMethodIdentifier(stream.getEnclosingEclipseMethod());
 						printStreamAttributesWithMultipleValues(stream.getActions(), streamActionsPrinter, stream,
-								method);
+								method, javaProject);
 						printStreamAttributesWithMultipleValues(stream.getPossibleExecutionModes(),
-								streamExecutionModePrinter, stream, method);
+								streamExecutionModePrinter, stream, method, javaProject);
 						printStreamAttributesWithMultipleValues(stream.getPossibleOrderings(), streamOrderingPrinter,
-								stream, method);
+								stream, method, javaProject);
 
 					}
 
@@ -211,7 +212,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 										+ correspondingElement.getClass());
 
 							Stream failedStream = (Stream) correspondingElement;
-							errorPrinter.printRecord(failedStream.getCreation(),
+							errorPrinter.printRecord(javaProject.getElementName(), failedStream.getCreation(),
 									failedStream.getCreation().getStartPosition(),
 									failedStream.getCreation().getLength(),
 									Util.getMethodIdentifier(failedStream.getEnclosingEclipseMethod()),
@@ -361,17 +362,17 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	}
 
 	private static void printStreamAttributesWithMultipleValues(Set<?> set, CSVPrinter printer, Stream stream,
-			String method) throws IOException {
+			String method, IJavaProject project) throws IOException {
 		if (set != null)
 			for (Object object : set) {
-				printer.printRecord(stream.getCreation(), stream.getCreation().getStartPosition(),
-						stream.getCreation().getLength(), method, stream.getEnclosingType().getFullyQualifiedName(),
-						object.toString());
+				printer.printRecord(project.getElementName(), stream.getCreation(),
+						stream.getCreation().getStartPosition(), stream.getCreation().getLength(), method,
+						stream.getEnclosingType().getFullyQualifiedName(), object.toString());
 			}
 	}
 
 	private static String[] buildAttributeColumns(String attribute) {
-		return new String[] { "stream", "start pos", "length", "method", "type FQN", attribute };
+		return new String[] { "subject", "stream", "start pos", "length", "method", "type FQN", attribute };
 	}
 
 }

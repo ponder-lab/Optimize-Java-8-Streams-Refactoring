@@ -51,7 +51,7 @@ import org.osgi.framework.FrameworkUtil;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
-import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalysisVisitor;
+import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalyzer;
 import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
 import edu.cuny.hunter.streamrefactoring.core.messages.Messages;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
@@ -175,8 +175,8 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 			SubMonitor subMonitor = SubMonitor.convert(monitor, Messages.CheckingPreconditions,
 					this.getJavaProjects().length * 1000);
 			final RefactoringStatus status = new RefactoringStatus();
-			StreamAnalysisVisitor visitor = new StreamAnalysisVisitor();
-			setStreamSet(visitor.getStreamSet());
+			StreamAnalyzer analyzer = new StreamAnalyzer();
+			setStreamSet(analyzer.getStreamSet());
 
 			for (IJavaProject jproj : this.getJavaProjects()) {
 				IPackageFragmentRoot[] roots = jproj.getPackageFragmentRoots();
@@ -188,12 +188,14 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 							ICompilationUnit[] units = fragment.getCompilationUnits();
 							for (ICompilationUnit unit : units) {
 								CompilationUnit compilationUnit = getCompilationUnit(unit, subMonitor.split(1));
-								compilationUnit.accept(visitor);
+								compilationUnit.accept(analyzer);
 							}
 						}
 					}
 				}
 			}
+			
+			analyzer.analyze();
 
 			RefactoringStatus collectedStatus = getStreamSet().stream().map(Stream::getStatus)
 					.collect(() -> new RefactoringStatus(), (a, b) -> a.merge(b), (a, b) -> a.merge(b));
@@ -277,7 +279,6 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		getTypeToTypeHierarchyMap().clear();
 		getCompilationUnitToCompilationUnitRewriteMap().clear();
 		getTypeRootToCompilationUnitMap().clear();
-		Stream.clearCaches();
 	}
 
 	@Override
