@@ -98,7 +98,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 				resultsPrinter = createCSVPrinter("results.csv",
 						new String[] { "subject", "#streams", "#optimization available streams", "#optimizable streams",
-								"#failed preconditions", "time (s)", "Lines Of Code"});
+								"#failed preconditions", "time (s)" });
 
 				candidateStreamPrinter = createCSVPrinter("candidate_streams.csv",
 						new String[] { "stream", "start pos", "length", "method", "type FQN" });
@@ -245,8 +245,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					// overall results time.
 					resultsPrinter.print((resultsTimeCollector.getCollectedTime()
 							- processor.getExcludedTimeCollector().getCollectedTime()) / 1000.0);
-					
-					resultsPrinter.print(getProjectLinesOfCode(javaProject));
 
 					// end the record.
 					resultsPrinter.println();
@@ -374,15 +372,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 	private static String[] buildAttributeColumns(String attribute) {
 		return new String[] { "stream", "start pos", "length", "method", "type FQN", attribute };
-	}	
-
-	private int getProjectLinesOfCode(IJavaProject javaProject) throws JavaModelException {
-		Set<IMethod> methods = getAllMethods(javaProject);
-		int count = 0;
-		for (IMethod method : methods) {
-			count += getMethodLinesOfCode(method);
-		}
-		return count;
 	}
 
 }
