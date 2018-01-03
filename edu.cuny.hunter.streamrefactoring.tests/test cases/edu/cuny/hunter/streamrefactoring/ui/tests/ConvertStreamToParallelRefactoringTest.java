@@ -3,6 +3,8 @@
  */
 package edu.cuny.hunter.streamrefactoring.ui.tests;
 
+import static java.util.stream.Stream.concat;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -443,6 +445,13 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				false, null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
 	}
 
+	// Test #65,
+	public void testConcat() throws Exception {
+		helper(new StreamAnalysisExpectedResult("concat(new HashSet().parallelStream(),new HashSet().parallelStream())",
+				EnumSet.of(ExecutionMode.SEQUENTIAL), null, false, false, false, null, null, null,
+				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
+	}
+
 	/**
 	 * This should change once #103 is fixed.
 	 */
@@ -579,8 +588,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	public void testCollectionFromParameter4() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
 				Collections.singleton(Ordering.ORDERED), false, false, false, null, null, null, RefactoringStatus.ERROR,
-				EnumSet.of(PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS,
-						PreconditionFailure.STREAM_CODE_NOT_REACHABLE)));
+				EnumSet.of(PreconditionFailure.STREAM_CODE_NOT_REACHABLE)));
 	}
 
 	public void testStaticInitializer() throws Exception {

@@ -848,9 +848,6 @@ public class StreamStateMachine {
 		this.instancesWithoutTerminalOperations.addAll(badStreamInstances);
 	}
 
-	public StreamStateMachine() {
-	}
-
 	public void start(Set<Stream> streamSet, EclipseProjectAnalysisEngine<InstanceKey> engine,
 			OrderingInference orderingInference)
 			throws PropertiesException, CancelException, IOException, CoreException, NoniterableException,

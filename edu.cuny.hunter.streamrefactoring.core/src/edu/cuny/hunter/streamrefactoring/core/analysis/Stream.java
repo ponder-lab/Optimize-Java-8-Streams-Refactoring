@@ -160,7 +160,8 @@ public class Stream {
 	}
 
 	public void inferInitialAttributes(EclipseProjectAnalysisEngine<InstanceKey> engine,
-			OrderingInference orderingInference) throws InvalidClassFileException, IOException, CoreException {
+			OrderingInference orderingInference) throws InvalidClassFileException, IOException, CoreException,
+			UnhandledCaseException, StreamCreationNotConsideredException {
 		this.inferInitialExecution();
 		this.inferInitialOrdering(engine, orderingInference);
 	}
@@ -543,7 +544,16 @@ public class Stream {
 	}
 
 	private void inferInitialOrdering(EclipseProjectAnalysisEngine<InstanceKey> engine,
-			OrderingInference orderingInference) throws InvalidClassFileException, IOException, CoreException {
+			OrderingInference orderingInference) throws InvalidClassFileException, IOException, CoreException,
+			UnhandledCaseException, StreamCreationNotConsideredException {
+		if (this.getCreation().getExpression() == null)
+			if (this.getCreation().toString().startsWith("concat("))
+				throw new UnhandledCaseException("concat() is not yet implemented.");
+			else
+				// we don't consider it a new stream.
+				throw new StreamCreationNotConsideredException(
+						"Creation: " + this.getCreation() + " is not considered to create a new stream.");
+
 		ITypeBinding expressionTypeBinding = this.getCreation().getExpression().resolveTypeBinding();
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();

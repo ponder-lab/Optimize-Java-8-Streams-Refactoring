@@ -4,6 +4,7 @@ import static com.ibm.wala.ipa.callgraph.impl.Util.makeMainEntrypoints;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.logging.Level;
@@ -63,6 +64,7 @@ public class StreamAnalyzer extends ASTVisitor {
 
 			// set options.
 			AnalysisOptions options = engine.getDefaultOptions(entryPoints);
+			// Turn off reflection analysis.
 			options.setReflectionOptions(ReflectionOptions.NONE);
 			options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
 
@@ -90,8 +92,7 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	public void analyze() throws CoreException {
 		// collect the projects to be analyzed.
-		Map<IJavaProject, Set<Stream>> projectToStreams = this.getStreamSet().stream()
-				.filter(s -> !s.getStatus().hasError())
+		Map<IJavaProject, Set<Stream>> projectToStreams = this.getStreamSet().stream().filter(s -> s.getStatus().isOK())
 				.collect(Collectors.groupingBy(Stream::getCreationJavaProject, Collectors.toSet()));
 
 		// process each project.
@@ -102,7 +103,7 @@ public class StreamAnalyzer extends ASTVisitor {
 				engine = new EclipseProjectAnalysisEngine<>(project);
 				engine.buildAnalysisScope();
 			} catch (IOException e) {
-				LOGGER.log(Level.SEVERE, "Could not create analysis engine for: " + project, e);
+				LOGGER.log(Level.SEVERE, "Could not create analysis engine for: " + project.getElementName(), e);
 				throw new RuntimeException(e);
 			}
 
@@ -110,8 +111,8 @@ public class StreamAnalyzer extends ASTVisitor {
 			try {
 				buildCallGraph(engine);
 			} catch (NoEntryPointException e) {
-				LOGGER.log(Level.WARNING, "Exception caught while processing: " + engine.getProject().getElementName(),
-						e);
+				LOGGER.log(Level.WARNING,
+						"No entry point exception caught while processing: " + engine.getProject().getElementName(), e);
 
 				// add a status entry for each stream in the project
 				for (Stream stream : projectToStreams.get(project))
@@ -119,27 +120,40 @@ public class StreamAnalyzer extends ASTVisitor {
 							"Project: " + engine.getProject().getElementName() + " has no entry points.");
 				return;
 			} catch (IOException | CoreException | InvalidClassFileException | CancelException e) {
-				LOGGER.log(Level.SEVERE, "Exception encountered while building call graph for: " + project + ".", e);
+				LOGGER.log(Level.SEVERE,
+						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
 				throw new RuntimeException(e);
 			}
 
 			OrderingInference orderingInference = new OrderingInference(engine.getClassHierarchy());
 
-			// infer the initial attributes of each stream in the project.
-			for (Stream stream : projectToStreams.get(project)) {
+			for (Iterator<Stream> iterator = projectToStreams.get(project).iterator(); iterator.hasNext();) {
+				Stream stream = iterator.next();
 				try {
 					stream.inferInitialAttributes(engine, orderingInference);
 				} catch (InvalidClassFileException | IOException e) {
 					LOGGER.log(Level.SEVERE, "Exception encountered while processing: " + stream.getCreation() + ".",
 							e);
 					throw new RuntimeException(e);
+				} catch (UnhandledCaseException e) {
+					LOGGER.log(Level.WARNING, "Unhandled case encountered while processing: " + stream.getCreation(),
+							e);
+					stream.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED,
+							"Stream: " + stream.getCreation() + " has an unhandled case: " + e.getMessage());
+				} catch (StreamCreationNotConsideredException e) {
+					LOGGER.log(Level.WARNING, "Unconsidered case encountered while processing: " + stream.getCreation(),
+							e);
+					// remove it from consideration.
+					iterator.remove();
+					this.getStreamSet().remove(stream);
 				}
 			}
 
-			// start the state machine for each stream in the project.
+			// start the state machine for each valid stream in the project.
 			StreamStateMachine stateMachine = new StreamStateMachine();
 			try {
-				stateMachine.start(streamSet, engine, orderingInference);
+				stateMachine.start(projectToStreams.get(project).parallelStream().filter(s -> s.getStatus().isOK())
+						.collect(Collectors.toSet()), engine, orderingInference);
 			} catch (PropertiesException | CancelException | NoniterableException | NoninstantiableException
 					| CannotExtractSpliteratorException | InvalidClassFileException | IOException e) {
 				LOGGER.log(Level.SEVERE, "Error while starting state machine.", e);
@@ -147,7 +161,8 @@ public class StreamAnalyzer extends ASTVisitor {
 			}
 
 			// check preconditions.
-			for (Stream stream : projectToStreams.get(project))
+			for (Stream stream : projectToStreams.get(project).parallelStream().filter(s -> s.getStatus().isOK())
+					.collect(Collectors.toSet()))
 				stream.check();
 		} // end for each stream.
 	}

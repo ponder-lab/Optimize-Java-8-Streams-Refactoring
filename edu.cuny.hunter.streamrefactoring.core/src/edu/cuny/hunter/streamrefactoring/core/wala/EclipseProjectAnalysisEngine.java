@@ -42,7 +42,7 @@ import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
  */
 public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJavaSourceAnalysisEngine<I> {
 
-	private static final Logger logger = Logger.getLogger(LoggerNames.LOGGER_NAME);
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	/**
 	 * The N value used to create the {@link nCFABuilder}.
@@ -133,15 +133,15 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 
 	public CallGraph buildSafeCallGraph(AnalysisOptions options)
 			throws CallGraphBuilderCancelException, CancelException {
-		logger.entering(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
+		LOGGER.entering(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
 
 		if (callGraphBuilder == null) {
-			logger.info("Creating new call graph builder.");
+			LOGGER.info("Creating new call graph builder.");
 			callGraphBuilder = buildCallGraph(this.getClassHierarchy(), options, true, null);
 		} else
-			logger.info("Reusing call graph builder.");
+			LOGGER.info("Reusing call graph builder.");
 
-		logger.exiting(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
+		LOGGER.exiting(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
 		return callGraphBuilder.makeCallGraph(options, null);
 	}
 
