@@ -91,6 +91,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	public void analyze() throws CoreException {
 		// collect the projects to be analyzed.
 		Map<IJavaProject, Set<Stream>> projectToStreams = this.getStreamSet().stream()
+				.filter(s -> !s.getStatus().hasError())
 				.collect(Collectors.groupingBy(Stream::getCreationJavaProject, Collectors.toSet()));
 
 		// process each project.
