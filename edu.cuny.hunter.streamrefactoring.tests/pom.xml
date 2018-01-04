@@ -19,7 +19,7 @@
         </os>
       </activation>
       <properties>
-        <ui.test.vmargs>${tycho.testArgLine} -XstartOnFirstThread</ui.test.vmargs>
+        <ui.test.vmargs>${tycho.testArgLine} -XstartOnFirstThread -ea</ui.test.vmargs>
         <argLine>${ui.test.vmargs}</argLine>
       </properties>
     </profile>
@@ -32,7 +32,7 @@
         </os>
       </activation>
       <properties>
-        <ui.test.vmargs>${tycho.testArgLine}</ui.test.vmargs>
+        <ui.test.vmargs>${tycho.testArgLine} -ea</ui.test.vmargs>
         <argLine>${ui.test.vmargs}</argLine>
       </properties>
     </profile>
