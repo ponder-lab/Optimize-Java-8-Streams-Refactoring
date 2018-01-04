@@ -374,7 +374,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	}
 
 	private static String[] buildAttributeColumns(String attribute) {
-		return new String[] { "stream", "start pos", "length", "method", "type FQN", attribute };
+		return new String[] { "subject", "stream", "start pos", "length", "method", "type FQN", attribute };
 	}	
 
 	private int getProjectLinesOfCode(IJavaProject javaProject) throws JavaModelException {
