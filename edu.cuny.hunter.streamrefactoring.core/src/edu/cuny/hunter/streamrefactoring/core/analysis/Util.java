@@ -414,11 +414,8 @@ public final class Util {
 	 * Find all annotations in test cases and check whether they are "entry point".
 	 * If yes, call DefaultEntrypoint to get entry point, then, add it into the
 	 * result set.
-	 * 
-	 * @throws InvalidClassFileException
-	 * @throws NoEntryPointException
 	 */
-	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) throws InvalidClassFileException {
+	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) {
 		final Set<Entrypoint> result = new HashSet<>();
 
 		for (Iterator<IClass> classIterator = classHierarchy.iterator(); classIterator.hasNext();) {
@@ -430,11 +427,15 @@ public final class Util {
 					if (!(method instanceof ShrikeCTMethod))
 						throw new IllegalArgumentException("@EntryPoint only works for byte code.");
 
-					for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations(true))
-						if (isEntryPointClass(annotation.getType().getName())) {
-							result.add(new DefaultEntrypoint(method, classHierarchy));
-							break;
-						}
+					try {
+						for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations(true))
+							if (isEntryPointClass(annotation.getType().getName())) {
+								result.add(new DefaultEntrypoint(method, classHierarchy));
+								break;
+							}
+					} catch (InvalidClassFileException e) {
+						throw new IllegalArgumentException("Annotation: " + method + " does not have annotation.", e);
+					}
 				}
 		}
 
