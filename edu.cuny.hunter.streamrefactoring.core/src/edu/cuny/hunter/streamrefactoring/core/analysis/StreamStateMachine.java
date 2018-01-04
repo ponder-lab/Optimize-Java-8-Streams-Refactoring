@@ -1186,6 +1186,10 @@ public class StreamStateMachine {
 			}
 			instanceToStreamMap.put(instanceKey, stream);
 		} // end each stream.
+
+		// sanity check since it's a bijection.
+		if (instanceToStreamMap.size() != streamSet.size())
+			throw new IllegalArgumentException("Stream set does not produce a bijection of instance keys.");
 	}
 
 	public Collection<InstanceKey> getTrackedInstances() {
