@@ -97,7 +97,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 				IJavaProject[] javaProjects = Util.getSelectedJavaProjectsFromEvent(event);
 
 				resultsPrinter = createCSVPrinter("results.csv",
-						new String[] { "subject", "#streams", "#optimization available streams", "#optimizable streams",
+						new String[] { "subject", "SLOC", "#streams", "#optimization available streams", "#optimizable streams",
 								"#failed preconditions", "time (s)" });
 
 				candidateStreamPrinter = createCSVPrinter("candidate_streams.csv",
@@ -131,6 +131,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 					// subject.
 					resultsPrinter.print(javaProject.getElementName());
+					
+					// lines of code
+					resultsPrinter.print(getProjectLinesOfCode(javaProject));
 
 					TimeCollector resultsTimeCollector = new TimeCollector();
 
@@ -374,6 +377,19 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 	private static String[] buildAttributeColumns(String attribute) {
 		return new String[] { "subject", "stream", "start pos", "length", "method", "type FQN", attribute };
+	}
+	
+	private int getProjectLinesOfCode(IJavaProject javaProject) throws JavaModelException {
+		AbstractMetricSource metricSource = Dispatcher.getAbstractMetricSource(javaProject);
+
+		if (metricSource != null) {
+			Metric value = metricSource.getValue("TLOC");
+			int mLOC = value.intValue();
+			return mLOC;
+		} else {
+			System.err.println("WARNING: Could not retrieve metric source for project: " + javaProject);
+			return 0;
+		}
 	}
 
 }
