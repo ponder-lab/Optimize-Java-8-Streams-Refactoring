@@ -40,8 +40,6 @@ import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.ui.tests.refactoring.Java18Setup;
 import org.eclipse.jdt.ui.tests.refactoring.RefactoringTest;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
-import org.junit.Rule;
-import org.junit.rules.ExpectedException;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.ExecutionMode;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Ordering;
