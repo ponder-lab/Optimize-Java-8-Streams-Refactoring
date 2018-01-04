@@ -714,8 +714,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
 				true, EnumSet.of(TransformationAction.CONVERT_TO_NON_CONCURRENT), PreconditionSuccess.P6,
-				Refactoring.CONVERT_CONCURRENT_COLLECTOR_TO_NONCONCURRENT, RefactoringStatus.OK,
-				Collections.emptySet()));
+				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	/**
@@ -725,7 +724,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()",
 				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.ORDERED), false, false,
 				true, EnumSet.of(TransformationAction.CONVERT_TO_SEQUENTIAL), PreconditionSuccess.P7,
-				Refactoring.CONVERT_PARALLEL_STREAM_TO_SEQUENTIAL, RefactoringStatus.OK, Collections.emptySet()));
+				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	/**
@@ -736,13 +735,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		transformations.add(TransformationAction.CONVERT_TO_NON_CONCURRENT);
 		transformations.add(TransformationAction.CONVERT_TO_SEQUENTIAL);
 
-		// HashSet<Refactoring> refactorings = new HashSet<>();
-		// refactorings.add(Refactoring.CONVERT_CONCURRENT_COLLECTOR_TO_NONCONCURRENT);
-		// refactorings.add(Refactoring.CONVERT_PARALLEL_STREAM_TO_SEQUENTIAL);
-
 		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()",
 				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.ORDERED), false, false,
-				true, transformations, PreconditionSuccess.P8, Refactoring.CONVERT_PARALLEL_STREAM_TO_SEQUENTIAL,
+				true, transformations, PreconditionSuccess.P8, Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION,
 				RefactoringStatus.OK, Collections.emptySet()));
 	}
 
@@ -756,9 +751,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
-				false, transformations, PreconditionSuccess.P9,
-				Refactoring.CONVERT_NONCONCURRENT_COLLECTOR_TO_CONCURRENT, RefactoringStatus.OK,
-				Collections.emptySet()));
+				false, transformations, PreconditionSuccess.P9, Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION,
+				RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	/**
@@ -768,7 +762,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
 				false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P10,
-				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	/**
@@ -778,8 +772,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()",
 				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.ORDERED), false, false,
 				false, EnumSet.of(TransformationAction.CONVERT_TO_CONCURRENT), PreconditionSuccess.P11,
-				Refactoring.CONVERT_NONCONCURRENT_COLLECTOR_TO_CONCURRENT, RefactoringStatus.OK,
-				Collections.emptySet()));
+				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 }
