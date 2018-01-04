@@ -97,8 +97,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 				IJavaProject[] javaProjects = Util.getSelectedJavaProjectsFromEvent(event);
 
 				resultsPrinter = createCSVPrinter("results.csv",
-						new String[] { "subject", "#streams", "#optimization available streams", "#optimizable streams",
-								"#failed preconditions", "time (s)", "Lines Of Code"});
+						new String[] { "subject", "SLOC", "#streams", "#optimization available streams", "#optimizable streams",
+								"#failed preconditions", "time (s)"});
 
 				candidateStreamPrinter = createCSVPrinter("candidate_streams.csv",
 						new String[] { "stream", "start pos", "length", "method", "type FQN" });
@@ -130,6 +130,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 					// subject.
 					resultsPrinter.print(javaProject.getElementName());
+					
+					// lines of code
+					resultsPrinter.print(getProjectLinesOfCode(javaProject));
 
 					TimeCollector resultsTimeCollector = new TimeCollector();
 
@@ -245,8 +248,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					// overall results time.
 					resultsPrinter.print((resultsTimeCollector.getCollectedTime()
 							- processor.getExcludedTimeCollector().getCollectedTime()) / 1000.0);
-					
-					resultsPrinter.print(getProjectLinesOfCode(javaProject));
 
 					// end the record.
 					resultsPrinter.println();
@@ -377,12 +378,16 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	}	
 
 	private int getProjectLinesOfCode(IJavaProject javaProject) throws JavaModelException {
-		Set<IMethod> methods = getAllMethods(javaProject);
-		int count = 0;
-		for (IMethod method : methods) {
-			count += getMethodLinesOfCode(method);
+		AbstractMetricSource metricSource = Dispatcher.getAbstractMetricSource(javaProject);
+
+		if (metricSource != null) {
+			Metric value = metricSource.getValue("TLOC");
+			int mLOC = value.intValue();
+			return mLOC;
+		} else {
+			System.err.println("WARNING: Could not retrieve metric source for project: " + javaProject);
+			return 0;
 		}
-		return count;
 	}
 
 }
