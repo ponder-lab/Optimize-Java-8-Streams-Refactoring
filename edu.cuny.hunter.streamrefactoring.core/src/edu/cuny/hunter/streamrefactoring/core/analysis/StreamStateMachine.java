@@ -218,7 +218,7 @@ public class StreamStateMachine {
 
 	private Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers = new HashMap<>();
 
-	private Map<InstanceKey, Stream> instanceKeyToStream;
+	private Map<InstanceKey, Stream> instanceToStreamMap = new HashMap<>();
 
 	private Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
 			BasicBlockInContext<IExplodedBasicBlock> block, StreamAttributeTypestateRule rule) {
@@ -696,7 +696,7 @@ public class StreamStateMachine {
 
 							for (InstanceKey instanceKey : receivers) {
 								// get the stream for the instance key.
-								Stream stream = instanceKeyToStream.get(instanceKey);
+								Stream stream = instanceToStreamMap.get(instanceKey);
 
 								LOGGER.log(Level.WARNING, "Unable to derive ROM for : " + stream.getCreation(), e);
 								stream.addStatusEntry(PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
@@ -1075,7 +1075,7 @@ public class StreamStateMachine {
 
 		// create a mapping between stream instances (from the analysis) and stream
 		// objects (from the refactoring).
-		createInstanceKeyStreamMap(streamSet, engine);
+		fillInstanceToStreamMap(streamSet, engine);
 
 		discoverTerminalOperations();
 
@@ -1112,8 +1112,8 @@ public class StreamStateMachine {
 		propagateStreamInstanceProperty(instancesWhoseReduceOrderingPossiblyMatters);
 
 		// for stream instance key.
-		for (InstanceKey streamInstanceKey : instanceKeyToStream.keySet()) {
-			Stream stream = instanceKeyToStream.get(streamInstanceKey);
+		for (InstanceKey streamInstanceKey : instanceToStreamMap.keySet()) {
+			Stream stream = instanceToStreamMap.get(streamInstanceKey);
 
 			// determine possible side-effects.
 			stream.setHasPossibleSideEffects(instancesWithSideEffects.contains(streamInstanceKey));
@@ -1164,10 +1164,8 @@ public class StreamStateMachine {
 		}
 	}
 
-	private void createInstanceKeyStreamMap(Set<Stream> streamSet, EclipseProjectAnalysisEngine<InstanceKey> engine)
+	private void fillInstanceToStreamMap(Set<Stream> streamSet, EclipseProjectAnalysisEngine<InstanceKey> engine)
 			throws InvalidClassFileException, IOException, CoreException {
-		instanceKeyToStream = new HashMap<>();
-
 		for (Stream stream : streamSet) {
 			InstanceKey instanceKey = null;
 			try {
@@ -1186,7 +1184,7 @@ public class StreamStateMachine {
 				}
 				continue; // next stream.
 			}
-			instanceKeyToStream.put(instanceKey, stream);
+			instanceToStreamMap.put(instanceKey, stream);
 		} // end each stream.
 	}
 
