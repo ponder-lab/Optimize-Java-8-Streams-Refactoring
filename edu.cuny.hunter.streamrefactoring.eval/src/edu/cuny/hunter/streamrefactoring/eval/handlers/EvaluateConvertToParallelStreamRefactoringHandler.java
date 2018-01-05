@@ -4,10 +4,12 @@ import static edu.cuny.hunter.streamrefactoring.core.utils.Util.createConvertToP
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -46,7 +48,10 @@ import org.eclipse.ltk.core.refactoring.RefactoringStatusEntry;
 import org.eclipse.ltk.core.refactoring.participants.ProcessorBasedRefactoring;
 import org.osgi.framework.FrameworkUtil;
 
+import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionSuccess;
+import edu.cuny.hunter.streamrefactoring.core.analysis.Refactoring;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
+import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
 import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
 import edu.cuny.hunter.streamrefactoring.eval.utils.Util;
@@ -96,9 +101,22 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 				IJavaProject[] javaProjects = Util.getSelectedJavaProjectsFromEvent(event);
 
+				List<String> resultsHeader = new ArrayList<>(Arrays.asList("subject", "#streams",
+						"#optimization available streams", "#optimizable streams", "#failed preconditions"));
+
+				for (Refactoring refactoring : Refactoring.values())
+					resultsHeader.add(refactoring.toString());
+
+				for (PreconditionSuccess preconditionSuccess : PreconditionSuccess.values())
+					resultsHeader.add(preconditionSuccess.toString());
+
+				for (TransformationAction action : TransformationAction.values())
+					resultsHeader.add(action.toString());
+
+				resultsHeader.add("time (s)");
+
 				resultsPrinter = createCSVPrinter("results.csv",
-						new String[] { "subject", "#streams", "#optimization available streams", "#optimizable streams",
-								"#failed preconditions", "time (s)" });
+						resultsHeader.toArray(new String[resultsHeader.size()]));
 
 				candidateStreamPrinter = createCSVPrinter("candidate_streams.csv",
 						new String[] { "subject", "stream", "start pos", "length", "method", "type FQN" });
@@ -221,6 +239,23 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 									entry.getMessage());
 						}
 					}
+
+					// Refactoring type counts.
+					for (Refactoring refactoring : Refactoring.values())
+						resultsPrinter.print(processor.getStreamSet().parallelStream().map(Stream::getRefactoring)
+								.filter(r -> Objects.equals(r, refactoring)).count());
+
+					// Precondition success counts.
+					for (PreconditionSuccess preconditionSuccess : PreconditionSuccess.values())
+						resultsPrinter
+								.print(processor.getStreamSet().parallelStream().map(Stream::getPassingPrecondition)
+										.filter(pp -> Objects.equals(pp, preconditionSuccess)).count());
+
+					// Transformation counts.
+					for (TransformationAction action : TransformationAction.values())
+						resultsPrinter.print(processor.getStreamSet().parallelStream().map(Stream::getActions)
+								.filter(Objects::nonNull).flatMap(as -> as.parallelStream())
+								.filter(a -> Objects.equals(a, action)).count());
 
 					// actually perform the refactoring if there are no fatal
 					// errors.
