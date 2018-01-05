@@ -2,6 +2,7 @@ package edu.cuny.hunter.streamrefactoring.ui.tests;
 
 import java.util.Set;
 
+import edu.cuny.hunter.streamrefactoring.core.analysis.CollectorKind;
 import edu.cuny.hunter.streamrefactoring.core.analysis.ExecutionMode;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Ordering;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
@@ -15,6 +16,8 @@ class StreamAnalysisExpectedResult {
 	private Set<ExecutionMode> expectedExecutionModes;
 
 	private Set<Ordering> expectedOrderings;
+	
+	private CollectorKind expectedCollectorKind;
 
 	private boolean expectingSideEffects;
 
@@ -49,7 +52,25 @@ class StreamAnalysisExpectedResult {
 		this.expectedStatusSeverity = expectedStatusSeverity;
 		this.expectedFailures = expectedFailures;
 	}
+	
+	/**
+	 * Overloading constructor to test complex mutable reduction
+	 */
+	public StreamAnalysisExpectedResult(String expectedCreation, Set<ExecutionMode> expectedExecutionModes,
+			Set<Ordering> expectedOrderings, CollectorKind expectedCollectorKind, boolean expectingSideEffects,
+			boolean expectingStatefulIntermediateOperation, boolean expectingThatReduceOrderingMatters,
+			Set<TransformationAction> expectedActions, PreconditionSuccess expectedPassingPrecondition,
+			Refactoring expectedRefactoring, int expectedStatusSeverity, Set<PreconditionFailure> expectedFailures) {
+		this(expectedCreation, expectedExecutionModes, expectedOrderings, expectingSideEffects,
+				expectingStatefulIntermediateOperation, expectingThatReduceOrderingMatters, expectedActions,
+				expectedPassingPrecondition, expectedRefactoring, expectedStatusSeverity, expectedFailures);
+		this.expectedCollectorKind = expectedCollectorKind;
+	}
 
+	public CollectorKind getExceptedCollectorKind() {
+		return expectedCollectorKind;
+	}
+	
 	public String getExpectedCreation() {
 		return expectedCreation;
 	}
