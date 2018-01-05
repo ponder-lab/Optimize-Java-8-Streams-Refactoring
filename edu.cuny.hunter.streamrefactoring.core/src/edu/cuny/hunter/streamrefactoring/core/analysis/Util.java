@@ -391,7 +391,7 @@ public final class Util {
 			MethodInvocation invocation) {
 		if (getBinaryName(methodDeclaringType)
 				.equals(invocation.getExpression().resolveTypeBinding().getBinaryName())) {
-			// FIXME: This matching needs much work.
+			// FIXME: This matching needs much work #153.
 			if (method.getName().toString().equals(invocation.resolveMethodBinding().getName())) {
 				return true;
 			}

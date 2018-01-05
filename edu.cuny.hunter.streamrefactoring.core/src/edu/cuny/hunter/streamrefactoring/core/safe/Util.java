@@ -3,6 +3,7 @@ package edu.cuny.hunter.streamrefactoring.core.safe;
 import java.util.Iterator;
 
 import com.ibm.wala.classLoader.CallSiteReference;
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.classLoader.NewSiteReference;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
@@ -37,7 +38,7 @@ public class Util {
 	 *         instance key according to the given call graph.
 	 */
 	public static boolean instanceKeyCorrespondsWithInstantiationInstruction(InstanceKey instanceKey,
-			SSAInvokeInstruction instruction, CallGraph callGraph) {
+			SSAInvokeInstruction instruction, MethodReference instructionEnclosingMethod, CallGraph callGraph) {
 		// Creation sites for the instance with the given key in the given call
 		// graph.
 		Iterator<Pair<CGNode, NewSiteReference>> creationSites = instanceKey.getCreationSites(callGraph);
@@ -53,13 +54,22 @@ public class Util {
 			// get the call site references corresponding to the call string.
 			CallSiteReference[] callSiteRefs = callString.getCallSiteRefs();
 
+			// get the methods corresponding to the call string.
+			IMethod[] methods = callString.getMethods();
+
+			// check sanity.
+			assert callSiteRefs.length == methods.length : "Call sites and methods should correlate.";
+
 			// for each call site reference.
-			for (CallSiteReference callSiteReference : callSiteRefs) {
+			for (int i = 0; i < callSiteRefs.length; i++) {
+				CallSiteReference callSiteReference = callSiteRefs[i];
+				IMethod method = methods[i];
 				CallSiteReference instructionCallSite = instruction.getCallSite();
 
 				// if the call site reference equals the call site corresponding
 				// to the creation instruction.
-				if (callSiteReference.equals(instructionCallSite))
+				if (callSiteReference.equals(instructionCallSite)
+						&& method.getReference().getSignature().equals(instructionEnclosingMethod.getSignature()))
 					return true;
 				// workaround #80.
 				else if (callSiteReference.getProgramCounter() == instructionCallSite.getProgramCounter()) {
