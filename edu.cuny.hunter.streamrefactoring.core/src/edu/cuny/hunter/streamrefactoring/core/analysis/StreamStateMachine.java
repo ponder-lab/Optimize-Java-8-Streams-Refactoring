@@ -1166,6 +1166,7 @@ public class StreamStateMachine {
 
 	private void fillInstanceToStreamMap(Set<Stream> streamSet, EclipseProjectAnalysisEngine<InstanceKey> engine)
 			throws InvalidClassFileException, IOException, CoreException {
+		int skippedStreams = 0;
 		for (Stream stream : streamSet) {
 			InstanceKey instanceKey = null;
 			try {
@@ -1182,13 +1183,14 @@ public class StreamStateMachine {
 							"Either pivital code isn't reachable for stream: " + stream.getCreation()
 									+ " or entry points are misconfigured.");
 				}
+				++skippedStreams;
 				continue; // next stream.
 			}
 			instanceToStreamMap.put(instanceKey, stream);
 		} // end each stream.
 
 		// sanity check since it's a bijection.
-		if (instanceToStreamMap.size() != streamSet.size())
+		if (instanceToStreamMap.size() != streamSet.size() - skippedStreams)
 			throw new IllegalArgumentException("Stream set does not produce a bijection of instance keys.");
 	}
 

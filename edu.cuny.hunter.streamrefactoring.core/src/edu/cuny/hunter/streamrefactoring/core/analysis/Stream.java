@@ -409,7 +409,7 @@ public class Stream {
 			instanceKey = this.getInstructionForCreation(engine)
 					.flatMap(instruction -> trackedInstances.stream()
 							.filter(ik -> instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction,
-									engine.getCallGraph()))
+									this.getEnclosingMethodReference(), engine.getCallGraph()))
 							.findFirst())
 					.orElseThrow(() -> new InstanceKeyNotFoundException("Can't find instance key for: "
 							+ this.getCreation() + " using tracked instances: " + trackedInstances));
