@@ -41,7 +41,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	private Set<EclipseProjectAnalysisEngine<InstanceKey>> enginesWithBuiltCallGraphs = new HashSet<>();
 
 	protected void buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine) throws IOException, CoreException,
-			CallGraphBuilderCancelException, CancelException, InvalidClassFileException, NoEntryPointException {
+			CallGraphBuilderCancelException, CancelException, NoEntryPointException {
 		// if we haven't built the call graph yet.
 		if (!enginesWithBuiltCallGraphs.contains(engine)) {
 			// find explicit entry points.
@@ -55,7 +55,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			// add them as well.
 			for (Entrypoint implicitEntryPoint : mainEntrypoints) {
 				LOGGER.info(() -> "Adding implicit entry point: " + implicitEntryPoint);
-				// entryPoints.add(implicitEntryPoint);
+				entryPoints.add(implicitEntryPoint);
 			}
 
 			if (entryPoints.isEmpty())
@@ -119,7 +119,7 @@ public class StreamAnalyzer extends ASTVisitor {
 					stream.addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
 							"Project: " + engine.getProject().getElementName() + " has no entry points.");
 				return;
-			} catch (IOException | CoreException | InvalidClassFileException | CancelException e) {
+			} catch (IOException | CoreException | CancelException e) {
 				LOGGER.log(Level.SEVERE,
 						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
 				throw new RuntimeException(e);

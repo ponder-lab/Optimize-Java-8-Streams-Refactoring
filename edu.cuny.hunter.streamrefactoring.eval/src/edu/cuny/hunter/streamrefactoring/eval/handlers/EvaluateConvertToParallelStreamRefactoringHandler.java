@@ -149,6 +149,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 					// subject.
 					resultsPrinter.print(javaProject.getElementName());
+					
+					// lines of code
+					resultsPrinter.print(getProjectLinesOfCode(javaProject));
 
 					TimeCollector resultsTimeCollector = new TimeCollector();
 
@@ -366,6 +369,19 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			return 0;
 		}
 	}
+	
+	private static int getProjectLinesOfCode(IJavaProject javaProject) {
+		AbstractMetricSource metricSource = Dispatcher.getAbstractMetricSource(javaProject);
+
+		if (metricSource != null) {
+			Metric value = metricSource.getValue("TLOC");
+			int tLOC = value.intValue();
+			return tLOC;
+		} else {
+			System.err.println("WARNING: Could not retrieve metric source for project: " + javaProject);
+			return 0;
+		}
+	}
 
 	private boolean shouldPerformChange() {
 		String performChangePropertyValue = System.getenv(PERFORM_CHANGE_PROPERTY_KEY);
@@ -410,5 +426,4 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	private static String[] buildAttributeColumns(String attribute) {
 		return new String[] { "subject", "stream", "start pos", "length", "method", "type FQN", attribute };
 	}
-
 }

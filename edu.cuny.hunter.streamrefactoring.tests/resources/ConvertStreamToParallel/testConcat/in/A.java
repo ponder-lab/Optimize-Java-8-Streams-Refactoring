@@ -11,6 +11,7 @@ import edu.cuny.hunter.streamrefactoring.annotations.*;
 class A {
 	@EntryPoint
 	void m() {
-		concat(new HashSet().parallelStream(), new HashSet().parallelStream()).count();
+		concat(new HashSet().parallelStream(),
+				new HashSet().parallelStream()).count();
 	}
 }
