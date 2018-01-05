@@ -12,5 +12,4 @@ public enum PreconditionSuccess {
 	P9,
 	P10,
 	P11
-
 }
