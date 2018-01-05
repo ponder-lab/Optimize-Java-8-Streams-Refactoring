@@ -245,7 +245,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	public String getRefactoringPath() {
 		return REFACTORING_PATH;
 	}
-	
+
 	/**
 	 * Runs a single analysis test.
 	 */
