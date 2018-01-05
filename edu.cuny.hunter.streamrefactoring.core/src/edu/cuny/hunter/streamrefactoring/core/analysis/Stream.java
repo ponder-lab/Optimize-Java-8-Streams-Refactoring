@@ -589,6 +589,12 @@ public class Stream {
 			// get the use value number for the stream creation.
 			int valueNumber = getUseValueNumberForCreation(engine);
 
+			if (valueNumber < 0) {
+				LOGGER.warning("Use value number: " + valueNumber + " for stream creation: "
+						+ this.getCreation().getName() + " is invalid. Most likely #155.");
+				throw new UnhandledCaseException("Encountered unhandled case, most likely an embedded stream.");
+			}
+
 			// get the enclosing method node.
 			CGNode node = null;
 			try {
