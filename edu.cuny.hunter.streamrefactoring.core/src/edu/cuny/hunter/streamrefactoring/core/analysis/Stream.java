@@ -168,7 +168,7 @@ public class Stream {
 
 	private final TypeDeclaration enclosingTypeDeclaration;
 	
-	private CollectorKind collectorKind = null;
+	private CollectorKind collectorKind;
 
 	private boolean hasPossibleSideEffects;
 

@@ -61,18 +61,10 @@ class StreamAnalysisExpectedResult {
 			boolean expectingStatefulIntermediateOperation, boolean expectingThatReduceOrderingMatters,
 			Set<TransformationAction> expectedActions, PreconditionSuccess expectedPassingPrecondition,
 			Refactoring expectedRefactoring, int expectedStatusSeverity, Set<PreconditionFailure> expectedFailures) {
-		this.expectedCreation = expectedCreation;
-		this.expectedExecutionModes = expectedExecutionModes;
-		this.expectedOrderings = expectedOrderings;
+		this(expectedCreation, expectedExecutionModes, expectedOrderings, expectingSideEffects,
+				expectingStatefulIntermediateOperation, expectingThatReduceOrderingMatters, expectedActions,
+				expectedPassingPrecondition, expectedRefactoring, expectedStatusSeverity, expectedFailures);
 		this.expectedCollectorKind = expectedCollectorKind;
-		this.expectingSideEffects = expectingSideEffects;
-		this.expectingStatefulIntermediateOperation = expectingStatefulIntermediateOperation;
-		this.expectingThatReduceOrderingMatters = expectingThatReduceOrderingMatters;
-		this.expectedActions = expectedActions;
-		this.expectedPassingPrecondition = expectedPassingPrecondition;
-		this.expectedRefactoring = expectedRefactoring;
-		this.expectedStatusSeverity = expectedStatusSeverity;
-		this.expectedFailures = expectedFailures;
 	}
 
 	public CollectorKind getExceptedCollectorKind() {
