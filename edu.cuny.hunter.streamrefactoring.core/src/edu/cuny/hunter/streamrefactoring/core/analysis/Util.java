@@ -434,7 +434,7 @@ public final class Util {
 								break;
 							}
 					} catch (InvalidClassFileException e) {
-						throw new IllegalArgumentException("Annotation: " + method + " does not have annotation.", e);
+						throw new IllegalArgumentException("Failed to find entry points using class hierarchy: " +  classHierarchy + ".", e);
 					}
 				}
 		}
