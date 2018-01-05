@@ -247,80 +247,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 	
 	/**
-	 * Runs a single analysis test. Test #138.
-	 */
-	private void helper(CollectorKind expectedCollectorKind, StreamAnalysisExpectedResult... expectedResults)
-			throws Exception {
-		Map<String, List<Stream>> creationStringToStreams = getCreationStringToStream();
-
-		// compare them with the expected results.
-		// for each expected result.
-		for (StreamAnalysisExpectedResult result : expectedResults) {
-			Stream stream = processStreamAnalysisExceptedResult(result, creationStringToStreams);
-			CollectorKind collectorKind = stream.getCollectorKind();
-			assertEquals(errorMessage("orderings", result), expectedCollectorKind, collectorKind);
-		}
-	}
-
-	/**
 	 * Runs a single analysis test.
 	 */
 	private void helper(StreamAnalysisExpectedResult... expectedResults) throws Exception {
-
-		Map<String, List<Stream>> creationStringToStreams = getCreationStringToStream();
-
-		// compare them with the expected results.
-		// for each expected result.
-		for (StreamAnalysisExpectedResult result : expectedResults) {
-			processStreamAnalysisExceptedResult(result, creationStringToStreams);
-		}
-	}
-
-	private Stream processStreamAnalysisExceptedResult(StreamAnalysisExpectedResult result,
-			Map<String, List<Stream>> creationStringToStreams) {
-		// find the corresponding stream in the actual results.
-		List<Stream> expectingStreams = creationStringToStreams.get(result.getExpectedCreation());
-
-		String errorMessage = "Can't find corresponding stream for creation: " + result.getExpectedCreation();
-		assertNotNull(errorMessage, expectingStreams);
-		assertFalse(errorMessage, expectingStreams.isEmpty());
-
-		assertEquals("Ambigious corresponding stream for creation: " + result.getExpectedCreation(), 1,
-				expectingStreams.size());
-
-		Stream stream = expectingStreams.get(0);
-
-		Set<ExecutionMode> executionModes = stream.getPossibleExecutionModes();
-		assertEquals(errorMessage("execution mode", result), result.getExpectedExecutionModes(), executionModes);
-
-		Set<Ordering> orderings = stream.getPossibleOrderings();
-		assertEquals(errorMessage("orderings", result), result.getExpectedOrderings(), orderings);
-
-		assertEquals(errorMessage("side effects", result), result.isExpectingSideEffects(),
-				stream.hasPossibleSideEffects());
-		assertEquals(errorMessage("stateful intermediate operations", result),
-				result.isExpectingStatefulIntermediateOperation(), stream.hasPossibleStatefulIntermediateOperations());
-		assertEquals(errorMessage("ROM", result), result.isExpectingThatReduceOrderingMatters(),
-				stream.reduceOrderingPossiblyMatters());
-		assertEquals(errorMessage("transformation actions", result), result.getExpectedActions(), stream.getActions());
-		assertEquals(errorMessage("passing precondition", result), result.getExpectedPassingPrecondition(),
-				stream.getPassingPrecondition());
-		assertEquals(errorMessage("refactoring", result), result.getExpectedRefactoring(), stream.getRefactoring());
-		assertEquals(errorMessage("status severity", result), result.getExpectedStatusSeverity(),
-				stream.getStatus().getSeverity());
-
-		Set<Integer> actualCodes = Arrays.stream(stream.getStatus().getEntries()).map(e -> e.getCode())
-				.collect(Collectors.toSet());
-
-		Set<Integer> expectedCodes = result.getExpectedFailures().stream().map(e -> e.getCode())
-				.collect(Collectors.toSet());
-
-		assertEquals(errorMessage("status codes", result), expectedCodes, actualCodes);
-
-		return stream;
-	}
-	
-	private Map<String, List<Stream>> getCreationStringToStream() throws Exception {
 		// compute the actual results.
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
 
@@ -338,9 +267,59 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 		Map<String, List<Stream>> creationStringToStreams = resultingStreams.stream()
 				.collect(Collectors.groupingBy(s -> s.getCreation().toString()));
-		return creationStringToStreams;
 
+		// compare them with the expected results.
+		// for each expected result.
+		for (StreamAnalysisExpectedResult result : expectedResults) {
+			// find the corresponding stream in the actual results.
+			List<Stream> expectingStreams = creationStringToStreams.get(result.getExpectedCreation());
+
+			String errorMessage = "Can't find corresponding stream for creation: " + result.getExpectedCreation();
+			assertNotNull(errorMessage, expectingStreams);
+			assertFalse(errorMessage, expectingStreams.isEmpty());
+
+			assertEquals("Ambigious corresponding stream for creation: " + result.getExpectedCreation(), 1,
+					expectingStreams.size());
+
+			Stream stream = expectingStreams.get(0);
+
+			Set<ExecutionMode> executionModes = stream.getPossibleExecutionModes();
+			assertEquals(errorMessage("execution mode", result), result.getExpectedExecutionModes(), executionModes);
+
+			Set<Ordering> orderings = stream.getPossibleOrderings();
+			assertEquals(errorMessage("orderings", result), result.getExpectedOrderings(), orderings);
+			
+			// exceptedCollecterKind is initialized in the excepted result class
+			if (result.getExceptedCollectorKind() != null) {
+				CollectorKind collectorKind = stream.getCollectorKind();
+				assertEquals(errorMessage("collector kind", result), result.getExceptedCollectorKind(), collectorKind);
+			}
+
+			assertEquals(errorMessage("side effects", result), result.isExpectingSideEffects(),
+					stream.hasPossibleSideEffects());
+			assertEquals(errorMessage("stateful intermediate operations", result),
+					result.isExpectingStatefulIntermediateOperation(),
+					stream.hasPossibleStatefulIntermediateOperations());
+			assertEquals(errorMessage("ROM", result), result.isExpectingThatReduceOrderingMatters(),
+					stream.reduceOrderingPossiblyMatters());
+			assertEquals(errorMessage("transformation actions", result), result.getExpectedActions(),
+					stream.getActions());
+			assertEquals(errorMessage("passing precondition", result), result.getExpectedPassingPrecondition(),
+					stream.getPassingPrecondition());
+			assertEquals(errorMessage("refactoring", result), result.getExpectedRefactoring(), stream.getRefactoring());
+			assertEquals(errorMessage("status severity", result), result.getExpectedStatusSeverity(),
+					stream.getStatus().getSeverity());
+
+			Set<Integer> actualCodes = Arrays.stream(stream.getStatus().getEntries()).map(e -> e.getCode())
+					.collect(Collectors.toSet());
+
+			Set<Integer> expectedCodes = result.getExpectedFailures().stream().map(e -> e.getCode())
+					.collect(Collectors.toSet());
+
+			assertEquals(errorMessage("status codes", result), expectedCodes, actualCodes);
+		}
 	}
+
 
 	private static String errorMessage(String attribute, StreamAnalysisExpectedResult result) {
 		return "Unexpected " + attribute + " for " + result.getExpectedCreation() + ".";
@@ -738,22 +717,20 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * Test #64. Test P6 in table3.
 	 */
 	public void testConcurrentReduction() throws Exception {
-		helper(CollectorKind.CONCURRENT,
-				new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
-						EnumSet.of(Ordering.ORDERED), false, false, true,
-						EnumSet.of(TransformationAction.CONVERT_COLLECTOR_TO_NON_CONCURRENT), PreconditionSuccess.P6,
-						Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
+		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
+				EnumSet.of(Ordering.ORDERED), CollectorKind.CONCURRENT, false, false, true,
+				EnumSet.of(TransformationAction.CONVERT_COLLECTOR_TO_NON_CONCURRENT), PreconditionSuccess.P6,
+				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	/**
 	 * Test #64. Test P7 in table 3.
 	 */
 	public void testConcurrentReduction1() throws Exception {
-		helper(CollectorKind.NONCONCURRENT,
-				new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.PARALLEL),
-						EnumSet.of(Ordering.ORDERED), false, false, true,
-						EnumSet.of(TransformationAction.CONVERT_TO_SEQUENTIAL), PreconditionSuccess.P7,
-						Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
+		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.PARALLEL),
+				EnumSet.of(Ordering.ORDERED), CollectorKind.NONCONCURRENT, false, false, true,
+				EnumSet.of(TransformationAction.CONVERT_TO_SEQUENTIAL), PreconditionSuccess.P7,
+				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	/**
@@ -764,10 +741,10 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		transformations.add(TransformationAction.CONVERT_COLLECTOR_TO_NON_CONCURRENT);
 		transformations.add(TransformationAction.CONVERT_TO_SEQUENTIAL);
 
-		helper(CollectorKind.CONCURRENT,
-				new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.PARALLEL),
-						EnumSet.of(Ordering.ORDERED), false, false, true, transformations, PreconditionSuccess.P8,
-						Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
+		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.PARALLEL),
+				EnumSet.of(Ordering.ORDERED), CollectorKind.CONCURRENT, false, false, true, transformations,
+				PreconditionSuccess.P8, Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK,
+				Collections.emptySet()));
 	}
 
 	/**
@@ -778,32 +755,30 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		transformations.add(TransformationAction.CONVERT_COLLECTOR_TO_CONCURRENT);
 		transformations.add(TransformationAction.CONVERT_TO_PARALLEL);
 
-		helper(CollectorKind.NONCONCURRENT,
-				new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
-						EnumSet.of(Ordering.ORDERED), false, false, false, transformations, PreconditionSuccess.P9,
-						Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
+		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
+				EnumSet.of(Ordering.ORDERED), CollectorKind.NONCONCURRENT, false, false, false, transformations,
+				PreconditionSuccess.P9, Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK,
+				Collections.emptySet()));
 	}
 
 	/**
 	 * Test #64. Test P10 in table 3.
 	 */
 	public void testConcurrentReduction4() throws Exception {
-		helper(CollectorKind.CONCURRENT,
-				new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
-						EnumSet.of(Ordering.ORDERED), false, false, false,
-						EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P10,
-						Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
+		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
+				EnumSet.of(Ordering.ORDERED), CollectorKind.CONCURRENT, false, false, false,
+				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P10,
+				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	/**
 	 * Test #64. Test P11 in table 3.
 	 */
 	public void testConcurrentReduction5() throws Exception {
-		helper(CollectorKind.NONCONCURRENT,
-				new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.PARALLEL),
-						EnumSet.of(Ordering.ORDERED), false, false, false,
-						EnumSet.of(TransformationAction.CONVERT_COLLECTOR_TO_CONCURRENT), PreconditionSuccess.P11,
-						Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
+		helper(new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.PARALLEL),
+				EnumSet.of(Ordering.ORDERED), CollectorKind.NONCONCURRENT, false, false, false,
+				EnumSet.of(TransformationAction.CONVERT_COLLECTOR_TO_CONCURRENT), PreconditionSuccess.P11,
+				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 }
