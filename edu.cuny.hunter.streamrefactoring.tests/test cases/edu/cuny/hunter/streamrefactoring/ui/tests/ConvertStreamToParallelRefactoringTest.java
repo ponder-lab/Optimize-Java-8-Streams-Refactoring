@@ -275,8 +275,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 			processStreamAnalysisExceptedResult(result, creationStringToStreams);
 		}
 	}
-	
-	private Stream processStreamAnalysisExceptedResult(StreamAnalysisExpectedResult result, Map<String, List<Stream>> creationStringToStreams ) {
+
+	private Stream processStreamAnalysisExceptedResult(StreamAnalysisExpectedResult result,
+			Map<String, List<Stream>> creationStringToStreams) {
 		// find the corresponding stream in the actual results.
 		List<Stream> expectingStreams = creationStringToStreams.get(result.getExpectedCreation());
 
@@ -298,12 +299,10 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		assertEquals(errorMessage("side effects", result), result.isExpectingSideEffects(),
 				stream.hasPossibleSideEffects());
 		assertEquals(errorMessage("stateful intermediate operations", result),
-				result.isExpectingStatefulIntermediateOperation(),
-				stream.hasPossibleStatefulIntermediateOperations());
+				result.isExpectingStatefulIntermediateOperation(), stream.hasPossibleStatefulIntermediateOperations());
 		assertEquals(errorMessage("ROM", result), result.isExpectingThatReduceOrderingMatters(),
 				stream.reduceOrderingPossiblyMatters());
-		assertEquals(errorMessage("transformation actions", result), result.getExpectedActions(),
-				stream.getActions());
+		assertEquals(errorMessage("transformation actions", result), result.getExpectedActions(), stream.getActions());
 		assertEquals(errorMessage("passing precondition", result), result.getExpectedPassingPrecondition(),
 				stream.getPassingPrecondition());
 		assertEquals(errorMessage("refactoring", result), result.getExpectedRefactoring(), stream.getRefactoring());
@@ -317,7 +316,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				.collect(Collectors.toSet());
 
 		assertEquals(errorMessage("status codes", result), expectedCodes, actualCodes);
-		
+
 		return stream;
 	}
 	
