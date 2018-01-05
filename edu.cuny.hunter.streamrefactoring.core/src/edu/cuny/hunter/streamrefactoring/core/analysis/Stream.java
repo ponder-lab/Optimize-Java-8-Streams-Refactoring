@@ -95,6 +95,8 @@ public class Stream {
 
 	private final MethodInvocation creation;
 
+	private Optional<SSAInvokeInstruction> instructionForCreation;
+
 	private final MethodDeclaration enclosingMethodDeclaration;
 
 	private IR enclosingMethodDeclarationIR;
@@ -419,24 +421,29 @@ public class Stream {
 
 	Optional<SSAInvokeInstruction> getInstructionForCreation(EclipseProjectAnalysisEngine<InstanceKey> engine)
 			throws InvalidClassFileException, IOException, CoreException {
-		IBytecodeMethod method = (IBytecodeMethod) this.getEnclosingMethodIR(engine).getMethod();
-		SimpleName methodName = this.getCreation().getName();
+		if (this.instructionForCreation == null) {
+			IBytecodeMethod method = (IBytecodeMethod) this.getEnclosingMethodIR(engine).getMethod();
+			SimpleName methodName = this.getCreation().getName();
 
-		for (Iterator<SSAInstruction> it = this.getEnclosingMethodIR(engine).iterateNormalInstructions(); it
-				.hasNext();) {
-			SSAInstruction instruction = it.next();
+			for (Iterator<SSAInstruction> it = this.getEnclosingMethodIR(engine).iterateNormalInstructions(); it
+					.hasNext();) {
+				SSAInstruction instruction = it.next();
 
-			int lineNumberFromIR = getLineNumberFromIR(method, instruction);
-			int lineNumberFromAST = getLineNumberFromAST(methodName);
+				int lineNumberFromIR = getLineNumberFromIR(method, instruction);
+				int lineNumberFromAST = getLineNumberFromAST(methodName);
 
-			if (lineNumberFromIR == lineNumberFromAST) {
-				// lines from the AST and the IR match. Let's dive a little
-				// deeper to be more confident of the correspondence.
-				if (matches(instruction, this.getCreation(), Optional.of(LOGGER)))
-					return Optional.of((SSAInvokeInstruction) instruction);
+				if (lineNumberFromIR == lineNumberFromAST) {
+					// lines from the AST and the IR match. Let's dive a little
+					// deeper to be more confident of the correspondence.
+					if (matches(instruction, this.getCreation(), Optional.of(LOGGER))) {
+						instructionForCreation = Optional.of((SSAInvokeInstruction) instruction);
+						return instructionForCreation;
+					}
+				}
 			}
+			instructionForCreation = Optional.empty();
 		}
-		return Optional.empty();
+		return instructionForCreation;
 	}
 
 	private JDTIdentityMapper getJDTIdentifyMapperForCreation() {
