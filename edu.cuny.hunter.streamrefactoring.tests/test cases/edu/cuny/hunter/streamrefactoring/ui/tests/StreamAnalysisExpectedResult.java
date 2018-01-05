@@ -53,6 +53,9 @@ class StreamAnalysisExpectedResult {
 		this.expectedFailures = expectedFailures;
 	}
 	
+	/**
+	 * Overloading constructor to test complex mutable reduction
+	 */
 	public StreamAnalysisExpectedResult(String expectedCreation, Set<ExecutionMode> expectedExecutionModes,
 			Set<Ordering> expectedOrderings, CollectorKind expectedCollectorKind, boolean expectingSideEffects,
 			boolean expectingStatefulIntermediateOperation, boolean expectingThatReduceOrderingMatters,

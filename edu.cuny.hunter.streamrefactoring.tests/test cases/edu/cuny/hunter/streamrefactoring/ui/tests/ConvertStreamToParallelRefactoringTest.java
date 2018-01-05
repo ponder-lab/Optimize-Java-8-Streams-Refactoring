@@ -320,7 +320,6 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		}
 	}
 
-
 	private static String errorMessage(String attribute, StreamAnalysisExpectedResult result) {
 		return "Unexpected " + attribute + " for " + result.getExpectedCreation() + ".";
 	}
