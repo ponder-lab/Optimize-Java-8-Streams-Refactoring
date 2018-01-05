@@ -168,7 +168,7 @@ public class Stream {
 
 	private final TypeDeclaration enclosingTypeDeclaration;
 	
-	private CollectorKind collectorKind;
+	private CollectorKind collectorKind = null;
 
 	private boolean hasPossibleSideEffects;
 
@@ -637,7 +637,7 @@ public class Stream {
 	}
 
 	public CollectorKind getCollectorKind() {
-		return null;
+		return this.collectorKind;
 	}
 	
 	public Refactoring getRefactoring() {
