@@ -715,7 +715,7 @@ public class Stream {
 		builder.append(", creation=");
 		builder.append(creation);
 		builder.append(", enclosingMethodDeclaration=");
-		builder.append(enclosingMethodDeclaration);
+		builder.append(enclosingMethodDeclaration.getName());
 		builder.append(", hasPossibleSideEffects=");
 		builder.append(hasPossibleSideEffects);
 		builder.append(", hasPossibleStatefulIntermediateOperations=");
