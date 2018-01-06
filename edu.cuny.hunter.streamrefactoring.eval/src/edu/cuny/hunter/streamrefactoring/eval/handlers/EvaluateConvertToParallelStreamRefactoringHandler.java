@@ -101,7 +101,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 				IJavaProject[] javaProjects = Util.getSelectedJavaProjectsFromEvent(event);
 
-				List<String> resultsHeader = new ArrayList<>(Arrays.asList("subject", "#streams",
+				List<String> resultsHeader = new ArrayList<>(Arrays.asList("subject", "SLOC", "#streams",
 						"#optimization available streams", "#optimizable streams", "#failed preconditions"));
 
 				for (Refactoring refactoring : Refactoring.values())
@@ -149,7 +149,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 					// subject.
 					resultsPrinter.print(javaProject.getElementName());
-					
+
 					// lines of code
 					resultsPrinter.print(getProjectLinesOfCode(javaProject));
 
@@ -369,7 +369,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			return 0;
 		}
 	}
-	
+
 	private static int getProjectLinesOfCode(IJavaProject javaProject) {
 		AbstractMetricSource metricSource = Dispatcher.getAbstractMetricSource(javaProject);
 
