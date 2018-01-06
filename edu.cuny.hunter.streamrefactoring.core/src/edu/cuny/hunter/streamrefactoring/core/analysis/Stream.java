@@ -329,10 +329,14 @@ public class Stream {
 	}
 
 	private IR getEnclosingMethodIR(EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws IOException, CoreException {
+			throws IOException, CoreException, UnhandledCaseException {
 		if (enclosingMethodDeclarationIR == null) {
 			// get the IR for the enclosing method.
 			com.ibm.wala.classLoader.IMethod resolvedMethod = getEnclosingWalaMethod(engine);
+
+			if (resolvedMethod == null)
+				throw new UnhandledCaseException("Couldn't retrieve enclosing WALA method. Most likely an AIC.");
+
 			enclosingMethodDeclarationIR = engine.getCache().getIR(resolvedMethod);
 
 			if (enclosingMethodDeclarationIR == null)
@@ -406,8 +410,8 @@ public class Stream {
 	}
 
 	public InstanceKey getInstanceKey(Collection<InstanceKey> trackedInstances,
-			EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws InvalidClassFileException, IOException, CoreException, InstanceKeyNotFoundException {
+			EclipseProjectAnalysisEngine<InstanceKey> engine) throws InvalidClassFileException, IOException,
+			CoreException, InstanceKeyNotFoundException, UnhandledCaseException {
 		if (instanceKey == null) {
 			instanceKey = this.getInstructionForCreation(engine)
 					.flatMap(instruction -> trackedInstances.stream()
@@ -421,7 +425,7 @@ public class Stream {
 	}
 
 	Optional<SSAInvokeInstruction> getInstructionForCreation(EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws InvalidClassFileException, IOException, CoreException {
+			throws InvalidClassFileException, IOException, CoreException, UnhandledCaseException {
 		if (this.instructionForCreation == null) {
 			IR enclosingMethodIR = this.getEnclosingMethodIR(engine);
 
@@ -517,7 +521,7 @@ public class Stream {
 	}
 
 	private int getUseValueNumberForCreation(EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws InvalidClassFileException, IOException, CoreException {
+			throws InvalidClassFileException, IOException, CoreException, UnhandledCaseException {
 		return getInstructionForCreation(engine).map(i -> i.getUse(0)).orElse(-1);
 	}
 
