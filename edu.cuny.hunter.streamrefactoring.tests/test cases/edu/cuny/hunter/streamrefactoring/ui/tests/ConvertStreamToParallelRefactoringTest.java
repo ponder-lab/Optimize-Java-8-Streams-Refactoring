@@ -371,6 +371,17 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
+	/**
+	 * There is a problem between mapping methods declared within AICs from the
+	 * Eclipse DOM to the WALA DOM.
+	 */
+	public void testAnonymousInnerClass() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new ArrayList().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, false, false,
+				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
+				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+	}
+
 	public void testBitSet() throws Exception {
 		helper(new StreamAnalysisExpectedResult("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
 				Collections.singleton(Ordering.ORDERED), false, false, false,
