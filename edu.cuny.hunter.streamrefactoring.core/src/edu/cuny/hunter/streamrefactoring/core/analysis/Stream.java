@@ -361,12 +361,13 @@ public class Stream {
 	}
 
 	MethodReference getEnclosingMethodReference() {
-		JDTIdentityMapper mapper = getJDTIdentifyMapper(getEnclosingMethodDeclaration());
-		MethodReference methodRef = mapper.getMethodRef(getEnclosingMethodDeclaration().resolveBinding());
+		MethodDeclaration enclosingMethodDeclaration = getEnclosingMethodDeclaration();
+		JDTIdentityMapper mapper = getJDTIdentifyMapper(enclosingMethodDeclaration);
+		MethodReference methodRef = mapper.getMethodRef(enclosingMethodDeclaration.resolveBinding());
 
 		if (methodRef == null)
 			throw new IllegalStateException(
-					"Could not get method reference for: " + getEnclosingMethodDeclaration().getName());
+					"Could not get method reference for: " + enclosingMethodDeclaration.getName());
 		return methodRef;
 	}
 
@@ -422,11 +423,12 @@ public class Stream {
 	Optional<SSAInvokeInstruction> getInstructionForCreation(EclipseProjectAnalysisEngine<InstanceKey> engine)
 			throws InvalidClassFileException, IOException, CoreException {
 		if (this.instructionForCreation == null) {
-			IBytecodeMethod method = (IBytecodeMethod) this.getEnclosingMethodIR(engine).getMethod();
+			IR enclosingMethodIR = this.getEnclosingMethodIR(engine);
+
+			IBytecodeMethod method = (IBytecodeMethod) enclosingMethodIR.getMethod();
 			SimpleName methodName = this.getCreation().getName();
 
-			for (Iterator<SSAInstruction> it = this.getEnclosingMethodIR(engine).iterateNormalInstructions(); it
-					.hasNext();) {
+			for (Iterator<SSAInstruction> it = enclosingMethodIR.iterateNormalInstructions(); it.hasNext();) {
 				SSAInstruction instruction = it.next();
 
 				int lineNumberFromIR = getLineNumberFromIR(method, instruction);
