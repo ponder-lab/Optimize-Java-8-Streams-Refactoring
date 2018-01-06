@@ -704,4 +704,12 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
+	
+	public void testImplicitEntryPoint() throws Exception {
+		helper(new StreamAnalysisExpectedResult("IntStream.of(1)", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.ORDERED), false, false, false,
+				Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
+				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+	}
+	
 }
