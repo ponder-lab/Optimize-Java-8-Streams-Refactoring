@@ -9,7 +9,7 @@ This prototype refactoring plug-in for [Eclipse](http://eclipse.org) represents 
 
 ## Usage
 
-### Installation for Usage
+### Installation
 
 ### Marking Entry Points
 
@@ -23,7 +23,7 @@ There are currently some limitations with embedded streams (i.e., streams declar
 
 Please see [the wiki](http://github.com/ponder-lab/Java-8-Stream-Refactoring/wiki) for more information regarding development.
 
-### Installation for Development
+### Installation
 
 The project includes a maven configuration file using the tycho plug-in, which is part of the [maven eclipse plugin](http://www.eclipse.org/m2e/). Running `mvn install` will install *most* dependencies. Note that if you are not using maven, this plugin depends on https://github.com/khatchad/edu.cuny.citytech.refactoring.common, the **Eclipse SDK**, **Eclipse SDK tests**, and the **Eclipse testing framework**. The latter three can be installed from the "Install New Software..." menu option under "Help" in Eclipse.
 
@@ -38,3 +38,9 @@ You should have the following projects in your workspace:
 ### Running the Evaluator
 
 [annotations]: https://github.com/ponder-lab/edu.cuny.hunter.streamrefactoring.annotations
+
+### Further Information
+
+See the [wiki][wiki] for further information.
+
+[wiki]: https://github.com/ponder-lab/Java-8-Stream-Refactoring/wiki
