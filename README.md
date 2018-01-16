@@ -19,6 +19,8 @@ Explicit entry points may be marked using the appropriate annotation found in th
 
 There are currently some limitations with embedded streams (i.e., streams declared as part of lambda expressions sent as arguments to intermediate stream operations). This is due to model differences between the Eclipse JDT and WALA. See [#155](https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/155) for details.
 
+In general, there are some issues with the mapping between the Eclipse DOM and WALA DOM, particuarly when using Anonymous Inner Classes (AICs). We are currently working with the WALA developers to solve [this issue](https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/155).
+
 ## Contributing
 
 Please see [the wiki](http://github.com/ponder-lab/Java-8-Stream-Refactoring/wiki) for more information regarding development.

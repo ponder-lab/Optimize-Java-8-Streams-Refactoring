@@ -348,10 +348,10 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * Test #34.
 	 */
 	public void testArraysAsList() throws Exception {
-		helper(new StreamAnalysisExpectedResult("Arrays.asList().stream()",
-				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
-				false, null, null, null, RefactoringStatus.ERROR,
-				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
+		helper(new StreamAnalysisExpectedResult("Arrays.asList().stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
+				EnumSet.of(Ordering.ORDERED), false, false, false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL),
+				PreconditionSuccess.P2, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet()));
 	}
 
 	/**
@@ -369,6 +369,24 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, false, false,
 				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+	}
+
+	/**
+	 * There is a problem between mapping methods declared within AICs from the
+	 * Eclipse DOM to the WALA DOM #155.
+	 */
+	public void testAnonymousInnerClass() throws Exception {
+		boolean passed = false;
+		try {
+			helper(new StreamAnalysisExpectedResult("new ArrayList().stream()",
+					Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, false, false,
+					EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
+					Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+		} catch (NullPointerException e) {
+			LOGGER.throwing(this.getClass().getName(), "testArraysAsList", e);
+			passed = true;
+		}
+		assertTrue("Should throw exception per AIC issue.", passed);
 	}
 
 	public void testBitSet() throws Exception {

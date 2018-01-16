@@ -329,10 +329,14 @@ public class Stream {
 	}
 
 	private IR getEnclosingMethodIR(EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws IOException, CoreException {
+			throws IOException, CoreException, UnhandledCaseException {
 		if (enclosingMethodDeclarationIR == null) {
 			// get the IR for the enclosing method.
 			com.ibm.wala.classLoader.IMethod resolvedMethod = getEnclosingWalaMethod(engine);
+
+			if (resolvedMethod == null)
+				throw new UnhandledCaseException("Couldn't retrieve enclosing WALA method. Most likely an AIC #155.");
+
 			enclosingMethodDeclarationIR = engine.getCache().getIR(resolvedMethod);
 
 			if (enclosingMethodDeclarationIR == null)
@@ -361,12 +365,13 @@ public class Stream {
 	}
 
 	MethodReference getEnclosingMethodReference() {
-		JDTIdentityMapper mapper = getJDTIdentifyMapper(getEnclosingMethodDeclaration());
-		MethodReference methodRef = mapper.getMethodRef(getEnclosingMethodDeclaration().resolveBinding());
+		MethodDeclaration enclosingMethodDeclaration = getEnclosingMethodDeclaration();
+		JDTIdentityMapper mapper = getJDTIdentifyMapper(enclosingMethodDeclaration);
+		MethodReference methodRef = mapper.getMethodRef(enclosingMethodDeclaration.resolveBinding());
 
 		if (methodRef == null)
 			throw new IllegalStateException(
-					"Could not get method reference for: " + getEnclosingMethodDeclaration().getName());
+					"Could not get method reference for: " + enclosingMethodDeclaration.getName());
 		return methodRef;
 	}
 
@@ -405,8 +410,8 @@ public class Stream {
 	}
 
 	public InstanceKey getInstanceKey(Collection<InstanceKey> trackedInstances,
-			EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws InvalidClassFileException, IOException, CoreException, InstanceKeyNotFoundException {
+			EclipseProjectAnalysisEngine<InstanceKey> engine) throws InvalidClassFileException, IOException,
+			CoreException, InstanceKeyNotFoundException, UnhandledCaseException {
 		if (instanceKey == null) {
 			instanceKey = this.getInstructionForCreation(engine)
 					.flatMap(instruction -> trackedInstances.stream()
@@ -420,13 +425,14 @@ public class Stream {
 	}
 
 	Optional<SSAInvokeInstruction> getInstructionForCreation(EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws InvalidClassFileException, IOException, CoreException {
+			throws InvalidClassFileException, IOException, CoreException, UnhandledCaseException {
 		if (this.instructionForCreation == null) {
-			IBytecodeMethod method = (IBytecodeMethod) this.getEnclosingMethodIR(engine).getMethod();
+			IR enclosingMethodIR = this.getEnclosingMethodIR(engine);
+
+			IBytecodeMethod method = (IBytecodeMethod) enclosingMethodIR.getMethod();
 			SimpleName methodName = this.getCreation().getName();
 
-			for (Iterator<SSAInstruction> it = this.getEnclosingMethodIR(engine).iterateNormalInstructions(); it
-					.hasNext();) {
+			for (Iterator<SSAInstruction> it = enclosingMethodIR.iterateNormalInstructions(); it.hasNext();) {
 				SSAInstruction instruction = it.next();
 
 				int lineNumberFromIR = getLineNumberFromIR(method, instruction);
@@ -515,7 +521,7 @@ public class Stream {
 	}
 
 	private int getUseValueNumberForCreation(EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws InvalidClassFileException, IOException, CoreException {
+			throws InvalidClassFileException, IOException, CoreException, UnhandledCaseException {
 		return getInstructionForCreation(engine).map(i -> i.getUse(0)).orElse(-1);
 	}
 
