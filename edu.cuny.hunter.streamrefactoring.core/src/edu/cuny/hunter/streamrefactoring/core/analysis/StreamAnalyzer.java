@@ -40,6 +40,8 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	private Set<EclipseProjectAnalysisEngine<InstanceKey>> enginesWithBuiltCallGraphs = new HashSet<>();
 
+	private boolean findImplicitEntryPoints = true;
+
 	protected void buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine) throws IOException, CoreException,
 			CallGraphBuilderCancelException, CancelException, NoEntryPointException {
 		// if we haven't built the call graph yet.
@@ -48,14 +50,16 @@ public class StreamAnalyzer extends ASTVisitor {
 			Set<Entrypoint> entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
 			LOGGER.info(() -> "Using explicit entry points: " + entryPoints);
 
-			// also find implicit entry points.
-			Iterable<Entrypoint> mainEntrypoints = makeMainEntrypoints(engine.getClassHierarchy().getScope(),
-					engine.getClassHierarchy());
+			if (findImplicitEntryPoints) {
+				// also find implicit entry points.
+				Iterable<Entrypoint> mainEntrypoints = makeMainEntrypoints(engine.getClassHierarchy().getScope(),
+						engine.getClassHierarchy());
 
-			// add them as well.
-			for (Entrypoint implicitEntryPoint : mainEntrypoints)
-				if (entryPoints.add(implicitEntryPoint))
-					LOGGER.info(() -> "Adding implicit entry point: " + implicitEntryPoint);
+				// add them as well.
+				for (Entrypoint implicitEntryPoint : mainEntrypoints)
+					if (entryPoints.add(implicitEntryPoint))
+						LOGGER.info(() -> "Adding implicit entry point: " + implicitEntryPoint);
+			}
 
 			if (entryPoints.isEmpty())
 				throw new NoEntryPointException(
@@ -87,6 +91,11 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	public StreamAnalyzer(boolean visitDocTags) {
 		super(visitDocTags);
+	}
+
+	public StreamAnalyzer(boolean visitDocTags, boolean findImplicitEntryPoints) {
+		this(visitDocTags);
+		this.findImplicitEntryPoints = findImplicitEntryPoints;
 	}
 
 	public void analyze() throws CoreException {
@@ -208,5 +217,9 @@ public class StreamAnalyzer extends ASTVisitor {
 		}
 
 		return super.visit(node);
+	}
+
+	public void setFindImplicitEntryPoints(boolean findImplicitEntryPoints) {
+		this.findImplicitEntryPoints = findImplicitEntryPoints;
 	}
 }
