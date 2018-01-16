@@ -714,11 +714,8 @@ public class StreamStateMachine {
 								}
 							}
 						}
-					else if (!scalar)
+					else // !scalar
 						rom = deriveRomForNonScalarMethod(possibleReturnTypes, orderingInference);
-					else
-						throw new IllegalStateException(
-								"Can't derive ROM for possible return types: " + possibleReturnTypes);
 				}
 
 				// if reduce ordering matters.
