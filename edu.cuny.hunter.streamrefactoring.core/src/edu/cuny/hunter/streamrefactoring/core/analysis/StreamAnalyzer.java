@@ -87,6 +87,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	private Set<Stream> streamSet = new HashSet<>();
 
 	public StreamAnalyzer() {
+		this(false);
 	}
 
 	public StreamAnalyzer(boolean visitDocTags) {
