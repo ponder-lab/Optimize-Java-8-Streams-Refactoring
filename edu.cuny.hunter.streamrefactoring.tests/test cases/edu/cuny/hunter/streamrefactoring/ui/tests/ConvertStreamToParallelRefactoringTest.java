@@ -373,7 +373,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	/**
 	 * There is a problem between mapping methods declared within AICs from the
-	 * Eclipse DOM to the WALA DOM.
+	 * Eclipse DOM to the WALA DOM #155.
 	 */
 	public void testAnonymousInnerClass() throws Exception {
 		boolean passed = false;
