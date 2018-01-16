@@ -711,5 +711,4 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				PreconditionSuccess.P2, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
 				Collections.emptySet()));
 	}
-	
 }
