@@ -335,7 +335,7 @@ public class Stream {
 			com.ibm.wala.classLoader.IMethod resolvedMethod = getEnclosingWalaMethod(engine);
 
 			if (resolvedMethod == null)
-				throw new UnhandledCaseException("Couldn't retrieve enclosing WALA method. Most likely an AIC.");
+				throw new UnhandledCaseException("Couldn't retrieve enclosing WALA method. Most likely an AIC #155.");
 
 			enclosingMethodDeclarationIR = engine.getCache().getIR(resolvedMethod);
 
