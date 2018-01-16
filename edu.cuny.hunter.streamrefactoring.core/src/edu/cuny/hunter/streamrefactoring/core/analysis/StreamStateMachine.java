@@ -1186,7 +1186,7 @@ public class StreamStateMachine {
 				++skippedStreams;
 				continue; // next stream.
 			} catch (UnhandledCaseException e) {
-				String msg = "Encountered possible unhandled case (AIC) while processing: " + stream.getCreation();
+				String msg = "Encountered possible unhandled case (AIC #155) while processing: " + stream.getCreation();
 				LOGGER.log(Level.WARNING, msg, e);
 				stream.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, msg);
 				++skippedStreams;
