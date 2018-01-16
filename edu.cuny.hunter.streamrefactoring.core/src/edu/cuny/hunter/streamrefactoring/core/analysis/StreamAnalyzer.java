@@ -53,10 +53,9 @@ public class StreamAnalyzer extends ASTVisitor {
 					engine.getClassHierarchy());
 
 			// add them as well.
-			for (Entrypoint implicitEntryPoint : mainEntrypoints) {
-				LOGGER.info(() -> "Adding implicit entry point: " + implicitEntryPoint);
-				entryPoints.add(implicitEntryPoint);
-			}
+			for (Entrypoint implicitEntryPoint : mainEntrypoints)
+				if (entryPoints.add(implicitEntryPoint))
+					LOGGER.info(() -> "Adding implicit entry point: " + implicitEntryPoint);
 
 			if (entryPoints.isEmpty())
 				throw new NoEntryPointException(
