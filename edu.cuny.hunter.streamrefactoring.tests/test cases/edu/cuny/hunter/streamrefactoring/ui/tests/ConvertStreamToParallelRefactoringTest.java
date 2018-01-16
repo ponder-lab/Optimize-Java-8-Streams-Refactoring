@@ -257,7 +257,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 		ASTNode ast = parser.createAST(new NullProgressMonitor());
 
-		StreamAnalyzer analyzer = new StreamAnalyzer();
+		StreamAnalyzer analyzer = new StreamAnalyzer(false);
 		ast.accept(analyzer);
 
 		analyzer.analyze();
