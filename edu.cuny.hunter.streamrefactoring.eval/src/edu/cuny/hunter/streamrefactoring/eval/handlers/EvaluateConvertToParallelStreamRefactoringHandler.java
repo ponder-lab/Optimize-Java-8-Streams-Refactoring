@@ -179,13 +179,15 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						candidateStreamPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
-								stream.getEnclosingType().getFullyQualifiedName());
+								stream.getEnclosingType() == null ? null
+										: stream.getEnclosingType().getFullyQualifiedName());
 
 						streamAttributesPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
-								stream.getEnclosingType().getFullyQualifiedName(), stream.hasPossibleSideEffects(),
-								stream.hasPossibleStatefulIntermediateOperations(),
+								stream.getEnclosingType() == null ? null
+										: stream.getEnclosingType().getFullyQualifiedName(),
+								stream.hasPossibleSideEffects(), stream.hasPossibleStatefulIntermediateOperations(),
 								stream.reduceOrderingPossiblyMatters(), stream.getRefactoring(),
 								stream.getPassingPrecondition(), stream.getStatus().isOK() ? 0
 										: stream.getStatus().getEntryWithHighestSeverity().getSeverity());
@@ -216,7 +218,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						nonOptimizedStreamPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
-								stream.getEnclosingType().getFullyQualifiedName());
+								stream.getEnclosingType() == null ? null
+										: stream.getEnclosingType().getFullyQualifiedName());
 					}
 
 					// failed preconditions.
@@ -238,8 +241,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 									failedStream.getCreation().getStartPosition(),
 									failedStream.getCreation().getLength(),
 									Util.getMethodIdentifier(failedStream.getEnclosingEclipseMethod()),
-									failedStream.getEnclosingType().getFullyQualifiedName(), entry.getCode(),
-									entry.getMessage());
+									failedStream.getEnclosingType() == null ? null
+											: failedStream.getEnclosingType().getFullyQualifiedName(),
+									entry.getCode(), entry.getMessage());
 						}
 					}
 

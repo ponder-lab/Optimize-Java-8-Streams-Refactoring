@@ -321,7 +321,13 @@ public class Stream {
 	}
 
 	public IMethod getEnclosingEclipseMethod() {
-		return (IMethod) getEnclosingMethodDeclaration().resolveBinding().getJavaElement();
+		MethodDeclaration enclosingMethodDeclaration = getEnclosingMethodDeclaration();
+
+		if (enclosingMethodDeclaration == null)
+			return null;
+
+		IMethodBinding binding = enclosingMethodDeclaration.resolveBinding();
+		return (IMethod) binding.getJavaElement();
 	}
 
 	public MethodDeclaration getEnclosingMethodDeclaration() {
@@ -376,7 +382,13 @@ public class Stream {
 	}
 
 	public IType getEnclosingType() {
-		return (IType) getEnclosingMethodDeclaration().resolveBinding().getDeclaringClass().getJavaElement();
+		MethodDeclaration enclosingMethodDeclaration = getEnclosingMethodDeclaration();
+
+		if (enclosingMethodDeclaration == null)
+			return null;
+
+		IMethodBinding binding = enclosingMethodDeclaration.resolveBinding();
+		return (IType) binding.getDeclaringClass().getJavaElement();
 	}
 
 	public TypeDeclaration getEnclosingTypeDeclaration() {
