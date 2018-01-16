@@ -42,8 +42,8 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	private boolean findImplicitEntryPoints = true;
 
-	protected void buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine) throws IOException, CoreException,
-			CallGraphBuilderCancelException, CancelException, NoEntryPointException {
+	protected void buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine)
+			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException, NoEntryPointException {
 		// if we haven't built the call graph yet.
 		if (!enginesWithBuiltCallGraphs.contains(engine)) {
 			// find explicit entry points.
