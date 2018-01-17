@@ -704,13 +704,15 @@ public class StreamStateMachine {
 									Stream stream = instanceToStreamMap.get(origin);
 
 									if (stream == null)
-										throw new IllegalStateException("Can't find Stream instance for instance key: "
+										LOGGER.warning(() -> "Can't find Stream instance for instance key: "
 												+ instanceKey + " using origin: " + origin);
-
-									LOGGER.log(Level.WARNING, "Unable to derive ROM for : " + stream.getCreation(), e);
-									stream.addStatusEntry(PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
-											"Cannot derive reduction ordering for stream: " + stream.getCreation()
-													+ ".");
+									else {
+										LOGGER.log(Level.WARNING, "Unable to derive ROM for : " + stream.getCreation(),
+												e);
+										stream.addStatusEntry(PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
+												"Cannot derive reduction ordering for stream: " + stream.getCreation()
+														+ ".");
+									}
 								}
 							}
 						}
