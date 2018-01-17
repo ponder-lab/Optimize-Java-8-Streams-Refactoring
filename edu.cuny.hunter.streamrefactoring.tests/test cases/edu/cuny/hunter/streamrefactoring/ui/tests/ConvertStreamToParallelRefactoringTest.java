@@ -354,6 +354,29 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				Collections.emptySet()));
 	}
 
+	public void testEntrySet() throws Exception {
+		helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
+				EnumSet.of(Ordering.UNORDERED), false, false, false,
+				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
+				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+	}
+
+	public void testEntrySet2() throws Exception {
+		helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", null, null, false, false, false, null, null,
+				null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
+	}
+
+	public void testEntrySet3() throws Exception {
+		helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", null, null, false, false, false, null, null,
+				null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
+	}
+
+	public void testEntrySet4() throws Exception {
+		helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
+				EnumSet.of(Ordering.UNORDERED), true, false, false, null, null, null, RefactoringStatus.ERROR,
+				EnumSet.of(PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING)));
+	}
+
 	/**
 	 * Test #80.
 	 */
@@ -729,7 +752,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
-	
+
 	public void testImplicitEntryPoint() throws Exception {
 		helper(new StreamAnalysisExpectedResult("IntStream.of(1)", EnumSet.of(ExecutionMode.SEQUENTIAL),
 				EnumSet.of(Ordering.ORDERED), false, false, false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL),
