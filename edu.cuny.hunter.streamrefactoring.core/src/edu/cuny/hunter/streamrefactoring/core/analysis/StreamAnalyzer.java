@@ -22,9 +22,9 @@ import org.eclipse.jdt.internal.corext.util.JdtFlags;
 
 import com.ibm.safe.internal.exceptions.PropertiesException;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
+import com.ibm.wala.ipa.callgraph.AnalysisOptions.ReflectionOptions;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
-import com.ibm.wala.ipa.callgraph.AnalysisOptions.ReflectionOptions;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
@@ -40,65 +40,17 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
-	private Set<EclipseProjectAnalysisEngine<InstanceKey>> enginesWithBuiltCallGraphs = new HashSet<>();
-
-	private boolean findImplicitEntryPoints = true;
-
-	private boolean findImplicitTestEntryPoints;
-
-	protected void buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException, NoEntryPointException {
-		// if we haven't built the call graph yet.
-		if (!enginesWithBuiltCallGraphs.contains(engine)) {
-			// find explicit entry points.
-			Set<Entrypoint> entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
-			entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
-
-			if (findImplicitEntryPoints) {
-				// also find implicit entry points.
-				Iterable<Entrypoint> mainEntrypoints = makeMainEntrypoints(engine.getClassHierarchy().getScope(),
-						engine.getClassHierarchy());
-
-				// add them as well.
-				addImplicitEntryPoints(entryPoints, mainEntrypoints);
-			}
-
-			if (findImplicitTestEntryPoints) {
-				// try to find test entry points.
-				Iterable<Entrypoint> jUnitEntryPoints = JUnitEntryPoints.make(engine.getClassHierarchy());
-
-				// add them as well.
-				addImplicitEntryPoints(entryPoints, jUnitEntryPoints);
-			}
-
-			if (entryPoints.isEmpty())
-				throw new NoEntryPointException(
-						"Project: " + engine.getProject().getElementName() + " has no entry points.");
-
-			// set options.
-			AnalysisOptions options = engine.getDefaultOptions(entryPoints);
-			// Turn off reflection analysis.
-			options.setReflectionOptions(ReflectionOptions.NONE);
-			options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
-
-			try {
-				engine.buildSafeCallGraph(options);
-			} catch (IllegalStateException e) {
-				LOGGER.log(Level.SEVERE, e, () -> "Exception encountered while building call graph for project: "
-						+ engine.getProject().getElementName());
-				throw e;
-			}
-			// TODO: Can I slice the graph so that only nodes relevant to the
-			// instance in question are present?
-			enginesWithBuiltCallGraphs.add(engine);
-		}
-	}
-
 	private static void addImplicitEntryPoints(Collection<Entrypoint> target, Iterable<Entrypoint> source) {
 		for (Entrypoint implicitEntryPoint : source)
 			if (target.add(implicitEntryPoint))
 				LOGGER.info(() -> "Adding implicit entry point: " + implicitEntryPoint);
 	}
+
+	private Set<EclipseProjectAnalysisEngine<InstanceKey>> enginesWithBuiltCallGraphs = new HashSet<>();
+
+	private boolean findImplicitEntryPoints = true;
+
+	private boolean findImplicitTestEntryPoints;
 
 	private Set<Stream> streamSet = new HashSet<>();
 
@@ -139,7 +91,7 @@ public class StreamAnalyzer extends ASTVisitor {
 
 			// build the call graph for the project.
 			try {
-				buildCallGraph(engine);
+				this.buildCallGraph(engine);
 			} catch (NoEntryPointException e) {
 				LOGGER.log(Level.WARNING,
 						"No entry point exception caught while processing: " + engine.getProject().getElementName(), e);
@@ -197,8 +149,64 @@ public class StreamAnalyzer extends ASTVisitor {
 		} // end for each stream.
 	}
 
+	protected void buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine)
+			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException, NoEntryPointException {
+		// if we haven't built the call graph yet.
+		if (!this.enginesWithBuiltCallGraphs.contains(engine)) {
+			// find explicit entry points.
+			Set<Entrypoint> entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
+			entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
+
+			if (this.findImplicitEntryPoints) {
+				// also find implicit entry points.
+				Iterable<Entrypoint> mainEntrypoints = makeMainEntrypoints(engine.getClassHierarchy().getScope(),
+						engine.getClassHierarchy());
+
+				// add them as well.
+				addImplicitEntryPoints(entryPoints, mainEntrypoints);
+			}
+
+			if (this.findImplicitTestEntryPoints) {
+				// try to find test entry points.
+				Iterable<Entrypoint> jUnitEntryPoints = JUnitEntryPoints.make(engine.getClassHierarchy());
+
+				// add them as well.
+				addImplicitEntryPoints(entryPoints, jUnitEntryPoints);
+			}
+
+			if (entryPoints.isEmpty())
+				throw new NoEntryPointException(
+						"Project: " + engine.getProject().getElementName() + " has no entry points.");
+
+			// set options.
+			AnalysisOptions options = engine.getDefaultOptions(entryPoints);
+			// Turn off reflection analysis.
+			options.setReflectionOptions(ReflectionOptions.NONE);
+			options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
+
+			try {
+				engine.buildSafeCallGraph(options);
+			} catch (IllegalStateException e) {
+				LOGGER.log(Level.SEVERE, e, () -> "Exception encountered while building call graph for project: "
+						+ engine.getProject().getElementName());
+				throw e;
+			}
+			// TODO: Can I slice the graph so that only nodes relevant to the
+			// instance in question are present?
+			this.enginesWithBuiltCallGraphs.add(engine);
+		}
+	}
+
 	public Set<Stream> getStreamSet() {
-		return streamSet;
+		return this.streamSet;
+	}
+
+	public void setFindImplicitEntryPoints(boolean findImplicitEntryPoints) {
+		this.findImplicitEntryPoints = findImplicitEntryPoints;
+	}
+
+	public void setFindImplicitTestEntryPoints(boolean findImplicitTestEntryPoints) {
+		this.findImplicitTestEntryPoints = findImplicitTestEntryPoints;
 	}
 
 	/**
@@ -239,13 +247,5 @@ public class StreamAnalyzer extends ASTVisitor {
 		}
 
 		return super.visit(node);
-	}
-
-	public void setFindImplicitEntryPoints(boolean findImplicitEntryPoints) {
-		this.findImplicitEntryPoints = findImplicitEntryPoints;
-	}
-
-	public void setFindImplicitTestEntryPoints(boolean findImplicitTestEntryPoints) {
-		this.findImplicitTestEntryPoints = findImplicitTestEntryPoints;
 	}
 }
