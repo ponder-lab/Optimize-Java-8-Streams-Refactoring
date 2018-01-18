@@ -6,6 +6,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -48,6 +49,10 @@ import org.eclipse.ltk.core.refactoring.RefactoringStatusEntry;
 import org.eclipse.ltk.core.refactoring.participants.ProcessorBasedRefactoring;
 import org.osgi.framework.FrameworkUtil;
 
+import com.google.common.collect.Sets;
+import com.google.common.collect.Sets.SetView;
+
+import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionSuccess;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Refactoring;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
@@ -236,18 +241,34 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					// #streams.
 					resultsPrinter.print(processor.getStreamSet().size());
 
-					// #optimization available streams. These are the "filtered" streams. No
-					// filtering currently.
-					resultsPrinter.print(processor.getStreamSet().size());
+					// #optimization available streams. These are the "filtered" streams.
+					Set<Stream> candidates = processor.getStreamSet().parallelStream().filter(s -> {
+						String pluginId = FrameworkUtil.getBundle(Stream.class).getSymbolicName();
 
-					// candidate streams and their attributes.
-					for (Stream stream : processor.getStreamSet()) {
+						// error related to reachability.
+						RefactoringStatusEntry reachabilityError = s.getStatus().getEntryMatchingCode(pluginId,
+								PreconditionFailure.STREAM_CODE_NOT_REACHABLE.getCode());
+
+						// error related to missing entry points.
+						RefactoringStatusEntry entryPointError = s.getStatus().getEntryMatchingCode(pluginId,
+								PreconditionFailure.NO_ENTRY_POINT.getCode());
+
+						// filter streams without such errors.
+						return reachabilityError == null && entryPointError == null;
+					}).collect(Collectors.toSet());
+
+					resultsPrinter.print(candidates.size()); // number.
+
+					// candidate streams.
+					for (Stream stream : candidates)
 						candidateStreamPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
 								stream.getEnclosingType() == null ? null
 										: stream.getEnclosingType().getFullyQualifiedName());
 
+					// stream attributes.
+					for (Stream stream : processor.getStreamSet()) {
 						streamAttributesPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
@@ -259,10 +280,13 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 										: stream.getStatus().getEntryWithHighestSeverity().getSeverity());
 
 						String method = Util.getMethodIdentifier(stream.getEnclosingEclipseMethod());
+
 						printStreamAttributesWithMultipleValues(stream.getActions(), streamActionsPrinter, stream,
 								method, javaProject);
+
 						printStreamAttributesWithMultipleValues(stream.getPossibleExecutionModes(),
 								streamExecutionModePrinter, stream, method, javaProject);
+
 						printStreamAttributesWithMultipleValues(stream.getPossibleOrderings(), streamOrderingPrinter,
 								stream, method, javaProject);
 
@@ -279,7 +303,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 								stream.getEnclosingType().getFullyQualifiedName());
 
 					// failed streams.
-					for (Stream stream : processor.getUnoptimizableStreams())
+					SetView<Stream> failures = Sets.difference(candidates, processor.getOptimizableStreams());
+
+					for (Stream stream : failures)
 						nonOptimizedStreamPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
@@ -287,8 +313,10 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 										: stream.getEnclosingType().getFullyQualifiedName());
 
 					// failed preconditions.
-					List<RefactoringStatusEntry> errorEntries = Arrays.stream(status.getEntries())
-							.filter(RefactoringStatusEntry::isError).collect(Collectors.toList());
+					Collection<RefactoringStatusEntry> errorEntries = failures.parallelStream().map(Stream::getStatus)
+							.flatMap(s -> Arrays.stream(s.getEntries())).filter(RefactoringStatusEntry::isError)
+							.collect(Collectors.toSet());
+
 					resultsPrinter.print(errorEntries.size()); // number.
 
 					for (RefactoringStatusEntry entry : errorEntries)
@@ -301,6 +329,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 										+ correspondingElement.getClass());
 
 							Stream failedStream = (Stream) correspondingElement;
+
 							errorPrinter.printRecord(javaProject.getElementName(), failedStream.getCreation(),
 									failedStream.getCreation().getStartPosition(),
 									failedStream.getCreation().getLength(),
