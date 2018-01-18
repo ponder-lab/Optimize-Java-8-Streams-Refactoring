@@ -61,16 +61,82 @@ import net.sourceforge.metrics.core.sources.Dispatcher;
 
 /**
  * Our sample handler extends AbstractHandler, an IHandler base class.
- * 
+ *
  * @see org.eclipse.core.commands.IHandler
  * @see org.eclipse.core.commands.AbstractHandler
  */
 public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractHandler {
 
-	private static final int LOGGING_LEVEL = IStatus.INFO;
 	private static final boolean BUILD_WORKSPACE = false;
-	private static final String PERFORM_CHANGE_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.performChange";
+	private static final int LOGGING_LEVEL = IStatus.INFO;
 	private static final boolean PERFORM_CHANGE_DEFAULT = false;
+	private static final String PERFORM_CHANGE_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.performChange";
+
+	private static String[] buildAttributeColumns(String attribute) {
+		return new String[] { "subject", "stream", "start pos", "length", "method", "type FQN", attribute };
+	}
+
+	private static CSVPrinter createCSVPrinter(String fileName, String[] header) throws IOException {
+		return new CSVPrinter(new FileWriter(fileName, true), CSVFormat.EXCEL.withHeader(header));
+	}
+
+	private static IType[] getAllDeclaringTypeSubtypes(IMethod method) throws JavaModelException {
+		IType declaringType = method.getDeclaringType();
+		ITypeHierarchy typeHierarchy = declaringType.newTypeHierarchy(new NullProgressMonitor());
+		IType[] allSubtypes = typeHierarchy.getAllSubtypes(declaringType);
+		return allSubtypes;
+	}
+
+	private static Set<IMethod> getAllMethods(IJavaProject javaProject) throws JavaModelException {
+		Set<IMethod> methods = new HashSet<>();
+
+		// collect all methods from this project.
+		IPackageFragment[] packageFragments = javaProject.getPackageFragments();
+		for (IPackageFragment iPackageFragment : packageFragments) {
+			ICompilationUnit[] compilationUnits = iPackageFragment.getCompilationUnits();
+			for (ICompilationUnit iCompilationUnit : compilationUnits) {
+				IType[] allTypes = iCompilationUnit.getAllTypes();
+				for (IType type : allTypes)
+					Collections.addAll(methods, type.getMethods());
+			}
+		}
+		return methods;
+	}
+
+	private static int getMethodLinesOfCode(IMethod method) {
+		AbstractMetricSource metricSource = Dispatcher.getAbstractMetricSource(method);
+
+		if (metricSource != null) {
+			Metric value = metricSource.getValue("MLOC");
+			int mLOC = value.intValue();
+			return mLOC;
+		} else {
+			System.err.println("WARNING: Could not retrieve metric source for method: " + method);
+			return 0;
+		}
+	}
+
+	private static int getProjectLinesOfCode(IJavaProject javaProject) {
+		AbstractMetricSource metricSource = Dispatcher.getAbstractMetricSource(javaProject);
+
+		if (metricSource != null) {
+			Metric value = metricSource.getValue("TLOC");
+			int tLOC = value.intValue();
+			return tLOC;
+		} else {
+			System.err.println("WARNING: Could not retrieve metric source for project: " + javaProject);
+			return 0;
+		}
+	}
+
+	private static void printStreamAttributesWithMultipleValues(Set<?> set, CSVPrinter printer, Stream stream,
+			String method, IJavaProject project) throws IOException {
+		if (set != null)
+			for (Object object : set)
+				printer.printRecord(project.getElementName(), stream.getCreation(),
+						stream.getCreation().getStartPosition(), stream.getCreation().getLength(), method,
+						stream.getEnclosingType().getFullyQualifiedName(), object.toString());
+	}
 
 	/**
 	 * the command has been executed, so extract extract the needed information from
@@ -206,28 +272,26 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					Set<Stream> optimizableStreams = processor.getOptimizableStreams();
 					resultsPrinter.print(optimizableStreams.size()); // number.
 
-					for (Stream stream : optimizableStreams) {
+					for (Stream stream : optimizableStreams)
 						optimizedStreamPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
 								stream.getEnclosingType().getFullyQualifiedName());
-					}
 
 					// failed streams.
-					for (Stream stream : processor.getUnoptimizableStreams()) {
+					for (Stream stream : processor.getUnoptimizableStreams())
 						nonOptimizedStreamPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
 								stream.getEnclosingType() == null ? null
 										: stream.getEnclosingType().getFullyQualifiedName());
-					}
 
 					// failed preconditions.
 					List<RefactoringStatusEntry> errorEntries = Arrays.stream(status.getEntries())
 							.filter(RefactoringStatusEntry::isError).collect(Collectors.toList());
 					resultsPrinter.print(errorEntries.size()); // number.
 
-					for (RefactoringStatusEntry entry : errorEntries) {
+					for (RefactoringStatusEntry entry : errorEntries)
 						if (!entry.isFatalError()) {
 							Object correspondingElement = entry.getData();
 
@@ -245,7 +309,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 											: failedStream.getEnclosingType().getFullyQualifiedName(),
 									entry.getCode(), entry.getMessage());
 						}
-					}
 
 					// Refactoring type counts.
 					for (Refactoring refactoring : Refactoring.values())
@@ -266,7 +329,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 					// actually perform the refactoring if there are no fatal
 					// errors.
-					if (shouldPerformChange()) {
+					if (this.shouldPerformChange())
 						if (!status.hasFatalError()) {
 							resultsTimeCollector.start();
 							Change change = new ProcessorBasedRefactoring(processor)
@@ -274,7 +337,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 							change.perform(new SubProgressMonitor(monitor, IProgressMonitor.UNKNOWN));
 							resultsTimeCollector.stop();
 						}
-					}
 
 					// ensure that we can build the project.
 					if (!javaProject.isConsistent())
@@ -339,7 +401,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 	private Set<SearchMatch> findReferences(Set<? extends IJavaElement> elements) throws CoreException {
 		Set<SearchMatch> ret = new HashSet<>();
-		for (IJavaElement elem : elements) {
+		for (IJavaElement elem : elements)
 			new SearchEngine().search(
 					SearchPattern.createPattern(elem, IJavaSearchConstants.REFERENCES, SearchPattern.R_EXACT_MATCH),
 					new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant() },
@@ -350,41 +412,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 							ret.add(match);
 						}
 					}, new NullProgressMonitor());
-		}
 		return ret;
-	}
-
-	private static IType[] getAllDeclaringTypeSubtypes(IMethod method) throws JavaModelException {
-		IType declaringType = method.getDeclaringType();
-		ITypeHierarchy typeHierarchy = declaringType.newTypeHierarchy(new NullProgressMonitor());
-		IType[] allSubtypes = typeHierarchy.getAllSubtypes(declaringType);
-		return allSubtypes;
-	}
-
-	private static int getMethodLinesOfCode(IMethod method) {
-		AbstractMetricSource metricSource = Dispatcher.getAbstractMetricSource(method);
-
-		if (metricSource != null) {
-			Metric value = metricSource.getValue("MLOC");
-			int mLOC = value.intValue();
-			return mLOC;
-		} else {
-			System.err.println("WARNING: Could not retrieve metric source for method: " + method);
-			return 0;
-		}
-	}
-
-	private static int getProjectLinesOfCode(IJavaProject javaProject) {
-		AbstractMetricSource metricSource = Dispatcher.getAbstractMetricSource(javaProject);
-
-		if (metricSource != null) {
-			Metric value = metricSource.getValue("TLOC");
-			int tLOC = value.intValue();
-			return tLOC;
-		} else {
-			System.err.println("WARNING: Could not retrieve metric source for project: " + javaProject);
-			return 0;
-		}
 	}
 
 	private boolean shouldPerformChange() {
@@ -394,40 +422,5 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			return PERFORM_CHANGE_DEFAULT;
 		else
 			return Boolean.valueOf(performChangePropertyValue);
-	}
-
-	private static Set<IMethod> getAllMethods(IJavaProject javaProject) throws JavaModelException {
-		Set<IMethod> methods = new HashSet<>();
-
-		// collect all methods from this project.
-		IPackageFragment[] packageFragments = javaProject.getPackageFragments();
-		for (IPackageFragment iPackageFragment : packageFragments) {
-			ICompilationUnit[] compilationUnits = iPackageFragment.getCompilationUnits();
-			for (ICompilationUnit iCompilationUnit : compilationUnits) {
-				IType[] allTypes = iCompilationUnit.getAllTypes();
-				for (IType type : allTypes) {
-					Collections.addAll(methods, type.getMethods());
-				}
-			}
-		}
-		return methods;
-	}
-
-	private static CSVPrinter createCSVPrinter(String fileName, String[] header) throws IOException {
-		return new CSVPrinter(new FileWriter(fileName, true), CSVFormat.EXCEL.withHeader(header));
-	}
-
-	private static void printStreamAttributesWithMultipleValues(Set<?> set, CSVPrinter printer, Stream stream,
-			String method, IJavaProject project) throws IOException {
-		if (set != null)
-			for (Object object : set) {
-				printer.printRecord(project.getElementName(), stream.getCreation(),
-						stream.getCreation().getStartPosition(), stream.getCreation().getLength(), method,
-						stream.getEnclosingType().getFullyQualifiedName(), object.toString());
-			}
-	}
-
-	private static String[] buildAttributeColumns(String attribute) {
-		return new String[] { "subject", "stream", "start pos", "length", "method", "type FQN", attribute };
 	}
 }
