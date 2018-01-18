@@ -48,7 +48,7 @@ public class StreamAnalyzer extends ASTVisitor {
 		if (!enginesWithBuiltCallGraphs.contains(engine)) {
 			// find explicit entry points.
 			Set<Entrypoint> entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
-			LOGGER.info(() -> "Using explicit entry points: " + entryPoints);
+			entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
 
 			if (findImplicitEntryPoints) {
 				// also find implicit entry points.
