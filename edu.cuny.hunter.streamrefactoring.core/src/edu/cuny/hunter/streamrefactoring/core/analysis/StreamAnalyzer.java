@@ -3,6 +3,7 @@ package edu.cuny.hunter.streamrefactoring.core.analysis;
 import static com.ibm.wala.ipa.callgraph.impl.Util.makeMainEntrypoints;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -29,6 +30,7 @@ import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.SSAOptions;
 import com.ibm.wala.util.CancelException;
+import com.ibm.wala.util.scope.JUnitEntryPoints;
 
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
@@ -41,6 +43,8 @@ public class StreamAnalyzer extends ASTVisitor {
 	private Set<EclipseProjectAnalysisEngine<InstanceKey>> enginesWithBuiltCallGraphs = new HashSet<>();
 
 	private boolean findImplicitEntryPoints = true;
+
+	private boolean findImplicitTestEntryPoints;
 
 	protected void buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine)
 			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException, NoEntryPointException {
@@ -56,9 +60,15 @@ public class StreamAnalyzer extends ASTVisitor {
 						engine.getClassHierarchy());
 
 				// add them as well.
-				for (Entrypoint implicitEntryPoint : mainEntrypoints)
-					if (entryPoints.add(implicitEntryPoint))
-						LOGGER.info(() -> "Adding implicit entry point: " + implicitEntryPoint);
+				addImplicitEntryPoints(entryPoints, mainEntrypoints);
+			}
+
+			if (findImplicitTestEntryPoints) {
+				// try to find test entry points.
+				Iterable<Entrypoint> jUnitEntryPoints = JUnitEntryPoints.make(engine.getClassHierarchy());
+
+				// add them as well.
+				addImplicitEntryPoints(entryPoints, jUnitEntryPoints);
 			}
 
 			if (entryPoints.isEmpty())
@@ -84,6 +94,12 @@ public class StreamAnalyzer extends ASTVisitor {
 		}
 	}
 
+	private static void addImplicitEntryPoints(Collection<Entrypoint> target, Iterable<Entrypoint> source) {
+		for (Entrypoint implicitEntryPoint : source)
+			if (target.add(implicitEntryPoint))
+				LOGGER.info(() -> "Adding implicit entry point: " + implicitEntryPoint);
+	}
+
 	private Set<Stream> streamSet = new HashSet<>();
 
 	public StreamAnalyzer() {
@@ -97,6 +113,11 @@ public class StreamAnalyzer extends ASTVisitor {
 	public StreamAnalyzer(boolean visitDocTags, boolean findImplicitEntryPoints) {
 		this(visitDocTags);
 		this.findImplicitEntryPoints = findImplicitEntryPoints;
+	}
+
+	public StreamAnalyzer(boolean visitDocTags, boolean findImplicitEntryPoints, boolean findImplicitTestEntryPoints) {
+		this(visitDocTags, findImplicitEntryPoints);
+		this.findImplicitTestEntryPoints = findImplicitTestEntryPoints;
 	}
 
 	public void analyze() throws CoreException {
@@ -222,5 +243,9 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	public void setFindImplicitEntryPoints(boolean findImplicitEntryPoints) {
 		this.findImplicitEntryPoints = findImplicitEntryPoints;
+	}
+
+	public void setFindImplicitTestEntryPoints(boolean findImplicitTestEntryPoints) {
+		this.findImplicitTestEntryPoints = findImplicitTestEntryPoints;
 	}
 }
