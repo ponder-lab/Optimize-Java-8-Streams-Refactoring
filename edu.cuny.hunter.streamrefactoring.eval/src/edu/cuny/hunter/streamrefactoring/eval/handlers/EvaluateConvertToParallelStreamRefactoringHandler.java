@@ -76,6 +76,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	private static final int LOGGING_LEVEL = IStatus.INFO;
 	private static final boolean PERFORM_CHANGE_DEFAULT = false;
 	private static final String PERFORM_CHANGE_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.performChange";
+	private static final boolean FIND_IMPLICIT_ENTRYPOINTS_DEFAULT = true;
+	private static final String FIND_IMPLICIT_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitEntrypoints";
 
 	private static String[] buildAttributeColumns(String attribute) {
 		return new String[] { "subject", "stream", "start pos", "length", "method", "type FQN", attribute };
@@ -229,7 +231,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 					resultsTimeCollector.start();
 					processor = createConvertToParallelStreamRefactoringProcessor(new IJavaProject[] { javaProject },
-							Optional.of(monitor));
+							this.shouldFindImplicitEntrypoints(), Optional.of(monitor));
 					resultsTimeCollector.stop();
 					ConvertToParallelStreamRefactoringProcessor.setLoggingLevel(LOGGING_LEVEL);
 
@@ -452,5 +454,14 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			return PERFORM_CHANGE_DEFAULT;
 		else
 			return Boolean.valueOf(performChangePropertyValue);
+	}
+
+	private boolean shouldFindImplicitEntrypoints() {
+		String findImplicitEntrypoits = System.getenv(FIND_IMPLICIT_ENTRYPOINTS_PROPERTY_KEY);
+
+		if (findImplicitEntrypoits == null)
+			return FIND_IMPLICIT_ENTRYPOINTS_DEFAULT;
+		else
+			return Boolean.valueOf(findImplicitEntrypoits);
 	}
 }

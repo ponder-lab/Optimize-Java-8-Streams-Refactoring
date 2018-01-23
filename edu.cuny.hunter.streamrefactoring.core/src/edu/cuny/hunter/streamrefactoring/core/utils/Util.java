@@ -46,8 +46,17 @@ public final class Util {
 	public static ConvertToParallelStreamRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
 			IJavaProject[] projects, Optional<IProgressMonitor> monitor) throws JavaModelException {
 		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(projects[0]);
-		ConvertToParallelStreamRefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor(projects,
-				settings, monitor);
+		ConvertToParallelStreamRefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor(
+				projects, settings, monitor);
+		return processor;
+	}
+
+	public static ConvertToParallelStreamRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
+			IJavaProject[] projects, boolean useImplicitJoinpoints, Optional<IProgressMonitor> monitor)
+			throws JavaModelException {
+		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(projects[0]);
+		ConvertToParallelStreamRefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor(
+				projects, settings, useImplicitJoinpoints, monitor);
 		return processor;
 	}
 
@@ -133,7 +142,7 @@ public final class Util {
 		} else
 			return node;
 	}
-	
+
 	public static String getMethodIdentifier(IMethod method) throws JavaModelException {
 		StringBuilder sb = new StringBuilder();
 		sb.append((method.getElementName()) + "(");
