@@ -116,7 +116,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			int mLOC = value.intValue();
 			return mLOC;
 		} else {
-			System.err.println("WARNING: Could not retrieve metric source for method: " + method);
+			System.err.println("WARNING: Could not retrieve metric source for method: " + method.getElementName());
 			return 0;
 		}
 	}
@@ -129,7 +129,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			int tLOC = value.intValue();
 			return tLOC;
 		} else {
-			System.err.println("WARNING: Could not retrieve metric source for project: " + javaProject);
+			System.err
+					.println("WARNING: Could not retrieve metric source for project: " + javaProject.getElementName());
 			return 0;
 		}
 	}
