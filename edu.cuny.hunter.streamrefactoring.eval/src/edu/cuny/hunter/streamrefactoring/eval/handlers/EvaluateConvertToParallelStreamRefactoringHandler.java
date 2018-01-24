@@ -246,14 +246,15 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					RefactoringStatus status = new ProcessorBasedRefactoring(processor)
 							.checkAllConditions(new NullProgressMonitor());
 					resultsTimeCollector.stop();
-					
-					// print entry points
-					Set<Entrypoint> entryPoints = processor.getEntryPoints();
-					resultsPrinter.print(entryPoints.size());
+
+					// print entry points.
+					Collection<Entrypoint> entryPoints = getProjectEntryPoints(javaProject, processor);
+					resultsPrinter.print(entryPoints.size()); // number.
 
 					for (Entrypoint entryPoint : entryPoints) {
-						entryPointsPrinter.printRecord(javaProject.getElementName(),
-								entryPoint.getMethod().getSignature(), "! not implement now");
+						com.ibm.wala.classLoader.IMethod method = entryPoint.getMethod();
+						entryPointsPrinter.printRecord(javaProject.getElementName(), method.getSignature(),
+								method.getDeclaringClass().getName());
 					}
 
 					// #streams.
@@ -446,6 +447,11 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		}).schedule();
 
 		return null;
+	}
+
+	private static Collection<Entrypoint> getProjectEntryPoints(IJavaProject javaProject,
+			ConvertToParallelStreamRefactoringProcessor processor) {
+		return processor.getEntryPoints(javaProject);
 	}
 
 	private Set<SearchMatch> findReferences(Set<? extends IJavaElement> elements) throws CoreException {

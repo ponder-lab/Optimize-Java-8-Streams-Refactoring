@@ -4,6 +4,7 @@ import static com.ibm.wala.ipa.callgraph.impl.Util.makeMainEntrypoints;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
@@ -23,6 +24,7 @@ import org.eclipse.jdt.internal.corext.util.JdtFlags;
 import com.ibm.safe.internal.exceptions.PropertiesException;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions.ReflectionOptions;
+import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
@@ -46,15 +48,18 @@ public class StreamAnalyzer extends ASTVisitor {
 				LOGGER.info(() -> "Adding implicit entry point: " + implicitEntryPoint);
 	}
 
-	private Set<EclipseProjectAnalysisEngine<InstanceKey>> enginesWithBuiltCallGraphs = new HashSet<>();
+	/**
+	 * Map from {@link EclipseProjectAnalysisEngine}s that have their
+	 * {@link CallGraph}s built to the {@link Entrypoint}s that were used to build
+	 * the graph.
+	 */
+	private Map<EclipseProjectAnalysisEngine<InstanceKey>, Collection<Entrypoint>> enginesWithBuiltCallGraphsToEntrypointsUsed = new HashMap<>();
 
 	private boolean findImplicitEntryPoints = true;
 
 	private boolean findImplicitTestEntryPoints;
 
 	private Set<Stream> streamSet = new HashSet<>();
-	
-	private Set<Entrypoint> entryPoints = new HashSet<>();
 
 	public StreamAnalyzer() {
 		this(false);
@@ -74,7 +79,14 @@ public class StreamAnalyzer extends ASTVisitor {
 		this.findImplicitTestEntryPoints = findImplicitTestEntryPoints;
 	}
 
-	public void analyze() throws CoreException {
+	/**
+	 * Analyzes this {@link StreamAnalyzer}'s streams.
+	 * 
+	 * @return {@link Map} of project's analyzed along with the entry points used.
+	 */
+	public Map<IJavaProject, Collection<Entrypoint>> analyze() throws CoreException {
+		Map<IJavaProject, Collection<Entrypoint>> ret = new HashMap<>();
+
 		// collect the projects to be analyzed.
 		Map<IJavaProject, Set<Stream>> projectToStreams = this.getStreamSet().stream().filter(s -> s.getStatus().isOK())
 				.collect(Collectors.groupingBy(Stream::getCreationJavaProject, Collectors.toSet()));
@@ -92,21 +104,24 @@ public class StreamAnalyzer extends ASTVisitor {
 			}
 
 			// build the call graph for the project.
+			Collection<Entrypoint> entryPoints = null;
 			try {
-				this.buildCallGraph(engine);
-			} catch (NoEntryPointException e) {
-				LOGGER.log(Level.WARNING,
-						"No entry point exception caught while processing: " + engine.getProject().getElementName(), e);
-
-				// add a status entry for each stream in the project
-				for (Stream stream : projectToStreams.get(project))
-					stream.addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
-							"Project: " + engine.getProject().getElementName() + " has no entry points.");
-				return;
+				entryPoints = this.buildCallGraph(engine);
 			} catch (IOException | CoreException | CancelException e) {
 				LOGGER.log(Level.SEVERE,
 						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
 				throw new RuntimeException(e);
+			}
+
+			// save the entry points.
+			ret.put(project, entryPoints);
+
+			if (entryPoints.isEmpty()) {
+				// add a status entry for each stream in the project
+				for (Stream stream : projectToStreams.get(project))
+					stream.addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
+							"Project: " + engine.getProject().getElementName() + " has no entry points.");
+				return ret;
 			}
 
 			OrderingInference orderingInference = new OrderingInference(engine.getClassHierarchy());
@@ -149,12 +164,23 @@ public class StreamAnalyzer extends ASTVisitor {
 					.collect(Collectors.toSet()))
 				stream.check();
 		} // end for each stream.
+
+		return ret;
 	}
 
-	protected void buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException, NoEntryPointException {
+	/**
+	 * Builds the call graph that is part of the
+	 * {@link EclipseProjectAnalysisEngine}.
+	 * 
+	 * @param engine
+	 *            The EclipseProjectAnalysisEngine for which to build the call
+	 *            graph.
+	 * @return The {@link Entrypoint}s used in building the {@link CallGraph}.
+	 */
+	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine)
+			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
 		// if we haven't built the call graph yet.
-		if (!this.enginesWithBuiltCallGraphs.contains(engine)) {
+		if (!this.enginesWithBuiltCallGraphsToEntrypointsUsed.keySet().contains(engine)) {
 			// find explicit entry points.
 			Set<Entrypoint> entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
 			entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
@@ -177,8 +203,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			}
 
 			if (entryPoints.isEmpty())
-				throw new NoEntryPointException(
-						"Project: " + engine.getProject().getElementName() + " has no entry points.");
+				LOGGER.warning(() -> "Project: " + engine.getProject().getElementName() + " has no entry points.");
 
 			// set options.
 			AnalysisOptions options = engine.getDefaultOptions(entryPoints);
@@ -195,10 +220,9 @@ public class StreamAnalyzer extends ASTVisitor {
 			}
 			// TODO: Can I slice the graph so that only nodes relevant to the
 			// instance in question are present?
-			this.enginesWithBuiltCallGraphs.add(engine);
-
-			setEntryPoints(entryPoints);
+			this.enginesWithBuiltCallGraphsToEntrypointsUsed.put(engine, entryPoints);
 		}
+		return this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine);
 	}
 
 	public Set<Stream> getStreamSet() {
@@ -252,13 +276,4 @@ public class StreamAnalyzer extends ASTVisitor {
 
 		return super.visit(node);
 	}
-
-	protected void setEntryPoints(Set<Entrypoint> entryPoints) {
-		this.entryPoints = entryPoints;
-	}
-	
-	public Set<Entrypoint> getEntryPoints() {
-		return this.entryPoints;
-	}
-
 }

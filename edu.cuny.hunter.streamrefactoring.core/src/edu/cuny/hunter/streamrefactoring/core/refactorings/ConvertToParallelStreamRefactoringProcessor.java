@@ -4,8 +4,9 @@ import static org.eclipse.jdt.ui.JavaElementLabels.ALL_FULLY_QUALIFIED;
 import static org.eclipse.jdt.ui.JavaElementLabels.getElementLabel;
 
 import java.text.MessageFormat;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -132,8 +133,8 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	private IJavaProject[] javaProjects;
 
 	private Set<Stream> streamSet;
-	
-	private Set<Entrypoint> entryPoints = new HashSet<>();
+
+	private Map<IJavaProject, Collection<Entrypoint>> projectToEntryPoints;
 
 	private boolean useImplicitEntrypoints = true;
 
@@ -208,14 +209,18 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 				}
 			}
 
-			analyzer.analyze();
+			// analyze and set entry points.
+			projectToEntryPoints = analyzer.analyze();
+			
+			// map empty set to unprocessed projects.
+			for (IJavaProject project : this.getJavaProjects())
+				this.projectToEntryPoints.computeIfAbsent(project, p -> Collections.emptySet());
+				
 
+			// get the status of each stream.
 			RefactoringStatus collectedStatus = getStreamSet().stream().map(Stream::getStatus)
 					.collect(() -> new RefactoringStatus(), (a, b) -> a.merge(b), (a, b) -> a.merge(b));
 			status.merge(collectedStatus);
-			
-			// set entry points
-		    setEntryPoints(analyzer.getEntryPoints());
 
 			// if there are no fatal errors.
 			if (!status.hasFatalError()) {
@@ -240,12 +245,8 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		}
 	}
 
-	private void setEntryPoints(Set<Entrypoint> entryPoints) {
-		this.entryPoints = entryPoints;
-	}
-	
-	public Set<Entrypoint> getEntryPoints() {
-		return this.entryPoints;
+	public Collection<Entrypoint> getEntryPoints(IJavaProject javaProject) {
+		return this.projectToEntryPoints.get(javaProject);
 	}
 
 	private boolean getUseImplicitEntrypoints() {
