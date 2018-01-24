@@ -1210,7 +1210,15 @@ public class StreamStateMachine {
 				++skippedStreams;
 				continue; // next stream.
 			}
-			instanceToStreamMap.put(instanceKey, stream);
+
+			// add the mapping.
+			Stream oldValue = instanceToStreamMap.put(instanceKey, stream);
+
+			// if mapping a different value.
+			if (oldValue != null && oldValue != stream)
+				LOGGER.warning("Reassociating stream: " + stream.getCreation() + " with: " + instanceKey
+						+ ". Old stream was: " + oldValue.getCreation() + ".");
+
 		} // end each stream.
 
 		// sanity check since it's a bijection.
