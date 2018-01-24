@@ -638,6 +638,14 @@ public class StreamStateMachine {
 
 		LOGGER.info("Ordering of reduction type is: " + ordering);
 
+		// if we can't find the ordering.
+		if (ordering == null) {
+			// default to ordered.
+			ordering = Ordering.ORDERED;
+			LOGGER.warning("Can't determine ordering for possible return types: " + possibleReturnTypes
+					+ ". Defaulting to: " + ordering);
+		}
+
 		switch (ordering) {
 		case UNORDERED:
 			return false;
