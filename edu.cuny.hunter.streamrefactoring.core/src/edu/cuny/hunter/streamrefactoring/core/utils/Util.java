@@ -52,11 +52,11 @@ public final class Util {
 	}
 
 	public static ConvertToParallelStreamRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
-			IJavaProject[] projects, boolean useImplicitJoinpoints, Optional<IProgressMonitor> monitor)
-			throws JavaModelException {
+			IJavaProject[] projects, boolean useImplicitEntrypoints, boolean useImplicitTestEntrypoints,
+			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(projects[0]);
 		ConvertToParallelStreamRefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor(
-				projects, settings, useImplicitJoinpoints, monitor);
+				projects, settings, false, useImplicitEntrypoints, useImplicitTestEntrypoints, monitor);
 		return processor;
 	}
 

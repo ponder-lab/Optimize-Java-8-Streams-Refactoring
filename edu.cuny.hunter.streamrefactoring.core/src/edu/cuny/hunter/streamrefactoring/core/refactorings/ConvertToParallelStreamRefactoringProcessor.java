@@ -138,23 +138,26 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	private boolean useImplicitEntrypoints = true;
 
+	private boolean useImplicitTestEntrypoints = false;
+
 	public ConvertToParallelStreamRefactoringProcessor() throws JavaModelException {
-		this(null, null, false, true, Optional.empty());
+		this(null, null, false, true, false, Optional.empty());
 	}
 
 	public ConvertToParallelStreamRefactoringProcessor(final CodeGenerationSettings settings,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
-		this(null, settings, false, true, monitor);
+		this(null, settings, false, true, false, monitor);
 	}
 
 	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
 			final CodeGenerationSettings settings, boolean layer, boolean useImplicitEntrypoints,
-			Optional<IProgressMonitor> monitor) throws JavaModelException {
+			boolean useImplicitTestEntrypoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
 		try {
 			this.javaProjects = javaProjects;
 			this.settings = settings;
 			this.layer = layer;
 			this.useImplicitEntrypoints = useImplicitEntrypoints;
+			this.useImplicitTestEntrypoints = useImplicitTestEntrypoints;
 		} finally {
 			monitor.ifPresent(IProgressMonitor::done);
 		}
@@ -163,16 +166,16 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
 			final CodeGenerationSettings settings, boolean useImplicitJoinpoints, Optional<IProgressMonitor> monitor)
 			throws JavaModelException {
-		this(javaProjects, settings, false, useImplicitJoinpoints, monitor);
+		this(javaProjects, settings, false, useImplicitJoinpoints, false, monitor);
 	}
 
 	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
 			final CodeGenerationSettings settings, Optional<IProgressMonitor> monitor) throws JavaModelException {
-		this(javaProjects, settings, false, true, monitor);
+		this(javaProjects, settings, false, true, false, monitor);
 	}
 
 	public ConvertToParallelStreamRefactoringProcessor(Optional<IProgressMonitor> monitor) throws JavaModelException {
-		this(null, null, false, true, monitor);
+		this(null, null, false, true, false, monitor);
 	}
 
 	private RefactoringStatus checkExistence(IMember member, PreconditionFailure failure) {
@@ -189,7 +192,8 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 			SubMonitor subMonitor = SubMonitor.convert(monitor, Messages.CheckingPreconditions,
 					this.getJavaProjects().length * 1000);
 			final RefactoringStatus status = new RefactoringStatus();
-			StreamAnalyzer analyzer = new StreamAnalyzer(false, this.getUseImplicitEntrypoints());
+			StreamAnalyzer analyzer = new StreamAnalyzer(false, this.getUseImplicitEntrypoints(),
+					this.getUseImplicitTestEntrypoints());
 			this.setStreamSet(analyzer.getStreamSet());
 
 			for (IJavaProject jproj : this.getJavaProjects()) {
@@ -447,6 +451,10 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	private boolean getUseImplicitEntrypoints() {
 		return this.useImplicitEntrypoints;
+	}
+
+	private boolean getUseImplicitTestEntrypoints() {
+		return this.useImplicitTestEntrypoints;
 	}
 
 	@Override
