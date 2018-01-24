@@ -37,4 +37,10 @@ public enum PreconditionFailure {
 	public int getCode() {
 		return code;
 	}
+
+	public static void main(String[] args) {
+		System.out.println("code,name");
+		for (PreconditionFailure failure : PreconditionFailure.values())
+			System.out.println(failure.getCode() + "," + failure);
+	}
 }
