@@ -1214,8 +1214,10 @@ public class StreamStateMachine {
 		} // end each stream.
 
 		// sanity check since it's a bijection.
-		if (instanceToStreamMap.size() != streamSet.size() - skippedStreams)
-			throw new IllegalArgumentException("Stream set does not produce a bijection of instance keys.");
+		if (instanceToStreamMap.keySet().size() != streamSet.size() - skippedStreams)
+			LOGGER.warning("Stream set of size: " + (streamSet.size() - skippedStreams)
+					+ " does not produce a bijection of instance keys of size: " + instanceToStreamMap.keySet().size()
+					+ ".");
 	}
 
 	public Collection<InstanceKey> getTrackedInstances() {
