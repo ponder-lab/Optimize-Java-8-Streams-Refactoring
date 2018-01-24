@@ -53,6 +53,8 @@ public class StreamAnalyzer extends ASTVisitor {
 	private boolean findImplicitTestEntryPoints;
 
 	private Set<Stream> streamSet = new HashSet<>();
+	
+	private Set<Entrypoint> entryPoints = new HashSet<>();
 
 	public StreamAnalyzer() {
 		this(false);
@@ -194,6 +196,8 @@ public class StreamAnalyzer extends ASTVisitor {
 			// TODO: Can I slice the graph so that only nodes relevant to the
 			// instance in question are present?
 			this.enginesWithBuiltCallGraphs.add(engine);
+
+			setEntryPoints(entryPoints);
 		}
 	}
 
@@ -248,4 +252,13 @@ public class StreamAnalyzer extends ASTVisitor {
 
 		return super.visit(node);
 	}
+
+	protected void setEntryPoints(Set<Entrypoint> entryPoints) {
+		this.entryPoints = entryPoints;
+	}
+	
+	public Set<Entrypoint> getEntryPoints() {
+		return this.entryPoints;
+	}
+
 }

@@ -22,6 +22,8 @@ Export-Package: edu.cuny.hunter.streamrefactoring.eval.handlers,
  edu.cuny.hunter.streamrefactoring.eval.utils,
  edu.cuny.hunter.streamrefactoring.ui.plugins
 Import-Package: com.google.common.io,
+ com.ibm.wala.classLoader,
+ com.ibm.wala.ipa.callgraph,
  edu.cuny.hunter.streamrefactoring.core.analysis,
  edu.cuny.hunter.streamrefactoring.core.refactorings,
  edu.cuny.hunter.streamrefactoring.core.utils,

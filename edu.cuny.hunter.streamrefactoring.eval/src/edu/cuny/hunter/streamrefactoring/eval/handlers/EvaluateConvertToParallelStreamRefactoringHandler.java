@@ -51,6 +51,7 @@ import org.osgi.framework.FrameworkUtil;
 
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
+import com.ibm.wala.ipa.callgraph.Entrypoint;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionSuccess;
@@ -162,6 +163,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter streamActionsPrinter = null;
 			CSVPrinter streamExecutionModePrinter = null;
 			CSVPrinter streamOrderingPrinter = null;
+			CSVPrinter entryPointsPrinter = null;
 
 			ConvertToParallelStreamRefactoringProcessor processor = null;
 
@@ -175,8 +177,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 				IJavaProject[] javaProjects = Util.getSelectedJavaProjectsFromEvent(event);
 
-				List<String> resultsHeader = new ArrayList<>(Arrays.asList("subject", "SLOC", "#streams",
-						"#optimization available streams", "#optimizable streams", "#failed preconditions"));
+				List<String> resultsHeader = new ArrayList<>(
+						Arrays.asList("subject", "SLOC", "#entrypoints", "#streams", "#optimization available streams",
+								"#optimizable streams", "#failed preconditions"));
 
 				for (Refactoring refactoring : Refactoring.values())
 					resultsHeader.add(refactoring.toString());
@@ -216,6 +219,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 				streamOrderingPrinter = createCSVPrinter("stream_orderings.csv", buildAttributeColumns("ordering"));
 
+				entryPointsPrinter = createCSVPrinter("entry_points.csv",
+						new String[] { "subject", "method", "type FQN" });
+
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
 						throw new IllegalStateException(
@@ -240,6 +246,15 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					RefactoringStatus status = new ProcessorBasedRefactoring(processor)
 							.checkAllConditions(new NullProgressMonitor());
 					resultsTimeCollector.stop();
+					
+					// print entry points
+					Set<Entrypoint> entryPoints = processor.getEntryPoints();
+					resultsPrinter.print(entryPoints.size());
+
+					for (Entrypoint entryPoint : entryPoints) {
+						entryPointsPrinter.printRecord(javaProject.getElementName(),
+								entryPoint.getMethod().getSignature(), "! not implement now");
+					}
 
 					// #streams.
 					resultsPrinter.print(processor.getStreamSet().size());
@@ -414,6 +429,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						streamExecutionModePrinter.close();
 					if (streamOrderingPrinter != null)
 						streamOrderingPrinter.close();
+					if (entryPointsPrinter != null)
+						entryPointsPrinter.close();
 
 					// clear cache.
 					if (processor != null)

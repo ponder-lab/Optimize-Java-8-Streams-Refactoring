@@ -5,6 +5,7 @@ import static org.eclipse.jdt.ui.JavaElementLabels.getElementLabel;
 
 import java.text.MessageFormat;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -48,6 +49,8 @@ import org.eclipse.ltk.core.refactoring.participants.RefactoringParticipant;
 import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
 import org.eclipse.ltk.core.refactoring.participants.SharableParticipants;
 import org.osgi.framework.FrameworkUtil;
+
+import com.ibm.wala.ipa.callgraph.Entrypoint;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
@@ -129,6 +132,8 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	private IJavaProject[] javaProjects;
 
 	private Set<Stream> streamSet;
+	
+	private Set<Entrypoint> entryPoints = new HashSet<>();
 
 	private boolean useImplicitEntrypoints = true;
 
@@ -208,6 +213,9 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 			RefactoringStatus collectedStatus = getStreamSet().stream().map(Stream::getStatus)
 					.collect(() -> new RefactoringStatus(), (a, b) -> a.merge(b), (a, b) -> a.merge(b));
 			status.merge(collectedStatus);
+			
+			// set entry points
+		    setEntryPoints(analyzer.getEntryPoints());
 
 			// if there are no fatal errors.
 			if (!status.hasFatalError()) {
@@ -230,6 +238,14 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		} finally {
 			monitor.done();
 		}
+	}
+
+	private void setEntryPoints(Set<Entrypoint> entryPoints) {
+		this.entryPoints = entryPoints;
+	}
+	
+	public Set<Entrypoint> getEntryPoints() {
+		return this.entryPoints;
 	}
 
 	private boolean getUseImplicitEntrypoints() {
