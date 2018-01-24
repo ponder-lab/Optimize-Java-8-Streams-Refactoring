@@ -81,7 +81,7 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	/**
 	 * Analyzes this {@link StreamAnalyzer}'s streams.
-	 * 
+	 *
 	 * @return {@link Map} of project's analyzed along with the entry points used.
 	 */
 	public Map<IJavaProject, Collection<Entrypoint>> analyze() throws CoreException {
@@ -171,7 +171,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	/**
 	 * Builds the call graph that is part of the
 	 * {@link EclipseProjectAnalysisEngine}.
-	 * 
+	 *
 	 * @param engine
 	 *            The EclipseProjectAnalysisEngine for which to build the call
 	 *            graph.

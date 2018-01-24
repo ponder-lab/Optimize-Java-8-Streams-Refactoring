@@ -74,11 +74,11 @@ import net.sourceforge.metrics.core.sources.Dispatcher;
 public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractHandler {
 
 	private static final boolean BUILD_WORKSPACE = false;
+	private static final boolean FIND_IMPLICIT_ENTRYPOINTS_DEFAULT = true;
+	private static final String FIND_IMPLICIT_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitEntrypoints";
 	private static final int LOGGING_LEVEL = IStatus.INFO;
 	private static final boolean PERFORM_CHANGE_DEFAULT = false;
 	private static final String PERFORM_CHANGE_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.performChange";
-	private static final boolean FIND_IMPLICIT_ENTRYPOINTS_DEFAULT = true;
-	private static final String FIND_IMPLICIT_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitEntrypoints";
 
 	private static String[] buildAttributeColumns(String attribute) {
 		return new String[] { "subject", "stream", "start pos", "length", "method", "type FQN", attribute };
@@ -122,6 +122,11 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			System.err.println("WARNING: Could not retrieve metric source for method: " + method.getElementName());
 			return 0;
 		}
+	}
+
+	private static Collection<Entrypoint> getProjectEntryPoints(IJavaProject javaProject,
+			ConvertToParallelStreamRefactoringProcessor processor) {
+		return processor.getEntryPoints(javaProject);
 	}
 
 	private static int getProjectLinesOfCode(IJavaProject javaProject) {
@@ -449,11 +454,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		return null;
 	}
 
-	private static Collection<Entrypoint> getProjectEntryPoints(IJavaProject javaProject,
-			ConvertToParallelStreamRefactoringProcessor processor) {
-		return processor.getEntryPoints(javaProject);
-	}
-
 	private Set<SearchMatch> findReferences(Set<? extends IJavaElement> elements) throws CoreException {
 		Set<SearchMatch> ret = new HashSet<>();
 		for (IJavaElement elem : elements)
@@ -470,15 +470,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		return ret;
 	}
 
-	private boolean shouldPerformChange() {
-		String performChangePropertyValue = System.getenv(PERFORM_CHANGE_PROPERTY_KEY);
-
-		if (performChangePropertyValue == null)
-			return PERFORM_CHANGE_DEFAULT;
-		else
-			return Boolean.valueOf(performChangePropertyValue);
-	}
-
 	private boolean shouldFindImplicitEntrypoints() {
 		String findImplicitEntrypoits = System.getenv(FIND_IMPLICIT_ENTRYPOINTS_PROPERTY_KEY);
 
@@ -486,5 +477,14 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			return FIND_IMPLICIT_ENTRYPOINTS_DEFAULT;
 		else
 			return Boolean.valueOf(findImplicitEntrypoits);
+	}
+
+	private boolean shouldPerformChange() {
+		String performChangePropertyValue = System.getenv(PERFORM_CHANGE_PROPERTY_KEY);
+
+		if (performChangePropertyValue == null)
+			return PERFORM_CHANGE_DEFAULT;
+		else
+			return Boolean.valueOf(performChangePropertyValue);
 	}
 }
