@@ -202,8 +202,10 @@ public class StreamAnalyzer extends ASTVisitor {
 				addImplicitEntryPoints(entryPoints, jUnitEntryPoints);
 			}
 
-			if (entryPoints.isEmpty())
+			if (entryPoints.isEmpty()) {
 				LOGGER.warning(() -> "Project: " + engine.getProject().getElementName() + " has no entry points.");
+				return entryPoints;
+			}
 
 			// set options.
 			AnalysisOptions options = engine.getDefaultOptions(entryPoints);
