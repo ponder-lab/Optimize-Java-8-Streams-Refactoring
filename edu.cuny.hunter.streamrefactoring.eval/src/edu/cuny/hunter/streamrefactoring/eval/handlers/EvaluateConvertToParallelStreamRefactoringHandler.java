@@ -74,12 +74,12 @@ import net.sourceforge.metrics.core.sources.Dispatcher;
 public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractHandler {
 
 	private static final boolean BUILD_WORKSPACE = false;
-	private static final boolean FIND_IMPLICIT_TEST_ENTRYPOINTS_DEFAULT = false;
-	private static final String FIND_IMPLICIT_TEST_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitTestEntrypoints";
-	private static final boolean FIND_IMPLICIT_ENTRYPOINTS_DEFAULT = true;
-	private static final String FIND_IMPLICIT_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitEntrypoints";
 	private static final boolean FIND_IMPLICIT_BENCHMARK_ENTRYPOINTS_DEFAULT = false;
 	private static final String FIND_IMPLICIT_BENCHMARK_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitBenchmarkEntrypoints";
+	private static final boolean FIND_IMPLICIT_ENTRYPOINTS_DEFAULT = true;
+	private static final String FIND_IMPLICIT_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitEntrypoints";
+	private static final boolean FIND_IMPLICIT_TEST_ENTRYPOINTS_DEFAULT = false;
+	private static final String FIND_IMPLICIT_TEST_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitTestEntrypoints";
 	private static final int LOGGING_LEVEL = IStatus.INFO;
 	private static final boolean PERFORM_CHANGE_DEFAULT = false;
 	private static final String PERFORM_CHANGE_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.performChange";
@@ -475,6 +475,15 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		return ret;
 	}
 
+	private boolean shouldFindImplicitBenchmarkEntrypoints() {
+		String findImplicitBenchmarkEntrypoints = System.getenv(FIND_IMPLICIT_BENCHMARK_ENTRYPOINTS_PROPERTY_KEY);
+
+		if (findImplicitBenchmarkEntrypoints == null)
+			return FIND_IMPLICIT_BENCHMARK_ENTRYPOINTS_DEFAULT;
+		else
+			return Boolean.valueOf(findImplicitBenchmarkEntrypoints);
+	}
+
 	private boolean shouldFindImplicitEntrypoints() {
 		String findImplicitEntrypoits = System.getenv(FIND_IMPLICIT_ENTRYPOINTS_PROPERTY_KEY);
 
@@ -491,15 +500,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			return FIND_IMPLICIT_TEST_ENTRYPOINTS_DEFAULT;
 		else
 			return Boolean.valueOf(findImplicitTestEntrypoints);
-	}
-	
-	private boolean shouldFindImplicitBenchmarkEntrypoints() {
-		String findImplicitBenchmarkEntrypoints = System.getenv(FIND_IMPLICIT_BENCHMARK_ENTRYPOINTS_PROPERTY_KEY);
-
-		if (findImplicitBenchmarkEntrypoints == null)
-			return FIND_IMPLICIT_BENCHMARK_ENTRYPOINTS_DEFAULT;
-		else
-			return Boolean.valueOf(findImplicitBenchmarkEntrypoints);
 	}
 
 	private boolean shouldPerformChange() {

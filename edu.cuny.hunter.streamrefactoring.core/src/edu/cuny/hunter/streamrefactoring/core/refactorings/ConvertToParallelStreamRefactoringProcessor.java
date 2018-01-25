@@ -136,11 +136,11 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	private Map<IType, ITypeHierarchy> typeToTypeHierarchyMap = new HashMap<>();
 
+	private boolean useImplicitBenchmarkEntrypoints = false;
+
 	private boolean useImplicitEntrypoints = true;
 
 	private boolean useImplicitTestEntrypoints = false;
-	
-	private boolean useImplicitBenchmarkEntrypoints = false;
 
 	public ConvertToParallelStreamRefactoringProcessor() throws JavaModelException {
 		this(null, null, false, true, false, false, Optional.empty());
@@ -453,16 +453,16 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		return this.getStreamSet().parallelStream().filter(s -> s.getStatus().hasError()).collect(Collectors.toSet());
 	}
 
+	private boolean getUseImplicitBenchmarkEntrypoints() {
+		return this.useImplicitBenchmarkEntrypoints;
+	}
+
 	private boolean getUseImplicitEntrypoints() {
 		return this.useImplicitEntrypoints;
 	}
 
 	private boolean getUseImplicitTestEntrypoints() {
 		return this.useImplicitTestEntrypoints;
-	}
-	
-	private boolean getUseImplicitBenchmarkEntrypoints() {
-		return this.useImplicitBenchmarkEntrypoints;
 	}
 
 	@Override

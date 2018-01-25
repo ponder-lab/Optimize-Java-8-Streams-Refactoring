@@ -34,8 +34,8 @@ import com.ibm.wala.cast.java.translator.jdt.JDTIdentityMapper;
 import com.ibm.wala.classLoader.IBytecodeMethod;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
-import com.ibm.wala.classLoader.ShrikeCTMethod;
 import com.ibm.wala.classLoader.IMethod.SourcePosition;
+import com.ibm.wala.classLoader.ShrikeCTMethod;
 import com.ibm.wala.classLoader.SyntheticClass;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
@@ -72,16 +72,11 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 @SuppressWarnings("restriction")
 public final class Util {
 
-	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
-	private static final String ENTRYPOINT = "edu.cuny.hunter.streamrefactoring.annotations.EntryPoint";
-	private static final String BENCHMARK = "org.openjdk.jmh.annotations.Benchmark";
-	private static final String SETUP = "org.openjdk.jmh.annotations.Setup";
-
 	private static final class CorrespondingASTVisitor extends ASTVisitor {
-		private CompilationUnit unit;
-		private SourcePosition sourcePosition;
-		private MethodReference methodReference;
 		private MethodInvocation correspondingMethodInvocation;
+		private MethodReference methodReference;
+		private SourcePosition sourcePosition;
+		private CompilationUnit unit;
 
 		public CorrespondingASTVisitor(CompilationUnit unit, SourcePosition sourcePosition,
 				MethodReference methodReference) {
@@ -90,43 +85,217 @@ public final class Util {
 			this.methodReference = methodReference;
 		}
 
+		public MethodInvocation getCorrespondingMethodInvocation() {
+			return this.correspondingMethodInvocation;
+		}
+
 		@Override
 		public boolean visit(MethodInvocation node) {
 			SimpleName methodName = node.getName();
-			int extendedStartPosition = unit.getExtendedStartPosition(methodName);
-			int lineNumber = unit.getLineNumber(extendedStartPosition);
+			int extendedStartPosition = this.unit.getExtendedStartPosition(methodName);
+			int lineNumber = this.unit.getLineNumber(extendedStartPosition);
 
 			// FIXME: Matching line numbers could be dangerous. However, since
 			// we should be using this for terminal operations, most likely,
 			// this will work out. Otherwise, the matching can be inaccurate
 			// (without column information).
-			if (lineNumber == sourcePosition.getFirstLine()) {
+			if (lineNumber == this.sourcePosition.getFirstLine())
 				// we have at least a line correlation.
-				if (matches(methodReference.getDeclaringClass(), methodReference, node)) {
+				if (matches(this.methodReference.getDeclaringClass(), this.methodReference, node)) {
 					// found it.
-					correspondingMethodInvocation = node;
+					this.correspondingMethodInvocation = node;
 					return false;
 				}
-			}
 			return true;
 		}
+	}
 
-		public MethodInvocation getCorrespondingMethodInvocation() {
-			return correspondingMethodInvocation;
+	private static final String BENCHMARK = "org.openjdk.jmh.annotations.Benchmark";
+	private static final String ENTRYPOINT = "edu.cuny.hunter.streamrefactoring.annotations.EntryPoint";
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
+
+	private static final String SETUP = "org.openjdk.jmh.annotations.Setup";
+
+	public static boolean allEqual(Collection<?> collection) {
+		if (collection.isEmpty())
+			return true;
+		else {
+			Object last = null;
+			for (Object object : collection)
+				if (last == null)
+					last = object;
+				else if (!object.equals(last))
+					return false;
+			return true;
 		}
 	}
 
-	private Util() {
+	/**
+	 * Returns true iff all of the predecessors of all of the given {@link CGNode}s
+	 * in the {@link CallGraph} are {@link FakeRootMethod}s.
+	 *
+	 * @param nodes
+	 *            The nodes whose predecessors to consider.
+	 * @param callGraph
+	 *            The {@link CallGraph} to search.
+	 * @return True iff all of the predecessors of all of the given {@link CGNode}s
+	 *         in the {@link CallGraph} are {@link FakeRootMethod}s.
+	 * @apiNote The may be an issue here related to #106.
+	 */
+	@SuppressWarnings("unused")
+	private static boolean allFake(Set<CGNode> nodes, CallGraph callGraph) {
+		// for each node.
+		for (CGNode cgNode : nodes)
+			// for each predecessor.
+			for (Iterator<CGNode> it = callGraph.getPredNodes(cgNode); it.hasNext();) {
+				CGNode predNode = it.next();
+				com.ibm.wala.classLoader.IMethod predMethod = predNode.getMethod();
+
+				boolean isFakeMethod = predMethod instanceof FakeRootMethod
+						|| predMethod instanceof FakeWorldClinitMethod;
+
+				if (!isFakeMethod)
+					return false;
+			}
+		return true;
 	}
 
-	static boolean isAbstractType(Class<?> clazz) {
-		// if it's an interface.
-		if (clazz.isInterface())
-			return true; // can't instantiate an interface.
-		else if (Modifier.isAbstract(clazz.getModifiers()))
-			return true; // can't instantiate an abstract type.
-		else
-			return false;
+	public static Set<Entrypoint> findBenchmarkEntryPoints(IClassHierarchy classHierarchy) {
+		final Set<Entrypoint> result = new HashSet<>();
+
+		for (IClass klass : classHierarchy)
+			if (!AnalysisUtils.isJDKClass(klass)) {
+				boolean isBenchmarkClass = false;
+				// iterate over all declared methods
+				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
+					// if method has an annotation
+					if (!(method instanceof ShrikeCTMethod))
+						throw new IllegalArgumentException("@EntryPoint only works for byte code.");
+
+					for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations()) {
+						TypeName annotationName = annotation.getType().getName();
+
+						if (isBenchmark(annotationName) || isSetup(annotationName)) {
+							result.add(new DefaultEntrypoint(method, classHierarchy));
+							isBenchmarkClass = true;
+							break;
+						}
+					}
+				}
+				if (isBenchmarkClass) {
+					IMethod classInitializer = klass.getClassInitializer();
+
+					if (classInitializer != null)
+						result.add(new DefaultEntrypoint(classInitializer, classHierarchy));
+
+					IMethod ctor = klass.getMethod(MethodReference.initSelector);
+
+					if (ctor != null)
+						result.add(new DefaultEntrypoint(ctor, classHierarchy));
+
+				}
+			}
+
+		return result;
+	}
+
+	private static MethodInvocation findCorrespondingMethodInvocation(CompilationUnit unit,
+			SourcePosition sourcePosition, MethodReference method) {
+		CorrespondingASTVisitor visitor = new CorrespondingASTVisitor(unit, sourcePosition, method);
+		unit.accept(visitor);
+		return visitor.getCorrespondingMethodInvocation();
+	}
+
+	/**
+	 * Find all annotations in test cases and check whether they are "entry point".
+	 * If yes, call DefaultEntrypoint to get entry point, then, add it into the
+	 * result set.
+	 */
+	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) {
+		final Set<Entrypoint> result = new HashSet<>();
+
+		for (IClass klass : classHierarchy)
+			if (!AnalysisUtils.isJDKClass(klass))
+				// iterate over all declared methods
+				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
+					// if method has an annotation
+					if (!(method instanceof ShrikeCTMethod))
+						throw new IllegalArgumentException("@EntryPoint only works for byte code.");
+
+					try {
+						for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations(true))
+							if (isEntryPointClass(annotation.getType().getName())) {
+								result.add(new DefaultEntrypoint(method, classHierarchy));
+								break;
+							}
+					} catch (InvalidClassFileException e) {
+						throw new IllegalArgumentException(
+								"Failed to find entry points using class hierarchy: " + classHierarchy + ".", e);
+					}
+				}
+
+		return result;
+	}
+
+	static Set<ITypeBinding> getAllInterfaces(ITypeBinding type) {
+		Set<ITypeBinding> ret = new HashSet<>();
+		ITypeBinding[] interfaces = type.getInterfaces();
+		ret.addAll(Arrays.asList(interfaces));
+
+		for (ITypeBinding interfaceBinding : interfaces)
+			ret.addAll(getAllInterfaces(interfaceBinding));
+
+		return ret;
+	}
+
+	static String getBinaryName(TypeReference typeReference) {
+		TypeName name = typeReference.getName();
+		String slashToDot = StringStuff.slashToDot(name.getPackage().toString() + "." + name.getClassName().toString());
+		return slashToDot;
+	}
+
+	public static CallStringWithReceivers getCallString(CGNode node) {
+		CallStringContext context = (CallStringContext) node.getContext();
+		CallStringWithReceivers callString = (CallStringWithReceivers) context
+				.get(CallStringContextSelector.CALL_STRING);
+		return callString;
+	}
+
+	public static CallStringWithReceivers getCallString(InstanceKey instance) {
+		NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
+		return getCallString(allocationInNode);
+	}
+
+	public static CallStringWithReceivers getCallString(NormalAllocationInNode allocationInNode) {
+		CGNode node = allocationInNode.getNode();
+		return getCallString(node);
+	}
+
+	static Set<ITypeBinding> getImplementedInterfaces(ITypeBinding type) {
+		Set<ITypeBinding> ret = new HashSet<>();
+
+		if (type.isInterface())
+			ret.add(type);
+
+		ret.addAll(getAllInterfaces(type));
+		return ret;
+	}
+
+	public static JDTIdentityMapper getJDTIdentifyMapper(ASTNode node) {
+		return new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE, node.getAST());
+	}
+
+	static int getLineNumberFromAST(SimpleName methodName) {
+		CompilationUnit compilationUnit = (CompilationUnit) ASTNodes.getParent(methodName, ASTNode.COMPILATION_UNIT);
+		int lineNumberFromAST = compilationUnit.getLineNumber(methodName.getStartPosition());
+		return lineNumberFromAST;
+	}
+
+	static int getLineNumberFromIR(IBytecodeMethod method, SSAInstruction instruction)
+			throws InvalidClassFileException {
+		int bytecodeIndex = method.getBytecodeIndex(instruction.iindex);
+		int lineNumberFromIR = method.getLineNumber(bytecodeIndex);
+		return lineNumberFromIR;
 	}
 
 	static Collection<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
@@ -146,57 +315,11 @@ public final class Util {
 				Collection<TypeAbstraction> possibleTypes = getPossibleTypes(use, inference);
 				ret.addAll(possibleTypes);
 			}
-		} else {
+		} else
 			// one one possible type.
 			ret.add(inference.getType(valueNumber));
-		}
 
 		return ret;
-	}
-
-	static boolean isType(IClass clazz, String packagePath, String typeName) {
-		if (clazz.isInterface()) {
-			Atom typePackage = clazz.getName().getPackage();
-			Atom compareToPackage = Atom.findOrCreateUnicodeAtom(packagePath);
-			if (typePackage.equals(compareToPackage)) {
-				Atom className = clazz.getName().getClassName();
-				Atom compareToClass = Atom.findOrCreateUnicodeAtom(typeName);
-				if (className.equals(compareToClass))
-					return true;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * @return true iff typeReference is a type that implements {@link BaseStream}.
-	 */
-	public static boolean implementsBaseStream(TypeReference typeReference, IClassHierarchy classHierarchy) {
-		return implementsType(typeReference, classHierarchy, Util::isBaseStream);
-	}
-
-	public static boolean implementsIterable(TypeReference reference, IClassHierarchy classHierarchy) {
-		return implementsType(reference, classHierarchy, Util::isIterable);
-	}
-
-	public static boolean implementsCollector(TypeReference reference, IClassHierarchy classHierarchy) {
-		return implementsType(reference, classHierarchy, Util::isCollector);
-	}
-
-	public static boolean implementsType(TypeReference typeReference, IClassHierarchy classHierarchy,
-			Predicate<IClass> predicate) {
-		IClass clazz = classHierarchy.lookupClass(typeReference);
-
-		if (clazz == null)
-			return false;
-		else
-			return predicate.test(clazz) || clazz.getAllImplementedInterfaces().stream().anyMatch(predicate);
-	}
-
-	static String getBinaryName(TypeReference typeReference) {
-		TypeName name = typeReference.getName();
-		String slashToDot = StringStuff.slashToDot(name.getPackage().toString() + "." + name.getClassName().toString());
-		return slashToDot;
 	}
 
 	public static Collection<TypeAbstraction> getPossibleTypesInterprocedurally(CGNode node, int valueNumber,
@@ -289,7 +412,7 @@ public final class Util {
 					boolean assignableFrom = node.getClassHierarchy().isAssignableFrom(genericClass, concreteClass);
 
 					// if it's assignable.
-					if (assignableFrom) {
+					if (assignableFrom)
 						// would the ordering be consistent?
 						if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), concreteType,
 								orderingInference)) {
@@ -312,7 +435,6 @@ public final class Util {
 								ret.add(concreteType);
 							}
 						}
-					}
 				} else {
 					// just add it.
 					LOGGER.fine("Add type straight up: " + concreteType);
@@ -321,6 +443,153 @@ public final class Util {
 			}
 		}
 		return ret;
+	}
+
+	static boolean implementsBaseStream(ITypeBinding type) {
+		Set<ITypeBinding> implementedInterfaces = getImplementedInterfaces(type);
+		return implementedInterfaces.stream()
+				.anyMatch(i -> i.getErasure().getQualifiedName().equals("java.util.stream.BaseStream"));
+	}
+
+	/**
+	 * @return true iff typeReference is a type that implements {@link BaseStream}.
+	 */
+	public static boolean implementsBaseStream(TypeReference typeReference, IClassHierarchy classHierarchy) {
+		return implementsType(typeReference, classHierarchy, Util::isBaseStream);
+	}
+
+	public static boolean implementsCollector(TypeReference reference, IClassHierarchy classHierarchy) {
+		return implementsType(reference, classHierarchy, Util::isCollector);
+	}
+
+	public static boolean implementsIterable(TypeReference reference, IClassHierarchy classHierarchy) {
+		return implementsType(reference, classHierarchy, Util::isIterable);
+	}
+
+	public static boolean implementsType(TypeReference typeReference, IClassHierarchy classHierarchy,
+			Predicate<IClass> predicate) {
+		IClass clazz = classHierarchy.lookupClass(typeReference);
+
+		if (clazz == null)
+			return false;
+		else
+			return predicate.test(clazz) || clazz.getAllImplementedInterfaces().stream().anyMatch(predicate);
+	}
+
+	private static int indexOf(Object[] objs, Object o) {
+		for (int i = 0; i < objs.length; i++) {
+			if (o != null && o.equals(objs[i]))
+				return i;
+			if (o == null && objs[i] == null)
+				return i;
+		}
+		return -1;
+	}
+
+	static boolean isAbstractType(Class<?> clazz) {
+		// if it's an interface.
+		if (clazz.isInterface())
+			return true; // can't instantiate an interface.
+		else if (Modifier.isAbstract(clazz.getModifiers()))
+			return true; // can't instantiate an abstract type.
+		else
+			return false;
+	}
+
+	public static boolean isBaseStream(IClass clazz) {
+		return Util.isType(clazz, "java/util/stream", "BaseStream");
+	}
+
+	private static boolean isBenchmark(TypeName typeName) {
+		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(BENCHMARK);
+	}
+
+	public static boolean isCollector(IClass clazz) {
+		return Util.isType(clazz, "java/util/stream", "Collector");
+	}
+
+	/**
+	 * check whether the annotation is "EntryPoint"
+	 */
+	private static boolean isEntryPointClass(TypeName typeName) {
+		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(ENTRYPOINT);
+	}
+
+	public static boolean isIterable(IClass clazz) {
+		return Util.isType(clazz, "java/lang", "Iterable");
+	}
+
+	public static boolean isScalar(Collection<TypeAbstraction> types) {
+		Boolean ret = null;
+
+		for (TypeAbstraction typeAbstraction : types) {
+			boolean scalar = isScalar(typeAbstraction);
+
+			if (ret == null)
+				ret = scalar;
+			else if (ret != scalar)
+				throw new IllegalArgumentException("Inconsistent types: " + types);
+		}
+
+		return ret;
+	}
+
+	public static boolean isScalar(TypeAbstraction typeAbstraction) {
+		TypeReference typeReference = typeAbstraction.getTypeReference();
+
+		if (typeReference.isArrayType())
+			return false;
+		else if (typeReference.equals(TypeReference.Void))
+			throw new IllegalArgumentException("Void is neither scalar or nonscalar.");
+		else if (typeReference.isPrimitiveType())
+			return true;
+		else if (typeReference.isReferenceType()) {
+			IClass type = typeAbstraction.getType();
+			return !edu.cuny.hunter.streamrefactoring.core.analysis.Util.isIterable(type)
+					&& type.getAllImplementedInterfaces().stream().noneMatch(Util::isIterable);
+		} else
+			throw new IllegalArgumentException("Can't tell if type is scalar: " + typeAbstraction);
+	}
+
+	private static boolean isSetup(TypeName typeName) {
+		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(SETUP);
+	}
+
+	static boolean isType(IClass clazz, String packagePath, String typeName) {
+		if (clazz.isInterface()) {
+			Atom typePackage = clazz.getName().getPackage();
+			Atom compareToPackage = Atom.findOrCreateUnicodeAtom(packagePath);
+			if (typePackage.equals(compareToPackage)) {
+				Atom className = clazz.getName().getClassName();
+				Atom compareToClass = Atom.findOrCreateUnicodeAtom(typeName);
+				if (className.equals(compareToClass))
+					return true;
+			}
+		}
+		return false;
+	}
+
+	public static boolean matches(SSAInstruction instruction, MethodInvocation invocation, Optional<Logger> logger) {
+		if (instruction.hasDef() && instruction.getNumberOfDefs() == 2) {
+			if (instruction instanceof SSAInvokeInstruction) {
+				SSAInvokeInstruction invokeInstruction = (SSAInvokeInstruction) instruction;
+				if (matches(invokeInstruction.getDeclaredTarget().getDeclaringClass(),
+						invokeInstruction.getCallSite().getDeclaredTarget(), invocation))
+					return true;
+			} else
+				logger.ifPresent(l -> l.warning("Instruction: " + instruction + " is not an SSAInstruction."));
+		} else
+			logger.ifPresent(l -> l.warning("Instruction: " + instruction + " has no definitions."));
+		return false;
+	}
+
+	private static boolean matches(TypeReference methodDeclaringType, MethodReference method,
+			MethodInvocation invocation) {
+		if (getBinaryName(methodDeclaringType).equals(invocation.getExpression().resolveTypeBinding().getBinaryName()))
+			// FIXME: This matching needs much work #153.
+			if (method.getName().toString().equals(invocation.resolveMethodBinding().getName()))
+				return true;
+		return false;
 	}
 
 	private static boolean wouldOrderingBeConsistent(final Collection<TypeAbstraction> types,
@@ -343,286 +612,6 @@ public final class Util {
 		return true;
 	}
 
-	private static MethodInvocation findCorrespondingMethodInvocation(CompilationUnit unit,
-			SourcePosition sourcePosition, MethodReference method) {
-		CorrespondingASTVisitor visitor = new CorrespondingASTVisitor(unit, sourcePosition, method);
-		unit.accept(visitor);
-		return visitor.getCorrespondingMethodInvocation();
-	}
-
-	private static int indexOf(Object[] objs, Object o) {
-		for (int i = 0; i < objs.length; i++) {
-			if (o != null && o.equals(objs[i]))
-				return i;
-			if (o == null && objs[i] == null)
-				return i;
-		}
-		return -1;
-	}
-
-	public static boolean allEqual(Collection<?> collection) {
-		if (collection.isEmpty())
-			return true;
-		else {
-			Object last = null;
-			for (Object object : collection) {
-				if (last == null)
-					last = object;
-				else if (!object.equals(last))
-					return false;
-			}
-			return true;
-		}
-	}
-
-	public static boolean matches(SSAInstruction instruction, MethodInvocation invocation, Optional<Logger> logger) {
-		if (instruction.hasDef() && instruction.getNumberOfDefs() == 2) {
-			if (instruction instanceof SSAInvokeInstruction) {
-				SSAInvokeInstruction invokeInstruction = (SSAInvokeInstruction) instruction;
-				if (matches(invokeInstruction.getDeclaredTarget().getDeclaringClass(),
-						invokeInstruction.getCallSite().getDeclaredTarget(), invocation))
-					return true;
-			} else
-				logger.ifPresent(l -> l.warning("Instruction: " + instruction + " is not an SSAInstruction."));
-		} else
-			logger.ifPresent(l -> l.warning("Instruction: " + instruction + " has no definitions."));
-		return false;
-	}
-
-	private static boolean matches(TypeReference methodDeclaringType, MethodReference method,
-			MethodInvocation invocation) {
-		if (getBinaryName(methodDeclaringType)
-				.equals(invocation.getExpression().resolveTypeBinding().getBinaryName())) {
-			// FIXME: This matching needs much work #153.
-			if (method.getName().toString().equals(invocation.resolveMethodBinding().getName())) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	public static JDTIdentityMapper getJDTIdentifyMapper(ASTNode node) {
-		return new JDTIdentityMapper(JavaSourceAnalysisScope.SOURCE, node.getAST());
-	}
-
-	/**
-	 * check whether the annotation is "EntryPoint"
-	 */
-	private static boolean isEntryPointClass(TypeName typeName) {
-		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(ENTRYPOINT);
-	}
-
-	private static boolean isBenchmark(TypeName typeName) {
-		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(BENCHMARK);
-	}
-
-	private static boolean isSetup(TypeName typeName) {
-		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(SETUP);
-	}
-
-	/**
-	 * Find all annotations in test cases and check whether they are "entry point".
-	 * If yes, call DefaultEntrypoint to get entry point, then, add it into the
-	 * result set.
-	 */
-	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) {
-		final Set<Entrypoint> result = new HashSet<>();
-
-		for (Iterator<IClass> classIterator = classHierarchy.iterator(); classIterator.hasNext();) {
-			IClass klass = classIterator.next();
-			if (!AnalysisUtils.isJDKClass(klass))
-				// iterate over all declared methods
-				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
-					// if method has an annotation
-					if (!(method instanceof ShrikeCTMethod))
-						throw new IllegalArgumentException("@EntryPoint only works for byte code.");
-
-					try {
-						for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations(true))
-							if (isEntryPointClass(annotation.getType().getName())) {
-								result.add(new DefaultEntrypoint(method, classHierarchy));
-								break;
-							}
-					} catch (InvalidClassFileException e) {
-						throw new IllegalArgumentException(
-								"Failed to find entry points using class hierarchy: " + classHierarchy + ".", e);
-					}
-				}
-		}
-
-		return result;
-	}
-
-	public static Set<Entrypoint> findBenchmarkEntryPoints(IClassHierarchy classHierarchy) {
-		final Set<Entrypoint> result = new HashSet<>();
-
-		for (Iterator<IClass> classIterator = classHierarchy.iterator(); classIterator.hasNext();) {
-			IClass klass = classIterator.next();
-			if (!AnalysisUtils.isJDKClass(klass)) {
-				boolean isBenchmarkClass = false;
-				// iterate over all declared methods
-				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
-					// if method has an annotation
-					if (!(method instanceof ShrikeCTMethod))
-						throw new IllegalArgumentException("@EntryPoint only works for byte code.");
-
-					for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations()) {
-						TypeName annotationName = annotation.getType().getName();
-
-						if (isBenchmark(annotationName) || isSetup(annotationName)) {
-							result.add(new DefaultEntrypoint(method, classHierarchy));
-							isBenchmarkClass = true;
-							break;
-						}
-					}
-				}
-				if (isBenchmarkClass) {
-					IMethod classInitializer = klass.getClassInitializer();
-
-					if (classInitializer != null)
-						result.add(new DefaultEntrypoint(classInitializer, classHierarchy));
-
-					IMethod ctor = klass.getMethod(MethodReference.initSelector);
-
-					if (ctor != null)
-						result.add(new DefaultEntrypoint(ctor, classHierarchy));
-
-				}
-			}
-		}
-
-		return result;
-	}
-
-	public static CallStringWithReceivers getCallString(InstanceKey instance) {
-		NormalAllocationInNode allocationInNode = (NormalAllocationInNode) instance;
-		return getCallString(allocationInNode);
-	}
-
-	public static CallStringWithReceivers getCallString(NormalAllocationInNode allocationInNode) {
-		CGNode node = allocationInNode.getNode();
-		return getCallString(node);
-	}
-
-	public static CallStringWithReceivers getCallString(CGNode node) {
-		CallStringContext context = (CallStringContext) node.getContext();
-		CallStringWithReceivers callString = (CallStringWithReceivers) context
-				.get(CallStringContextSelector.CALL_STRING);
-		return callString;
-	}
-
-	/**
-	 * Returns true iff all of the predecessors of all of the given {@link CGNode}s
-	 * in the {@link CallGraph} are {@link FakeRootMethod}s.
-	 *
-	 * @param nodes
-	 *            The nodes whose predecessors to consider.
-	 * @param callGraph
-	 *            The {@link CallGraph} to search.
-	 * @return True iff all of the predecessors of all of the given {@link CGNode}s
-	 *         in the {@link CallGraph} are {@link FakeRootMethod}s.
-	 * @apiNote The may be an issue here related to #106.
-	 */
-	@SuppressWarnings("unused")
-	private static boolean allFake(Set<CGNode> nodes, CallGraph callGraph) {
-		// for each node.
-		for (CGNode cgNode : nodes) {
-			// for each predecessor.
-			for (Iterator<CGNode> it = callGraph.getPredNodes(cgNode); it.hasNext();) {
-				CGNode predNode = it.next();
-				com.ibm.wala.classLoader.IMethod predMethod = predNode.getMethod();
-
-				boolean isFakeMethod = predMethod instanceof FakeRootMethod
-						|| predMethod instanceof FakeWorldClinitMethod;
-
-				if (!isFakeMethod)
-					return false;
-			}
-		}
-		return true;
-	}
-
-	static Set<ITypeBinding> getAllInterfaces(ITypeBinding type) {
-		Set<ITypeBinding> ret = new HashSet<>();
-		ITypeBinding[] interfaces = type.getInterfaces();
-		ret.addAll(Arrays.asList(interfaces));
-
-		for (ITypeBinding interfaceBinding : interfaces)
-			ret.addAll(getAllInterfaces(interfaceBinding));
-
-		return ret;
-	}
-
-	static Set<ITypeBinding> getImplementedInterfaces(ITypeBinding type) {
-		Set<ITypeBinding> ret = new HashSet<>();
-
-		if (type.isInterface())
-			ret.add(type);
-
-		ret.addAll(getAllInterfaces(type));
-		return ret;
-	}
-
-	static boolean implementsBaseStream(ITypeBinding type) {
-		Set<ITypeBinding> implementedInterfaces = getImplementedInterfaces(type);
-		return implementedInterfaces.stream()
-				.anyMatch(i -> i.getErasure().getQualifiedName().equals("java.util.stream.BaseStream"));
-	}
-
-	static int getLineNumberFromAST(SimpleName methodName) {
-		CompilationUnit compilationUnit = (CompilationUnit) ASTNodes.getParent(methodName, ASTNode.COMPILATION_UNIT);
-		int lineNumberFromAST = compilationUnit.getLineNumber(methodName.getStartPosition());
-		return lineNumberFromAST;
-	}
-
-	static int getLineNumberFromIR(IBytecodeMethod method, SSAInstruction instruction)
-			throws InvalidClassFileException {
-		int bytecodeIndex = method.getBytecodeIndex(instruction.iindex);
-		int lineNumberFromIR = method.getLineNumber(bytecodeIndex);
-		return lineNumberFromIR;
-	}
-
-	public static boolean isScalar(TypeAbstraction typeAbstraction) {
-		TypeReference typeReference = typeAbstraction.getTypeReference();
-
-		if (typeReference.isArrayType())
-			return false;
-		else if (typeReference.equals(TypeReference.Void))
-			throw new IllegalArgumentException("Void is neither scalar or nonscalar.");
-		else if (typeReference.isPrimitiveType())
-			return true;
-		else if (typeReference.isReferenceType()) {
-			IClass type = typeAbstraction.getType();
-			return !edu.cuny.hunter.streamrefactoring.core.analysis.Util.isIterable(type)
-					&& type.getAllImplementedInterfaces().stream().noneMatch(Util::isIterable);
-		} else
-			throw new IllegalArgumentException("Can't tell if type is scalar: " + typeAbstraction);
-	}
-
-	public static boolean isScalar(Collection<TypeAbstraction> types) {
-		Boolean ret = null;
-
-		for (TypeAbstraction typeAbstraction : types) {
-			boolean scalar = isScalar(typeAbstraction);
-
-			if (ret == null)
-				ret = scalar;
-			else if (ret != scalar)
-				throw new IllegalArgumentException("Inconsistent types: " + types);
-		}
-
-		return ret;
-	}
-
-	public static boolean isBaseStream(IClass clazz) {
-		return Util.isType(clazz, "java/util/stream", "BaseStream");
-	}
-
-	public static boolean isCollector(IClass clazz) {
-		return Util.isType(clazz, "java/util/stream", "Collector");
-	}
-
-	public static boolean isIterable(IClass clazz) {
-		return Util.isType(clazz, "java/lang", "Iterable");
+	private Util() {
 	}
 }

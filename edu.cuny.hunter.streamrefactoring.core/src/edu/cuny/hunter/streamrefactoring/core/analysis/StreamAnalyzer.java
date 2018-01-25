@@ -55,11 +55,11 @@ public class StreamAnalyzer extends ASTVisitor {
 	 */
 	private Map<EclipseProjectAnalysisEngine<InstanceKey>, Collection<Entrypoint>> enginesWithBuiltCallGraphsToEntrypointsUsed = new HashMap<>();
 
+	private boolean findImplicitBenchmarkEntryPoints;
+
 	private boolean findImplicitEntryPoints = true;
 
 	private boolean findImplicitTestEntryPoints;
-	
-	private boolean findImplicitBenchmarkEntryPoints;
 
 	private Set<Stream> streamSet = new HashSet<>();
 
@@ -205,11 +205,11 @@ public class StreamAnalyzer extends ASTVisitor {
 				// add them as well.
 				addImplicitEntryPoints(entryPoints, jUnitEntryPoints);
 			}
-			
+
 			if (this.findImplicitBenchmarkEntryPoints) {
 				// try to find benchmark entry points.
 				Set<Entrypoint> benchmarkEntryPoints = Util.findBenchmarkEntryPoints(engine.getClassHierarchy());
-				
+
 				// add them as well.
 				addImplicitEntryPoints(entryPoints, benchmarkEntryPoints);
 			}
