@@ -45,7 +45,8 @@ public class AnalysisUtils {
 	}
 
 	public static boolean isJDKClass(IClass klass) {
-		return isPrimordial(klass.getClassLoader().getName());
+		Atom classLoaderName = klass.getClassLoader().getName();
+		return isPrimordial(classLoaderName) || isExtension(classLoaderName);
 	}
 
 	private static boolean isPrimordial(Atom classLoaderName) {
