@@ -76,7 +76,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	private static final boolean BUILD_WORKSPACE = false;
 	private static final boolean FIND_IMPLICIT_BENCHMARK_ENTRYPOINTS_DEFAULT = false;
 	private static final String FIND_IMPLICIT_BENCHMARK_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitBenchmarkEntrypoints";
-	private static final boolean FIND_IMPLICIT_ENTRYPOINTS_DEFAULT = true;
+	private static final boolean FIND_IMPLICIT_ENTRYPOINTS_DEFAULT = false;
 	private static final String FIND_IMPLICIT_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitEntrypoints";
 	private static final boolean FIND_IMPLICIT_TEST_ENTRYPOINTS_DEFAULT = false;
 	private static final String FIND_IMPLICIT_TEST_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitTestEntrypoints";
