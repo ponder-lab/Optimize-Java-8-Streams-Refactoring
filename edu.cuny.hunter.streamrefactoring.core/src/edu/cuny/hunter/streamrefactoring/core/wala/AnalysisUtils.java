@@ -27,8 +27,8 @@ public class AnalysisUtils {
 	private static final String OBJECT_GETCLASS_SIGNATURE = "java.lang.Object.getClass()Ljava/lang/Class;"; //$NON-NLS-1$
 
 	/**
-	 * All projects which the main Eclipse project depends on are in the
-	 * Extension loader
+	 * All projects which the main Eclipse project depends on are in the Extension
+	 * loader
 	 * 
 	 * See com.ibm.wala.ide.util.EclipseProjectPath for more information.
 	 */
