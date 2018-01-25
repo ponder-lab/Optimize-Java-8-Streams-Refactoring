@@ -74,6 +74,8 @@ public final class Util {
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 	private static final String ENTRYPOINT = "edu.cuny.hunter.streamrefactoring.annotations.EntryPoint";
+	private static final String BENCHMARK = "org.openjdk.jmh.annotations.Benchmark";
+	private static final String SETUP = "org.openjdk.jmh.annotations.Setup";
 
 	private static final class CorrespondingASTVisitor extends ASTVisitor {
 		private CompilationUnit unit;
@@ -410,6 +412,14 @@ public final class Util {
 		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(ENTRYPOINT);
 	}
 
+	private static boolean isBenchmark(TypeName typeName) {
+		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(BENCHMARK);
+	}
+
+	private static boolean isSetup(TypeName typeName) {
+		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(SETUP);
+	}
+
 	/**
 	 * Find all annotations in test cases and check whether they are "entry point".
 	 * If yes, call DefaultEntrypoint to get entry point, then, add it into the
@@ -434,9 +444,51 @@ public final class Util {
 								break;
 							}
 					} catch (InvalidClassFileException e) {
-						throw new IllegalArgumentException("Failed to find entry points using class hierarchy: " +  classHierarchy + ".", e);
+						throw new IllegalArgumentException(
+								"Failed to find entry points using class hierarchy: " + classHierarchy + ".", e);
 					}
 				}
+		}
+
+		return result;
+	}
+
+	public static Set<Entrypoint> findBenchmarkEntryPoints(IClassHierarchy classHierarchy) {
+		final Set<Entrypoint> result = new HashSet<>();
+
+		for (Iterator<IClass> classIterator = classHierarchy.iterator(); classIterator.hasNext();) {
+			IClass klass = classIterator.next();
+			if (!AnalysisUtils.isJDKClass(klass)) {
+				boolean isBenchmarkClass = false;
+				// iterate over all declared methods
+				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
+					// if method has an annotation
+					if (!(method instanceof ShrikeCTMethod))
+						throw new IllegalArgumentException("@EntryPoint only works for byte code.");
+
+					for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations()) {
+						TypeName annotationName = annotation.getType().getName();
+
+						if (isBenchmark(annotationName) || isSetup(annotationName)) {
+							result.add(new DefaultEntrypoint(method, classHierarchy));
+							isBenchmarkClass = true;
+							break;
+						}
+					}
+				}
+				if (isBenchmarkClass) {
+					IMethod classInitializer = klass.getClassInitializer();
+
+					if (classInitializer != null)
+						result.add(new DefaultEntrypoint(classInitializer, classHierarchy));
+
+					IMethod ctor = klass.getMethod(MethodReference.initSelector);
+
+					if (ctor != null)
+						result.add(new DefaultEntrypoint(ctor, classHierarchy));
+
+				}
+			}
 		}
 
 		return result;
