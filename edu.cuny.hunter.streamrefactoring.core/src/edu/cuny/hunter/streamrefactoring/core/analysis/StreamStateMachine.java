@@ -1189,18 +1189,11 @@ public class StreamStateMachine {
 			InstanceKey instanceKey = null;
 			try {
 				instanceKey = stream.getInstanceKey(this.trackedInstances, engine);
-			} catch (InstanceKeyNotFoundException e) { // workaround for #80.
-				if (stream.getCreation().toString().contains(ARRAYS_STREAM_CREATION_METHOD_NAME)) {
-					String msg = "Encountered possible unhandled case (#80) while processing: " + stream.getCreation();
-					LOGGER.log(Level.WARNING, msg, e);
-					stream.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, msg);
-				} else {
-					LOGGER.log(Level.WARNING, "Encountered unreachable code while processing: " + stream.getCreation(),
-							e);
-					stream.addStatusEntry(PreconditionFailure.STREAM_CODE_NOT_REACHABLE,
-							"Either pivital code isn't reachable for stream: " + stream.getCreation()
-									+ " or entry points are misconfigured.");
-				}
+			} catch (InstanceKeyNotFoundException e) {
+				LOGGER.log(Level.WARNING, "Encountered unreachable code while processing: " + stream.getCreation(), e);
+				stream.addStatusEntry(PreconditionFailure.STREAM_CODE_NOT_REACHABLE,
+						"Either pivital code isn't reachable for stream: " + stream.getCreation()
+								+ " or entry points are misconfigured.");
 				++skippedStreams;
 				continue; // next stream.
 			} catch (UnhandledCaseException e) {
