@@ -143,12 +143,12 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	private boolean useImplicitBenchmarkEntrypoints = false;
 
 	public ConvertToParallelStreamRefactoringProcessor() throws JavaModelException {
-		this(null, null, false, true, false, true, Optional.empty());
+		this(null, null, false, true, false, false, Optional.empty());
 	}
 
 	public ConvertToParallelStreamRefactoringProcessor(final CodeGenerationSettings settings,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
-		this(null, settings, false, true, false, true, monitor);
+		this(null, settings, false, true, false, false, monitor);
 	}
 
 	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
