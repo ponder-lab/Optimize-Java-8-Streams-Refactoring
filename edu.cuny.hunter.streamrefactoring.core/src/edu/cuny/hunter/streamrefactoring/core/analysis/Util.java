@@ -1,5 +1,8 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
+import static edu.cuny.hunter.streamrefactoring.core.wala.AnalysisUtils.isJDKClass;
+import static edu.cuny.hunter.streamrefactoring.core.wala.AnalysisUtils.isLibraryClass;
+
 import java.io.UTFDataFormatException;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -164,7 +167,7 @@ public final class Util {
 		final Set<Entrypoint> result = new HashSet<>();
 
 		for (IClass klass : classHierarchy)
-			if (!AnalysisUtils.isJDKClass(klass)) {
+			if (!(isJDKClass(klass) || isLibraryClass(klass))) {
 				boolean isBenchmarkClass = false;
 				// iterate over all declared methods
 				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
@@ -215,7 +218,7 @@ public final class Util {
 		final Set<Entrypoint> result = new HashSet<>();
 
 		for (IClass klass : classHierarchy)
-			if (!AnalysisUtils.isJDKClass(klass))
+			if (!(isJDKClass(klass) || isLibraryClass(klass)))
 				// iterate over all declared methods
 				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
 					// if method has an annotation
