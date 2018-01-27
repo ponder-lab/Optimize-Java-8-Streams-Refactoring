@@ -176,27 +176,27 @@ public final class Util {
 						TypeName annotationName = annotation.getType().getName();
 
 						if (isBenchmark(annotationName) || isSetup(annotationName)) {
-							result.add(new DefaultEntrypoint(method, classHierarchy));
+							addEntryPoint(result, method, classHierarchy);
 							isBenchmarkClass = true;
 							break;
 						}
 					}
 				}
+
 				if (isBenchmarkClass) {
-					IMethod classInitializer = klass.getClassInitializer();
-
-					if (classInitializer != null)
-						result.add(new DefaultEntrypoint(classInitializer, classHierarchy));
-
-					IMethod ctor = klass.getMethod(MethodReference.initSelector);
-
-					if (ctor != null)
-						result.add(new DefaultEntrypoint(ctor, classHierarchy));
-
+					addEntryPoint(result, klass.getClassInitializer(), classHierarchy);
+					addEntryPoint(result, klass.getMethod(MethodReference.initSelector), classHierarchy);
 				}
 			}
 
 		return result;
+	}
+
+	private static void addEntryPoint(Set<Entrypoint> result, final IMethod method, IClassHierarchy classHierarchy) {
+		if (method != null) {
+			Entrypoint entrypoint = new DefaultEntrypoint(method, classHierarchy);
+			result.add(entrypoint);
+		}
 	}
 
 	private static MethodInvocation findCorrespondingMethodInvocation(CompilationUnit unit,
@@ -225,7 +225,7 @@ public final class Util {
 					try {
 						for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations(true))
 							if (isEntryPointClass(annotation.getType().getName())) {
-								result.add(new DefaultEntrypoint(method, classHierarchy));
+								addEntryPoint(result, method, classHierarchy);
 								break;
 							}
 					} catch (InvalidClassFileException e) {
