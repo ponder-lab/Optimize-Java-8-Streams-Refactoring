@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.BaseStream;
+import java.util.stream.Collectors;
 
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
@@ -215,7 +216,10 @@ public final class Util {
 		final Set<Entrypoint> result = new HashSet<>();
 
 		for (IClass klass : classHierarchy)
-			if (!AnalysisUtils.isJDKClass(klass))
+			if (!AnalysisUtils.isJDKClass(klass)) {
+				boolean entryPointClass = false;
+				boolean addedInstanceMethod = false;
+
 				// iterate over all declared methods
 				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
 					// if method has an annotation
@@ -226,6 +230,12 @@ public final class Util {
 						for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations(true))
 							if (isEntryPointClass(annotation.getType().getName())) {
 								addEntryPoint(result, method, classHierarchy);
+								entryPointClass = true;
+
+								// if the method is an instance method.
+								if (!method.isStatic())
+									addedInstanceMethod = true;
+
 								break;
 							}
 					} catch (InvalidClassFileException e) {
@@ -234,7 +244,45 @@ public final class Util {
 					}
 				}
 
+				if (entryPointClass) {
+					// add any static initializers since the class will be loaded.
+					addEntryPoint(result, klass.getClassInitializer(), classHierarchy);
+
+					if (addedInstanceMethod) {
+						// add a constructor.
+						IMethod ctor = getUniqueConstructor(klass);
+						addEntryPoint(result, ctor, classHierarchy);
+					}
+				}
+			}
+
 		return result;
+	}
+
+	/**
+	 * A null get value means that there is no unique ctor.
+	 * 
+	 * @param klass
+	 *            The {@link IClass} to find a unique ctor.
+	 * @return The one and only ctor for klass and <code>null</code> if it doesn't
+	 *         exist.
+	 */
+	private static IMethod getUniqueConstructor(IClass klass) {
+		// try to find the default ctor.
+		IMethod ctor = klass.getMethod(MethodReference.initSelector);
+
+		// if not found, get all constructors.
+		if (ctor == null) {
+			Set<IMethod> allDeclaredConstructors = klass.getDeclaredMethods().stream()
+					.filter(m -> m.getName().startsWith(MethodReference.initAtom)).collect(Collectors.toSet());
+
+			// if there is a unique one.
+			if (allDeclaredConstructors.size() == 1)
+				// use that.
+				ctor = allDeclaredConstructors.iterator().next();
+		}
+
+		return ctor;
 	}
 
 	static Set<ITypeBinding> getAllInterfaces(ITypeBinding type) {
