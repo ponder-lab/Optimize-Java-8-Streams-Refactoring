@@ -185,7 +185,10 @@ public final class Util {
 				}
 
 				if (isBenchmarkClass) {
+					// add static initializer.
 					addEntryPoint(result, klass.getClassInitializer(), classHierarchy);
+
+					// add default ctor.
 					addEntryPoint(result, klass.getMethod(MethodReference.initSelector), classHierarchy);
 				}
 			}
