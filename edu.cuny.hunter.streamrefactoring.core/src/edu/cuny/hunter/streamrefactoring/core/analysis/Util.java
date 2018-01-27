@@ -117,6 +117,13 @@ public final class Util {
 
 	private static final String SETUP = "org.openjdk.jmh.annotations.Setup";
 
+	private static void addEntryPoint(Set<Entrypoint> result, final IMethod method, IClassHierarchy classHierarchy) {
+		if (method != null) {
+			Entrypoint entrypoint = new DefaultEntrypoint(method, classHierarchy);
+			result.add(entrypoint);
+		}
+	}
+
 	public static boolean allEqual(Collection<?> collection) {
 		if (collection.isEmpty())
 			return true;
@@ -196,13 +203,6 @@ public final class Util {
 		return result;
 	}
 
-	private static void addEntryPoint(Set<Entrypoint> result, final IMethod method, IClassHierarchy classHierarchy) {
-		if (method != null) {
-			Entrypoint entrypoint = new DefaultEntrypoint(method, classHierarchy);
-			result.add(entrypoint);
-		}
-	}
-
 	private static MethodInvocation findCorrespondingMethodInvocation(CompilationUnit unit,
 			SourcePosition sourcePosition, MethodReference method) {
 		CorrespondingASTVisitor visitor = new CorrespondingASTVisitor(unit, sourcePosition, method);
@@ -259,32 +259,6 @@ public final class Util {
 			}
 
 		return result;
-	}
-
-	/**
-	 * A null get value means that there is no unique ctor.
-	 * 
-	 * @param klass
-	 *            The {@link IClass} to find a unique ctor.
-	 * @return The one and only ctor for klass and <code>null</code> if it doesn't
-	 *         exist.
-	 */
-	private static IMethod getUniqueConstructor(IClass klass) {
-		// try to find the default ctor.
-		IMethod ctor = klass.getMethod(MethodReference.initSelector);
-
-		// if not found, get all constructors.
-		if (ctor == null) {
-			Set<IMethod> allDeclaredConstructors = klass.getDeclaredMethods().stream()
-					.filter(m -> m.getName().startsWith(MethodReference.initAtom)).collect(Collectors.toSet());
-
-			// if there is a unique one.
-			if (allDeclaredConstructors.size() == 1)
-				// use that.
-				ctor = allDeclaredConstructors.iterator().next();
-		}
-
-		return ctor;
 	}
 
 	static Set<ITypeBinding> getAllInterfaces(ITypeBinding type) {
@@ -493,6 +467,32 @@ public final class Util {
 			}
 		}
 		return ret;
+	}
+
+	/**
+	 * A null get value means that there is no unique ctor.
+	 *
+	 * @param klass
+	 *            The {@link IClass} to find a unique ctor.
+	 * @return The one and only ctor for klass and <code>null</code> if it doesn't
+	 *         exist.
+	 */
+	private static IMethod getUniqueConstructor(IClass klass) {
+		// try to find the default ctor.
+		IMethod ctor = klass.getMethod(MethodReference.initSelector);
+
+		// if not found, get all constructors.
+		if (ctor == null) {
+			Set<IMethod> allDeclaredConstructors = klass.getDeclaredMethods().stream()
+					.filter(m -> m.getName().startsWith(MethodReference.initAtom)).collect(Collectors.toSet());
+
+			// if there is a unique one.
+			if (allDeclaredConstructors.size() == 1)
+				// use that.
+				ctor = allDeclaredConstructors.iterator().next();
+		}
+
+		return ctor;
 	}
 
 	static boolean implementsBaseStream(ITypeBinding type) {
