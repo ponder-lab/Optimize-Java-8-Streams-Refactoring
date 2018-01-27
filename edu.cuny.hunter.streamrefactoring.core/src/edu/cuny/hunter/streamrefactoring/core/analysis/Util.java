@@ -211,9 +211,8 @@ public final class Util {
 	}
 
 	/**
-	 * Find all annotations in test cases and check whether they are "entry point".
-	 * If yes, call DefaultEntrypoint to get entry point, then, add it into the
-	 * result set.
+	 * Find all annotations and check whether they are "entry point." If yes, call
+	 * new DefaultEntrypoint to get entry point, then, add it into the result set.
 	 */
 	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy) {
 		final Set<Entrypoint> result = new HashSet<>();
