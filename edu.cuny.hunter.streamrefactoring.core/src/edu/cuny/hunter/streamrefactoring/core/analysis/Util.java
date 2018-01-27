@@ -221,7 +221,7 @@ public final class Util {
 		final Set<Entrypoint> result = new HashSet<>();
 
 		for (IClass klass : classHierarchy)
-			if (!(isJDKClass(klass) || isLibraryClass(klass)))
+			if (!(isJDKClass(klass) || isLibraryClass(klass))) {
 				boolean entryPointClass = false;
 				boolean addedInstanceMethod = false;
 
