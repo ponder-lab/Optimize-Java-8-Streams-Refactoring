@@ -57,7 +57,7 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	private boolean findImplicitBenchmarkEntryPoints;
 
-	private boolean findImplicitEntryPoints = true;
+	private boolean findImplicitEntryPoints;
 
 	private boolean findImplicitTestEntryPoints;
 
