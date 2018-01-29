@@ -21,7 +21,7 @@ import com.ibm.wala.ssa.SSAInvokeInstruction;
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 
 public class InstructionBasedSolver extends TrackingUniqueSolver {
-	
+
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private SSAInvokeInstruction instruction;
@@ -43,7 +43,7 @@ public class InstructionBasedSolver extends TrackingUniqueSolver {
 
 		for (InstanceKey instanceKey : trackedInstancesByType) {
 			LOGGER.info("Examining instance: " + instanceKey);
-			if (Util.instanceKeyCorrespondsWithInstantiationInstruction(instanceKey, this.getInstruction(),
+			if (Util.instanceKeyCorrespondsWithInstantiationInstruction(instanceKey, this.getInstruction(), null,
 					this.getCallGraph()))
 				ret.add(instanceKey);
 		}

@@ -26,6 +26,9 @@ public class Util {
 	}
 
 	public static String getMethodIdentifier(IMethod method) throws JavaModelException {
+		if (method == null)
+			return null;
+
 		StringBuilder sb = new StringBuilder();
 		sb.append((method.getElementName()) + "(");
 		ILocalVariable[] parameters = method.getParameters();

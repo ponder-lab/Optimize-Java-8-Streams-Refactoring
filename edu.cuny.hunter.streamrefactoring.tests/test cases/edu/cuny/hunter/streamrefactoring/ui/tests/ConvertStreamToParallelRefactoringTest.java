@@ -258,7 +258,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 		ASTNode ast = parser.createAST(new NullProgressMonitor());
 
-		StreamAnalyzer analyzer = new StreamAnalyzer();
+		StreamAnalyzer analyzer = new StreamAnalyzer(false);
 		ast.accept(analyzer);
 
 		analyzer.analyze();
@@ -355,10 +355,33 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * Test #34.
 	 */
 	public void testArraysAsList() throws Exception {
-		helper(new StreamAnalysisExpectedResult("Arrays.asList().stream()",
-				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
-				false, null, null, null, RefactoringStatus.ERROR,
-				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
+		helper(new StreamAnalysisExpectedResult("Arrays.asList().stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
+				EnumSet.of(Ordering.ORDERED), false, false, false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL),
+				PreconditionSuccess.P2, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet()));
+	}
+
+	public void testEntrySet() throws Exception {
+		helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
+				EnumSet.of(Ordering.UNORDERED), false, false, false,
+				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
+				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+	}
+
+	public void testEntrySet2() throws Exception {
+		helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", null, null, false, false, false, null, null,
+				null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
+	}
+
+	public void testEntrySet3() throws Exception {
+		helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", null, null, false, false, false, null, null,
+				null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
+	}
+
+	public void testEntrySet4() throws Exception {
+		helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
+				EnumSet.of(Ordering.UNORDERED), true, false, false, null, null, null, RefactoringStatus.ERROR,
+				EnumSet.of(PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING)));
 	}
 
 	/**
@@ -369,6 +392,31 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, false, false,
 				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+	}
+
+	public void testConstructor() throws Exception {
+		helper(new StreamAnalysisExpectedResult("new ArrayList().stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, false, false,
+				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
+				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+	}
+
+	/**
+	 * There is a problem between mapping methods declared within AICs from the
+	 * Eclipse DOM to the WALA DOM #155.
+	 */
+	public void testAnonymousInnerClass() throws Exception {
+		boolean passed = false;
+		try {
+			helper(new StreamAnalysisExpectedResult("new ArrayList().stream()",
+					Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, false, false,
+					EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
+					Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+		} catch (NullPointerException e) {
+			LOGGER.throwing(this.getClass().getName(), "testArraysAsList", e);
+			passed = true;
+		}
+		assertTrue("Should throw exception per AIC issue.", passed);
 	}
 
 	public void testBitSet() throws Exception {
@@ -780,4 +828,11 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
+
+	public void testImplicitEntryPoint() throws Exception {
+		helper(new StreamAnalysisExpectedResult("IntStream.of(1)", EnumSet.of(ExecutionMode.SEQUENTIAL),
+				EnumSet.of(Ordering.ORDERED), false, false, false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL),
+				PreconditionSuccess.P2, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet()));
+	}
 }

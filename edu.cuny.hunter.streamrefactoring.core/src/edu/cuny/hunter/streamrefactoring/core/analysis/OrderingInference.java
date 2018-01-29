@@ -15,6 +15,7 @@ import org.objenesis.ObjenesisStd;
 import org.objenesis.instantiator.ObjectInstantiator;
 
 import com.ibm.wala.analysis.typeInference.TypeAbstraction;
+import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.types.TypeReference;
 
@@ -64,15 +65,36 @@ class OrderingInference {
 		if (possibleTypes.isEmpty())
 			return null;
 		else {
-			// just process the first one.
-			TypeAbstraction typeAbstraction = possibleTypes.iterator().next();
-			String methodName = findStreamCreationMethod(typeAbstraction);
+			String methodName = findStreamCreationMethod(possibleTypes);
+
+			if (methodName == null) {
+				LOGGER.warning(() -> "Can't find stream creation method for: " + possibleTypes);
+				return null;
+			}
+
 			return inferOrdering(possibleTypes, methodName);
 		}
 	}
 
+	private String findStreamCreationMethod(Collection<TypeAbstraction> types) {
+		// find the first one.
+		for (TypeAbstraction typeAbstraction : types) {
+			String methodName = findStreamCreationMethod(typeAbstraction);
+
+			if (methodName != null)
+				return methodName;
+		}
+		// not found.
+		return null;
+	}
+
 	private String findStreamCreationMethod(TypeAbstraction typeAbstraction) {
-		Collection<com.ibm.wala.classLoader.IMethod> allMethods = typeAbstraction.getType().getAllMethods();
+		IClass type = typeAbstraction.getType();
+		return findStreamCreationMethod(type);
+	}
+
+	private String findStreamCreationMethod(IClass type) {
+		Collection<com.ibm.wala.classLoader.IMethod> allMethods = type.getAllMethods();
 		for (com.ibm.wala.classLoader.IMethod method : allMethods) {
 			TypeReference returnType = method.getReturnType();
 			// find the first one that returns a stream.

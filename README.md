@@ -9,23 +9,40 @@ This prototype refactoring plug-in for [Eclipse](http://eclipse.org) represents 
 
 ## Usage
 
-### Installation for Usage
+### Installation
+
+### Marking Entry Points
+
+Explicit entry points may be marked using the appropriate annotation found in the corresponding [annotation library][annotations].
 
 ### Limitations
+
+There are currently some limitations with embedded streams (i.e., streams declared as part of lambda expressions sent as arguments to intermediate stream operations). This is due to model differences between the Eclipse JDT and WALA. See [#155](https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/155) for details.
+
+In general, there is [an issue](https://github.com/wala/WALA/issues/281) with the mapping between the Eclipse DOM and WALA DOM, particuarly when using Anonymous Inner Classes (AICs). We are currently working with the WALA developers to resolve [this issue](https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/155).
 
 ## Contributing
 
 Please see [the wiki](http://github.com/ponder-lab/Java-8-Stream-Refactoring/wiki) for more information regarding development.
 
-### Installation for Development
+### Installation
 
 The project includes a maven configuration file using the tycho plug-in, which is part of the [maven eclipse plugin](http://www.eclipse.org/m2e/). Running `mvn install` will install *most* dependencies. Note that if you are not using maven, this plugin depends on https://github.com/khatchad/edu.cuny.citytech.refactoring.common, the **Eclipse SDK**, **Eclipse SDK tests**, and the **Eclipse testing framework**. The latter three can be installed from the "Install New Software..." menu option under "Help" in Eclipse.
 
-### Dependencies
+#### Dependencies
 
 You should have the following projects in your workspace:
 
 1. [WALA stream branch](https://github.com/ponder-lab/WALA/tree/streams). Though, not all projecst are necessary. You can close thee ones related to JavaScript and Android.
-1. [SAFE](https://github.com/ponder-lab/safe)
+1. [SAFE](https://github.com/ponder-lab/safe).
+1. [Eclipse Java Refactoring Framework](https://github.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework).
 
 ### Running the Evaluator
+
+[annotations]: https://github.com/ponder-lab/edu.cuny.hunter.streamrefactoring.annotations
+
+### Further Information
+
+See the [wiki][wiki] for further information.
+
+[wiki]: https://github.com/ponder-lab/Java-8-Stream-Refactoring/wiki
