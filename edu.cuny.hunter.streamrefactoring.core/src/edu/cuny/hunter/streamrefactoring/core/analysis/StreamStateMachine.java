@@ -208,8 +208,11 @@ public class StreamStateMachine {
 			return true;
 		else if (isTerminalOperationWhereReduceOrderDoesNotMatter(declaredTarget))
 			return false;
-		else
-			throw new IllegalStateException("Can't decipher ROM for method: " + declaredTarget);
+		else {
+			boolean ret = true;
+			LOGGER.warning(() -> "Can't decipher ROM for method: " + declaredTarget + ". Defaulting to: " + ret);
+			return ret;
+		}
 	}
 
 	/**
@@ -558,7 +561,6 @@ public class StreamStateMachine {
 				assert numOfRetVals <= 1 : "How could you possibly return " + numOfRetVals + " values?";
 
 				Collection<TypeAbstraction> possibleReturnTypes = null;
-				Boolean rom = null;
 
 				// if it's a non-void method.
 				if (numOfRetVals > 0) {
@@ -567,63 +569,49 @@ public class StreamStateMachine {
 					possibleReturnTypes = Util.getPossibleTypesInterprocedurally(block.getNode(), returnValue, engine,
 							orderingInference);
 
-					// if no return types can be found.
-					if (possibleReturnTypes.isEmpty()) {
-						// default to true.
-						rom = true;
-
-						LOGGER.warning("Number of returned values is: " + numOfRetVals
-								+ " but cannot find possible return types for node: " + block.getNode()
-								+ " and return value: " + returnValue + ". Defaulting ROM to: " + rom + " for block: "
-								+ block + ".");
-					} else
-						LOGGER.info("While determining ROM, found number of possible return types: "
-								+ possibleReturnTypes.size());
-
 					LOGGER.fine("Possible reduce types are: " + possibleReturnTypes);
 				} else
 					// it's a void method.
 					possibleReturnTypes = Collections.singleton(JavaPrimitiveType.VOID);
 
-				// if we haven't determined ROM yet.
-				if (rom == null)
-					if (isVoid(possibleReturnTypes))
-						rom = deriveRomForVoidMethod(invokeInstruction);
-					else {
-						boolean scalar = Util.isScalar(possibleReturnTypes);
-						if (scalar)
-							try {
-								rom = deriveRomForScalarMethod(invokeInstruction);
-							} catch (UnknownIfReduceOrderMattersException e) {
-								// for each possible receiver associated with the terminal block.
-								OrdinalSet<InstanceKey> receivers = this.terminalBlockToPossibleReceivers.get(block);
+				Boolean rom = null;
 
-								for (InstanceKey instanceKey : receivers) {
-									// get the stream for the instance key.
-									Set<InstanceKey> originStreams = this.computePossibleOriginStreams(instanceKey);
+				if (isVoid(possibleReturnTypes))
+					rom = deriveRomForVoidMethod(invokeInstruction);
+				else {
+					boolean scalar = Util.isScalar(possibleReturnTypes);
+					if (scalar)
+						try {
+							rom = deriveRomForScalarMethod(invokeInstruction);
+						} catch (UnknownIfReduceOrderMattersException e) {
+							// for each possible receiver associated with the terminal block.
+							OrdinalSet<InstanceKey> receivers = this.terminalBlockToPossibleReceivers.get(block);
 
-									// for each origin stream.
-									for (InstanceKey origin : originStreams) {
-										// get the "Stream" representing it.
-										Stream stream = this.instanceToStreamMap.get(origin);
+							for (InstanceKey instanceKey : receivers) {
+								// get the stream for the instance key.
+								Set<InstanceKey> originStreams = this.computePossibleOriginStreams(instanceKey);
 
-										if (stream == null)
-											LOGGER.warning(() -> "Can't find Stream instance for instance key: "
-													+ instanceKey + " using origin: " + origin);
-										else {
-											LOGGER.log(Level.WARNING,
-													"Unable to derive ROM for : " + stream.getCreation(), e);
-											stream.addStatusEntry(
-													PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
-													"Cannot derive reduction ordering for stream: "
-															+ stream.getCreation() + ".");
-										}
+								// for each origin stream.
+								for (InstanceKey origin : originStreams) {
+									// get the "Stream" representing it.
+									Stream stream = this.instanceToStreamMap.get(origin);
+
+									if (stream == null)
+										LOGGER.warning(() -> "Can't find Stream instance for instance key: "
+												+ instanceKey + " using origin: " + origin);
+									else {
+										LOGGER.log(Level.WARNING, "Unable to derive ROM for : " + stream.getCreation(),
+												e);
+										stream.addStatusEntry(PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
+												"Cannot derive reduction ordering for stream: " + stream.getCreation()
+														+ ".");
 									}
 								}
 							}
-						else // !scalar
-							rom = this.deriveRomForNonScalarMethod(possibleReturnTypes, orderingInference);
-					}
+						}
+					else // !scalar
+						rom = this.deriveRomForNonScalarMethod(possibleReturnTypes, orderingInference);
+				}
 
 				// if reduce ordering matters.
 				if (rom != null)
