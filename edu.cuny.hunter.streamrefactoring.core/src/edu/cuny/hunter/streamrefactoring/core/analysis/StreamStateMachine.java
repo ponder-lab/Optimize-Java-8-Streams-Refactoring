@@ -576,7 +576,9 @@ public class StreamStateMachine {
 								+ " but cannot find possible return types for node: " + block.getNode()
 								+ " and return value: " + returnValue + ". Defaulting ROM to: " + rom + " for block: "
 								+ block + ".");
-					}
+					} else
+						LOGGER.info("While determining ROM, found number of possible return types: "
+								+ possibleReturnTypes.size());
 
 					LOGGER.fine("Possible reduce types are: " + possibleReturnTypes);
 				} else
