@@ -15,19 +15,15 @@ import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
 
 class StreamAnalysisExpectedResult {
+	private Set<TransformationAction> expectedActions;
+
 	private String expectedCreation;
 
 	private Set<ExecutionMode> expectedExecutionModes;
 
+	private Set<PreconditionFailure> expectedFailures;
+
 	private Set<Ordering> expectedOrderings;
-
-	private boolean expectingSideEffects;
-
-	private boolean expectingStatefulIntermediateOperation;
-
-	private boolean expectingThatReduceOrderingMatters;
-
-	private Set<TransformationAction> expectedActions;
 
 	private PreconditionSuccess expectedPassingPrecondition;
 
@@ -35,7 +31,11 @@ class StreamAnalysisExpectedResult {
 
 	private int expectedStatusSeverity;
 
-	private Set<PreconditionFailure> expectedFailures;
+	private boolean expectingSideEffects;
+
+	private boolean expectingStatefulIntermediateOperation;
+
+	private boolean expectingThatReduceOrderingMatters;
 
 	public StreamAnalysisExpectedResult(String expectedCreation, Set<ExecutionMode> expectedExecutionModes,
 			Set<Ordering> expectedOrderings, boolean expectingSideEffects,
@@ -55,77 +55,79 @@ class StreamAnalysisExpectedResult {
 		this.expectedFailures = expectedFailures;
 	}
 
-	public String getExpectedCreation() {
-		return expectedCreation;
-	}
-
-	public Set<ExecutionMode> getExpectedExecutionModes() {
-		return expectedExecutionModes;
-	}
-
-	public Set<Ordering> getExpectedOrderings() {
-		return expectedOrderings;
-	}
-
-	public boolean isExpectingSideEffects() {
-		return expectingSideEffects;
-	}
-
-	public boolean isExpectingStatefulIntermediateOperation() {
-		return expectingStatefulIntermediateOperation;
-	}
-
-	public boolean isExpectingThatReduceOrderingMatters() {
-		return expectingThatReduceOrderingMatters;
-	}
-
-	public Set<TransformationAction> getExpectedActions() {
-		return expectedActions;
-	}
-
-	public PreconditionSuccess getExpectedPassingPrecondition() {
-		return expectedPassingPrecondition;
-	}
-
-	public Refactoring getExpectedRefactoring() {
-		return expectedRefactoring;
-	}
-
-	public int getExpectedStatusSeverity() {
-		return expectedStatusSeverity;
-	}
-
-	public Set<PreconditionFailure> getExpectedFailures() {
-		return expectedFailures;
+	protected String errorMessage(String attribute) {
+		return "Unexpected " + attribute + " for " + this.getExpectedCreation() + ".";
 	}
 
 	public void evaluate(Stream stream) {
 		Set<ExecutionMode> executionModes = stream.getPossibleExecutionModes();
-		assertEquals(errorMessage("execution mode"), this.getExpectedExecutionModes(), executionModes);
+		assertEquals(this.errorMessage("execution mode"), this.getExpectedExecutionModes(), executionModes);
 
 		Set<Ordering> orderings = stream.getPossibleOrderings();
-		assertEquals(errorMessage("orderings"), this.getExpectedOrderings(), orderings);
+		assertEquals(this.errorMessage("orderings"), this.getExpectedOrderings(), orderings);
 
-		assertEquals(errorMessage("side effects"), isExpectingSideEffects(), stream.hasPossibleSideEffects());
-		assertEquals(errorMessage("stateful intermediate operations"), isExpectingStatefulIntermediateOperation(),
-				stream.hasPossibleStatefulIntermediateOperations());
-		assertEquals(errorMessage("ROM"), isExpectingThatReduceOrderingMatters(),
+		assertEquals(this.errorMessage("side effects"), this.isExpectingSideEffects(), stream.hasPossibleSideEffects());
+		assertEquals(this.errorMessage("stateful intermediate operations"),
+				this.isExpectingStatefulIntermediateOperation(), stream.hasPossibleStatefulIntermediateOperations());
+		assertEquals(this.errorMessage("ROM"), this.isExpectingThatReduceOrderingMatters(),
 				stream.reduceOrderingPossiblyMatters());
-		assertEquals(errorMessage("transformation actions"), getExpectedActions(), stream.getActions());
-		assertEquals(errorMessage("passing precondition"), getExpectedPassingPrecondition(),
+		assertEquals(this.errorMessage("transformation actions"), this.getExpectedActions(), stream.getActions());
+		assertEquals(this.errorMessage("passing precondition"), this.getExpectedPassingPrecondition(),
 				stream.getPassingPrecondition());
-		assertEquals(errorMessage("refactoring"), getExpectedRefactoring(), stream.getRefactoring());
-		assertEquals(errorMessage("status severity"), getExpectedStatusSeverity(), stream.getStatus().getSeverity());
+		assertEquals(this.errorMessage("refactoring"), this.getExpectedRefactoring(), stream.getRefactoring());
+		assertEquals(this.errorMessage("status severity"), this.getExpectedStatusSeverity(),
+				stream.getStatus().getSeverity());
 
 		Set<Integer> actualCodes = Arrays.stream(stream.getStatus().getEntries()).map(e -> e.getCode())
 				.collect(Collectors.toSet());
 
-		Set<Integer> expectedCodes = getExpectedFailures().stream().map(e -> e.getCode()).collect(Collectors.toSet());
+		Set<Integer> expectedCodes = this.getExpectedFailures().stream().map(e -> e.getCode())
+				.collect(Collectors.toSet());
 
-		assertEquals(errorMessage("status codes"), expectedCodes, actualCodes);
+		assertEquals(this.errorMessage("status codes"), expectedCodes, actualCodes);
 	}
 
-	protected String errorMessage(String attribute) {
-		return "Unexpected " + attribute + " for " + this.getExpectedCreation() + ".";
+	public Set<TransformationAction> getExpectedActions() {
+		return this.expectedActions;
+	}
+
+	public String getExpectedCreation() {
+		return this.expectedCreation;
+	}
+
+	public Set<ExecutionMode> getExpectedExecutionModes() {
+		return this.expectedExecutionModes;
+	}
+
+	public Set<PreconditionFailure> getExpectedFailures() {
+		return this.expectedFailures;
+	}
+
+	public Set<Ordering> getExpectedOrderings() {
+		return this.expectedOrderings;
+	}
+
+	public PreconditionSuccess getExpectedPassingPrecondition() {
+		return this.expectedPassingPrecondition;
+	}
+
+	public Refactoring getExpectedRefactoring() {
+		return this.expectedRefactoring;
+	}
+
+	public int getExpectedStatusSeverity() {
+		return this.expectedStatusSeverity;
+	}
+
+	public boolean isExpectingSideEffects() {
+		return this.expectingSideEffects;
+	}
+
+	public boolean isExpectingStatefulIntermediateOperation() {
+		return this.expectingStatefulIntermediateOperation;
+	}
+
+	public boolean isExpectingThatReduceOrderingMatters() {
+		return this.expectingThatReduceOrderingMatters;
 	}
 }
