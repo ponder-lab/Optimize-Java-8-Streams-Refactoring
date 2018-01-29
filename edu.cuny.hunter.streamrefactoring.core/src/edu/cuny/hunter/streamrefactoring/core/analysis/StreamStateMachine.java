@@ -216,6 +216,8 @@ public class StreamStateMachine {
 			"java.util.stream.LongStream.collect", "java.util.stream.Stream.collect", };
 	// @formatter:on
 
+	private static final Atom STREAM_PACKAGE_ATOM = Atom.findOrCreateUnicodeAtom("java/util/stream");
+
 	private Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers = new HashMap<>();
 
 	private Map<InstanceKey, Stream> instanceToStreamMap = new HashMap<>();
@@ -422,7 +424,13 @@ public class StreamStateMachine {
 				TypeReference declaredType = creationSite.snd.getDeclaredType();
 				TypeName name = declaredType.getName();
 				Atom packageAtom = name.getPackage();
-				boolean fromStreamPackage = packageAtom.startsWith(Atom.findOrCreateUnicodeAtom("java/util/stream"));
+
+				// if there's no package.
+				if (packageAtom == null)
+					// it can't be in the java.util.stream package.
+					return false;
+
+				boolean fromStreamPackage = packageAtom.startsWith(STREAM_PACKAGE_ATOM);
 
 				if (ret == null) {
 					// haven't decided yet. Initialize.
