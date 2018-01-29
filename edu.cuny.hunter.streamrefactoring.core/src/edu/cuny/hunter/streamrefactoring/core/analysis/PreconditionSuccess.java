@@ -5,7 +5,7 @@ public enum PreconditionSuccess {
 	P2,
 	P3,
 	P4,
-	P5
+	P5,
 	P6,
 	P7,
 	P8,
