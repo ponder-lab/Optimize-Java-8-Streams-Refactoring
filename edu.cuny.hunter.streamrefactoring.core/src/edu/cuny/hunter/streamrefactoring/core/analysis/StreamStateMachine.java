@@ -697,9 +697,9 @@ public class StreamStateMachine {
 						// default to true.
 						rom = true;
 
-						LOGGER.warning("Number of returned values are: " + numOfRetVals
+						LOGGER.warning("Number of returned values is: " + numOfRetVals
 								+ " but cannot find possible return types for node: " + block.getNode()
-								+ " and return value:" + returnValue + ". Defaulting ROM to: " + rom + " for block: "
+								+ " and return value: " + returnValue + ". Defaulting ROM to: " + rom + " for block: "
 								+ block + ".");
 					}
 
