@@ -60,6 +60,7 @@ import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
 import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
+import edu.cuny.hunter.streamrefactoring.eval.utils.TXTPrinter;
 import edu.cuny.hunter.streamrefactoring.eval.utils.Util;
 import net.sourceforge.metrics.core.Metric;
 import net.sourceforge.metrics.core.sources.AbstractMetricSource;
@@ -92,6 +93,10 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		return new CSVPrinter(new FileWriter(fileName, true), CSVFormat.EXCEL.withHeader(header));
 	}
 
+	private static TXTPrinter createTXTPrinter(String fileName) throws IOException {
+		return new TXTPrinter(new FileWriter(fileName));
+	}
+	
 	private static IType[] getAllDeclaringTypeSubtypes(IMethod method) throws JavaModelException {
 		IType declaringType = method.getDeclaringType();
 		ITypeHierarchy typeHierarchy = declaringType.newTypeHierarchy(new NullProgressMonitor());
@@ -173,6 +178,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter streamExecutionModePrinter = null;
 			CSVPrinter streamOrderingPrinter = null;
 			CSVPrinter entryPointsPrinter = null;
+			TXTPrinter entryPointsINFOPrinter = null;
 
 			ConvertToParallelStreamRefactoringProcessor processor = null;
 
@@ -230,6 +236,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 				entryPointsPrinter = createCSVPrinter("entry_points.csv",
 						new String[] { "subject", "method", "type FQN" });
+				
+				entryPointsINFOPrinter= createTXTPrinter("entry_points.txt");
 
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
@@ -265,6 +273,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						com.ibm.wala.classLoader.IMethod method = entryPoint.getMethod();
 						entryPointsPrinter.printRecord(javaProject.getElementName(), method.getSignature(),
 								method.getDeclaringClass().getName());
+						entryPointsINFOPrinter.print(entryPoint);
 					}
 
 					// #streams.
@@ -442,6 +451,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						streamOrderingPrinter.close();
 					if (entryPointsPrinter != null)
 						entryPointsPrinter.close();
+					if (entryPointsINFOPrinter != null)
+						entryPointsINFOPrinter.close();
 
 					// clear cache.
 					if (processor != null)
