@@ -137,6 +137,11 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			ConvertToParallelStreamRefactoringProcessor processor) {
 		return processor.getEntryPoints(javaProject);
 	}
+	
+	private static Collection<Entrypoint> getProjectExplictEntryPoints(IJavaProject javaProject,
+			ConvertToParallelStreamRefactoringProcessor processor) {
+		return processor.getExplicitEntryPoints(javaProject);
+	}
 
 	private static int getProjectLinesOfCode(IJavaProject javaProject) {
 		AbstractMetricSource metricSource = Dispatcher.getAbstractMetricSource(javaProject);
@@ -178,7 +183,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter streamExecutionModePrinter = null;
 			CSVPrinter streamOrderingPrinter = null;
 			CSVPrinter entryPointsPrinter = null;
-			TXTPrinter entryPointsINFOPrinter = null;
+			TXTPrinter explicitEntryPointsPrinter = null;
 
 			ConvertToParallelStreamRefactoringProcessor processor = null;
 
@@ -237,7 +242,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 				entryPointsPrinter = createCSVPrinter("entry_points.csv",
 						new String[] { "subject", "method", "type FQN" });
 				
-				entryPointsINFOPrinter= createTXTPrinter("entry_points.txt");
+				explicitEntryPointsPrinter= createTXTPrinter("entry_points.txt");
 
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
@@ -273,7 +278,12 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						com.ibm.wala.classLoader.IMethod method = entryPoint.getMethod();
 						entryPointsPrinter.printRecord(javaProject.getElementName(), method.getSignature(),
 								method.getDeclaringClass().getName());
-						entryPointsINFOPrinter.print(entryPoint);
+					}
+
+					// print all explicit entry point
+					Collection<Entrypoint> explicitEntryPoints = getProjectExplictEntryPoints(javaProject, processor);
+					for (Entrypoint entrypoint : explicitEntryPoints) {
+						explicitEntryPointsPrinter.print(entrypoint);
 					}
 
 					// #streams.
@@ -451,8 +461,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						streamOrderingPrinter.close();
 					if (entryPointsPrinter != null)
 						entryPointsPrinter.close();
-					if (entryPointsINFOPrinter != null)
-						entryPointsINFOPrinter.close();
+					if (explicitEntryPointsPrinter != null)
+						explicitEntryPointsPrinter.close();
 
 					// clear cache.
 					if (processor != null)
