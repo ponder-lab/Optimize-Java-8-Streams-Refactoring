@@ -529,7 +529,7 @@ public class StreamStateMachine {
 			// default to ordered.
 			ordering = Ordering.ORDERED;
 			LOGGER.warning("Can't determine ordering for possible return types: " + possibleReturnTypes
-					+ ". Defaulting to: " + ordering);
+					+ ". Defaulting to: " + ordering + ".");
 		}
 
 		switch (ordering) {
