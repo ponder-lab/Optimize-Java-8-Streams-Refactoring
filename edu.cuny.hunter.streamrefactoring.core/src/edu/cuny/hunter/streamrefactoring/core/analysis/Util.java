@@ -598,8 +598,7 @@ public final class Util {
 			return true;
 		else if (typeReference.isReferenceType()) {
 			IClass type = typeAbstraction.getType();
-			return !edu.cuny.hunter.streamrefactoring.core.analysis.Util.isIterable(type)
-					&& type.getAllImplementedInterfaces().stream().noneMatch(Util::isIterable);
+			return !isIterable(type) && type.getAllImplementedInterfaces().stream().noneMatch(Util::isIterable);
 		} else
 			throw new IllegalArgumentException("Can't tell if type is scalar: " + typeAbstraction);
 	}
