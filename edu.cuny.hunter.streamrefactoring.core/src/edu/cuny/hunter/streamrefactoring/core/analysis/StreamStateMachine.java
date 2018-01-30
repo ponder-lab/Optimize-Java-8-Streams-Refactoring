@@ -919,7 +919,15 @@ public class StreamStateMachine {
 	}
 
 	public Collection<IDFAState> getStates(StreamAttributeTypestateRule rule, InstanceKey instanceKey) {
-		return this.originStreamToMergedTypeStateMap.get(instanceKey).get(rule);
+		Map<TypestateRule, Set<IDFAState>> mergedTypeState = this.originStreamToMergedTypeStateMap.get(instanceKey);
+
+		if (mergedTypeState == null) {
+			LOGGER.warning(
+					() -> "Can't find merged type state for rule: " + rule + " and instance key: " + instanceKey);
+			return Collections.emptySet();
+		}
+
+		return mergedTypeState.get(rule);
 	}
 
 	public Collection<InstanceKey> getTrackedInstances() {
