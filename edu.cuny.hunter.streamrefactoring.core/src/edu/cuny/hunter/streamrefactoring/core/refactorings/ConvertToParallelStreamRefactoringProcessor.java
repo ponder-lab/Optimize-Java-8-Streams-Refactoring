@@ -123,7 +123,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	/** Does the refactoring use a working copy layer? */
 	private final boolean layer;
 
-	private Map<IJavaProject, Collection<Entrypoint>> projectToEntryPoints;
+	private Map<IJavaProject, Map<String, Collection<Entrypoint>>> projectToEntryPoints;
 
 	private SearchEngine searchEngine = new SearchEngine();
 
@@ -221,7 +221,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 			// map empty set to unprocessed projects.
 			for (IJavaProject project : this.getJavaProjects())
-				this.projectToEntryPoints.computeIfAbsent(project, p -> Collections.emptySet());
+				this.projectToEntryPoints.computeIfAbsent(project, p -> Collections.emptyMap());
 
 			// get the status of each stream.
 			RefactoringStatus collectedStatus = this.getStreamSet().stream().map(Stream::getStatus)
@@ -393,9 +393,13 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	}
 
 	public Collection<Entrypoint> getEntryPoints(IJavaProject javaProject) {
-		return this.projectToEntryPoints.get(javaProject);
+		return this.projectToEntryPoints.get(javaProject).get("entryPoints");
 	}
-
+	
+	public Collection<Entrypoint> getExplicitEntryPoints(IJavaProject javaProject) {
+		return this.projectToEntryPoints.get(javaProject).get("explicitEntryPoints");
+	}
+	
 	public TimeCollector getExcludedTimeCollector() {
 		return this.excludedTimeCollector;
 	}

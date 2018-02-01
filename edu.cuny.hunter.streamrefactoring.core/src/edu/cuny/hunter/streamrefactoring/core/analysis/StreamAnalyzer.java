@@ -2,6 +2,9 @@ package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import static com.ibm.wala.ipa.callgraph.impl.Util.makeMainEntrypoints;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
@@ -88,8 +91,8 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *
 	 * @return {@link Map} of project's analyzed along with the entry points used.
 	 */
-	public Map<IJavaProject, Collection<Entrypoint>> analyze() throws CoreException {
-		Map<IJavaProject, Collection<Entrypoint>> ret = new HashMap<>();
+	public Map<IJavaProject, Map<String, Collection<Entrypoint>>> analyze() throws CoreException {
+		Map<IJavaProject, Map<String, Collection<Entrypoint>>> ret = new HashMap<>();
 
 		// collect the projects to be analyzed.
 		Map<IJavaProject, Set<Stream>> projectToStreams = this.getStreamSet().stream().filter(s -> s.getStatus().isOK())
@@ -108,7 +111,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			}
 
 			// build the call graph for the project.
-			Collection<Entrypoint> entryPoints = null;
+			Map<String, Collection<Entrypoint>> entryPoints = null;
 			try {
 				entryPoints = this.buildCallGraph(engine);
 			} catch (IOException | CoreException | CancelException e) {
@@ -181,13 +184,34 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *            graph.
 	 * @return The {@link Entrypoint}s used in building the {@link CallGraph}.
 	 */
-	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine)
+	protected Map<String, Collection<Entrypoint>> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine)
 			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
+		
+		Map<String, Collection<Entrypoint>> projectEntryPoints = new HashMap<>();
+		Collection<Entrypoint> explicitEntryPoints = new HashSet<>();
+		
 		// if we haven't built the call graph yet.
 		if (!this.enginesWithBuiltCallGraphsToEntrypointsUsed.keySet().contains(engine)) {
+			Set<Entrypoint> entryPoints;
 			// find explicit entry points.
-			Set<Entrypoint> entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
-			entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
+			if (findExplicitEntryPointsFile()) {
+				LOGGER.info(() -> "Adding explicit entry points from file.");
+				entryPoints = getExplicitEntryPointsFromFile(engine);
+				entryPoints.forEach(ep -> {
+					LOGGER.info(() -> "Adding explicit entry points from file:" + ep);
+					explicitEntryPoints.add(ep);
+				});
+
+			} else {
+				LOGGER.info(() -> "Adding explicit entry points from code.");
+				entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
+				entryPoints.forEach(ep -> {
+					LOGGER.info(() -> "Adding explicit entry point: " + ep);
+					explicitEntryPoints.add(ep);
+				});
+			}
+
+			projectEntryPoints.put("explicitEntryPoints", explicitEntryPoints);
 
 			if (this.findImplicitEntryPoints) {
 				// also find implicit entry points.
@@ -216,7 +240,8 @@ public class StreamAnalyzer extends ASTVisitor {
 
 			if (entryPoints.isEmpty()) {
 				LOGGER.warning(() -> "Project: " + engine.getProject().getElementName() + " has no entry points.");
-				return entryPoints;
+				projectEntryPoints.put("entryPoints", entryPoints);
+				return projectEntryPoints;
 			}
 
 			// set options.
@@ -236,7 +261,58 @@ public class StreamAnalyzer extends ASTVisitor {
 			// instance in question are present?
 			this.enginesWithBuiltCallGraphsToEntrypointsUsed.put(engine, entryPoints);
 		}
-		return this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine);
+		projectEntryPoints.put("entryPoints", this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine));
+		return projectEntryPoints;
+	}
+	
+	/**
+	 * Read entry_points.txt and get a set of method signatures, then, get entry
+	 * points by those signatures
+	 * 
+	 * @return a set of entry points
+	 * @throws IOException
+	 */
+	private Set<Entrypoint> getExplicitEntryPointsFromFile(EclipseProjectAnalysisEngine<InstanceKey> engine)
+			throws IOException {
+		BufferedReader bufferedReader = null;
+		FileReader fileReader = null;
+
+		Set<String> signatures = new HashSet<>();
+
+		fileReader = new FileReader("entry_points.txt");
+		bufferedReader = new BufferedReader(fileReader);
+
+		String currentLine;
+		while ((currentLine = bufferedReader.readLine()) != null) {
+			signatures.add(currentLine);
+		}
+
+		if (bufferedReader != null)
+			bufferedReader.close();
+
+		if (fileReader != null)
+			fileReader.close();
+
+		Set<Entrypoint> entrypoints = getEntrypointsFromSignature(engine, signatures);
+		return entrypoints;
+	}
+
+	private Set<Entrypoint> getEntrypointsFromSignature(EclipseProjectAnalysisEngine<InstanceKey> engine,
+			Set<String> signatures) {
+		return Util.findEntryPoints(engine.getClassHierarchy(), signatures);
+	}
+
+	/**
+	 * check whether entry_points.txt exists
+	 * 
+	 * @return a boolean. True means entry_points.txt exists and false means
+	 *         entry_points.txt exists
+	 */
+	private boolean findExplicitEntryPointsFile() {
+		File explicitEntryPoints = new File("entry_points.txt");
+		if (explicitEntryPoints.exists())
+			return true;
+		return false;
 	}
 
 	public Set<Stream> getStreamSet() {
