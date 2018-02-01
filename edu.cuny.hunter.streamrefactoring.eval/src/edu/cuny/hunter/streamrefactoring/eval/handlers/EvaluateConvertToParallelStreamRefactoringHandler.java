@@ -241,8 +241,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 				entryPointsPrinter = createCSVPrinter("entry_points.csv",
 						new String[] { "subject", "method", "type FQN" });
-				
-				explicitEntryPointsPrinter= createTXTPrinter("entry_points.txt");
 
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
@@ -279,6 +277,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						entryPointsPrinter.printRecord(javaProject.getElementName(), method.getSignature(),
 								method.getDeclaringClass().getName());
 					}
+					
+					explicitEntryPointsPrinter = createTXTPrinter("entry_points.txt");
 
 					// print all explicit entry point
 					Collection<Entrypoint> explicitEntryPoints = getProjectExplictEntryPoints(javaProject, processor);
