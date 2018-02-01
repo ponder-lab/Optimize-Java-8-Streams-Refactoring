@@ -1,5 +1,6 @@
 package edu.cuny.hunter.streamrefactoring.eval.utils;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 
@@ -9,8 +10,10 @@ public class TXTPrinter {
 
 	FileWriter fileWriter;
 
-	public TXTPrinter(FileWriter fileWriter) {
-		this.fileWriter = fileWriter;
+	public TXTPrinter(File file) throws IOException {
+		if (!file.getParentFile().exists())
+			file.getParentFile().mkdirs();
+		this.fileWriter = new FileWriter(file);
 	}
 
 	public void print(final Object value) {
