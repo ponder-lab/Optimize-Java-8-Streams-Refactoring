@@ -264,6 +264,24 @@ public final class Util {
 		return result;
 	}
 
+	/**
+	 * find entry points from file
+	 */
+	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy, Set<String> signatures) {
+		final Set<Entrypoint> result = new HashSet<>();
+
+		for (IClass klass : classHierarchy)
+			if (!(isJDKClass(klass) || isLibraryClass(klass))) {
+				// iterate over all declared methods
+				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
+					if (signatures.contains(method.getSignature())) {
+						addEntryPoint(result, method, classHierarchy);
+					}
+				}
+			}
+		return result;
+	}
+	
 	static Set<ITypeBinding> getAllInterfaces(ITypeBinding type) {
 		Set<ITypeBinding> ret = new HashSet<>();
 		ITypeBinding[] interfaces = type.getInterfaces();
