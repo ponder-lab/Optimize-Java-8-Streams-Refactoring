@@ -192,7 +192,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			if (findEntryPointsFile()) {
 				entryPoints = getEntryPointsFromFile(engine);
 				entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point from file: " + ep));
-			}else {
+			} else {
 				// find explicit entry points.
 				entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
 				entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
@@ -247,7 +247,7 @@ public class StreamAnalyzer extends ASTVisitor {
 		}
 		return this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine);
 	}
-	
+
 	/**
 	 * Read entry_points.txt and get a set of method signatures, then, get entry
 	 * points by those signatures
@@ -286,12 +286,12 @@ public class StreamAnalyzer extends ASTVisitor {
 	}
 
 	private boolean findEntryPointsFile() {
-		File explicitEntryPoints = new File("main"+ File.separator +"entry_points.txt");
+		File explicitEntryPoints = new File("main" + File.separator + "entry_points.txt");
 		if (explicitEntryPoints.exists())
 			return true;
 		return false;
 	}
-	
+
 	public Set<Stream> getStreamSet() {
 		return this.streamSet;
 	}

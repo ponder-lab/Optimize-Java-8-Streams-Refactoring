@@ -97,7 +97,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	private static TXTPrinter createTXTPrinter(String fileName) throws IOException {
 		return new TXTPrinter(new File(fileName));
 	}
-	
+
 	private static IType[] getAllDeclaringTypeSubtypes(IMethod method) throws JavaModelException {
 		IType declaringType = method.getDeclaringType();
 		ITypeHierarchy typeHierarchy = declaringType.newTypeHierarchy(new NullProgressMonitor());

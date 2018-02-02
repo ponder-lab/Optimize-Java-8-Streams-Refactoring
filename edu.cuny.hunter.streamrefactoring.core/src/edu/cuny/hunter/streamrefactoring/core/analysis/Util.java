@@ -281,7 +281,7 @@ public final class Util {
 			}
 		return result;
 	}
-	
+
 	static Set<ITypeBinding> getAllInterfaces(ITypeBinding type) {
 		Set<ITypeBinding> ret = new HashSet<>();
 		ITypeBinding[] interfaces = type.getInterfaces();
