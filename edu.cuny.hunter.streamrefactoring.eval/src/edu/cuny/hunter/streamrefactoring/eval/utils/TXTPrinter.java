@@ -16,10 +16,6 @@ public class TXTPrinter {
 		this.fileWriter = new FileWriter(file);
 	}
 
-	public void print(final Object value) {
-
-	}
-
 	public void print(Entrypoint entrypoint) throws IOException {
 		fileWriter.write(entrypoint.getMethod().getSignature());
 		fileWriter.write(System.lineSeparator());
