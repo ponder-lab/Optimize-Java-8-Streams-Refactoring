@@ -1,26 +1,21 @@
 package edu.cuny.hunter.streamrefactoring.eval.utils;
 
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 
 public class TXTPrinter {
 
-	FileWriter fileWriter;
+	PrintWriter printWriter;
 
-	public TXTPrinter(FileWriter fileWriter) {
-		this.fileWriter = fileWriter;
-	}
-
-	public void print(final Object value) {
-
+	public TXTPrinter(PrintWriter printWriter) {
+		this.printWriter = printWriter;
 	}
 
 	public void print(String entrypoint) throws IOException {
-		fileWriter.write(entrypoint);
-		fileWriter.write(System.lineSeparator());
+		printWriter.println(entrypoint);
 	}
 
 	public void close() throws IOException {
-		fileWriter.close();
+		printWriter.close();
 	}
 }

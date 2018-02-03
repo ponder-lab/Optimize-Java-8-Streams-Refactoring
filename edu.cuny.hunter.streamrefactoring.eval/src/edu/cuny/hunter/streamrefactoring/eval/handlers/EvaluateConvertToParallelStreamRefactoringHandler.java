@@ -4,6 +4,7 @@ import static edu.cuny.hunter.streamrefactoring.core.utils.Util.createConvertToP
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -233,7 +234,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 				entryPointsPrinter = createCSVPrinter("entry_points.csv",
 						new String[] { "subject", "method", "type FQN" });
 
-				entryPointsTXTPrinter = new TXTPrinter(new FileWriter("entry_points.txt"));
+				entryPointsTXTPrinter = new TXTPrinter(new PrintWriter("entry_points.txt"));
 
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
