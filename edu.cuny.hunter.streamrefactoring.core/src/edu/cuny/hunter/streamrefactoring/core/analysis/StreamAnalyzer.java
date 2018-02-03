@@ -191,8 +191,11 @@ public class StreamAnalyzer extends ASTVisitor {
 		// if we haven't built the call graph yet.
 		if (!this.enginesWithBuiltCallGraphsToEntrypointsUsed.keySet().contains(engine)) {
 			Set<Entrypoint> entryPoints;
-			if (entryPointFileExists(projectName)) {
-				entryPoints = getEntryPointsFromFile(engine.getClassHierarchy(), projectName);
+
+			File entryPointFile = entryPointFileExists(new File(".." + File.separator + projectName),
+					"entry_points.txt");
+			if (entryPointFile != null) {
+				entryPoints = getEntryPointsFromFile(engine.getClassHierarchy(), entryPointFile);
 				entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point from file: " + ep));
 			} else {
 				// find explicit entry points.
@@ -257,14 +260,14 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * @return a set of entry points
 	 * @throws IOException
 	 */
-	private static Set<Entrypoint> getEntryPointsFromFile(IClassHierarchy classHierarchy, String projectName)
+	private static Set<Entrypoint> getEntryPointsFromFile(IClassHierarchy classHierarchy, File file)
 			throws IOException {
 		BufferedReader bufferedReader = null;
 		FileReader fileReader = null;
 
 		Set<String> signatures = new HashSet<>();
 
-		fileReader = new FileReader(projectName + File.separator + "entry_points.txt");
+		fileReader = new FileReader(file.getAbsolutePath());
 		bufferedReader = new BufferedReader(fileReader);
 
 		String currentLine;
@@ -282,12 +285,39 @@ public class StreamAnalyzer extends ASTVisitor {
 		return entrypoints;
 	}
 
-	private boolean entryPointFileExists(String projectName) {
-		File entryPoints = new File(projectName + File.separator + "entry_points.txt");
-		if (entryPoints.exists()) {
-			return true;
+	/**
+	 * Search entry_points.txt in project directory recursively
+	 * 
+	 * @param directory:
+	 *            project directory
+	 * @param fileName:
+	 *            the target file
+	 * @return
+	 */
+	private File entryPointFileExists(File directory, String fileName) {
+		// find a file in the directory
+		if (directory.isDirectory()) {
+
+			if (directory.canRead()) {
+				// check all files of the directory
+				for (File temp : directory.listFiles()) {
+					// if the file is a directory, the project needs recursive search
+					if (temp.isDirectory()) {
+						File file = entryPointFileExists(temp, fileName);
+						if (file != null)
+							return file;
+					} else {
+						// if the file is not a directory, check whether it is entry_point.txt
+						if (fileName.equals(temp.getName().toLowerCase())) {
+							return temp;
+						}
+					}
+				}
+			}
+		} else {
+			LOGGER.log(Level.SEVERE, directory.getAbsolutePath() + ": permission denied.");
 		}
-		return false;
+		return null;
 	}
 
 	public Set<Stream> getStreamSet() {
