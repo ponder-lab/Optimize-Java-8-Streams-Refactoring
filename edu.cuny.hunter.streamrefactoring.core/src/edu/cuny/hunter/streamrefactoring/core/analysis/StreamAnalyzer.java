@@ -2,21 +2,21 @@ package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import static com.ibm.wala.ipa.callgraph.impl.Util.makeMainEntrypoints;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.IMethodBinding;
@@ -114,7 +114,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			// build the call graph for the project.
 			Collection<Entrypoint> entryPoints = null;
 			try {
-				entryPoints = this.buildCallGraph(engine, project.getElementName());
+				entryPoints = this.buildCallGraph(engine, project.getProject().getLocation());
 			} catch (IOException | CoreException | CancelException e) {
 				LOGGER.log(Level.SEVERE,
 						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
@@ -186,15 +186,14 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * @return The {@link Entrypoint}s used in building the {@link CallGraph}.
 	 */
 	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine,
-			String projectName) throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
+			IPath path) throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
 		// if we haven't built the call graph yet.
 		if (!this.enginesWithBuiltCallGraphsToEntrypointsUsed.keySet().contains(engine)) {
 
 			Set<Entrypoint> entryPoints;
 
 			// find the entry_points.txt in the project directory
-			File entryPointFile = entryPointFileExists(new File(".." + File.separator + projectName),
-					"entry_points.txt");
+			File entryPointFile = getEntryPointsFile(path.toFile(), "entry_points.txt");
 			if (entryPointFile != null) {
 				// find explicit entry points from entry_points.txt
 				entryPoints = findEntryPointsFromFile(engine.getClassHierarchy(), entryPointFile);
@@ -264,25 +263,13 @@ public class StreamAnalyzer extends ASTVisitor {
 	 */
 	private static Set<Entrypoint> findEntryPointsFromFile(IClassHierarchy classHierarchy, File file)
 			throws IOException {
-		BufferedReader bufferedReader = null;
-		FileReader fileReader = null;
-
 		Set<String> signatures = new HashSet<>();
 
-		fileReader = new FileReader(file.getAbsolutePath());
-		bufferedReader = new BufferedReader(fileReader);
-
-		String currentLine;
-		while ((currentLine = bufferedReader.readLine()) != null) {
-			signatures.add(currentLine);
+		Scanner scanner = new Scanner(file);
+		while (scanner.hasNextLine()) {
+			String line = scanner.nextLine();
+			signatures.add(line);
 		}
-
-		if (bufferedReader != null)
-			bufferedReader.close();
-
-		if (fileReader != null)
-			fileReader.close();
-
 		Set<Entrypoint> entrypoints = Util.findEntryPoints(classHierarchy, signatures);
 		return entrypoints;
 	}
@@ -296,7 +283,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *            the target file
 	 * @return
 	 */
-	private File entryPointFileExists(File directory, String fileName) {
+	private static File getEntryPointsFile(File directory, String fileName) {
 		// find a file in the directory
 		if (directory.isDirectory()) {
 
@@ -305,7 +292,7 @@ public class StreamAnalyzer extends ASTVisitor {
 				for (File temp : directory.listFiles()) {
 					// if the file is a directory, the project needs recursive search
 					if (temp.isDirectory()) {
-						File file = entryPointFileExists(temp, fileName);
+						File file = getEntryPointsFile(temp, fileName);
 						if (file != null)
 							return file;
 					} else {
@@ -316,8 +303,6 @@ public class StreamAnalyzer extends ASTVisitor {
 					}
 				}
 			}
-		} else {
-			LOGGER.log(Level.SEVERE, directory.getAbsolutePath() + ": permission denied.");
 		}
 		return null;
 	}

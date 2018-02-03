@@ -61,7 +61,6 @@ import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
 import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
-import edu.cuny.hunter.streamrefactoring.eval.utils.TXTPrinter;
 import edu.cuny.hunter.streamrefactoring.eval.utils.Util;
 import net.sourceforge.metrics.core.Metric;
 import net.sourceforge.metrics.core.sources.AbstractMetricSource;
@@ -175,7 +174,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter streamExecutionModePrinter = null;
 			CSVPrinter streamOrderingPrinter = null;
 			CSVPrinter entryPointsPrinter = null;
-			TXTPrinter entryPointsTXTPrinter = null;
+			PrintWriter entryPointsTXTPrinter = null;
 
 			ConvertToParallelStreamRefactoringProcessor processor = null;
 
@@ -234,7 +233,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 				entryPointsPrinter = createCSVPrinter("entry_points.csv",
 						new String[] { "subject", "method", "type FQN" });
 
-				entryPointsTXTPrinter = new TXTPrinter(new PrintWriter("entry_points.txt"));
+				entryPointsTXTPrinter = new PrintWriter("entry_points.txt");
 
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
@@ -270,7 +269,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						com.ibm.wala.classLoader.IMethod method = entryPoint.getMethod();
 						entryPointsPrinter.printRecord(javaProject.getElementName(), method.getSignature(),
 								method.getDeclaringClass().getName());
-						entryPointsTXTPrinter.print(method.getSignature());
+						entryPointsTXTPrinter.println(method.getSignature());
 					}
 
 					// #streams.
