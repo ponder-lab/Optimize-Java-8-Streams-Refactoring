@@ -2,8 +2,11 @@ package edu.cuny.hunter.streamrefactoring.eval.handlers;
 
 import static edu.cuny.hunter.streamrefactoring.core.utils.Util.createConvertToParallelStreamRefactoringProcessor;
 
+import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -16,7 +19,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
@@ -60,6 +65,7 @@ import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
 import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
+import edu.cuny.hunter.streamrefactoring.eval.utils.TXTPrinter;
 import edu.cuny.hunter.streamrefactoring.eval.utils.Util;
 import net.sourceforge.metrics.core.Metric;
 import net.sourceforge.metrics.core.sources.AbstractMetricSource;
@@ -90,6 +96,40 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 	private static CSVPrinter createCSVPrinter(String fileName, String[] header) throws IOException {
 		return new CSVPrinter(new FileWriter(fileName, true), CSVFormat.EXCEL.withHeader(header));
+	}
+
+	private static TXTPrinter createTXTPrinter(String fileName) throws IOException {
+		return new TXTPrinter(new FileWriter(fileName));
+	}
+
+	/**
+	 * Scan entry_points.csv and get a set of entry points
+	 * 
+	 * @param fileName:
+	 *            entry_ponts.csv
+	 */
+	private static Set<String> getEntryPointsFromCSV(String fileName) throws IOException {
+		Reader reader = new FileReader(new File(fileName));
+		Set<String> entryPoints = new HashSet<String>();
+		CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT);
+		Iterable<CSVRecord> csvRecords = csvParser.getRecords();
+		for (CSVRecord csvRecord : csvRecords) {
+			String entryPoint = csvRecord.get(1);
+			if (!entryPoint.equals("method"))
+				entryPoints.add(entryPoint);
+		}
+		return entryPoints;
+	}
+
+	/**
+	 * Overwrite entry_points.txt
+	 */
+	private static void printEntryPoints(TXTPrinter entryPointsTXTPrinter) throws IOException {
+		entryPointsTXTPrinter = createTXTPrinter(System.getProperty("user.dir") + File.separator + "entry_points.txt");
+		Set<String> entryPoints = getEntryPointsFromCSV("entry_points.csv");
+		for (String entryPoint : entryPoints) {
+			entryPointsTXTPrinter.print(entryPoint);
+		}
 	}
 
 	private static IType[] getAllDeclaringTypeSubtypes(IMethod method) throws JavaModelException {
@@ -173,6 +213,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter streamExecutionModePrinter = null;
 			CSVPrinter streamOrderingPrinter = null;
 			CSVPrinter entryPointsPrinter = null;
+			TXTPrinter entryPointsTXTPrinter = null;
 
 			ConvertToParallelStreamRefactoringProcessor processor = null;
 
@@ -227,6 +268,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						buildAttributeColumns("execution mode"));
 
 				streamOrderingPrinter = createCSVPrinter("stream_orderings.csv", buildAttributeColumns("ordering"));
+
+				printEntryPoints(entryPointsTXTPrinter);
 
 				entryPointsPrinter = createCSVPrinter("entry_points.csv",
 						new String[] { "subject", "method", "type FQN" });
@@ -442,6 +485,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						streamOrderingPrinter.close();
 					if (entryPointsPrinter != null)
 						entryPointsPrinter.close();
+					if (entryPointsTXTPrinter != null)
+						entryPointsTXTPrinter.close();
 
 					// clear cache.
 					if (processor != null)
