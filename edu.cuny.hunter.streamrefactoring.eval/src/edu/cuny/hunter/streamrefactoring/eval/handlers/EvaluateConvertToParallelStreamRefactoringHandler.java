@@ -3,8 +3,10 @@ package edu.cuny.hunter.streamrefactoring.eval.handlers;
 import static edu.cuny.hunter.streamrefactoring.core.utils.Util.createConvertToParallelStreamRefactoringProcessor;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -17,7 +19,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
@@ -95,7 +99,37 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	}
 
 	private static TXTPrinter createTXTPrinter(String fileName) throws IOException {
-		return new TXTPrinter(new File(fileName));
+		return new TXTPrinter(new FileWriter(fileName));
+	}
+
+	/**
+	 * Scan entry_points.csv and get a set of entry points
+	 * 
+	 * @param fileName:
+	 *            entry_ponts.csv
+	 */
+	private static Set<String> getEntryPointsFromCSV(String fileName) throws IOException {
+		Reader reader = new FileReader(new File(fileName));
+		Set<String> entryPoints = new HashSet<String>();
+		CSVParser csvParser = new CSVParser(reader, CSVFormat.DEFAULT);
+		Iterable<CSVRecord> csvRecords = csvParser.getRecords();
+		for (CSVRecord csvRecord : csvRecords) {
+			String entryPoint = csvRecord.get(1);
+			if (!entryPoint.equals("method"))
+				entryPoints.add(entryPoint);
+		}
+		return entryPoints;
+	}
+
+	/**
+	 * Overwrite entry_points.txt
+	 */
+	private static void printEntryPoints(TXTPrinter entryPointsTXTPrinter) throws IOException {
+		entryPointsTXTPrinter = createTXTPrinter(System.getProperty("user.dir") + File.separator + "entry_points.txt");
+		Set<String> entryPoints = getEntryPointsFromCSV("entry_points.csv");
+		for (String entryPoint : entryPoints) {
+			entryPointsTXTPrinter.print(entryPoint);
+		}
 	}
 
 	private static IType[] getAllDeclaringTypeSubtypes(IMethod method) throws JavaModelException {
@@ -235,6 +269,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 				streamOrderingPrinter = createCSVPrinter("stream_orderings.csv", buildAttributeColumns("ordering"));
 
+				printEntryPoints(entryPointsTXTPrinter);
+
 				entryPointsPrinter = createCSVPrinter("entry_points.csv",
 						new String[] { "subject", "method", "type FQN" });
 
@@ -268,14 +304,10 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					Collection<Entrypoint> entryPoints = getProjectEntryPoints(javaProject, processor);
 					resultsPrinter.print(entryPoints.size()); // number.
 
-					entryPointsTXTPrinter = createTXTPrinter(
-							javaProject.getElementName() + File.separator + "entry_points.txt");
-
 					for (Entrypoint entryPoint : entryPoints) {
 						com.ibm.wala.classLoader.IMethod method = entryPoint.getMethod();
 						entryPointsPrinter.printRecord(javaProject.getElementName(), method.getSignature(),
 								method.getDeclaringClass().getName());
-						entryPointsTXTPrinter.print(entryPoint);
 					}
 
 					// #streams.

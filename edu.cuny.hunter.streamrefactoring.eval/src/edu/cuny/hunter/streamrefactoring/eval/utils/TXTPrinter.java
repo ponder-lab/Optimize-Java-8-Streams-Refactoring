@@ -1,23 +1,18 @@
 package edu.cuny.hunter.streamrefactoring.eval.utils;
 
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-
-import com.ibm.wala.ipa.callgraph.Entrypoint;
 
 public class TXTPrinter {
 
 	FileWriter fileWriter;
 
-	public TXTPrinter(File file) throws IOException {
-		if (!file.getParentFile().exists())
-			file.getParentFile().mkdirs();
-		this.fileWriter = new FileWriter(file);
+	public TXTPrinter(FileWriter fileWriter) throws IOException {
+		this.fileWriter = fileWriter;
 	}
 
-	public void print(Entrypoint entrypoint) throws IOException {
-		fileWriter.write(entrypoint.getMethod().getSignature());
+	public void print(String entrypoint) throws IOException {
+		fileWriter.write(entrypoint);
 		fileWriter.write(System.lineSeparator());
 	}
 
