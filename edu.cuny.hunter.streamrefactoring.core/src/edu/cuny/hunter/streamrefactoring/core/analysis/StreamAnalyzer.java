@@ -46,6 +46,8 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
+	private static final String ENTRY_POINT_FILE = "entry_points.txt";
+
 	private static void addImplicitEntryPoints(Collection<Entrypoint> target, Iterable<Entrypoint> source) {
 		for (Entrypoint implicitEntryPoint : source)
 			if (target.add(implicitEntryPoint))
@@ -193,7 +195,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			Set<Entrypoint> entryPoints;
 
 			// find the entry_points.txt in the project directory
-			File entryPointFile = getEntryPointsFile(path.toFile(), "entry_points.txt");
+			File entryPointFile = getEntryPointsFile(path.toFile(), ENTRY_POINT_FILE);
 			if (entryPointFile != null) {
 				// find explicit entry points from entry_points.txt
 				entryPoints = findEntryPointsFromFile(engine.getClassHierarchy(), entryPointFile);
