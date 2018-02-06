@@ -399,7 +399,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 */
 	public void testConcurrentReduction() throws Exception {
 		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("orderedWidgets.stream()",
-				EnumSet.of(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), CollectorKind.CONCURRENT, false,
+				EnumSet.of(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), CollectorKind.CONCURRENT, true,
 				false, true, EnumSet.of(TransformationAction.CONVERT_COLLECTOR_TO_NON_CONCURRENT),
 				PreconditionSuccess.P6, Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK,
 				Collections.emptySet()));
