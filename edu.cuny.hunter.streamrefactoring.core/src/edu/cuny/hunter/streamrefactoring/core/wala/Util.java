@@ -23,21 +23,13 @@ import com.ibm.wala.util.collections.HashSetFactory;
 
 public final class Util {
 
-	private Util() {
-	}
-	
-	public static String getOSName() {	
-		return System.getProperty("os.name");
-	}
-
-	public static boolean isWindows() {
-		return getOSName().startsWith("Windows");
-	}
+	private static final String OS_NAME = "os.name";
+	private static final String WINDOWS = "Windows";
 
 	/**
-	 * Enhance an {@link AnalysisScope} to include in a particular loader,
-	 * elements from a set of Eclipse projects
-	 * 
+	 * Enhance an {@link AnalysisScope} to include in a particular loader, elements
+	 * from a set of Eclipse projects
+	 *
 	 * @param loader
 	 *            the class loader in which new {@link Module}s will live
 	 * @param projectPaths
@@ -46,20 +38,50 @@ public final class Util {
 	 *            the {@link AnalysisScope} under construction. This will be
 	 *            mutated.
 	 * @param seen
-	 *            set of {@link Module}s which have already been seen, and
-	 *            should not be added to the analysis scope
+	 *            set of {@link Module}s which have already been seen, and should
+	 *            not be added to the analysis scope
 	 */
 	private static void buildScope(ClassLoaderReference loader, Collection<EclipseProjectPath> projectPaths,
 			AnalysisScope scope, Collection<Module> seen) throws IOException {
 		for (EclipseProjectPath path : projectPaths) {
 			AnalysisScope pScope = path.toAnalysisScope((File) null);
-			for (Module m : pScope.getModules(loader)) {
+			for (Module m : pScope.getModules(loader))
 				if (!seen.contains(m)) {
 					seen.add(m);
 					scope.addToScope(loader, m);
 				}
-			}
 		}
+	}
+
+	public static String getOSName() {
+		return System.getProperty(OS_NAME);
+	}
+
+	public static boolean isWindows() {
+		return getOSName().startsWith(WINDOWS);
+	}
+
+	/**
+	 * make a {@link CallGraphBuilder} that uses call-string context sensitivity,
+	 * with call-string length limited to n, and a context-sensitive
+	 * allocation-site-based heap abstraction.
+	 */
+	public static SSAPropagationCallGraphBuilder makeNCFABuilder(int n, AnalysisOptions options, AnalysisCache cache,
+			IClassHierarchy cha, AnalysisScope scope) {
+		if (options == null)
+			throw new IllegalArgumentException("options is null");
+		addDefaultSelectors(options, cha);
+		addDefaultBypassLogic(options, scope, Util.class.getClassLoader(), cha);
+		ContextSelector appSelector = null;
+		SSAContextInterpreter appInterpreter = null;
+		SSAPropagationCallGraphBuilder result = new nCFABuilderWithActualParametersInContext(n, cha, options, cache,
+				appSelector, appInterpreter);
+		// nCFABuilder uses type-based heap abstraction by default, but we want
+		// allocation sites
+		result.setInstanceKeys(new ZeroXInstanceKeys(options, cha, result.getContextInterpreter(),
+				ZeroXInstanceKeys.ALLOCATIONS | ZeroXInstanceKeys.SMUSH_MANY | ZeroXInstanceKeys.SMUSH_PRIMITIVE_HOLDERS
+						| ZeroXInstanceKeys.SMUSH_STRINGS | ZeroXInstanceKeys.SMUSH_THROWABLES));
+		return result;
 	}
 
 	/**
@@ -77,26 +99,7 @@ public final class Util {
 		buildScope(ClassLoaderReference.Primordial, projectPaths, scope, seen);
 		return scope;
 	}
-	
-	/**
-	   * make a {@link CallGraphBuilder} that uses call-string context sensitivity,
-	   * with call-string length limited to n, and a context-sensitive
-	   * allocation-site-based heap abstraction.
-	   */
-	  public static SSAPropagationCallGraphBuilder makeNCFABuilder(int n, AnalysisOptions options, AnalysisCache cache,
-	      IClassHierarchy cha, AnalysisScope scope) {
-	    if (options == null) {
-	      throw new IllegalArgumentException("options is null");
-	    }
-	    addDefaultSelectors(options, cha);
-	    addDefaultBypassLogic(options, scope, Util.class.getClassLoader(), cha);
-	    ContextSelector appSelector = null;
-	    SSAContextInterpreter appInterpreter = null;
-	    SSAPropagationCallGraphBuilder result = new nCFABuilderWithActualParametersInContext(n, cha, options, cache, appSelector, appInterpreter);
-	    // nCFABuilder uses type-based heap abstraction by default, but we want allocation sites
-	    result.setInstanceKeys(new ZeroXInstanceKeys(options, cha, result.getContextInterpreter(), ZeroXInstanceKeys.ALLOCATIONS
-						| ZeroXInstanceKeys.SMUSH_MANY | ZeroXInstanceKeys.SMUSH_PRIMITIVE_HOLDERS | ZeroXInstanceKeys.SMUSH_STRINGS
-	        | ZeroXInstanceKeys.SMUSH_THROWABLES));
-	    return result;
-	  }
+
+	private Util() {
+	}
 }

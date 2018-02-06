@@ -19,25 +19,23 @@ public class nCFABuilderWithActualParametersInContext extends SSAPropagationCall
 	public nCFABuilderWithActualParametersInContext(int n, IClassHierarchy cha, AnalysisOptions options,
 			AnalysisCache cache, ContextSelector appContextSelector, SSAContextInterpreter appContextInterpreter) {
 		super(cha, options, cache, new DefaultPointerKeyFactory());
-		if (options == null) {
+		if (options == null)
 			throw new IllegalArgumentException("options is null");
-		}
 
-		setInstanceKeys(new ClassBasedInstanceKeys(options, cha));
+		this.setInstanceKeys(new ClassBasedInstanceKeys(options, cha));
 
 		ContextSelector def = new DefaultContextSelector(options, cha);
 		ContextSelector contextSelector = appContextSelector == null ? def
 				: new DelegatingContextSelector(appContextSelector, def);
 		contextSelector = new nCFAContextWithReceiversSelector(n, contextSelector);
-		setContextSelector(contextSelector);
+		this.setContextSelector(contextSelector);
 
 		SSAContextInterpreter defI = new DefaultSSAInterpreter(options, cache);
 		defI = new DelegatingSSAContextInterpreter(
-				ReflectionContextInterpreter.createReflectionContextInterpreter(cha, options, getAnalysisCache()),
+				ReflectionContextInterpreter.createReflectionContextInterpreter(cha, options, this.getAnalysisCache()),
 				defI);
 		SSAContextInterpreter contextInterpreter = appContextInterpreter == null ? defI
 				: new DelegatingSSAContextInterpreter(appContextInterpreter, defI);
-		setContextInterpreter(contextInterpreter);
+		this.setContextInterpreter(contextInterpreter);
 	}
-
 }
