@@ -19,6 +19,11 @@ import edu.cuny.hunter.streamrefactoring.core.analysis.Util;
 
 public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 
+	/**
+	 * The N to use if the instance implements BaseStream.
+	 */
+	public static final int CONTEXT_LENGTH_FOR_STREAMS = 2;
+
 	protected class CallStringTriple {
 
 		public CallStringTriple(CGNode node, CallSiteReference site, IMethod target) {
@@ -118,7 +123,7 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 	/**
 	 * {@inheritDoc}
 	 * 
-	 * @return 2 if the target's return type implements {@link BaseStream},
+	 * @return CONTEXT_LENGTH_FOR_STREAMS if the target's return type implements {@link BaseStream},
 	 *         otherwise, return the original value.
 	 */
 	@Override
@@ -126,7 +131,7 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 		boolean implementsBaseStream = Util.implementsBaseStream(target.getReturnType(), target.getClassHierarchy());
 
 		if (implementsBaseStream)
-			return 2;
+			return CONTEXT_LENGTH_FOR_STREAMS;
 		else
 			return super.getLength(caller, site, target);
 	}
