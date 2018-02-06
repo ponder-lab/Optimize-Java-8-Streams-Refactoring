@@ -20,14 +20,14 @@ import com.ibm.wala.util.strings.Atom;
 public class Util {
 
 	/**
-	 * {@link Atom} corresponding the the stream() method.
-	 */
-	private static final Atom STREAM_METHOD_NAME_ATOM = Atom.findOrCreateAsciiAtom("stream");
-
-	/**
 	 * The {@link TypeName} of the type {@link java.util.Arrays}.
 	 */
 	private static final TypeName ARRAYS_TYPE_NAME = TypeName.string2TypeName("Ljava/util/Arrays");
+
+	/**
+	 * {@link Atom} corresponding the the stream() method.
+	 */
+	private static final Atom STREAM_METHOD_NAME_ATOM = Atom.findOrCreateAsciiAtom("stream");
 
 	/**
 	 * The {@link TypeName} for the type {@link java.util.stream.StreamSupport}.
@@ -35,14 +35,11 @@ public class Util {
 	private static final TypeName STREAM_SUPPORT_TYPE_NAME = TypeName
 			.string2TypeName("Ljava/util/stream/StreamSupport");
 
-	private Util() {
-	}
-
 	/**
 	 * True iff the given {@link InstanceKey} corresponds with the given
 	 * {@link SSAInvokeInstruction} in the given {@link CallGraph}. In other words,
 	 * the result is true iff the instruction is used to create the instance.
-	 * 
+	 *
 	 * @param instanceKey
 	 *            An instance in question.
 	 * @param instruction
@@ -107,5 +104,8 @@ public class Util {
 			}
 		}
 		return false;
+	}
+
+	private Util() {
 	}
 }
