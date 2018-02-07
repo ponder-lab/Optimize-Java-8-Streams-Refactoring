@@ -19,14 +19,27 @@ import com.ibm.wala.util.strings.Atom;
 
 public class Util {
 
-	private Util() {
-	}
+	/**
+	 * The {@link TypeName} of the type {@link java.util.Arrays}.
+	 */
+	private static final TypeName ARRAYS_TYPE_NAME = TypeName.string2TypeName("Ljava/util/Arrays");
+
+	/**
+	 * {@link Atom} corresponding the the stream() method.
+	 */
+	private static final Atom STREAM_METHOD_NAME_ATOM = Atom.findOrCreateAsciiAtom("stream");
+
+	/**
+	 * The {@link TypeName} for the type {@link java.util.stream.StreamSupport}.
+	 */
+	private static final TypeName STREAM_SUPPORT_TYPE_NAME = TypeName
+			.string2TypeName("Ljava/util/stream/StreamSupport");
 
 	/**
 	 * True iff the given {@link InstanceKey} corresponds with the given
 	 * {@link SSAInvokeInstruction} in the given {@link CallGraph}. In other words,
 	 * the result is true iff the instruction is used to create the instance.
-	 * 
+	 *
 	 * @param instanceKey
 	 *            An instance in question.
 	 * @param instruction
@@ -75,14 +88,17 @@ public class Util {
 				else if (callSiteReference.getProgramCounter() == instructionCallSite.getProgramCounter()) {
 					// compare declared targets.
 					MethodReference callSiteDeclaredTarget = callSiteReference.getDeclaredTarget();
-					MethodReference instructionCallDeclaredTarget = instructionCallSite.getDeclaredTarget();
+					TypeName callSiteTargetDeclaringClassName = callSiteDeclaredTarget.getDeclaringClass().getName();
 
-					if (callSiteDeclaredTarget.getDeclaringClass().getName()
-							.equals(instructionCallDeclaredTarget.getDeclaringClass().getName())
-							&& callSiteDeclaredTarget.getDeclaringClass().getName()
-									.equals(TypeName.string2TypeName("Ljava/util/Arrays"))
+					MethodReference instructionCallDeclaredTarget = instructionCallSite.getDeclaredTarget();
+					TypeName instructionTargetDeclaringClassName = instructionCallDeclaredTarget.getDeclaringClass()
+							.getName();
+
+					if (callSiteTargetDeclaringClassName.equals(instructionTargetDeclaringClassName)
+							&& (callSiteTargetDeclaringClassName.equals(ARRAYS_TYPE_NAME)
+									|| callSiteTargetDeclaringClassName.equals(STREAM_SUPPORT_TYPE_NAME))
 							&& callSiteDeclaredTarget.getName().equals(instructionCallDeclaredTarget.getName())
-							&& callSiteDeclaredTarget.getName().equals(Atom.findOrCreateAsciiAtom("stream")))
+							&& callSiteDeclaredTarget.getName().equals(STREAM_METHOD_NAME_ATOM))
 						return true;
 				}
 			}
@@ -90,4 +106,6 @@ public class Util {
 		return false;
 	}
 
+	private Util() {
+	}
 }
