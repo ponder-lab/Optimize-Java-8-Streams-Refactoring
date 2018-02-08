@@ -771,7 +771,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		helper(new StreamAnalysisExpectedResult("h1.stream()", null, null, false, false, false, null, null, null,
 				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.NO_ENTRY_POINT)));
 	}
-	
+
 	/**
 	 * Test #172.
 	 */
