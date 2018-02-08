@@ -128,7 +128,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	public static Test setUpTest(Test test) {
 		return new Java18Setup(test);
 	}
-	
+
 	@Override
 	protected void setUp() throws Exception {
 		// TODO Auto-generated method stub
@@ -142,17 +142,20 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		IPath destinationProjectPath = this.getPackageP().getJavaProject().getResource().getLocation();
 		IPath destinationWorkSpacePath = this.getPackageP().getJavaProject().getParent().getResource().getLocation();
 
-		System.out.println("project: " + destinationProjectPath);
-		System.out.println("workspace: " + destinationWorkSpacePath);
-
-		if (moveEntryPointFile(abosoluteWorkSpacePath, Paths.get(destinationWorkSpacePath.toString()))
-				|| moveEntryPointFile(absoluteProjectPath, Paths.get(destinationProjectPath.toString())))
+		if (moveEntryPointFile(abosoluteWorkSpacePath,
+				Paths.get(destinationWorkSpacePath.toString() + File.separator + "entry_points.txt"))
+				|| moveEntryPointFile(absoluteProjectPath,
+						Paths.get(destinationProjectPath.toString() + File.separator + "entry_points.txt")))
 			LOGGER.info(() -> "Move entry_points.txt successfully");
 		else
 			LOGGER.info(() -> "entry_points.txt does not exist");
 
 	}
 
+	/**
+	 * move entry_points.txt from cuurent directory to the corresponding directory
+	 * in junit-workspace
+	 */
 	private boolean moveEntryPointFile(Path source, Path target) throws IOException {
 		File file = getEntryPointFile(source);
 		if (file != null) {
@@ -164,12 +167,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	/**
 	 * get the entry_points.txt
-	 * 
-	 * @param directory
-	 * @return
 	 */
 	private File getEntryPointFile(Path directory) {
-		File file = new File(directory.toString() + File.separator + "entry_points.csv");
+		File file = new File(directory.toString() + File.separator + "entry_points.txt");
 		if (file.exists())
 			return file;
 		else
