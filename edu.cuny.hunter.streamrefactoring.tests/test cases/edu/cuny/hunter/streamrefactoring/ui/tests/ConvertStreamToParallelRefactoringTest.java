@@ -135,8 +135,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		super.setUp();
 
 		// this is the source path.
-		Path abosoluteWorkSpacePath = this.getAbsolutePath(this.getTestPath());
-		Path absoluteProjectPath = this.getAbsolutePath(this.getTestPath() + this.getName());
+		Path abosoluteWorkSpacePath = this.getAbsolutePath(this.getTestPath()).resolve("entry_points.txt");
+		Path absoluteProjectPath = this.getAbsolutePath(this.getTestPath() + this.getName())
+				.resolve("entry_points.txt");
 
 		// this is destination path.
 		IPath destinationProjectPath = this.getPackageP().getJavaProject().getResource().getLocation();
@@ -169,7 +170,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * get the entry_points.txt
 	 */
 	private File getEntryPointFile(Path directory) {
-		File file = new File(directory.toString() + File.separator + "entry_points.txt");
+		File file = new File(directory.toString());
 		if (file.exists())
 			return file;
 		else
