@@ -1,2 +1,2 @@
 p.A.<init>()V
-p.A.m([Ljava/lang/String;)V
+p.A.m()V
