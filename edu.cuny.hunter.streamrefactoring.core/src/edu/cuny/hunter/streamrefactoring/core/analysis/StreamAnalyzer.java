@@ -193,9 +193,8 @@ public class StreamAnalyzer extends ASTVisitor {
 		if (!this.enginesWithBuiltCallGraphsToEntrypointsUsed.keySet().contains(engine)) {
 
 			Set<Entrypoint> entryPoints;
-
 			// find the entry_points.txt in the project directory
-			File entryPointFile = getEntryPointsFile(path.toFile(), ENTRY_POINT_FILE);
+			File entryPointFile = getEntryPointsFile(path.toString(), ENTRY_POINT_FILE);
 			if (entryPointFile != null) {
 				// find explicit entry points from entry_points.txt
 				entryPoints = findEntryPointsFromFile(engine.getClassHierarchy(), entryPointFile);
@@ -285,27 +284,22 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *            the target file
 	 * @return
 	 */
-	private static File getEntryPointsFile(File directory, String fileName) {
-		// find a file in the directory
-		if (directory.isDirectory()) {
+	private static File getEntryPointsFile(String directory, String fileName) {
+		// If file does not exist, find the file in upper level
+		File file = new File(directory);
+		if (!file.exists())
+			return null;
+		while (file != null) {
 
-			if (directory.canRead()) {
-				// check all files of the directory
-				for (File temp : directory.listFiles()) {
-					// if the file is a directory, the project needs recursive search
-					if (temp.isDirectory()) {
-						File file = getEntryPointsFile(temp, fileName);
-						if (file != null)
-							return file;
-					} else {
-						// if the file is not a directory, check whether it is entry_point.txt
-						if (fileName.equals(temp.getName().toLowerCase())) {
-							return temp;
-						}
-					}
+			if (file.isDirectory()) {
+				for (File tmp : file.listFiles()) {
+					if (!tmp.isDirectory() && tmp.getName().equals("entry_points.txt"))
+						return tmp;
 				}
 			}
+			file = file.getParentFile();
 		}
+
 		return null;
 	}
 

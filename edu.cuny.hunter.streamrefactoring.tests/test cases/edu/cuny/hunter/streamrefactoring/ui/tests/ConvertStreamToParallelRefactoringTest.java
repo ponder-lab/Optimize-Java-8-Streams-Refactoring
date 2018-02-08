@@ -9,6 +9,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -127,6 +128,53 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	public static Test setUpTest(Test test) {
 		return new Java18Setup(test);
 	}
+	
+	@Override
+	protected void setUp() throws Exception {
+		// TODO Auto-generated method stub
+		super.setUp();
+
+		// this is the source path.
+		Path abosoluteWorkSpacePath = this.getAbsolutePath(this.getTestPath());
+		Path absoluteProjectPath = this.getAbsolutePath(this.getTestPath() + this.getName());
+
+		// this is destination path.
+		IPath destinationProjectPath = this.getPackageP().getJavaProject().getResource().getLocation();
+		IPath destinationWorkSpacePath = this.getPackageP().getJavaProject().getParent().getResource().getLocation();
+
+		System.out.println("project: " + destinationProjectPath);
+		System.out.println("workspace: " + destinationWorkSpacePath);
+
+		if (moveEntryPointFile(abosoluteWorkSpacePath, Paths.get(destinationWorkSpacePath.toString()))
+				|| moveEntryPointFile(absoluteProjectPath, Paths.get(destinationProjectPath.toString())))
+			LOGGER.info(() -> "Move entry_points.txt successfully");
+		else
+			LOGGER.info(() -> "entry_points.txt does not exist");
+
+	}
+
+	private boolean moveEntryPointFile(Path source, Path target) throws IOException {
+		File file = getEntryPointFile(source);
+		if (file != null) {
+			Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
+			return true;
+		} else
+			return false;
+	}
+
+	/**
+	 * get the entry_points.txt
+	 * 
+	 * @param directory
+	 * @return
+	 */
+	private File getEntryPointFile(Path directory) {
+		File file = new File(directory.toString() + File.separator + "entry_points.csv");
+		if (file.exists())
+			return file;
+		else
+			return null;
+	}
 
 	public static Test suite() {
 		return setUpTest(new TestSuite(CLAZZ));
@@ -213,7 +261,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		return createCU(pack, cuName + ".java", contents);
 	}
 
-	private Path getAbsolutionPath(String fileName) {
+	private Path getAbsolutePath(String fileName) {
 		Path path = Paths.get(RESOURCE_PATH, fileName);
 		Path absolutePath = path.toAbsolutePath();
 		return absolutePath;
@@ -230,7 +278,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 */
 	@Override
 	public String getFileContents(String fileName) throws IOException {
-		Path absolutePath = getAbsolutionPath(fileName);
+		Path absolutePath = getAbsolutePath(fileName);
 		byte[] encoded = Files.readAllBytes(absolutePath);
 		return new String(encoded, Charset.defaultCharset());
 	}
@@ -327,7 +375,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public void setFileContents(String fileName, String contents) throws IOException {
-		Path absolutePath = getAbsolutionPath(fileName);
+		Path absolutePath = getAbsolutePath(fileName);
 		Files.write(absolutePath, contents.getBytes());
 	}
 
@@ -721,6 +769,16 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	public void testWithoutEntryPoint() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h1.stream()", null, null, false, false, false, null, null, null,
 				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.NO_ENTRY_POINT)));
+	}
+	
+	/**
+	 * Test #172.
+	 */
+	public void testEntryPointFile() throws Exception {
+		helper(new StreamAnalysisExpectedResult("h1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.UNORDERED), false, false, false,
+				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
+				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	/**
