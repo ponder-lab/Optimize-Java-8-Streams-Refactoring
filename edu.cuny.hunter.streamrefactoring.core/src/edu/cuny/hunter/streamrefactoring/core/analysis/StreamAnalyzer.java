@@ -271,6 +271,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			String line = scanner.nextLine();
 			signatures.add(line);
 		}
+		scanner.close();
 		Set<Entrypoint> entrypoints = Util.findEntryPoints(classHierarchy, signatures);
 		return entrypoints;
 	}
