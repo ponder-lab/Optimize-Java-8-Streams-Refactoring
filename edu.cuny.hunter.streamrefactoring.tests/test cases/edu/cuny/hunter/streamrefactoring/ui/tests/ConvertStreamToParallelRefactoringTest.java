@@ -140,13 +140,15 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				.resolve("entry_points.txt");
 
 		// this is destination path.
-		IPath destinationProjectPath = this.getPackageP().getJavaProject().getResource().getLocation();
-		IPath destinationWorkSpacePath = this.getPackageP().getJavaProject().getParent().getResource().getLocation();
+		Path destinationProjectPath = Paths
+				.get(this.getPackageP().getJavaProject().getResource().getLocation().toString() + File.separator
+						+ "entry_points.txt");
+		Path destinationWorkSpacePath = Paths
+				.get(this.getPackageP().getJavaProject().getParent().getResource().getLocation().toString()
+						+ File.separator + "entry_points.txt");
 
-		if (moveEntryPointFile(abosoluteWorkSpacePath,
-				Paths.get(destinationWorkSpacePath.toString() + File.separator + "entry_points.txt"))
-				|| moveEntryPointFile(absoluteProjectPath,
-						Paths.get(destinationProjectPath.toString() + File.separator + "entry_points.txt")))
+		if (moveEntryPointFile(abosoluteWorkSpacePath, destinationWorkSpacePath)
+				|| moveEntryPointFile(absoluteProjectPath, destinationProjectPath))
 			LOGGER.info(() -> "Move entry_points.txt successfully");
 		else
 			LOGGER.info(() -> "entry_points.txt does not exist");
@@ -386,6 +388,19 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		performDummySearch();
 
 		final boolean pExists = getPackageP().exists();
+
+		// this is destination path.
+		Path destinationProjectPath = Paths
+				.get(this.getPackageP().getJavaProject().getResource().getLocation().toString() + File.separator
+						+ "entry_points.txt");
+		Path destinationWorkSpacePath = Paths
+				.get(this.getPackageP().getJavaProject().getParent().getResource().getLocation().toString()
+						+ File.separator + "entry_points.txt");
+
+		if (getEntryPointFile(destinationProjectPath) != null)
+			Files.delete(destinationProjectPath);
+		if (getEntryPointFile(destinationWorkSpacePath) != null)
+			Files.delete(destinationWorkSpacePath);
 
 		if (pExists)
 			tryDeletingAllJavaClassFiles(getPackageP());
