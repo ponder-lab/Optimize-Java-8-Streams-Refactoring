@@ -168,14 +168,14 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		// something like copyEntryPointFile(absoluteProjectPath,
 		// getDestinationWorkSpacePath())
 		if (copyEntryPointFile(absoluteProjectPath, getDestinationProjectPath()))
-			LOGGER.info(() -> "Move entry_points.txt successfully");
+			LOGGER.info(() -> "Copy entry_points.txt successfully");
 		else
 			LOGGER.info(() -> "entry_points.txt does not exist");
 
 	}
 
 	/**
-	 * move entry_points.txt from cuurent directory to the corresponding directory
+	 * Copy entry_points.txt from cuurent directory to the corresponding directory
 	 * in junit-workspace
 	 * 
 	 * @return true: copy successfully / false: the source file does not exist
@@ -412,12 +412,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 		// this is destination path.
 		Path destinationProjectPath = getDestinationProjectPath();
-		Path destinationWorkSpacePath = getDestinationWorkSpacePath();
 
 		if (getEntryPointFile(destinationProjectPath) != null)
 			Files.delete(destinationProjectPath);
-		if (getEntryPointFile(destinationWorkSpacePath) != null)
-			Files.delete(destinationWorkSpacePath);
 
 		if (pExists)
 			tryDeletingAllJavaClassFiles(getPackageP());

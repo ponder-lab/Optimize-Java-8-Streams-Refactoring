@@ -264,7 +264,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					// print entry points.
 					Collection<Entrypoint> entryPoints = getProjectEntryPoints(javaProject, processor);
 					resultsPrinter.print(entryPoints.size()); // number.
-					
+
 					for (Entrypoint entryPoint : entryPoints) {
 						com.ibm.wala.classLoader.IMethod method = entryPoint.getMethod();
 						entryPointsPrinter.printRecord(javaProject.getElementName(), method.getSignature(),
