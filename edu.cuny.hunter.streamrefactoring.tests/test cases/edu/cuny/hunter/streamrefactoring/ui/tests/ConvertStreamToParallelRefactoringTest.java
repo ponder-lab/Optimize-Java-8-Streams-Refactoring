@@ -54,6 +54,7 @@ import junit.framework.TestSuite;
 /**
  * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi
  *         Khatchadourian</a>
+ * @author <a href="mailto:ytang3@gradcenter.cuny.edu">Yiming Tang</a>
  *
  */
 @SuppressWarnings("restriction")
@@ -419,6 +420,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		if (pExists)
 			tryDeletingAllJavaClassFiles(getPackageP());
 
+		super.tearDown();
 	}
 
 	/**
