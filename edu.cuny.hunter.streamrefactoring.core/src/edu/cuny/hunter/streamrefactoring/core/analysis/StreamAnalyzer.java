@@ -4,6 +4,8 @@ import static com.ibm.wala.ipa.callgraph.impl.Util.makeMainEntrypoints;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -116,7 +118,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			// build the call graph for the project.
 			Collection<Entrypoint> entryPoints = null;
 			try {
-				entryPoints = this.buildCallGraph(engine, project.getProject().getLocation());
+				entryPoints = this.buildCallGraph(engine);
 			} catch (IOException | CoreException | CancelException e) {
 				LOGGER.log(Level.SEVERE,
 						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
@@ -187,14 +189,13 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *            graph.
 	 * @return The {@link Entrypoint}s used in building the {@link CallGraph}.
 	 */
-	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine,
-			IPath path) throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
+	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine) throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
 		// if we haven't built the call graph yet.
 		if (!this.enginesWithBuiltCallGraphsToEntrypointsUsed.keySet().contains(engine)) {
 
 			Set<Entrypoint> entryPoints;
 			// find the entry_points.txt in the project directory
-			File entryPointFile = getEntryPointsFile(path.toString(), ENTRY_POINT_FILE);
+			File entryPointFile = getEntryPointsFile(engine.getProject().getResource().getLocation(), ENTRY_POINT_FILE);
 			if (entryPointFile != null) {
 				// find explicit entry points from entry_points.txt
 				entryPoints = findEntryPointsFromFile(engine.getClassHierarchy(), entryPointFile);
@@ -266,12 +267,13 @@ public class StreamAnalyzer extends ASTVisitor {
 			throws IOException {
 		Set<String> signatures = new HashSet<>();
 
-		Scanner scanner = new Scanner(file);
-		while (scanner.hasNextLine()) {
-			String line = scanner.nextLine();
-			signatures.add(line);
+		try (Scanner scanner = new Scanner(file)) {
+			while (scanner.hasNextLine()) {
+				String line = scanner.nextLine();
+				signatures.add(line);
+			}
 		}
-		scanner.close();
+
 		Set<Entrypoint> entrypoints = Util.findEntryPoints(classHierarchy, signatures);
 		return entrypoints;
 	}
@@ -283,25 +285,21 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *            project directory
 	 * @param fileName:
 	 *            the target file
-	 * @return
+	 * @return null: the file does not exist / file: find the file
 	 */
-	private static File getEntryPointsFile(String directory, String fileName) {
+	private static File getEntryPointsFile(IPath directory, String fileName) {
 		// If file does not exist, find the file in upper level
-		File file = new File(directory);
+		Path directoryPath = Paths.get(directory.toString());
+		File file;
+		do {
+			file = new File(directoryPath.resolve(ENTRY_POINT_FILE).toString());
+			directoryPath = directoryPath.getParent();
+		} while (!file.exists() && directoryPath != null);
+
 		if (!file.exists())
 			return null;
-		while (file != null) {
-
-			if (file.isDirectory()) {
-				for (File tmp : file.listFiles()) {
-					if (!tmp.isDirectory() && tmp.getName().equals("entry_points.txt"))
-						return tmp;
-				}
-			}
-			file = file.getParentFile();
-		}
-
-		return null;
+		else
+			return file;
 	}
 
 	public Set<Stream> getStreamSet() {

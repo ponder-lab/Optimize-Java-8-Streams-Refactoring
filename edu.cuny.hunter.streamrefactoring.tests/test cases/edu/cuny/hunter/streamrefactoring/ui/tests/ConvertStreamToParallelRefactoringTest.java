@@ -74,6 +74,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	private static final int RETRY_DELAY = 1000;
 
+	private static final String ENTRY_POINT_FILE = "entry_points.txt";
+
 	static {
 		LOGGER.setLevel(Level.FINER);
 	}
@@ -129,26 +131,43 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		return new Java18Setup(test);
 	}
 
+	/**
+	 * @return Path: an absolute path of entry_points.txt in the project directory
+	 */
+	private Path getAbsoluteProjectPath() {
+		return this.getAbsolutePath(this.getTestPath() + this.getName()).resolve(ENTRY_POINT_FILE);
+	}
+
+	/**
+	 * @return Path: an absolute path of entry_points.txt in the project directory
+	 *         of junit workspace
+	 */
+	private Path getDestinationProjectPath() {
+		return getDestinationPath(this.getPackageP().getJavaProject());
+	}
+
+	/**
+	 * @return Path: an absolute path of entry_points.txt in the junit workspace
+	 */
+	private Path getDestinationWorkSpacePath() {
+		return getDestinationPath(this.getPackageP().getJavaProject().getParent());
+	}
+
+	private Path getDestinationPath(IJavaElement element) {
+		return Paths.get(element.getResource().getLocation().toString() + File.separator + ENTRY_POINT_FILE);
+	}
+
 	@Override
 	protected void setUp() throws Exception {
-		// TODO Auto-generated method stub
 		super.setUp();
 
 		// this is the source path.
-		Path abosoluteWorkSpacePath = this.getAbsolutePath(this.getTestPath()).resolve("entry_points.txt");
-		Path absoluteProjectPath = this.getAbsolutePath(this.getTestPath() + this.getName())
-				.resolve("entry_points.txt");
+		Path absoluteProjectPath = getAbsoluteProjectPath();
 
-		// this is destination path.
-		Path destinationProjectPath = Paths
-				.get(this.getPackageP().getJavaProject().getResource().getLocation().toString() + File.separator
-						+ "entry_points.txt");
-		Path destinationWorkSpacePath = Paths
-				.get(this.getPackageP().getJavaProject().getParent().getResource().getLocation().toString()
-						+ File.separator + "entry_points.txt");
-
-		if (moveEntryPointFile(abosoluteWorkSpacePath, destinationWorkSpacePath)
-				|| moveEntryPointFile(absoluteProjectPath, destinationProjectPath))
+		// TODO: we also need to copy entry_points.txt to workspace directory here
+		// something like copyEntryPointFile(absoluteProjectPath,
+		// getDestinationWorkSpacePath())
+		if (copyEntryPointFile(absoluteProjectPath, getDestinationProjectPath()))
 			LOGGER.info(() -> "Move entry_points.txt successfully");
 		else
 			LOGGER.info(() -> "entry_points.txt does not exist");
@@ -158,8 +177,10 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	/**
 	 * move entry_points.txt from cuurent directory to the corresponding directory
 	 * in junit-workspace
+	 * 
+	 * @return true: copy successfully / false: the source file does not exist
 	 */
-	private boolean moveEntryPointFile(Path source, Path target) throws IOException {
+	private static boolean copyEntryPointFile(Path source, Path target) throws IOException {
 		File file = getEntryPointFile(source);
 		if (file != null) {
 			Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
@@ -171,8 +192,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	/**
 	 * get the entry_points.txt
 	 */
-	private File getEntryPointFile(Path directory) {
-		File file = new File(directory.toString());
+	private static File getEntryPointFile(Path filePath) {
+		File file = new File(filePath.toString());
 		if (file.exists())
 			return file;
 		else
@@ -264,7 +285,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		return createCU(pack, cuName + ".java", contents);
 	}
 
-	private Path getAbsolutePath(String fileName) {
+	private static Path getAbsolutePath(String fileName) {
 		Path path = Paths.get(RESOURCE_PATH, fileName);
 		Path absolutePath = path.toAbsolutePath();
 		return absolutePath;
@@ -390,12 +411,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		final boolean pExists = getPackageP().exists();
 
 		// this is destination path.
-		Path destinationProjectPath = Paths
-				.get(this.getPackageP().getJavaProject().getResource().getLocation().toString() + File.separator
-						+ "entry_points.txt");
-		Path destinationWorkSpacePath = Paths
-				.get(this.getPackageP().getJavaProject().getParent().getResource().getLocation().toString()
-						+ File.separator + "entry_points.txt");
+		Path destinationProjectPath = getDestinationProjectPath();
+		Path destinationWorkSpacePath = getDestinationWorkSpacePath();
 
 		if (getEntryPointFile(destinationProjectPath) != null)
 			Files.delete(destinationProjectPath);
@@ -405,7 +422,6 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		if (pExists)
 			tryDeletingAllJavaClassFiles(getPackageP());
 
-		super.tearDown();
 	}
 
 	/**
@@ -795,6 +811,32 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				Collections.singleton(Ordering.UNORDERED), false, false, false,
 				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+	}
+
+	/**
+	 * Test #172.
+	 */
+	public void testEntryPointFile1() throws Exception {
+		helper(new StreamAnalysisExpectedResult("h1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.UNORDERED), false, false, false,
+				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
+				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+	}
+
+	/**
+	 * Test #172.
+	 */
+	public void testEntryPointFile2() throws Exception {
+		helper(new StreamAnalysisExpectedResult("h1.stream()", null, null, false, false, false, null, null, null,
+				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.NO_ENTRY_POINT)));
+	}
+
+	/**
+	 * Test #172.
+	 */
+	public void testEntryPointFile3() throws Exception {
+		helper(new StreamAnalysisExpectedResult("h1.stream()", null, null, false, false, false, null, null, null,
+				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.NO_ENTRY_POINT)));
 	}
 
 	/**
