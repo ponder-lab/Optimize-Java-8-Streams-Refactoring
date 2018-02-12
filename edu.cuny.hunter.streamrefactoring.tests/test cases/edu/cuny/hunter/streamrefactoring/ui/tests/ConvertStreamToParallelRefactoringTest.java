@@ -805,6 +805,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	/**
 	 * Test #172.
+	 * This is a control group for testing entry point file.
 	 */
 	public void testEntryPointFile() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
@@ -815,6 +816,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	/**
 	 * Test #172.
+	 * Test correct entry point file.
 	 */
 	public void testEntryPointFile1() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
@@ -825,6 +827,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	/**
 	 * Test #172.
+	 * Test entry point file which is not corresponding to the source code.
 	 */
 	public void testEntryPointFile2() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h1.stream()", null, null, false, false, false, null, null, null,
@@ -832,7 +835,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	/**
-	 * Test #172.
+	 * Test #172. Test whether the tool can ignore the explicit entry points in the
+	 * source code when the entry_points.txt exists
 	 */
 	public void testEntryPointFile3() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h1.stream()", null, null, false, false, false, null, null, null,
