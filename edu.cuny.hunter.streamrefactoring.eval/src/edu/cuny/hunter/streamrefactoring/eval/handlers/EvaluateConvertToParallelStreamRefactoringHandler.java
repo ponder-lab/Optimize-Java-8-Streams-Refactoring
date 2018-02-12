@@ -233,6 +233,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 				entryPointsPrinter = createCSVPrinter("entry_points.csv",
 						new String[] { "subject", "method", "type FQN" });
 
+				entryPointsTXTPrinter = new PrintWriter("entry_points.txt");
+
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
 						throw new IllegalStateException(
@@ -262,8 +264,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					// print entry points.
 					Collection<Entrypoint> entryPoints = getProjectEntryPoints(javaProject, processor);
 					resultsPrinter.print(entryPoints.size()); // number.
-
-					entryPointsTXTPrinter = new PrintWriter("entry_points.txt");
 					
 					for (Entrypoint entryPoint : entryPoints) {
 						com.ibm.wala.classLoader.IMethod method = entryPoint.getMethod();
