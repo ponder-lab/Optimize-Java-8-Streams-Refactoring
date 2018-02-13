@@ -1,6 +1,7 @@
 package edu.cuny.hunter.streamrefactoring.core.safe;
 
 import java.util.Iterator;
+import java.util.logging.Logger;
 
 import com.ibm.wala.classLoader.CallSiteReference;
 import com.ibm.wala.classLoader.IMethod;
@@ -16,6 +17,8 @@ import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.strings.Atom;
+
+import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 
 public class Util {
 
@@ -34,6 +37,8 @@ public class Util {
 	 */
 	private static final TypeName STREAM_SUPPORT_TYPE_NAME = TypeName
 			.string2TypeName("Ljava/util/stream/StreamSupport");
+
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	/**
 	 * True iff the given {@link InstanceKey} corresponds with the given
@@ -56,6 +61,9 @@ public class Util {
 		// graph.
 		Iterator<Pair<CGNode, NewSiteReference>> creationSites = instanceKey.getCreationSites(callGraph);
 
+		CallSiteReference instructionCallSite = instruction.getCallSite();
+		LOGGER.fine("instruction call site is: " + instructionCallSite);
+
 		// for each creation site.
 		while (creationSites.hasNext()) {
 			Pair<CGNode, NewSiteReference> pair = creationSites.next();
@@ -76,14 +84,19 @@ public class Util {
 			// for each call site reference.
 			for (int i = 0; i < callSiteRefs.length; i++) {
 				CallSiteReference callSiteReference = callSiteRefs[i];
+				LOGGER.fine("Call site reference at " + i + " is: " + callSiteReference);
+
 				IMethod method = methods[i];
-				CallSiteReference instructionCallSite = instruction.getCallSite();
+				LOGGER.fine("Method at " + i + " is: " + method);
 
 				// if the call site reference equals the call site corresponding
 				// to the creation instruction.
 				if (callSiteReference.equals(instructionCallSite)
-						&& method.getReference().getSignature().equals(instructionEnclosingMethod.getSignature()))
+						&& method.getReference().getSignature().equals(instructionEnclosingMethod.getSignature())) {
+					LOGGER.fine("Match found. Instance key: " + instanceKey + " corresponds with instruction: "
+							+ instruction + ".");
 					return true;
+				}
 				// workaround #80.
 				else if (callSiteReference.getProgramCounter() == instructionCallSite.getProgramCounter()) {
 					// compare declared targets.
@@ -103,6 +116,8 @@ public class Util {
 				}
 			}
 		}
+		LOGGER.fine("No match found. Instance key: " + instanceKey + " does not correspond with instruction: "
+				+ instruction + ".");
 		return false;
 	}
 
