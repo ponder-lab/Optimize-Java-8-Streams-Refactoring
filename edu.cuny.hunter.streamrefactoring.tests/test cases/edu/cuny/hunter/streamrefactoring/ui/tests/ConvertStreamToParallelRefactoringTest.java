@@ -172,7 +172,6 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 			LOGGER.info(() -> "Copy entry_points.txt successfully");
 		else
 			LOGGER.info(() -> "entry_points.txt does not exist");
-
 	}
 
 	/**
