@@ -4,6 +4,7 @@ import static edu.cuny.hunter.streamrefactoring.core.utils.Util.createConvertToP
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -173,6 +174,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter streamExecutionModePrinter = null;
 			CSVPrinter streamOrderingPrinter = null;
 			CSVPrinter entryPointsPrinter = null;
+			PrintWriter entryPointsTXTPrinter = null;
 
 			ConvertToParallelStreamRefactoringProcessor processor = null;
 
@@ -231,6 +233,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 				entryPointsPrinter = createCSVPrinter("entry_points.csv",
 						new String[] { "subject", "method", "type FQN" });
 
+				entryPointsTXTPrinter = new PrintWriter("entry_points.txt");
+
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
 						throw new IllegalStateException(
@@ -265,6 +269,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						com.ibm.wala.classLoader.IMethod method = entryPoint.getMethod();
 						entryPointsPrinter.printRecord(javaProject.getElementName(), method.getSignature(),
 								method.getDeclaringClass().getName());
+						entryPointsTXTPrinter.println(method.getSignature());
 					}
 
 					// #streams.
@@ -442,6 +447,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						streamOrderingPrinter.close();
 					if (entryPointsPrinter != null)
 						entryPointsPrinter.close();
+					if (entryPointsTXTPrinter != null)
+						entryPointsTXTPrinter.close();
 
 					// clear cache.
 					if (processor != null)
