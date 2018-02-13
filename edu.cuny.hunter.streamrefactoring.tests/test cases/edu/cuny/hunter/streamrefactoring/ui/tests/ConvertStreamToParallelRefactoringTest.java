@@ -280,8 +280,15 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	@Override
 	protected ICompilationUnit createCUfromTestFile(IPackageFragment pack, String cuName, boolean input)
 			throws Exception {
-		String contents = input ? getFileContents(getInputTestFileName(cuName))
-				: getFileContents(getOutputTestFileName(cuName));
+		String testFileName;
+
+		if (input) {
+			testFileName = getInputTestFileName(cuName);
+		} else // output case.
+			testFileName = getOutputTestFileName(cuName);
+
+		String contents = getFileContents(testFileName);
+
 		return createCU(pack, cuName + ".java", contents);
 	}
 
