@@ -59,6 +59,7 @@ import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
 
+import edu.cuny.hunter.streamrefactoring.core.safe.NoApplicationCodeExistsInCallStringsException;
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
@@ -422,18 +423,33 @@ public class Stream {
 	}
 
 	public InstanceKey getInstanceKey(Collection<InstanceKey> trackedInstances,
-			EclipseProjectAnalysisEngine<InstanceKey> engine) throws InvalidClassFileException, IOException,
-			CoreException, InstanceKeyNotFoundException, UnhandledCaseException {
-		if (instanceKey == null) {
-			instanceKey = this.getInstructionForCreation(engine)
-					.flatMap(instruction -> trackedInstances.stream()
-							.filter(ik -> instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction,
-									this.getEnclosingMethodReference(), engine.getCallGraph()))
-							.findFirst())
-					.orElseThrow(() -> new InstanceKeyNotFoundException("Can't find instance key for: "
-							+ this.getCreation() + " using tracked instances: " + trackedInstances));
+			EclipseProjectAnalysisEngine<InstanceKey> engine)
+			throws InvalidClassFileException, IOException, CoreException, InstanceKeyNotFoundException,
+			UnhandledCaseException, NoApplicationCodeExistsInCallStringsException {
+		// if not present.
+		if (this.instanceKey == null)
+			// compute it.
+			this.instanceKey = computeInstanceKey(trackedInstances, engine);
+		return this.instanceKey;
+	}
+
+	protected InstanceKey computeInstanceKey(Collection<InstanceKey> trackedInstances,
+			EclipseProjectAnalysisEngine<InstanceKey> engine)
+			throws InvalidClassFileException, IOException, CoreException, UnhandledCaseException,
+			NoApplicationCodeExistsInCallStringsException, InstanceKeyNotFoundException {
+		Optional<SSAInvokeInstruction> instructionForCreation = this.getInstructionForCreation(engine);
+
+		if (instructionForCreation.isPresent()) {
+			SSAInvokeInstruction instruction = instructionForCreation.get();
+
+			for (InstanceKey ik : trackedInstances)
+				if (instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction,
+						this.getEnclosingMethodReference(), engine.getCallGraph()))
+					return ik;
 		}
-		return instanceKey;
+
+		throw new InstanceKeyNotFoundException(
+				"Can't find instance key for: " + this.getCreation() + " using tracked instances: " + trackedInstances);
 	}
 
 	Optional<SSAInvokeInstruction> getInstructionForCreation(EclipseProjectAnalysisEngine<InstanceKey> engine)

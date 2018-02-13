@@ -383,8 +383,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	public void testArraysStream() throws Exception {
 		helper(new StreamAnalysisExpectedResult("Arrays.stream(new Object[1])",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, false, false,
-				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
-				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
+				null, null, null, RefactoringStatus.ERROR,
+				EnumSet.of(PreconditionFailure.NO_APPLICATION_CODE_IN_CALL_STRINGS)));
 	}
 
 	public void testConstructor() throws Exception {

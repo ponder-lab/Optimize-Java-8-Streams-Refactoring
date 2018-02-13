@@ -2,6 +2,7 @@ package edu.cuny.hunter.streamrefactoring.core.safe;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.ibm.safe.internal.exceptions.PropertiesException;
@@ -43,9 +44,14 @@ public class InstructionBasedSolver extends TrackingUniqueSolver {
 
 		for (InstanceKey instanceKey : trackedInstancesByType) {
 			LOGGER.info("Examining instance: " + instanceKey);
-			if (Util.instanceKeyCorrespondsWithInstantiationInstruction(instanceKey, this.getInstruction(), null,
-					this.getCallGraph()))
-				ret.add(instanceKey);
+			try {
+				if (Util.instanceKeyCorrespondsWithInstantiationInstruction(instanceKey, this.getInstruction(), null,
+						this.getCallGraph()))
+					ret.add(instanceKey);
+			} catch (NoApplicationCodeExistsInCallStringsException e) {
+				LOGGER.log(Level.SEVERE, e, () -> "Encountered NoApplicationCodeExistsInCallStringsException.");
+				throw new RuntimeException(e);
+			}
 		}
 
 		if (ret.size() != 1)

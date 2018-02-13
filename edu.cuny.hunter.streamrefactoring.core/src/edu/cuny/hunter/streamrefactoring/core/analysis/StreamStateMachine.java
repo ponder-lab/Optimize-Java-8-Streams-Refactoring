@@ -82,6 +82,7 @@ import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.util.strings.Atom;
 
 import edu.cuny.hunter.streamrefactoring.core.safe.ModifiedBenignOracle;
+import edu.cuny.hunter.streamrefactoring.core.safe.NoApplicationCodeExistsInCallStringsException;
 import edu.cuny.hunter.streamrefactoring.core.safe.TypestateSolverFactory;
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
@@ -866,16 +867,26 @@ public class StreamStateMachine {
 			try {
 				instanceKey = stream.getInstanceKey(this.trackedInstances, engine);
 			} catch (InstanceKeyNotFoundException e) {
-				LOGGER.log(Level.WARNING, "Encountered unreachable code while processing: " + stream.getCreation(), e);
+				LOGGER.log(Level.WARNING,
+						"Encountered unreachable code while processing: " + stream.getCreation() + ".", e);
 				stream.addStatusEntry(PreconditionFailure.STREAM_CODE_NOT_REACHABLE,
 						"Either pivital code isn't reachable for stream: " + stream.getCreation()
 								+ " or entry points are misconfigured.");
 				++skippedStreams;
 				continue; // next stream.
 			} catch (UnhandledCaseException e) {
-				String msg = "Encountered possible unhandled case (AIC #155) while processing: " + stream.getCreation();
+				String msg = "Encountered possible unhandled case (AIC #155) while processing: " + stream.getCreation()
+						+ ".";
 				LOGGER.log(Level.WARNING, msg, e);
 				stream.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, msg);
+				++skippedStreams;
+				continue; // next stream.
+			} catch (NoApplicationCodeExistsInCallStringsException e) {
+				LOGGER.log(Level.WARNING, "Did not encounter application code in call strings while processing: "
+						+ stream.getCreation() + ".", e);
+				stream.addStatusEntry(PreconditionFailure.NO_APPLICATION_CODE_IN_CALL_STRINGS,
+						"No application code in the call strings generated for stream: " + stream.getCreation()
+								+ " was found. The maximum call string length may need to be increased.");
 				++skippedStreams;
 				continue; // next stream.
 			}
