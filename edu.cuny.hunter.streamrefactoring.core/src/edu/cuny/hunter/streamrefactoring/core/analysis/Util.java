@@ -669,4 +669,23 @@ public final class Util {
 
 	private Util() {
 	}
+
+	/**
+	 * If it's a ctor, return the declaring class, otherwise, return the return
+	 * type.
+	 * 
+	 * @param method
+	 *            The {@link IMethod} in question.
+	 * @return The declaring class of target if target is a ctor and the return type
+	 *         otherwise.
+	 */
+	public static TypeReference getEvaluationType(IMethod method) {
+		// if it's a ctor.
+		if (method.isInit())
+			// then, use the declaring type.
+			return method.getDeclaringClass().getReference();
+		else // otherwise.
+				// use the return type.
+			return method.getReturnType();
+	}
 }
