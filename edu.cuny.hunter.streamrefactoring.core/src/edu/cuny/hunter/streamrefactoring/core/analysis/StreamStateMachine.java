@@ -272,10 +272,10 @@ public class StreamStateMachine {
 			// who's the caller?
 			LOGGER.fine(() -> "Called method is: " + calledMethod);
 
-			TypeReference returnType = calledMethod.getReturnType();
-			LOGGER.fine(() -> "Return type is: " + returnType);
+			TypeReference evaluationType = Util.getEvaluationType(calledMethod);
+			LOGGER.fine(() -> "Evaluation type is: " + evaluationType);
 
-			boolean implementsBaseStream = Util.implementsBaseStream(returnType, hierarchy);
+			boolean implementsBaseStream = Util.implementsBaseStream(evaluationType, hierarchy);
 			LOGGER.fine(() -> "Is it a stream? " + implementsBaseStream);
 
 			if (implementsBaseStream) {
