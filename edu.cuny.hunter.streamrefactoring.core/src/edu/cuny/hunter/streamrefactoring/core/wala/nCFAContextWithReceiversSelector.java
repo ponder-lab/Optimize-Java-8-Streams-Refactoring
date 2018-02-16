@@ -94,12 +94,13 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 		} else {
 			// not found. Compute it.
 			CallStringWithReceivers ret = null;
-
 			int length = this.getLength(caller, site, target);
+
 			if (length > 0) {
-				if (caller.getContext().get(CALL_STRING) != null)
-					ret = new CallStringWithReceivers(site, caller.getMethod(), length,
-							(CallString) caller.getContext().get(CALL_STRING));
+				CallString callString = (CallString) caller.getContext().get(CALL_STRING);
+
+				if (callString != null)
+					ret = new CallStringWithReceivers(site, caller.getMethod(), length, callString);
 				else
 					ret = new CallStringWithReceivers(site, caller.getMethod());
 			} else
