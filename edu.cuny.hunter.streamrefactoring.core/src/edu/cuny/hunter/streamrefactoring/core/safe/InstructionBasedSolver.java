@@ -20,6 +20,7 @@ import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
+import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 public class InstructionBasedSolver extends TrackingUniqueSolver {
 
@@ -27,12 +28,15 @@ public class InstructionBasedSolver extends TrackingUniqueSolver {
 
 	private SSAInvokeInstruction instruction;
 
+	private EclipseProjectAnalysisEngine<InstanceKey> engine;
+
 	public InstructionBasedSolver(CallGraph cg, PointerAnalysis<?> pointerAnalysis, TypeStateProperty property,
 			TypeStateOptions options, ILiveObjectAnalysis live, BenignOracle ora, TypeStateMetrics metrics,
 			IReporter reporter, TraceReporter traceReporter, IMergeFunctionFactory mergeFactory,
-			SSAInvokeInstruction instruction) {
+			SSAInvokeInstruction instruction, EclipseProjectAnalysisEngine<InstanceKey> engine) {
 		super(cg, pointerAnalysis, property, options, live, ora, metrics, reporter, traceReporter, mergeFactory);
 		this.instruction = instruction;
+		this.engine = engine;
 	}
 
 	@Override
@@ -46,7 +50,7 @@ public class InstructionBasedSolver extends TrackingUniqueSolver {
 			LOGGER.info("Examining instance: " + instanceKey);
 			try {
 				if (Util.instanceKeyCorrespondsWithInstantiationInstruction(instanceKey, this.getInstruction(), null,
-						this.getCallGraph()))
+						this.getEngine()))
 					ret.add(instanceKey);
 			} catch (NoApplicationCodeExistsInCallStringsException e) {
 				LOGGER.log(Level.SEVERE, e, () -> "Encountered NoApplicationCodeExistsInCallStringsException.");
@@ -64,5 +68,9 @@ public class InstructionBasedSolver extends TrackingUniqueSolver {
 
 	protected SSAInvokeInstruction getInstruction() {
 		return this.instruction;
+	}
+
+	protected EclipseProjectAnalysisEngine<InstanceKey> getEngine() {
+		return this.engine;
 	}
 }

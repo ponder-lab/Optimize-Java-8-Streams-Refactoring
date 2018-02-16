@@ -444,7 +444,7 @@ public class Stream {
 
 			for (InstanceKey ik : trackedInstances)
 				if (instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction,
-						this.getEnclosingMethodReference(), engine.getCallGraph()))
+						this.getEnclosingMethodReference(), engine))
 					return ik;
 		}
 
