@@ -127,16 +127,7 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 	 */
 	@Override
 	protected int getLength(CGNode caller, CallSiteReference site, IMethod target) {
-		TypeReference typeToCheck;
-
-		// if it's a ctor.
-		if (target.isInit())
-			// then, use the declaring type.
-			typeToCheck = target.getDeclaringClass().getReference();
-		else // otherwise.
-				// use the return type.
-			typeToCheck = target.getReturnType();
-
+		TypeReference typeToCheck = Util.getEvaluationType(target);
 		boolean implementsBaseStream = Util.implementsBaseStream(typeToCheck, target.getClassHierarchy());
 
 		if (implementsBaseStream)
