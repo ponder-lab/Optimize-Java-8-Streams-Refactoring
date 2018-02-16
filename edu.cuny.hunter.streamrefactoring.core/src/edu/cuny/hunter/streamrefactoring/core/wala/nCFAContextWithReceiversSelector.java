@@ -14,6 +14,7 @@ import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallString;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContext;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.nCFAContextSelector;
+import com.ibm.wala.types.TypeReference;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.Util;
 
@@ -126,7 +127,17 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 	 */
 	@Override
 	protected int getLength(CGNode caller, CallSiteReference site, IMethod target) {
-		boolean implementsBaseStream = Util.implementsBaseStream(target.getReturnType(), target.getClassHierarchy());
+		TypeReference typeToCheck;
+
+		// if it's a ctor.
+		if (target.isInit())
+			// then, use the declaring type.
+			typeToCheck = target.getDeclaringClass().getReference();
+		else // otherwise.
+				// use the return type.
+			typeToCheck = target.getReturnType();
+
+		boolean implementsBaseStream = Util.implementsBaseStream(typeToCheck, target.getClassHierarchy());
 
 		if (implementsBaseStream)
 			return CONTEXT_LENGTH_FOR_STREAMS;
