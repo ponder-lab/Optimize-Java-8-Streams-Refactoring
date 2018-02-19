@@ -134,7 +134,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			// create the analysis engine for the project.
 			EclipseProjectAnalysisEngine<InstanceKey> engine = null;
 			try {
-				engine = new EclipseProjectAnalysisEngine<>(project, getNForStreams());
+				engine = new EclipseProjectAnalysisEngine<>(project, this.getNForStreams());
 				engine.buildAnalysisScope();
 			} catch (IOException e) {
 				LOGGER.log(Level.SEVERE, "Could not create analysis engine for: " + project.getElementName(), e);
