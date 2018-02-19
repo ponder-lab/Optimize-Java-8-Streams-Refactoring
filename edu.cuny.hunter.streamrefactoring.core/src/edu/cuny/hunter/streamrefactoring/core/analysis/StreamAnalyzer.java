@@ -2,12 +2,16 @@ package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import static com.ibm.wala.ipa.callgraph.impl.Util.makeMainEntrypoints;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -15,6 +19,7 @@ import java.util.stream.BaseStream;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.IMethodBinding;
@@ -30,6 +35,7 @@ import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
+import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.SSAOptions;
 import com.ibm.wala.util.CancelException;
@@ -44,6 +50,8 @@ public class StreamAnalyzer extends ASTVisitor {
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private static final int N_FOR_STREAMS_DEFAULT = 2;
+
+	private static final String ENTRY_POINT_FILE = "entry_points.txt";
 
 	private static void addImplicitEntryPoints(Collection<Entrypoint> target, Iterable<Entrypoint> source) {
 		for (Entrypoint implicitEntryPoint : source)
@@ -200,13 +208,22 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *            graph.
 	 * @return The {@link Entrypoint}s used in building the {@link CallGraph}.
 	 */
-	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
+	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine) throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
 		// if we haven't built the call graph yet.
 		if (!this.enginesWithBuiltCallGraphsToEntrypointsUsed.keySet().contains(engine)) {
-			// find explicit entry points.
-			Set<Entrypoint> entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
-			entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
+
+			Set<Entrypoint> entryPoints;
+			// find the entry_points.txt in the project directory
+			File entryPointFile = getEntryPointsFile(engine.getProject().getResource().getLocation(), ENTRY_POINT_FILE);
+			if (entryPointFile != null) {
+				// find explicit entry points from entry_points.txt
+				entryPoints = findEntryPointsFromFile(engine.getClassHierarchy(), entryPointFile);
+				entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point from file: " + ep));
+			} else {
+				// find explicit entry points.
+				entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
+				entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
+			}
 
 			if (this.findImplicitEntryPoints) {
 				// also find implicit entry points.
@@ -256,6 +273,52 @@ public class StreamAnalyzer extends ASTVisitor {
 			this.enginesWithBuiltCallGraphsToEntrypointsUsed.put(engine, entryPoints);
 		}
 		return this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine);
+	}
+
+	/**
+	 * Read entry_points.txt and get a set of method signatures, then, get entry
+	 * points by those signatures
+	 * 
+	 * @return a set of entry points
+	 * @throws IOException
+	 */
+	private static Set<Entrypoint> findEntryPointsFromFile(IClassHierarchy classHierarchy, File file)
+			throws IOException {
+		Set<String> signatures = new HashSet<>();
+
+		try (Scanner scanner = new Scanner(file)) {
+			while (scanner.hasNextLine()) {
+				String line = scanner.nextLine();
+				signatures.add(line);
+			}
+		}
+
+		Set<Entrypoint> entrypoints = Util.findEntryPoints(classHierarchy, signatures);
+		return entrypoints;
+	}
+
+	/**
+	 * Search entry_points.txt in project directory recursively
+	 * 
+	 * @param directory:
+	 *            project directory
+	 * @param fileName:
+	 *            the target file
+	 * @return null: the file does not exist / file: find the file
+	 */
+	private static File getEntryPointsFile(IPath directory, String fileName) {
+		// If file does not exist, find the file in upper level
+		Path directoryPath = Paths.get(directory.toString());
+		File file;
+		do {
+			file = new File(directoryPath.resolve(ENTRY_POINT_FILE).toString());
+			directoryPath = directoryPath.getParent();
+		} while (!file.exists() && directoryPath != null);
+
+		if (!file.exists())
+			return null;
+		else
+			return file;
 	}
 
 	public Set<Stream> getStreamSet() {
