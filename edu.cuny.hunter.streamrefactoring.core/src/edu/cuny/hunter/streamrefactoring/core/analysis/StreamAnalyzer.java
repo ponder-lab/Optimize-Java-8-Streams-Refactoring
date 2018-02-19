@@ -121,6 +121,8 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * @return {@link Map} of project's analyzed along with the entry points used.
 	 */
 	public Map<IJavaProject, Collection<Entrypoint>> analyze() throws CoreException {
+		LOGGER.info(() -> "Using N = " + this.getNForStreams());
+
 		Map<IJavaProject, Collection<Entrypoint>> ret = new HashMap<>();
 
 		// collect the projects to be analyzed.

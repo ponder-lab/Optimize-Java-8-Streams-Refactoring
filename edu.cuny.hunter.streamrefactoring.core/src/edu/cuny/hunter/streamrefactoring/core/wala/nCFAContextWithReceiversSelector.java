@@ -1,7 +1,10 @@
 package edu.cuny.hunter.streamrefactoring.core.wala;
 
+import static edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames.LOGGER_NAME;
+
 import java.util.HashMap;
 import java.util.Map;
+import java.util.logging.Logger;
 import java.util.stream.BaseStream;
 
 import com.ibm.wala.classLoader.CallSiteReference;
@@ -19,6 +22,8 @@ import com.ibm.wala.types.TypeReference;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Util;
 
 public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
+
+	private static final Logger LOGGER = Logger.getLogger(LOGGER_NAME);
 
 	protected class CallStringTriple {
 
@@ -90,6 +95,7 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 	 */
 	public nCFAContextWithReceiversSelector(int n, ContextSelector base, int nToUseForStreams) {
 		super(n, base);
+		LOGGER.info(() -> "Using N = " + nToUseForStreams);
 		this.contextLengthForStreams = nToUseForStreams;
 	}
 
@@ -159,9 +165,11 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 		TypeReference typeToCheck = Util.getEvaluationType(target);
 		boolean implementsBaseStream = Util.implementsBaseStream(typeToCheck, target.getClassHierarchy());
 
-		if (implementsBaseStream)
-			return this.getContextLengthForStreams();
-		else
+		if (implementsBaseStream) {
+			int lengthForStreams = this.getContextLengthForStreams();
+			LOGGER.fine(() -> "Using N = " + lengthForStreams);
+			return lengthForStreams;
+		} else
 			return super.getLength(caller, site, target);
 	}
 
