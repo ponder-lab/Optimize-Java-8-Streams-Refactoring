@@ -49,6 +49,12 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	 */
 	private static final int N = 1;
 
+	/**
+	 * The default N value used for instances of {@link BaseStream} to create the
+	 * {@link nCFABuilder}.
+	 */
+	private static final int N_FOR_STREAMS_DEFAULT = 2;
+
 	private CallGraphBuilder<?> callGraphBuilder;
 
 	/**
@@ -56,9 +62,19 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	 */
 	private IJavaProject project;
 
+	/**
+	 * The N to use for instances of {@link BaseStream}.
+	 */
+	private int nToUseForStreams = N_FOR_STREAMS_DEFAULT;
+
 	public EclipseProjectAnalysisEngine(IJavaProject project) throws IOException, CoreException {
 		super(project);
 		this.project = project;
+	}
+
+	public EclipseProjectAnalysisEngine(IJavaProject project, int nForStreams) throws IOException, CoreException {
+		this(project);
+		this.nToUseForStreams = nForStreams;
 	}
 
 	@Override
@@ -157,7 +173,7 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	@Override
 	protected CallGraphBuilder<?> getCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options,
 			IAnalysisCacheView cache) {
-		return Util.makeNCFABuilder(N, options, (AnalysisCache) cache, cha, scope);
+		return Util.makeNCFABuilder(N, options, (AnalysisCache) cache, cha, scope, this.getNToUseForStreams());
 	}
 
 	public void clearCallGraphBuilder() {
@@ -171,5 +187,13 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	 */
 	public IJavaProject getProject() {
 		return project;
+	}
+
+	public int getNToUseForStreams() {
+		return nToUseForStreams;
+	}
+
+	protected void setNToUseForStreams(int nToUseForStreams) {
+		this.nToUseForStreams = nToUseForStreams;
 	}
 }

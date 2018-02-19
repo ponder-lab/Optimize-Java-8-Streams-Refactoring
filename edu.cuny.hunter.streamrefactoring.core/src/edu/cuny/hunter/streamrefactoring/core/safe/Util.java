@@ -10,6 +10,7 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.ContextItem;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
+import com.ibm.wala.ipa.callgraph.propagation.PropagationCallGraphBuilder;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallString;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.CallStringContextSelector;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
@@ -159,7 +160,9 @@ public class Util {
 			throw new NoApplicationCodeExistsInCallStringsException(
 					"Could not find application code in call string while processing instance key: " + instanceKey
 							+ " and instruction: " + instruction + ". This may indicate that the current value of N ("
-							+ nCFAContextWithReceiversSelector.CONTEXT_LENGTH_FOR_STREAMS + ") is too small.");
+							+ ((nCFAContextWithReceiversSelector) ((PropagationCallGraphBuilder) engine
+									.getCallGraphBuilder()).getContextSelector()).getContextLengthForStreams()
+							+ ") is too small.");
 
 		return false;
 	}

@@ -55,14 +55,42 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 	}
 
 	/**
-	 * The N to use if the instance implements BaseStream.
+	 * The default N to use if the instance implements BaseStream.
 	 */
-	public static final int CONTEXT_LENGTH_FOR_STREAMS = 2;
+	protected static final int CONTEXT_LENGTH_FOR_STREAMS_DEFAULT = 2;
+
+	/**
+	 * The N to use if the instance implements {@link BaseStream}.
+	 */
+	private int contextLengthForStreams = CONTEXT_LENGTH_FOR_STREAMS_DEFAULT;
 
 	protected Map<CallStringTriple, CallStringWithReceivers> callStringWithReceiversMap = new HashMap<>();
 
+	/**
+	 * Create a new {@link nCFAContextWithReceiversSelector}.
+	 * 
+	 * @param n
+	 *            The N to use generally.
+	 * @param base
+	 *            The base {@link ContextSelector}.
+	 */
 	public nCFAContextWithReceiversSelector(int n, ContextSelector base) {
 		super(n, base);
+	}
+
+	/**
+	 * Create a new {@link nCFAContextWithReceiversSelector}.
+	 * 
+	 * @param n
+	 *            The N to use generally.
+	 * @param base
+	 *            The base {@link ContextSelector}.
+	 * @param nToUseForStreams
+	 *            The particular N to use if the instance is ok {@link BaseStream}.
+	 */
+	public nCFAContextWithReceiversSelector(int n, ContextSelector base, int nToUseForStreams) {
+		super(n, base);
+		this.contextLengthForStreams = nToUseForStreams;
 	}
 
 	@Override
@@ -132,8 +160,16 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 		boolean implementsBaseStream = Util.implementsBaseStream(typeToCheck, target.getClassHierarchy());
 
 		if (implementsBaseStream)
-			return CONTEXT_LENGTH_FOR_STREAMS;
+			return this.getContextLengthForStreams();
 		else
 			return super.getLength(caller, site, target);
+	}
+
+	public int getContextLengthForStreams() {
+		return contextLengthForStreams;
+	}
+
+	protected void setContextLengthForStreams(int contextLengthForStreams) {
+		this.contextLengthForStreams = contextLengthForStreams;
 	}
 }

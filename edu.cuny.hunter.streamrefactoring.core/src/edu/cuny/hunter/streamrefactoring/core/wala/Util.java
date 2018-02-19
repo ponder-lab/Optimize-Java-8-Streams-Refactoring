@@ -6,6 +6,7 @@ import static com.ibm.wala.ipa.callgraph.impl.Util.addDefaultSelectors;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.stream.BaseStream;
 
 import com.ibm.wala.classLoader.Module;
 import com.ibm.wala.ide.util.EclipseProjectPath;
@@ -65,9 +66,12 @@ public final class Util {
 	 * make a {@link CallGraphBuilder} that uses call-string context sensitivity,
 	 * with call-string length limited to n, and a context-sensitive
 	 * allocation-site-based heap abstraction.
+	 * 
+	 * @param nToUseForStreams
+	 *            The N to use specifically for instances of {@link BaseStream}.
 	 */
 	public static SSAPropagationCallGraphBuilder makeNCFABuilder(int n, AnalysisOptions options, AnalysisCache cache,
-			IClassHierarchy cha, AnalysisScope scope) {
+			IClassHierarchy cha, AnalysisScope scope, int nToUseForStreams) {
 		if (options == null)
 			throw new IllegalArgumentException("options is null");
 		addDefaultSelectors(options, cha);
@@ -75,7 +79,7 @@ public final class Util {
 		ContextSelector appSelector = null;
 		SSAContextInterpreter appInterpreter = null;
 		SSAPropagationCallGraphBuilder result = new nCFABuilderWithActualParametersInContext(n, cha, options, cache,
-				appSelector, appInterpreter);
+				appSelector, appInterpreter, nToUseForStreams);
 		// nCFABuilder uses type-based heap abstraction by default, but we want
 		// allocation sites
 		result.setInstanceKeys(new ZeroXInstanceKeys(options, cha, result.getContextInterpreter(),
