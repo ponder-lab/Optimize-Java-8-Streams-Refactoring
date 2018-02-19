@@ -246,12 +246,16 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					// lines of code
 					resultsPrinter.print(getProjectLinesOfCode(javaProject));
 
+					// set up analysis.
 					TimeCollector resultsTimeCollector = new TimeCollector();
+					boolean shouldFindImplicitEntrypoints = shouldFindImplicitEntrypoints();
+					boolean shouldFindImplicitTestEntrypoints = shouldFindImplicitTestEntrypoints();
+					boolean shouldFindImplicitBenchmarkEntrypoints = shouldFindImplicitBenchmarkEntrypoints();
 
 					resultsTimeCollector.start();
 					processor = createConvertToParallelStreamRefactoringProcessor(new IJavaProject[] { javaProject },
-							this.shouldFindImplicitEntrypoints(), this.shouldFindImplicitTestEntrypoints(),
-							this.shouldFindImplicitBenchmarkEntrypoints(), Optional.of(monitor));
+							shouldFindImplicitEntrypoints, shouldFindImplicitTestEntrypoints,
+							shouldFindImplicitBenchmarkEntrypoints, Optional.of(monitor));
 					resultsTimeCollector.stop();
 					ConvertToParallelStreamRefactoringProcessor.setLoggingLevel(LOGGING_LEVEL);
 
@@ -482,7 +486,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		return ret;
 	}
 
-	private boolean shouldFindImplicitBenchmarkEntrypoints() {
+	private static boolean shouldFindImplicitBenchmarkEntrypoints() {
 		String findImplicitBenchmarkEntrypoints = System.getenv(FIND_IMPLICIT_BENCHMARK_ENTRYPOINTS_PROPERTY_KEY);
 
 		if (findImplicitBenchmarkEntrypoints == null)
@@ -491,7 +495,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			return Boolean.valueOf(findImplicitBenchmarkEntrypoints);
 	}
 
-	private boolean shouldFindImplicitEntrypoints() {
+	private static boolean shouldFindImplicitEntrypoints() {
 		String findImplicitEntrypoits = System.getenv(FIND_IMPLICIT_ENTRYPOINTS_PROPERTY_KEY);
 
 		if (findImplicitEntrypoits == null)
@@ -500,7 +504,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			return Boolean.valueOf(findImplicitEntrypoits);
 	}
 
-	private boolean shouldFindImplicitTestEntrypoints() {
+	private static boolean shouldFindImplicitTestEntrypoints() {
 		String findImplicitTestEntrypoints = System.getenv(FIND_IMPLICIT_TEST_ENTRYPOINTS_PROPERTY_KEY);
 
 		if (findImplicitTestEntrypoints == null)
@@ -509,7 +513,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			return Boolean.valueOf(findImplicitTestEntrypoints);
 	}
 
-	private boolean shouldPerformChange() {
+	private static boolean shouldPerformChange() {
 		String performChangePropertyValue = System.getenv(PERFORM_CHANGE_PROPERTY_KEY);
 
 		if (performChangePropertyValue == null)
