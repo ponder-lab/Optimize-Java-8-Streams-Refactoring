@@ -60,6 +60,7 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSAPhiInstruction;
 import com.ibm.wala.ssa.Value;
+import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
@@ -687,5 +688,25 @@ public final class Util {
 		else // otherwise.
 				// use the return type.
 			return method.getReturnType();
+	}
+
+	/**
+	 * Returns the index of the first {@link IMethod} in methods that is client
+	 * code.
+	 * 
+	 * @param methods
+	 *            The {@link IMethod}s in question.
+	 * @return The index of the first {@link IMethod} that is client code and -1 if
+	 *         none found.
+	 */
+	public static int findIndexOfFirstClientMethod(IMethod[] methods) {
+		for (int i = 0; i < methods.length; i++) {
+			IMethod meth = methods[i];
+	
+			if (meth.getDeclaringClass().getClassLoader().getReference().equals(ClassLoaderReference.Application))
+				return i;
+		}
+	
+		return -1; // not found.
 	}
 }
