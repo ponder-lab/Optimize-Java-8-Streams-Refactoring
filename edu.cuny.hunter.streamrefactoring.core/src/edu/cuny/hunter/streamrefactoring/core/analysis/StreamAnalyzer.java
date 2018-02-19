@@ -87,6 +87,11 @@ public class StreamAnalyzer extends ASTVisitor {
 		super(visitDocTags);
 	}
 
+	public StreamAnalyzer(boolean visitDocTags, int nForStreams) {
+		super(visitDocTags);
+		this.nForStreams = nForStreams;
+	}
+
 	public StreamAnalyzer(boolean visitDocTags, boolean findImplicitEntryPoints) {
 		this(visitDocTags);
 		this.findImplicitEntryPoints = findImplicitEntryPoints;
