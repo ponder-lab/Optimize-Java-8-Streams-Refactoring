@@ -3,9 +3,14 @@
  */
 package edu.cuny.hunter.streamrefactoring.core.wala;
 
+import static com.ibm.wala.ide.util.EclipseProjectPath.AnalysisScopeType.NO_SOURCE;
+import static com.ibm.wala.types.ClassLoaderReference.Primordial;
+import static edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames.LOGGER_NAME;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Path;
 import java.util.jar.JarFile;
 import java.util.logging.Logger;
 
@@ -17,7 +22,6 @@ import org.eclipse.jdt.launching.JavaRuntime;
 
 import com.ibm.wala.cast.java.client.JDTJavaSourceAnalysisEngine;
 import com.ibm.wala.ide.util.EclipseProjectPath;
-import com.ibm.wala.ide.util.EclipseProjectPath.AnalysisScopeType;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.CallGraph;
@@ -32,8 +36,6 @@ import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.config.FileOfClasses;
 
-import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
-
 /**
  * Modified from EclipseAnalysisEngine.java, originally from Keshmesh. Authored
  * by Mohsen Vakilian and Stas Negara. Modified by Nicholas Chen and Raffi
@@ -42,7 +44,7 @@ import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
  */
 public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJavaSourceAnalysisEngine<I> {
 
-	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
+	private static final Logger LOGGER = Logger.getLogger(LOGGER_NAME);
 
 	/**
 	 * The N value used to create the {@link nCFABuilder}.
@@ -94,7 +96,7 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 
 			IVMInstall defaultVMInstall = JavaRuntime.getDefaultVMInstall();
 			File installLocation = defaultVMInstall.getInstallLocation();
-			java.nio.file.Path installPath = installLocation.toPath();
+			Path installPath = installLocation.toPath();
 
 			if (Util.isWindows()) {
 				addToScopeWindows("resources.jar", installPath);
@@ -118,21 +120,19 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 		}
 	}
 
-	void addToScopeWindows(String fileName, java.nio.file.Path installPath) throws IOException {
-		scope.addToScope(ClassLoaderReference.Primordial,
-				new JarFile(installPath.resolve("lib").resolve(fileName).toFile()));
+	void addToScopeWindows(String fileName, Path installPath) throws IOException {
+		scope.addToScope(Primordial, new JarFile(installPath.resolve("lib").resolve(fileName).toFile()));
 	}
 
-	void addToScopeNotWindows(String fileName, java.nio.file.Path installPath) throws IOException {
-		scope.addToScope(ClassLoaderReference.Primordial,
-				new JarFile(installPath.resolve("jre").resolve("lib").resolve(fileName).toFile()));
+	void addToScopeNotWindows(String fileName, Path installPath) throws IOException {
+		scope.addToScope(Primordial, new JarFile(installPath.resolve("jre").resolve("lib").resolve(fileName).toFile()));
 	}
 
 	@Override
 	protected EclipseProjectPath<?, IJavaProject> createProjectPath(IJavaProject project)
 			throws IOException, CoreException {
 		project.open(new NullProgressMonitor());
-		return TestableJavaEclipseProjectPath.create(project, AnalysisScopeType.NO_SOURCE);
+		return TestableJavaEclipseProjectPath.create(project, NO_SOURCE);
 	}
 
 	@Override

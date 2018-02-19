@@ -2,6 +2,14 @@ package edu.cuny.hunter.streamrefactoring.core.wala;
 
 import static com.ibm.wala.ipa.callgraph.impl.Util.addDefaultBypassLogic;
 import static com.ibm.wala.ipa.callgraph.impl.Util.addDefaultSelectors;
+import static com.ibm.wala.ipa.callgraph.propagation.cfa.ZeroXInstanceKeys.ALLOCATIONS;
+import static com.ibm.wala.ipa.callgraph.propagation.cfa.ZeroXInstanceKeys.SMUSH_MANY;
+import static com.ibm.wala.ipa.callgraph.propagation.cfa.ZeroXInstanceKeys.SMUSH_PRIMITIVE_HOLDERS;
+import static com.ibm.wala.ipa.callgraph.propagation.cfa.ZeroXInstanceKeys.SMUSH_STRINGS;
+import static com.ibm.wala.ipa.callgraph.propagation.cfa.ZeroXInstanceKeys.SMUSH_THROWABLES;
+import static com.ibm.wala.types.ClassLoaderReference.Application;
+import static com.ibm.wala.types.ClassLoaderReference.Extension;
+import static com.ibm.wala.types.ClassLoaderReference.Primordial;
 
 import java.io.File;
 import java.io.IOException;
@@ -83,8 +91,7 @@ public final class Util {
 		// nCFABuilder uses type-based heap abstraction by default, but we want
 		// allocation sites
 		result.setInstanceKeys(new ZeroXInstanceKeys(options, cha, result.getContextInterpreter(),
-				ZeroXInstanceKeys.ALLOCATIONS | ZeroXInstanceKeys.SMUSH_MANY | ZeroXInstanceKeys.SMUSH_PRIMITIVE_HOLDERS
-						| ZeroXInstanceKeys.SMUSH_STRINGS | ZeroXInstanceKeys.SMUSH_THROWABLES));
+				ALLOCATIONS | SMUSH_MANY | SMUSH_PRIMITIVE_HOLDERS | SMUSH_STRINGS | SMUSH_THROWABLES));
 		return result;
 	}
 
@@ -98,9 +105,9 @@ public final class Util {
 		// to avoid duplicates, we first add all application modules, then
 		// extension
 		// modules, then primordial
-		buildScope(ClassLoaderReference.Application, projectPaths, scope, seen);
-		buildScope(ClassLoaderReference.Extension, projectPaths, scope, seen);
-		buildScope(ClassLoaderReference.Primordial, projectPaths, scope, seen);
+		buildScope(Application, projectPaths, scope, seen);
+		buildScope(Extension, projectPaths, scope, seen);
+		buildScope(Primordial, projectPaths, scope, seen);
 		return scope;
 	}
 

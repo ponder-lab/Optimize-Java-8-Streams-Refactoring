@@ -3,6 +3,8 @@
  */
 package edu.cuny.hunter.streamrefactoring.core.utils;
 
+import static org.eclipse.jdt.core.dom.ASTNode.PARENTHESIZED_EXPRESSION;
+
 import java.util.Optional;
 
 import org.eclipse.core.runtime.CoreException;
@@ -155,7 +157,7 @@ public final class Util {
 	}
 
 	public static ASTNode stripParenthesizedExpressions(ASTNode node) {
-		if (node != null && node.getNodeType() == ASTNode.PARENTHESIZED_EXPRESSION) {
+		if (node != null && node.getNodeType() == PARENTHESIZED_EXPRESSION) {
 			ParenthesizedExpression parenthesizedExpression = (ParenthesizedExpression) node;
 			return stripParenthesizedExpressions(parenthesizedExpression.getExpression());
 		} else
