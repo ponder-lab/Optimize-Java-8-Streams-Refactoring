@@ -16,6 +16,7 @@ import java.util.Scanner;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.BaseStream;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.CoreException;
@@ -50,6 +51,8 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
+	private static final int N_FOR_STREAMS_DEFAULT = 2;
+
 	private static final String ENTRY_POINT_FILENAME = "entry_points.txt";
 
 	private static void addImplicitEntryPoints(Collection<Entrypoint> target, Iterable<Entrypoint> source) {
@@ -73,6 +76,11 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	private Set<Stream> streamSet = new HashSet<>();
 
+	/**
+	 * The N to use for instances of {@link BaseStream} in the nCFA.
+	 */
+	private int nForStreams = N_FOR_STREAMS_DEFAULT;
+
 	public StreamAnalyzer() {
 		this(false);
 	}
@@ -81,9 +89,19 @@ public class StreamAnalyzer extends ASTVisitor {
 		super(visitDocTags);
 	}
 
+	public StreamAnalyzer(boolean visitDocTags, int nForStreams) {
+		super(visitDocTags);
+		this.nForStreams = nForStreams;
+	}
+
 	public StreamAnalyzer(boolean visitDocTags, boolean findImplicitEntryPoints) {
 		this(visitDocTags);
 		this.findImplicitEntryPoints = findImplicitEntryPoints;
+	}
+
+	public StreamAnalyzer(boolean visitDocTags, int nForStreams, boolean findImplicitEntryPoints) {
+		this(visitDocTags, findImplicitEntryPoints);
+		this.nForStreams = nForStreams;
 	}
 
 	public StreamAnalyzer(boolean visitDocTags, boolean findImplicitEntryPoints, boolean findImplicitTestEntryPoints,
@@ -93,6 +111,12 @@ public class StreamAnalyzer extends ASTVisitor {
 		this.findImplicitBenchmarkEntryPoints = findImplicitBenchmarkEntryPoints;
 	}
 
+	public StreamAnalyzer(boolean visitDocTags, int nForStreams, boolean findImplicitEntryPoints,
+			boolean findImplicitTestEntryPoints, boolean findImplicitBenchmarkEntryPoints) {
+		this(visitDocTags, findImplicitEntryPoints, findImplicitTestEntryPoints, findImplicitBenchmarkEntryPoints);
+		this.nForStreams = nForStreams;
+	}
+
 	/**
 	 * Analyzes this {@link StreamAnalyzer}'s streams.
 	 * 
@@ -100,6 +124,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * @see #analyze(Optional).
 	 */
 	public Map<IJavaProject, Collection<Entrypoint>> analyze() throws CoreException {
+<<<<<<< HEAD
 		return this.analyze(Optional.empty());
 	}
 
@@ -112,6 +137,8 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * @see #analyze().
 	 */
 	public Map<IJavaProject, Collection<Entrypoint>> analyze(Optional<TimeCollector> collector) throws CoreException {
+		LOGGER.info(() -> "Using N = " + this.getNForStreams() + ".");
+
 		Map<IJavaProject, Collection<Entrypoint>> ret = new HashMap<>();
 
 		// collect the projects to be analyzed.
@@ -126,7 +153,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			collector.ifPresent(TimeCollector::start);
 			EclipseProjectAnalysisEngine<InstanceKey> engine = null;
 			try {
-				engine = new EclipseProjectAnalysisEngine<>(project);
+				engine = new EclipseProjectAnalysisEngine<>(project, this.getNForStreams());
 				engine.buildAnalysisScope();
 			} catch (IOException e) {
 				LOGGER.log(Level.SEVERE, "Could not create analysis engine for: " + project.getElementName(), e);
@@ -400,5 +427,13 @@ public class StreamAnalyzer extends ASTVisitor {
 		}
 
 		return super.visit(node);
+	}
+
+	public int getNForStreams() {
+		return nForStreams;
+	}
+
+	protected void setNForStreams(int nForStreams) {
+		this.nForStreams = nForStreams;
 	}
 }

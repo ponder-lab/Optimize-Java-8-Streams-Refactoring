@@ -74,6 +74,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	private static final String ENTRY_POINT_FILENAME = "entry_points.txt";
 
+	private static final int N_TO_USE_FOR_STREAMS_DEFAULT = 2;
+
 	static {
 		LOGGER.setLevel(Level.FINER);
 	}
@@ -336,6 +338,15 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * Runs a single analysis test.
 	 */
 	private void helper(StreamAnalysisExpectedResult... expectedResults) throws Exception {
+		helper(N_TO_USE_FOR_STREAMS_DEFAULT, expectedResults);
+	}
+
+	/**
+	 * Runs a single analysis test.
+	 */
+	private void helper(int nToUseForStreams, StreamAnalysisExpectedResult... expectedResults) throws Exception {
+		LOGGER.info("Using N = " + nToUseForStreams);
+
 		// compute the actual results.
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
 
@@ -345,7 +356,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 		ASTNode ast = parser.createAST(new NullProgressMonitor());
 
-		StreamAnalyzer analyzer = new StreamAnalyzer(false);
+		StreamAnalyzer analyzer = new StreamAnalyzer(false, nToUseForStreams);
 		ast.accept(analyzer);
 
 		analyzer.analyze();
@@ -476,6 +487,16 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 */
 	public void testArraysStream() throws Exception {
 		helper(new StreamAnalysisExpectedResult("Arrays.stream(new Object[1])",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, false, false,
+				null, null, null, RefactoringStatus.ERROR,
+				EnumSet.of(PreconditionFailure.NO_APPLICATION_CODE_IN_CALL_STRINGS)));
+	}
+
+	/**
+	 * Test #80. We need to increase N here to 3.
+	 */
+	public void testArraysStream2() throws Exception {
+		helper(3, new StreamAnalysisExpectedResult("Arrays.stream(new Object[1])",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, false, false,
 				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
@@ -737,12 +758,14 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
 	}
 
+	// N needs to be 3 here.
 	public void testIntermediateOperations() throws Exception {
-		helper(new StreamAnalysisExpectedResult("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
-				Collections.singleton(Ordering.ORDERED), false, true, false,
-				EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
-				PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
-				Collections.emptySet()));
+		helper(3,
+				new StreamAnalysisExpectedResult("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+						Collections.singleton(Ordering.ORDERED), false, true, false,
+						EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
+						PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+						Collections.emptySet()));
 	}
 
 	public void testTypeResolution() throws Exception {

@@ -82,6 +82,7 @@ import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.util.strings.Atom;
 
 import edu.cuny.hunter.streamrefactoring.core.safe.ModifiedBenignOracle;
+import edu.cuny.hunter.streamrefactoring.core.safe.NoApplicationCodeExistsInCallStringsException;
 import edu.cuny.hunter.streamrefactoring.core.safe.TypestateSolverFactory;
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
@@ -745,37 +746,17 @@ public class StreamStateMachine {
 				continue;
 
 			CallStringWithReceivers callString = Util.getCallString(instance);
-			CallSiteReference[] callSiteRefs = callString.getCallSiteRefs();
-			assert callSiteRefs.length == 2 : "Expecting call sites two-deep.";
+			assert callString.getMethods().length >= 1 : "Expecting call sites at least one-deep.";
 
-			// get the target of the caller.
-			MethodReference callerDeclaredTarget = callSiteRefs[1].getDeclaredTarget();
-
-			// get it's IR.
-			IMethod callerTargetMethod = engine.getClassHierarchy().resolveMethod(callerDeclaredTarget);
-			boolean fallback = false;
-
-			if (callerTargetMethod == null) {
-				LOGGER.warning("Cannot resolve caller declared target method: " + callerDeclaredTarget);
-
-				// fall back.
-				callerTargetMethod = callString.getMethods()[1];
-				LOGGER.warning("Falling back to method: " + callerTargetMethod);
-				fallback = true;
-			}
-
-			IR ir = engine.getCache().getIR(callerTargetMethod);
+			IR ir = engine.getCache().getIR(callString.getMethods()[0]);
 
 			if (ir == null) {
-				LOGGER.warning("Can't find IR for target: " + callerTargetMethod);
+				LOGGER.warning("Can't find IR for target: " + callString.getMethods()[0]);
 				continue; // next instance.
 			}
 
 			// get calls to the caller target.
-			// if we are falling back, use index 1, otherwise stick with index
-			// 0.
-			int callSiteRefsInx = fallback ? 1 : 0;
-			SSAAbstractInvokeInstruction[] calls = ir.getCalls(callSiteRefs[callSiteRefsInx]);
+			SSAAbstractInvokeInstruction[] calls = ir.getCalls(callString.getCallSiteRefs()[0]);
 			assert calls.length == 1 : "Are we only expecting one call here?";
 
 			// I guess we're only interested in ones with a single behavioral
@@ -783,8 +764,8 @@ public class StreamStateMachine {
 			if (calls[0].getNumberOfUses() == 2) {
 				// get the use of the first parameter.
 				int use = calls[0].getUse(1);
-				this.discoverLambdaSideEffects(engine, mod, Collections.singleton(instance), callerDeclaredTarget, ir,
-						use);
+				this.discoverLambdaSideEffects(engine, mod, Collections.singleton(instance),
+						callString.getMethods()[0].getReference(), ir, use);
 			}
 		}
 	}
@@ -866,16 +847,26 @@ public class StreamStateMachine {
 			try {
 				instanceKey = stream.getInstanceKey(this.trackedInstances, engine);
 			} catch (InstanceKeyNotFoundException e) {
-				LOGGER.log(Level.WARNING, "Encountered unreachable code while processing: " + stream.getCreation(), e);
+				LOGGER.log(Level.WARNING,
+						"Encountered unreachable code while processing: " + stream.getCreation() + ".", e);
 				stream.addStatusEntry(PreconditionFailure.STREAM_CODE_NOT_REACHABLE,
 						"Either pivital code isn't reachable for stream: " + stream.getCreation()
 								+ " or entry points are misconfigured.");
 				++skippedStreams;
 				continue; // next stream.
 			} catch (UnhandledCaseException e) {
-				String msg = "Encountered possible unhandled case (AIC #155) while processing: " + stream.getCreation();
+				String msg = "Encountered possible unhandled case (AIC #155) while processing: " + stream.getCreation()
+						+ ".";
 				LOGGER.log(Level.WARNING, msg, e);
 				stream.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, msg);
+				++skippedStreams;
+				continue; // next stream.
+			} catch (NoApplicationCodeExistsInCallStringsException e) {
+				LOGGER.log(Level.WARNING, "Did not encounter application code in call strings while processing: "
+						+ stream.getCreation() + ".", e);
+				stream.addStatusEntry(PreconditionFailure.NO_APPLICATION_CODE_IN_CALL_STRINGS,
+						"No application code in the call strings generated for stream: " + stream.getCreation()
+								+ " was found. The maximum call string length may need to be increased.");
 				++skippedStreams;
 				continue; // next stream.
 			}
