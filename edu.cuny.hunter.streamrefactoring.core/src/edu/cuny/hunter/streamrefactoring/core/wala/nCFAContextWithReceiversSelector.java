@@ -167,7 +167,7 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 
 		if (implementsBaseStream) {
 			int lengthForStreams = this.getContextLengthForStreams();
-			LOGGER.fine(() -> "Using N = " + lengthForStreams);
+			LOGGER.finer(() -> "Using N = " + lengthForStreams);
 			return lengthForStreams;
 		} else
 			return super.getLength(caller, site, target);
