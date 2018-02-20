@@ -1,6 +1,3 @@
-/**
- *
- */
 package edu.cuny.hunter.streamrefactoring.ui.tests;
 
 import java.io.File;
@@ -75,7 +72,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	private static final int RETRY_DELAY = 1000;
 
-	private static final String ENTRY_POINT_FILE = "entry_points.txt";
+	private static final String ENTRY_POINT_FILENAME = "entry_points.txt";
 
 	static {
 		LOGGER.setLevel(Level.FINER);
@@ -133,29 +130,40 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	/**
-	 * @return Path: an absolute path of entry_points.txt in the project directory
+	 * @return an absolute path of entry_points.txt in the project directory.
 	 */
-	private Path getAbsoluteProjectPath() {
-		return this.getAbsolutePath(this.getTestPath() + this.getName()).resolve(ENTRY_POINT_FILE);
+	private Path getEntryPointFileProjectSourcePath() {
+		return getAbsolutePath(this.getTestPath() + this.getName()).resolve(ENTRY_POINT_FILENAME);
 	}
 
 	/**
-	 * @return Path: an absolute path of entry_points.txt in the project directory
-	 *         of junit workspace
+	 * @return The {@link Path} of where the entry points file should be copied to
+	 *         for the current project under test.
 	 */
-	private Path getDestinationProjectPath() {
-		return getDestinationPath(this.getPackageP().getJavaProject());
+	private Path getEntryPointFileProjectDestinationPath() {
+		return getEntryPointFileDestinationPath(this.getPackageP().getJavaProject());
 	}
 
 	/**
-	 * @return Path: an absolute path of entry_points.txt in the junit workspace
+	 * @return The {@link Path} of where the entry_points.txt file should be copied
+	 *         to in the junit workspace.
 	 */
-	private Path getDestinationWorkSpacePath() {
-		return getDestinationPath(this.getPackageP().getJavaProject().getParent());
+	@SuppressWarnings("unused")
+	private Path getDestinationWorkspacePath() {
+		return getEntryPointFileDestinationPath(this.getPackageP().getJavaProject().getParent());
 	}
 
-	private Path getDestinationPath(IJavaElement element) {
-		return Paths.get(element.getResource().getLocation().toString() + File.separator + ENTRY_POINT_FILE);
+	/**
+	 * Returns the path of where the entry points file should be copied relative to
+	 * the given {@link IJavaElement}.
+	 * 
+	 * @param element
+	 *            The {@link IJavaElement} in question.
+	 * @return The {@link Path} where the entry points file should be copied
+	 *         relative to the given {@link IJavaElement}.
+	 */
+	private static Path getEntryPointFileDestinationPath(IJavaElement element) {
+		return Paths.get(element.getResource().getLocation().toString() + File.separator + ENTRY_POINT_FILENAME);
 	}
 
 	@Override
@@ -163,19 +171,20 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		super.setUp();
 
 		// this is the source path.
-		Path absoluteProjectPath = getAbsoluteProjectPath();
+		Path entryPointFileProjectSourcePath = getEntryPointFileProjectSourcePath();
+		Path entryPointFileProjectDestinationPath = getEntryPointFileProjectDestinationPath();
 
 		// TODO: we also need to copy entry_points.txt to workspace directory here
 		// something like copyEntryPointFile(absoluteProjectPath,
 		// getDestinationWorkSpacePath())
-		if (copyEntryPointFile(absoluteProjectPath, getDestinationProjectPath()))
-			LOGGER.info(() -> "Copy entry_points.txt successfully");
+		if (copyEntryPointFile(entryPointFileProjectSourcePath, entryPointFileProjectDestinationPath))
+			LOGGER.info("Copied " + ENTRY_POINT_FILENAME + " successfully.");
 		else
-			LOGGER.info(() -> "entry_points.txt does not exist");
+			LOGGER.info(ENTRY_POINT_FILENAME + " does not exist.");
 	}
 
 	/**
-	 * Copy entry_points.txt from cuurent directory to the corresponding directory
+	 * Copy entry_points.txt from current directory to the corresponding directory
 	 * in junit-workspace
 	 * 
 	 * @return true: copy successfully / false: the source file does not exist
@@ -418,7 +427,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		final boolean pExists = getPackageP().exists();
 
 		// this is destination path.
-		Path destinationProjectPath = getDestinationProjectPath();
+		Path destinationProjectPath = getEntryPointFileProjectDestinationPath();
 
 		if (getEntryPointFile(destinationProjectPath) != null)
 			Files.delete(destinationProjectPath);
@@ -809,8 +818,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	/**
-	 * Test #172.
-	 * This is a control group for testing entry point file.
+	 * Test #172. This is a control group for testing entry point file.
 	 */
 	public void testEntryPointFile() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
@@ -820,8 +828,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	/**
-	 * Test #172.
-	 * Test correct entry point file.
+	 * Test #172. Test correct entry point file.
 	 */
 	public void testEntryPointFile1() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
@@ -831,8 +838,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	/**
-	 * Test #172.
-	 * Test entry point file which is not corresponding to the source code.
+	 * Test #172. Test entry point file which is not corresponding to the source
+	 * code.
 	 */
 	public void testEntryPointFile2() throws Exception {
 		helper(new StreamAnalysisExpectedResult("h1.stream()", null, null, false, false, false, null, null, null,

@@ -48,7 +48,7 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
-	private static final String ENTRY_POINT_FILE = "entry_points.txt";
+	private static final String ENTRY_POINT_FILENAME = "entry_points.txt";
 
 	private static void addImplicitEntryPoints(Collection<Entrypoint> target, Iterable<Entrypoint> source) {
 		for (Entrypoint implicitEntryPoint : source)
@@ -189,15 +189,20 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *            graph.
 	 * @return The {@link Entrypoint}s used in building the {@link CallGraph}.
 	 */
-	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine) throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
+	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine)
+			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
 		// if we haven't built the call graph yet.
 		if (!this.enginesWithBuiltCallGraphsToEntrypointsUsed.keySet().contains(engine)) {
-
 			Set<Entrypoint> entryPoints;
+
 			// find the entry_points.txt in the project directory
-			File entryPointFile = getEntryPointsFile(engine.getProject().getResource().getLocation(), ENTRY_POINT_FILE);
+			File entryPointFile = getEntryPointsFile(engine.getProject().getResource().getLocation(),
+					ENTRY_POINT_FILENAME);
+
+			// if the file was found,
 			if (entryPointFile != null) {
-				// find explicit entry points from entry_points.txt
+				// find explicit entry points from entry_points.txt. Ignore the explicit
+				// (annotation-based) entry points.
 				entryPoints = findEntryPointsFromFile(engine.getClassHierarchy(), entryPointFile);
 				entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point from file: " + ep));
 			} else {
@@ -206,7 +211,7 @@ public class StreamAnalyzer extends ASTVisitor {
 				entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
 			}
 
-			if (this.findImplicitEntryPoints) {
+			if (this.shouldFindImplicitEntryPoints()) {
 				// also find implicit entry points.
 				Iterable<Entrypoint> mainEntrypoints = makeMainEntrypoints(engine.getClassHierarchy().getScope(),
 						engine.getClassHierarchy());
@@ -215,7 +220,7 @@ public class StreamAnalyzer extends ASTVisitor {
 				addImplicitEntryPoints(entryPoints, mainEntrypoints);
 			}
 
-			if (this.findImplicitTestEntryPoints) {
+			if (this.shouldFindImplicitTestEntryPoints()) {
 				// try to find test entry points.
 				Iterable<Entrypoint> jUnitEntryPoints = JUnitEntryPoints.make(engine.getClassHierarchy());
 
@@ -223,7 +228,7 @@ public class StreamAnalyzer extends ASTVisitor {
 				addImplicitEntryPoints(entryPoints, jUnitEntryPoints);
 			}
 
-			if (this.findImplicitBenchmarkEntryPoints) {
+			if (this.shouldFindImplicitBenchmarkEntryPoints()) {
 				// try to find benchmark entry points.
 				Set<Entrypoint> benchmarkEntryPoints = Util.findBenchmarkEntryPoints(engine.getClassHierarchy());
 
@@ -279,20 +284,21 @@ public class StreamAnalyzer extends ASTVisitor {
 	}
 
 	/**
-	 * Search entry_points.txt in project directory recursively
+	 * Search entry_points.txt in project directory recursively.
 	 * 
-	 * @param directory:
-	 *            project directory
-	 * @param fileName:
-	 *            the target file
-	 * @return null: the file does not exist / file: find the file
+	 * @param directory
+	 *            Project directory.
+	 * @param fileName
+	 *            The target file.
+	 * @return null if the file does not exist and file if we found the file.
 	 */
 	private static File getEntryPointsFile(IPath directory, String fileName) {
-		// If file does not exist, find the file in upper level
+		// If file does not exist, find the file in upper level.
 		Path directoryPath = Paths.get(directory.toString());
+
 		File file;
 		do {
-			file = new File(directoryPath.resolve(ENTRY_POINT_FILE).toString());
+			file = new File(directoryPath.resolve(ENTRY_POINT_FILENAME).toString());
 			directoryPath = directoryPath.getParent();
 		} while (!file.exists() && directoryPath != null);
 
@@ -310,8 +316,24 @@ public class StreamAnalyzer extends ASTVisitor {
 		this.findImplicitEntryPoints = findImplicitEntryPoints;
 	}
 
+	public boolean shouldFindImplicitEntryPoints() {
+		return findImplicitEntryPoints;
+	}
+
 	public void setFindImplicitTestEntryPoints(boolean findImplicitTestEntryPoints) {
 		this.findImplicitTestEntryPoints = findImplicitTestEntryPoints;
+	}
+
+	public boolean shouldFindImplicitTestEntryPoints() {
+		return findImplicitTestEntryPoints;
+	}
+
+	public boolean shouldFindImplicitBenchmarkEntryPoints() {
+		return findImplicitBenchmarkEntryPoints;
+	}
+
+	public void setFindImplicitBenchmarkEntryPoints(boolean findImplicitBenchmarkEntryPoints) {
+		this.findImplicitBenchmarkEntryPoints = findImplicitBenchmarkEntryPoints;
 	}
 
 	/**
