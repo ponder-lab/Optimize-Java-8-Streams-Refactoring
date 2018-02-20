@@ -2,6 +2,7 @@ package edu.cuny.hunter.streamrefactoring.core.safe;
 
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.ibm.safe.internal.exceptions.PropertiesException;
@@ -19,6 +20,7 @@ import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
+import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 public class InstructionBasedSolver extends TrackingUniqueSolver {
 
@@ -26,12 +28,15 @@ public class InstructionBasedSolver extends TrackingUniqueSolver {
 
 	private SSAInvokeInstruction instruction;
 
+	private EclipseProjectAnalysisEngine<InstanceKey> engine;
+
 	public InstructionBasedSolver(CallGraph cg, PointerAnalysis<?> pointerAnalysis, TypeStateProperty property,
 			TypeStateOptions options, ILiveObjectAnalysis live, BenignOracle ora, TypeStateMetrics metrics,
 			IReporter reporter, TraceReporter traceReporter, IMergeFunctionFactory mergeFactory,
-			SSAInvokeInstruction instruction) {
+			SSAInvokeInstruction instruction, EclipseProjectAnalysisEngine<InstanceKey> engine) {
 		super(cg, pointerAnalysis, property, options, live, ora, metrics, reporter, traceReporter, mergeFactory);
 		this.instruction = instruction;
+		this.engine = engine;
 	}
 
 	@Override
@@ -43,9 +48,14 @@ public class InstructionBasedSolver extends TrackingUniqueSolver {
 
 		for (InstanceKey instanceKey : trackedInstancesByType) {
 			LOGGER.info("Examining instance: " + instanceKey);
-			if (Util.instanceKeyCorrespondsWithInstantiationInstruction(instanceKey, this.getInstruction(), null,
-					this.getCallGraph()))
-				ret.add(instanceKey);
+			try {
+				if (Util.instanceKeyCorrespondsWithInstantiationInstruction(instanceKey, this.getInstruction(), null,
+						this.getEngine()))
+					ret.add(instanceKey);
+			} catch (NoApplicationCodeExistsInCallStringsException e) {
+				LOGGER.log(Level.SEVERE, e, () -> "Encountered NoApplicationCodeExistsInCallStringsException.");
+				throw new RuntimeException(e);
+			}
 		}
 
 		if (ret.size() != 1)
@@ -58,5 +68,9 @@ public class InstructionBasedSolver extends TrackingUniqueSolver {
 
 	protected SSAInvokeInstruction getInstruction() {
 		return this.instruction;
+	}
+
+	protected EclipseProjectAnalysisEngine<InstanceKey> getEngine() {
+		return this.engine;
 	}
 }
