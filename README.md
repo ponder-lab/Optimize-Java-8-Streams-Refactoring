@@ -15,7 +15,7 @@ This prototype refactoring plug-in for [Eclipse](http://eclipse.org) represents 
 
 Explicit entry points may be marked using the appropriate annotation found in the corresponding [annotation library][annotations].
 
-Explicit entry points can also be marked using importing entry points from a txt file. Each time we run the tool, a txt file named "entry_points.txt" is generated and contained in the current directory of workspace. Then,  before next time we run tool to evaluate the same project, move or copy "entry_points.txt" into project directory or workspace directory of the project. While evaluating the project, the tool will ignore the explicit entry points which are added manually and regonize the explicit entry points through the file automatically.
+Explicit entry points can also be marked using importing entry points from a txt file. Each time we run the tool, a txt file named "entry_points.txt" is generated and contained in the current directory of workspace. Then,  before next time we run tool to evaluate the same project, move or copy "entry_points.txt" into project directory or workspace directory of the project. While evaluating the project, the tool will ignore the explicit entry points which are added manually and recognize the explicit entry points through the file automatically.
 
 ### Limitations
 
