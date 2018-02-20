@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.logging.Level;
@@ -41,6 +42,7 @@ import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.scope.JUnitEntryPoints;
 
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
+import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 @SuppressWarnings("restriction")
@@ -93,10 +95,23 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	/**
 	 * Analyzes this {@link StreamAnalyzer}'s streams.
-	 *
-	 * @return {@link Map} of project's analyzed along with the entry points used.
+	 * 
+	 * @return A {@link Map} of project's analyzed along with the entry points used.
+	 * @see #analyze(Optional).
 	 */
 	public Map<IJavaProject, Collection<Entrypoint>> analyze() throws CoreException {
+		return this.analyze(Optional.empty());
+	}
+
+	/**
+	 * Analyzes this {@link StreamAnalyzer}'s streams.
+	 *
+	 * @param collector
+	 *            To exclude from the time certain parts of the analysis.
+	 * @return A {@link Map} of project's analyzed along with the entry points used.
+	 * @see #analyze().
+	 */
+	public Map<IJavaProject, Collection<Entrypoint>> analyze(Optional<TimeCollector> collector) throws CoreException {
 		Map<IJavaProject, Collection<Entrypoint>> ret = new HashMap<>();
 
 		// collect the projects to be analyzed.
@@ -106,6 +121,9 @@ public class StreamAnalyzer extends ASTVisitor {
 		// process each project.
 		for (IJavaProject project : projectToStreams.keySet()) {
 			// create the analysis engine for the project.
+			// exclude from the analysis because the IR will be built here.
+
+			collector.ifPresent(TimeCollector::start);
 			EclipseProjectAnalysisEngine<InstanceKey> engine = null;
 			try {
 				engine = new EclipseProjectAnalysisEngine<>(project);
@@ -114,11 +132,12 @@ public class StreamAnalyzer extends ASTVisitor {
 				LOGGER.log(Level.SEVERE, "Could not create analysis engine for: " + project.getElementName(), e);
 				throw new RuntimeException(e);
 			}
+			collector.ifPresent(TimeCollector::stop);
 
 			// build the call graph for the project.
 			Collection<Entrypoint> entryPoints = null;
 			try {
-				entryPoints = this.buildCallGraph(engine);
+				entryPoints = this.buildCallGraph(engine, collector);
 			} catch (IOException | CoreException | CancelException e) {
 				LOGGER.log(Level.SEVERE,
 						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
@@ -187,12 +206,17 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * @param engine
 	 *            The EclipseProjectAnalysisEngine for which to build the call
 	 *            graph.
+	 * @param collector
+	 *            A {@link TimeCollector} to exclude entry point finding.
 	 * @return The {@link Entrypoint}s used in building the {@link CallGraph}.
 	 */
-	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine)
+	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine,
+			Optional<TimeCollector> collector)
 			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
 		// if we haven't built the call graph yet.
 		if (!this.enginesWithBuiltCallGraphsToEntrypointsUsed.keySet().contains(engine)) {
+			// find entry points (but exclude it from the time).
+			collector.ifPresent(TimeCollector::start);
 			Set<Entrypoint> entryPoints;
 
 			// find the entry_points.txt in the project directory
@@ -240,6 +264,8 @@ public class StreamAnalyzer extends ASTVisitor {
 				LOGGER.warning(() -> "Project: " + engine.getProject().getElementName() + " has no entry points.");
 				return entryPoints;
 			}
+
+			collector.ifPresent(TimeCollector::stop);
 
 			// set options.
 			AnalysisOptions options = engine.getDefaultOptions(entryPoints);

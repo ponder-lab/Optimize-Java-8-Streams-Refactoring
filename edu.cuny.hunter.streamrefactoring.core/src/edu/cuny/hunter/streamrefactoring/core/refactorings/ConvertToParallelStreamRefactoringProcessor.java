@@ -217,7 +217,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 			}
 
 			// analyze and set entry points.
-			this.projectToEntryPoints = analyzer.analyze();
+			this.projectToEntryPoints = analyzer.analyze(Optional.of(this.getExcludedTimeCollector()));
 
 			// map empty set to unprocessed projects.
 			for (IJavaProject project : this.getJavaProjects())
