@@ -569,6 +569,7 @@ public final class Util {
 		else
 			return false;
 	}
+  
 
 	public static boolean isBaseStream(IClass clazz) {
 		return Util.isType(clazz, "java/util/stream", "BaseStream");
@@ -707,7 +708,7 @@ public final class Util {
 				// use the return type.
 			return method.getReturnType();
 	}
-
+  
 	/**
 	 * Returns the index of the first {@link IMethod} in methods that is client
 	 * code.
