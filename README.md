@@ -41,10 +41,17 @@ You should have the following projects in your workspace:
 
 ### Running the Evaluator
 
-[annotations]: https://github.com/ponder-lab/edu.cuny.hunter.streamrefactoring.annotations
+#### Configuring the Evaluation
+
+A file named `eval.properties` can be placed at the project root. The following keys are available:
+
+Key              | Value Type | Description
+---------------- | ---------- | ----------
+nToUseForStreams | Integer    | The value of N to use while building the nCFA for stream types.
 
 ### Further Information
 
 See the [wiki][wiki] for further information.
 
 [wiki]: https://github.com/ponder-lab/Java-8-Stream-Refactoring/wiki
+[annotations]: https://github.com/ponder-lab/edu.cuny.hunter.streamrefactoring.annotations
