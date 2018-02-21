@@ -124,7 +124,6 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * @see #analyze(Optional).
 	 */
 	public Map<IJavaProject, Collection<Entrypoint>> analyze() throws CoreException {
-<<<<<<< HEAD
 		return this.analyze(Optional.empty());
 	}
 
