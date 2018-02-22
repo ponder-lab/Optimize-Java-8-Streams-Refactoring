@@ -962,6 +962,9 @@ public class StreamStateMachine {
 				throw new RuntimeException("Exception caught during typestate analysis.", e);
 			}
 
+			// typestate statistics.
+			outputTypeStateStatistics(result);
+
 			// for each instance in the typestate analysis result.
 			for (Iterator<InstanceKey> iterator = result.iterateInstances(); iterator.hasNext();) {
 				// get the instance's key.
@@ -1220,5 +1223,11 @@ public class StreamStateMachine {
 						this.instancesWhoseReduceOrderingPossiblyMatters.contains(streamInstanceKey));
 			}
 		}
+	}
+
+	private static void outputTypeStateStatistics(AggregateSolverResult result) {
+		LOGGER.info("Total instances: " + result.totalInstancesNum());
+		LOGGER.info("Processed instances: " + result.processedInstancesNum());
+		LOGGER.info("Skipped instances: " + result.skippedInstances());
 	}
 }
