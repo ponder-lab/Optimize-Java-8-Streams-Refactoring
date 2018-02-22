@@ -1003,9 +1003,9 @@ public class StreamStateMachine {
 							// invocations?
 							if (isTerminalOperation(calledMethod)) {
 								// get the basic block for the call.
+								IR ir = cgNode.getIR();
 
-								ISSABasicBlock[] blocksForCall = cgNode.getIR()
-										.getBasicBlocksForCall(callSiteReference);
+								ISSABasicBlock[] blocksForCall = ir.getBasicBlocksForCall(callSiteReference);
 
 								assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
 										+ callSiteReference;
