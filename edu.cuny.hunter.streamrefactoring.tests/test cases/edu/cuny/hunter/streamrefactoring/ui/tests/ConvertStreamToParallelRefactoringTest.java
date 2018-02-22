@@ -345,7 +345,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * Runs a single analysis test.
 	 */
 	private void helper(int nToUseForStreams, StreamAnalysisExpectedResult... expectedResults) throws Exception {
-		LOGGER.info("Using N = " + nToUseForStreams);
+		LOGGER.fine("Using N = " + nToUseForStreams + ".");
 
 		// compute the actual results.
 		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");

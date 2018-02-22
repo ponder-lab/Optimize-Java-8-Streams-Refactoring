@@ -136,7 +136,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * @see #analyze().
 	 */
 	public Map<IJavaProject, Collection<Entrypoint>> analyze(Optional<TimeCollector> collector) throws CoreException {
-		LOGGER.info(() -> "Using N = " + this.getNForStreams() + ".");
+		LOGGER.fine(() -> "Using N = " + this.getNForStreams() + ".");
 
 		Map<IJavaProject, Collection<Entrypoint>> ret = new HashMap<>();
 
