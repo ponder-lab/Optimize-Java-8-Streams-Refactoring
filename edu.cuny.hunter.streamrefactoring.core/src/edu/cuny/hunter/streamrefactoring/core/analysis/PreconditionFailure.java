@@ -18,10 +18,11 @@ public enum PreconditionFailure {
 	NO_TERMINAL_OPERATIONS(13),
 	CURRENTLY_NOT_HANDLED(14), // should just be #97 currently.
 	STREAM_CODE_NOT_REACHABLE(15), // either pivotal code isn't reachable or
-	// entry points are misconfigured.
+									// entry points are misconfigured.
 	NO_ENTRY_POINT(16), // user didn't specify entry points.
 	NO_APPLICATION_CODE_IN_CALL_STRINGS(17); // N may be too small.
 
+	private int code;
 
 	static {
 		// check that the codes are unique.
@@ -30,19 +31,17 @@ public enum PreconditionFailure {
 			throw new IllegalStateException("Codes aren't unique.");
 	}
 
-	public static void main(String[] args) {
-		System.out.println("code,name");
-		for (PreconditionFailure failure : PreconditionFailure.values())
-			System.out.println(failure.getCode() + "," + failure);
-	}
-
-	private int code;
-
 	private PreconditionFailure(int code) {
 		this.code = code;
 	}
 
 	public int getCode() {
 		return code;
+	}
+
+	public static void main(String[] args) {
+		System.out.println("code,name");
+		for (PreconditionFailure failure : PreconditionFailure.values())
+			System.out.println(failure.getCode() + "," + failure);
 	}
 }

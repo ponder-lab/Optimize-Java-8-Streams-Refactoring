@@ -26,9 +26,9 @@ public class InstructionBasedSolver extends TrackingUniqueSolver {
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
-	private EclipseProjectAnalysisEngine<InstanceKey> engine;
-
 	private SSAInvokeInstruction instruction;
+
+	private EclipseProjectAnalysisEngine<InstanceKey> engine;
 
 	public InstructionBasedSolver(CallGraph cg, PointerAnalysis<?> pointerAnalysis, TypeStateProperty property,
 			TypeStateOptions options, ILiveObjectAnalysis live, BenignOracle ora, TypeStateMetrics metrics,
@@ -66,11 +66,11 @@ public class InstructionBasedSolver extends TrackingUniqueSolver {
 		return ret;
 	}
 
-	protected EclipseProjectAnalysisEngine<InstanceKey> getEngine() {
-		return this.engine;
-	}
-
 	protected SSAInvokeInstruction getInstruction() {
 		return this.instruction;
+	}
+
+	protected EclipseProjectAnalysisEngine<InstanceKey> getEngine() {
+		return this.engine;
 	}
 }

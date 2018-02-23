@@ -55,12 +55,8 @@ class StreamAnalysisExpectedResult {
 		this.expectedFailures = expectedFailures;
 	}
 
-	public Set<TransformationAction> getExpectedActions() {
-		return expectedActions;
-	}
-
-	public String getExpectedCreation() {
-		return expectedCreation;
+	protected String errorMessage(String attribute) {
+		return "Unexpected " + attribute + " for " + this.getExpectedCreation() + ".";
 	}
 
 	public void evaluate(Stream stream) {
@@ -91,12 +87,24 @@ class StreamAnalysisExpectedResult {
 		assertEquals(this.errorMessage("status codes"), expectedCodes, actualCodes);
 	}
 
+	public Set<TransformationAction> getExpectedActions() {
+		return this.expectedActions;
+	}
+
+	public String getExpectedCreation() {
+		return this.expectedCreation;
+	}
+
+	public Set<ExecutionMode> getExpectedExecutionModes() {
+		return this.expectedExecutionModes;
+	}
+
 	public Set<PreconditionFailure> getExpectedFailures() {
-		return expectedFailures;
+		return this.expectedFailures;
 	}
 
 	public Set<Ordering> getExpectedOrderings() {
-		return expectedOrderings;
+		return this.expectedOrderings;
 	}
 
 	public PreconditionSuccess getExpectedPassingPrecondition() {
@@ -112,14 +120,14 @@ class StreamAnalysisExpectedResult {
 	}
 
 	public boolean isExpectingSideEffects() {
-		return expectingSideEffects;
+		return this.expectingSideEffects;
 	}
 
 	public boolean isExpectingStatefulIntermediateOperation() {
-		return expectingStatefulIntermediateOperation;
+		return this.expectingStatefulIntermediateOperation;
 	}
 
 	public boolean isExpectingThatReduceOrderingMatters() {
-		return expectingThatReduceOrderingMatters;
+		return this.expectingThatReduceOrderingMatters;
 	}
 }

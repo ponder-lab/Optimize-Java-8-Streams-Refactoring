@@ -28,6 +28,7 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.osgi.framework.FrameworkUtil;
 
+import edu.cuny.hunter.streamrefactoring.core.utils.RefactoringAvailabilityTester;
 import edu.cuny.hunter.streamrefactoring.ui.wizards.ConvertStreamToParallelRefactoringWizard;
 
 public class ConvertStreamToParallelHandler extends AbstractHandler {
@@ -40,7 +41,7 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 		Optional<IProgressMonitor> monitor = Optional.empty();
 		ISelection currentSelection = HandlerUtil.getCurrentSelectionChecked(event);
 		List<?> list = SelectionUtil.toList(currentSelection);
-
+		
 		Set<IJavaProject> javaProjectSet = new HashSet<>();
 
 		if (list != null) {
@@ -60,15 +61,15 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 						case IJavaElement.PACKAGE_FRAGMENT_ROOT:
 							break;
 						case IJavaElement.JAVA_PROJECT:
-							javaProjectSet.add((IJavaProject) jElem);
+							javaProjectSet.add((IJavaProject)jElem);
 							break;
 						}
 					}
 				}
 
 				Shell shell = HandlerUtil.getActiveShellChecked(event);
-				ConvertStreamToParallelRefactoringWizard.startRefactoring(
-						javaProjectSet.toArray(new IJavaProject[javaProjectSet.size()]), shell, Optional.empty());
+				ConvertStreamToParallelRefactoringWizard
+						.startRefactoring(javaProjectSet.toArray(new IJavaProject[javaProjectSet.size()]), shell, Optional.empty());
 			} catch (JavaModelException e) {
 				JavaPlugin.log(e);
 				throw new ExecutionException("Failed to start refactoring", e);
@@ -79,36 +80,6 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 		return null;
 	}
 
-	private Set<IMethod> extractMethodsFromClass(IType type, Optional<IProgressMonitor> monitor)
-			throws JavaModelException {
-		Set<IMethod> methodSet = new HashSet<>();
-
-		if (type.isClass()) {
-			for (IMethod method : type.getMethods())
-				// if (RefactoringAvailabilityTester.isInterfaceMigrationAvailable(method,
-				// monitor)) {
-				if (true) {
-					logPossiblyMigratableMethod(method);
-					methodSet.add(method);
-				} else
-					logNonMigratableMethod(method);
-
-		}
-
-		return methodSet;
-	}
-
-	private Set<IMethod> extractMethodsFromCompilationUnit(ICompilationUnit cu, Optional<IProgressMonitor> monitor)
-			throws JavaModelException {
-		Set<IMethod> methodSet = new HashSet<>();
-		IType[] types = cu.getTypes();
-
-		for (IType iType : types)
-			methodSet.addAll(extractMethodsFromClass(iType, monitor));
-
-		return methodSet;
-	}
-
 	private Set<IMethod> extractMethodsFromJavaProject(IJavaProject jProj, Optional<IProgressMonitor> monitor)
 			throws JavaModelException {
 		Set<IMethod> methodSet = new HashSet<>();
@@ -116,17 +87,6 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 		IPackageFragmentRoot[] roots = jProj.getPackageFragmentRoots();
 		for (IPackageFragmentRoot iPackageFragmentRoot : roots)
 			methodSet.addAll(extractMethodsFromPackageFragmentRoot(iPackageFragmentRoot, monitor));
-
-		return methodSet;
-	}
-
-	private Set<IMethod> extractMethodsFromPackageFragment(IPackageFragment frag, Optional<IProgressMonitor> monitor)
-			throws JavaModelException {
-		Set<IMethod> methodSet = new HashSet<>();
-		ICompilationUnit[] units = frag.getCompilationUnits();
-
-		for (ICompilationUnit iCompilationUnit : units)
-			methodSet.addAll(extractMethodsFromCompilationUnit(iCompilationUnit, monitor));
 
 		return methodSet;
 	}
@@ -143,6 +103,54 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 		return methodSet;
 	}
 
+	private Set<IMethod> extractMethodsFromPackageFragment(IPackageFragment frag, Optional<IProgressMonitor> monitor)
+			throws JavaModelException {
+		Set<IMethod> methodSet = new HashSet<>();
+		ICompilationUnit[] units = frag.getCompilationUnits();
+
+		for (ICompilationUnit iCompilationUnit : units)
+			methodSet.addAll(extractMethodsFromCompilationUnit(iCompilationUnit, monitor));
+
+		return methodSet;
+	}
+
+	private Set<IMethod> extractMethodsFromCompilationUnit(ICompilationUnit cu, Optional<IProgressMonitor> monitor)
+			throws JavaModelException {
+		Set<IMethod> methodSet = new HashSet<>();
+		IType[] types = cu.getTypes();
+
+		for (IType iType : types)
+			methodSet.addAll(extractMethodsFromClass(iType, monitor));
+
+		return methodSet;
+	}
+
+	private Set<IMethod> extractMethodsFromClass(IType type, Optional<IProgressMonitor> monitor)
+			throws JavaModelException {
+		Set<IMethod> methodSet = new HashSet<>();
+
+		if (type.isClass()) {
+			for (IMethod method : type.getMethods())
+//				if (RefactoringAvailabilityTester.isInterfaceMigrationAvailable(method, monitor)) {
+				if (true) {
+					logPossiblyMigratableMethod(method);
+					methodSet.add(method);
+				} else
+					logNonMigratableMethod(method);
+
+		}
+
+		return methodSet;
+	}
+
+	private void logPossiblyMigratableMethod(IMethod method) {
+		logMethod(method, "Method: %s is possibly migratable.");
+	}
+
+	private void logNonMigratableMethod(IMethod method) {
+		logMethod(method, "Method: %s is not migratable.");
+	}
+
 	private void logMethod(IMethod method, String format) {
 		Formatter formatter = new Formatter();
 
@@ -152,13 +160,5 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 				formatter.toString()));
 
 		formatter.close();
-	}
-
-	private void logNonMigratableMethod(IMethod method) {
-		logMethod(method, "Method: %s is not migratable.");
-	}
-
-	private void logPossiblyMigratableMethod(IMethod method) {
-		logMethod(method, "Method: %s is possibly migratable.");
 	}
 }

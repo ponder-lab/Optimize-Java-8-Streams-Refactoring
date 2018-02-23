@@ -33,8 +33,6 @@ public class Util {
 	@SuppressWarnings("unused")
 	private static final TypeName ARRAYS_TYPE_NAME = TypeName.string2TypeName("Ljava/util/Arrays");
 
-	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
-
 	/**
 	 * {@link Atom} corresponding the the stream() method.
 	 */
@@ -47,6 +45,8 @@ public class Util {
 	@SuppressWarnings("unused")
 	private static final TypeName STREAM_SUPPORT_TYPE_NAME = TypeName
 			.string2TypeName("Ljava/util/stream/StreamSupport");
+
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	/**
 	 * True iff the given {@link InstanceKey} corresponds with the given

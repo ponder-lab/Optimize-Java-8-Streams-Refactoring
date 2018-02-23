@@ -13,7 +13,6 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.jar.JarFile;
 import java.util.logging.Logger;
-import java.util.stream.BaseStream;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
@@ -41,7 +40,7 @@ import com.ibm.wala.util.config.FileOfClasses;
  * Modified from EclipseAnalysisEngine.java, originally from Keshmesh. Authored
  * by Mohsen Vakilian and Stas Negara. Modified by Nicholas Chen and Raffi
  * Khatchadourian.
- *
+ * 
  */
 public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJavaSourceAnalysisEngine<I> {
 
@@ -61,14 +60,14 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	private CallGraphBuilder<?> callGraphBuilder;
 
 	/**
-	 * The N to use for instances of {@link BaseStream}.
-	 */
-	private int nToUseForStreams = N_FOR_STREAMS_DEFAULT;
-
-	/**
 	 * The project used to create this engine.
 	 */
 	private IJavaProject project;
+
+	/**
+	 * The N to use for instances of {@link BaseStream}.
+	 */
+	private int nToUseForStreams = N_FOR_STREAMS_DEFAULT;
 
 	public EclipseProjectAnalysisEngine(IJavaProject project) throws IOException, CoreException {
 		super(project);
@@ -78,14 +77,6 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	public EclipseProjectAnalysisEngine(IJavaProject project, int nForStreams) throws IOException, CoreException {
 		this(project);
 		this.nToUseForStreams = nForStreams;
-	}
-
-	void addToScopeNotWindows(String fileName, Path installPath) throws IOException {
-		scope.addToScope(Primordial, new JarFile(installPath.resolve("jre").resolve("lib").resolve(fileName).toFile()));
-	}
-
-	void addToScopeWindows(String fileName, Path installPath) throws IOException {
-		scope.addToScope(Primordial, new JarFile(installPath.resolve("lib").resolve(fileName).toFile()));
 	}
 
 	@Override
@@ -129,6 +120,26 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 		}
 	}
 
+	void addToScopeWindows(String fileName, Path installPath) throws IOException {
+		scope.addToScope(Primordial, new JarFile(installPath.resolve("lib").resolve(fileName).toFile()));
+	}
+
+	void addToScopeNotWindows(String fileName, Path installPath) throws IOException {
+		scope.addToScope(Primordial, new JarFile(installPath.resolve("jre").resolve("lib").resolve(fileName).toFile()));
+	}
+
+	@Override
+	protected EclipseProjectPath<?, IJavaProject> createProjectPath(IJavaProject project)
+			throws IOException, CoreException {
+		project.open(new NullProgressMonitor());
+		return TestableJavaEclipseProjectPath.create(project, NO_SOURCE);
+	}
+
+	@Override
+	public CallGraph getCallGraph() {
+		return super.getCallGraph();
+	}
+
 	@Override
 	public IClassHierarchy buildClassHierarchy() {
 		IClassHierarchy classHierarchy = super.buildClassHierarchy();
@@ -155,22 +166,6 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 		return this.buildSafeCallGraph(getDefaultOptions(entryPoints));
 	}
 
-	public void clearCallGraphBuilder() {
-		this.callGraphBuilder = null;
-	}
-
-	@Override
-	protected EclipseProjectPath<?, IJavaProject> createProjectPath(IJavaProject project)
-			throws IOException, CoreException {
-		project.open(new NullProgressMonitor());
-		return TestableJavaEclipseProjectPath.create(project, NO_SOURCE);
-	}
-
-	@Override
-	public CallGraph getCallGraph() {
-		return super.getCallGraph();
-	}
-
 	public CallGraphBuilder<?> getCallGraphBuilder() {
 		return callGraphBuilder;
 	}
@@ -182,17 +177,21 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 		return Util.makeNCFABuilder(N, options, (AnalysisCache) cache, cha, scope, this.getNToUseForStreams());
 	}
 
-	public int getNToUseForStreams() {
-		return nToUseForStreams;
+	public void clearCallGraphBuilder() {
+		this.callGraphBuilder = null;
 	}
 
 	/**
 	 * Get the project used to create this engine.
-	 *
+	 * 
 	 * @return The project used to create this engine.
 	 */
 	public IJavaProject getProject() {
 		return project;
+	}
+
+	public int getNToUseForStreams() {
+		return nToUseForStreams;
 	}
 
 	protected void setNToUseForStreams(int nToUseForStreams) {
