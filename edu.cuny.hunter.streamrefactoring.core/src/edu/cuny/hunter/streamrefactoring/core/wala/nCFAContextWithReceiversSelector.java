@@ -95,7 +95,7 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 	 */
 	public nCFAContextWithReceiversSelector(int n, ContextSelector base, int nToUseForStreams) {
 		super(n, base);
-		LOGGER.fine(() -> "Using N = " + nToUseForStreams + ".");
+		LOGGER.info(() -> "Using N = " + nToUseForStreams);
 		this.contextLengthForStreams = nToUseForStreams;
 	}
 
@@ -171,7 +171,7 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 
 		if (implementsBaseStream) {
 			int lengthForStreams = this.getContextLengthForStreams();
-			LOGGER.finer(() -> "Using N = " + lengthForStreams + ".");
+			LOGGER.finer(() -> "Using N = " + lengthForStreams);
 			return lengthForStreams;
 		} else
 			return super.getLength(caller, site, target);

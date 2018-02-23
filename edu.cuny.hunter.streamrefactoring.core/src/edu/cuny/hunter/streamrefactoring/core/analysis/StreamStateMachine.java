@@ -429,12 +429,6 @@ public class StreamStateMachine {
 		return ret;
 	}
 
-	private static void outputTypeStateStatistics(AggregateSolverResult result) {
-		LOGGER.info("Total instances: " + result.totalInstancesNum());
-		LOGGER.info("Processed instances: " + result.processedInstancesNum());
-		LOGGER.info("Skipped instances: " + result.skippedInstances());
-	}
-
 	private static IDFAState selectState(IDFAState state1, IDFAState state2) {
 		if (state1.getName().equals(BOTTOM_STATE_NAME))
 			return state2;
@@ -989,9 +983,7 @@ public class StreamStateMachine {
 				throw new RuntimeException("Exception caught during typestate analysis.", e);
 			}
 
-			// record typestate statistics.
-			outputTypeStateStatistics(result);
-
+			// record statistics.
 			Statistics lastStatistics = ret.put(rule,
 					new Statistics(result.processedInstancesNum(), result.skippedInstances()));
 			assert lastStatistics == null : "Reassociating statistics.";
@@ -1034,9 +1026,9 @@ public class StreamStateMachine {
 							// invocations?
 							if (isTerminalOperation(calledMethod)) {
 								// get the basic block for the call.
-								IR ir = cgNode.getIR();
 
-								ISSABasicBlock[] blocksForCall = ir.getBasicBlocksForCall(callSiteReference);
+								ISSABasicBlock[] blocksForCall = cgNode.getIR()
+										.getBasicBlocksForCall(callSiteReference);
 
 								assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
 										+ callSiteReference;
@@ -1053,12 +1045,11 @@ public class StreamStateMachine {
 										// search through each instruction in the
 										// block.
 										int processedInstructions = 0;
-
 										for (SSAInstruction instruction : block) {
-											// if it's not an invoke instruction.
-											if (!(instruction instanceof SSAAbstractInvokeInstruction))
-												// skip it. Phi instructions will be handled by the pointer analysis
-												// below.
+											// if it's a phi instruction.
+											if (instruction instanceof SSAPhiInstruction)
+												// skip it. The pointer analysis
+												// below will handle it.
 												continue;
 
 											// Get the possible receivers. This

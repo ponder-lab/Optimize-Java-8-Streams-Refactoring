@@ -178,7 +178,7 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	@Override
 	protected CallGraphBuilder<?> getCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options,
 			IAnalysisCacheView cache) {
-		LOGGER.fine(() -> "Using N = " + this.getNToUseForStreams() + ".");
+		LOGGER.info(() -> "Using N = " + this.getNToUseForStreams());
 		return Util.makeNCFABuilder(N, options, (AnalysisCache) cache, cha, scope, this.getNToUseForStreams());
 	}
 
