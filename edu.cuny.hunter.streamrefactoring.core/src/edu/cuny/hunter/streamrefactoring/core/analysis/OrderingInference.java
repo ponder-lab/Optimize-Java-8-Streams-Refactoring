@@ -96,10 +96,9 @@ class OrderingInference {
 	private String findStreamCreationMethod(IClass type) {
 		Collection<com.ibm.wala.classLoader.IMethod> allMethods = type.getAllMethods();
 		for (com.ibm.wala.classLoader.IMethod method : allMethods) {
-			TypeReference typeToCheck = Util.getEvaluationType(method);
-
+			TypeReference returnType = method.getReturnType();
 			// find the first one that returns a stream.
-			if (Util.implementsBaseStream(typeToCheck, this.getClassHierarchy()))
+			if (Util.implementsBaseStream(returnType, this.getClassHierarchy()))
 				return method.getName().toString();
 		}
 

@@ -3,8 +3,6 @@
  */
 package edu.cuny.hunter.streamrefactoring.core.utils;
 
-import static org.eclipse.jdt.core.dom.ASTNode.PARENTHESIZED_EXPRESSION;
-
 import java.util.Optional;
 
 import org.eclipse.core.runtime.CoreException;
@@ -42,16 +40,6 @@ public final class Util {
 		ConvertToParallelStreamRefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor(
 				projects, settings, false, useImplicitEntrypoints, useImplicitTestEntrypoints,
 				useImplicitBenchmarkEntrypoints, monitor);
-		return processor;
-	}
-
-	public static ConvertToParallelStreamRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
-			IJavaProject[] projects, int nForStreams, boolean useImplicitEntrypoints,
-			boolean useImplicitTestEntrypoints, boolean useImplicitBenchmarkEntrypoints,
-			Optional<IProgressMonitor> monitor) throws JavaModelException {
-		ConvertToParallelStreamRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(
-				projects, useImplicitEntrypoints, useImplicitTestEntrypoints, useImplicitBenchmarkEntrypoints, monitor);
-		processor.setNForStreams(nForStreams);
 		return processor;
 	}
 
@@ -157,7 +145,7 @@ public final class Util {
 	}
 
 	public static ASTNode stripParenthesizedExpressions(ASTNode node) {
-		if (node != null && node.getNodeType() == PARENTHESIZED_EXPRESSION) {
+		if (node != null && node.getNodeType() == ASTNode.PARENTHESIZED_EXPRESSION) {
 			ParenthesizedExpression parenthesizedExpression = (ParenthesizedExpression) node;
 			return stripParenthesizedExpressions(parenthesizedExpression.getExpression());
 		} else

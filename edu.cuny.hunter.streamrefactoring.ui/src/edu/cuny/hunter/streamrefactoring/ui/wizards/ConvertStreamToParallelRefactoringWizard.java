@@ -57,7 +57,6 @@ public class ConvertStreamToParallelRefactoringWizard extends RefactoringWizard 
 				RefactoringSaveHelper.SAVE_REFACTORING);
 	}
 
-	// TODO: Need to add an option for N here #183.
 	@Override
 	protected void addUserInputPages() {
 	}

@@ -16,34 +16,28 @@ import com.ibm.wala.ipa.cha.IClassHierarchy;
 
 public class nCFABuilderWithActualParametersInContext extends SSAPropagationCallGraphBuilder {
 
-	private static final int N_TO_USE_FOR_STREAMS_DEFAULT = 2;
-
 	public nCFABuilderWithActualParametersInContext(int n, IClassHierarchy cha, AnalysisOptions options,
-			AnalysisCache cache, ContextSelector appContextSelector, SSAContextInterpreter appContextInterpreter,
-			int nToUseForStreams) {
+			AnalysisCache cache, ContextSelector appContextSelector, SSAContextInterpreter appContextInterpreter) {
 		super(cha, options, cache, new DefaultPointerKeyFactory());
-		if (options == null)
+		if (options == null) {
 			throw new IllegalArgumentException("options is null");
+		}
 
-		this.setInstanceKeys(new ClassBasedInstanceKeys(options, cha));
+		setInstanceKeys(new ClassBasedInstanceKeys(options, cha));
 
 		ContextSelector def = new DefaultContextSelector(options, cha);
 		ContextSelector contextSelector = appContextSelector == null ? def
 				: new DelegatingContextSelector(appContextSelector, def);
-		contextSelector = new nCFAContextWithReceiversSelector(n, contextSelector, nToUseForStreams);
-		this.setContextSelector(contextSelector);
+		contextSelector = new nCFAContextWithReceiversSelector(n, contextSelector);
+		setContextSelector(contextSelector);
 
 		SSAContextInterpreter defI = new DefaultSSAInterpreter(options, cache);
 		defI = new DelegatingSSAContextInterpreter(
-				ReflectionContextInterpreter.createReflectionContextInterpreter(cha, options, this.getAnalysisCache()),
+				ReflectionContextInterpreter.createReflectionContextInterpreter(cha, options, getAnalysisCache()),
 				defI);
 		SSAContextInterpreter contextInterpreter = appContextInterpreter == null ? defI
 				: new DelegatingSSAContextInterpreter(appContextInterpreter, defI);
-		this.setContextInterpreter(contextInterpreter);
+		setContextInterpreter(contextInterpreter);
 	}
 
-	public nCFABuilderWithActualParametersInContext(int n, IClassHierarchy cha, AnalysisOptions options,
-			AnalysisCache cache, ContextSelector appContextSelector, SSAContextInterpreter appContextInterpreter) {
-		this(n, cha, options, cache, appContextSelector, appContextInterpreter, N_TO_USE_FOR_STREAMS_DEFAULT);
-	}
 }
