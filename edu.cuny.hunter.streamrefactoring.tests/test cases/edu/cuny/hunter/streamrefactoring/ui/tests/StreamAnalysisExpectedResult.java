@@ -10,19 +10,15 @@ import edu.cuny.hunter.streamrefactoring.core.analysis.Refactoring;
 import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
 
 class StreamAnalysisExpectedResult {
+	private Set<TransformationAction> expectedActions;
+
 	private String expectedCreation;
 
 	private Set<ExecutionMode> expectedExecutionModes;
 
+	private Set<PreconditionFailure> expectedFailures;
+
 	private Set<Ordering> expectedOrderings;
-
-	private boolean expectingSideEffects;
-
-	private boolean expectingStatefulIntermediateOperation;
-
-	private boolean expectingThatReduceOrderingMatters;
-
-	private Set<TransformationAction> expectedActions;
 
 	private PreconditionSuccess expectedPassingPrecondition;
 
@@ -30,7 +26,11 @@ class StreamAnalysisExpectedResult {
 
 	private int expectedStatusSeverity;
 
-	private Set<PreconditionFailure> expectedFailures;
+	private boolean expectingSideEffects;
+
+	private boolean expectingStatefulIntermediateOperation;
+
+	private boolean expectingThatReduceOrderingMatters;
 
 	public StreamAnalysisExpectedResult(String expectedCreation, Set<ExecutionMode> expectedExecutionModes,
 			Set<Ordering> expectedOrderings, boolean expectingSideEffects,
@@ -50,6 +50,10 @@ class StreamAnalysisExpectedResult {
 		this.expectedFailures = expectedFailures;
 	}
 
+	public Set<TransformationAction> getExpectedActions() {
+		return expectedActions;
+	}
+
 	public String getExpectedCreation() {
 		return expectedCreation;
 	}
@@ -58,24 +62,12 @@ class StreamAnalysisExpectedResult {
 		return expectedExecutionModes;
 	}
 
+	public Set<PreconditionFailure> getExpectedFailures() {
+		return expectedFailures;
+	}
+
 	public Set<Ordering> getExpectedOrderings() {
 		return expectedOrderings;
-	}
-
-	public boolean isExpectingSideEffects() {
-		return expectingSideEffects;
-	}
-
-	public boolean isExpectingStatefulIntermediateOperation() {
-		return expectingStatefulIntermediateOperation;
-	}
-
-	public boolean isExpectingThatReduceOrderingMatters() {
-		return expectingThatReduceOrderingMatters;
-	}
-
-	public Set<TransformationAction> getExpectedActions() {
-		return expectedActions;
 	}
 
 	public PreconditionSuccess getExpectedPassingPrecondition() {
@@ -90,7 +82,15 @@ class StreamAnalysisExpectedResult {
 		return expectedStatusSeverity;
 	}
 
-	public Set<PreconditionFailure> getExpectedFailures() {
-		return expectedFailures;
+	public boolean isExpectingSideEffects() {
+		return expectingSideEffects;
+	}
+
+	public boolean isExpectingStatefulIntermediateOperation() {
+		return expectingStatefulIntermediateOperation;
+	}
+
+	public boolean isExpectingThatReduceOrderingMatters() {
+		return expectingThatReduceOrderingMatters;
 	}
 }

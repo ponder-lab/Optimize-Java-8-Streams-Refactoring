@@ -19,6 +19,11 @@ public class nCFABuilderWithActualParametersInContext extends SSAPropagationCall
 	private static final int N_TO_USE_FOR_STREAMS_DEFAULT = 2;
 
 	public nCFABuilderWithActualParametersInContext(int n, IClassHierarchy cha, AnalysisOptions options,
+			AnalysisCache cache, ContextSelector appContextSelector, SSAContextInterpreter appContextInterpreter) {
+		this(n, cha, options, cache, appContextSelector, appContextInterpreter, N_TO_USE_FOR_STREAMS_DEFAULT);
+	}
+
+	public nCFABuilderWithActualParametersInContext(int n, IClassHierarchy cha, AnalysisOptions options,
 			AnalysisCache cache, ContextSelector appContextSelector, SSAContextInterpreter appContextInterpreter,
 			int nToUseForStreams) {
 		super(cha, options, cache, new DefaultPointerKeyFactory());
@@ -40,10 +45,5 @@ public class nCFABuilderWithActualParametersInContext extends SSAPropagationCall
 		SSAContextInterpreter contextInterpreter = appContextInterpreter == null ? defI
 				: new DelegatingSSAContextInterpreter(appContextInterpreter, defI);
 		this.setContextInterpreter(contextInterpreter);
-	}
-
-	public nCFABuilderWithActualParametersInContext(int n, IClassHierarchy cha, AnalysisOptions options,
-			AnalysisCache cache, ContextSelector appContextSelector, SSAContextInterpreter appContextInterpreter) {
-		this(n, cha, options, cache, appContextSelector, appContextInterpreter, N_TO_USE_FOR_STREAMS_DEFAULT);
 	}
 }

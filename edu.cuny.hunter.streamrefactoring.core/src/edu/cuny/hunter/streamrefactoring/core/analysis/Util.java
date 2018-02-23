@@ -283,6 +283,26 @@ public final class Util {
 		return result;
 	}
 
+	/**
+	 * Returns the index of the first {@link IMethod} in methods that is client
+	 * code.
+	 *
+	 * @param methods
+	 *            The {@link IMethod}s in question.
+	 * @return The index of the first {@link IMethod} that is client code and -1 if
+	 *         none found.
+	 */
+	public static int findIndexOfFirstClientMethod(IMethod[] methods) {
+		for (int i = 0; i < methods.length; i++) {
+			IMethod meth = methods[i];
+
+			if (meth.getDeclaringClass().getClassLoader().getReference().equals(ClassLoaderReference.Application))
+				return i;
+		}
+
+		return -1; // not found.
+	}
+
 	static Set<ITypeBinding> getAllInterfaces(ITypeBinding type) {
 		Set<ITypeBinding> ret = new HashSet<>();
 		ITypeBinding[] interfaces = type.getInterfaces();
@@ -315,6 +335,25 @@ public final class Util {
 	public static CallStringWithReceivers getCallString(NormalAllocationInNode allocationInNode) {
 		CGNode node = allocationInNode.getNode();
 		return getCallString(node);
+	}
+
+	/**
+	 * If it's a ctor, return the declaring class, otherwise, return the return
+	 * type.
+	 *
+	 * @param method
+	 *            The {@link IMethod} in question.
+	 * @return The declaring class of target if target is a ctor and the return type
+	 *         otherwise.
+	 */
+	public static TypeReference getEvaluationType(IMethod method) {
+		// if it's a ctor.
+		if (method.isInit())
+			// then, use the declaring type.
+			return method.getDeclaringClass().getReference();
+		else // otherwise.
+				// use the return type.
+			return method.getReturnType();
 	}
 
 	static Set<ITypeBinding> getImplementedInterfaces(ITypeBinding type) {
@@ -569,7 +608,6 @@ public final class Util {
 		else
 			return false;
 	}
-  
 
 	public static boolean isBaseStream(IClass clazz) {
 		return Util.isType(clazz, "java/util/stream", "BaseStream");
@@ -688,44 +726,5 @@ public final class Util {
 	}
 
 	private Util() {
-	}
-
-	/**
-	 * If it's a ctor, return the declaring class, otherwise, return the return
-	 * type.
-	 * 
-	 * @param method
-	 *            The {@link IMethod} in question.
-	 * @return The declaring class of target if target is a ctor and the return type
-	 *         otherwise.
-	 */
-	public static TypeReference getEvaluationType(IMethod method) {
-		// if it's a ctor.
-		if (method.isInit())
-			// then, use the declaring type.
-			return method.getDeclaringClass().getReference();
-		else // otherwise.
-				// use the return type.
-			return method.getReturnType();
-	}
-  
-	/**
-	 * Returns the index of the first {@link IMethod} in methods that is client
-	 * code.
-	 * 
-	 * @param methods
-	 *            The {@link IMethod}s in question.
-	 * @return The index of the first {@link IMethod} that is client code and -1 if
-	 *         none found.
-	 */
-	public static int findIndexOfFirstClientMethod(IMethod[] methods) {
-		for (int i = 0; i < methods.length; i++) {
-			IMethod meth = methods[i];
-	
-			if (meth.getDeclaringClass().getClassLoader().getReference().equals(ClassLoaderReference.Application))
-				return i;
-		}
-	
-		return -1; // not found.
 	}
 }

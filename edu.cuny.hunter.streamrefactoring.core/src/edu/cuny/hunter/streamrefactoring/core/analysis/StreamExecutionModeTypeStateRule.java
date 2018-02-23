@@ -23,10 +23,10 @@ public class StreamExecutionModeTypeStateRule extends StreamAttributeTypestateRu
 		super.addAutomaton();
 
 		IDFAState sequentialState = addState(ExecutionMode.SEQUENTIAL);
-		
+
 		if (this.getDFAStateToExecutionMap() == null)
 			this.setDFAStateToExecutionMap(new HashMap<>(2));
-		
+
 		this.getDFAStateToExecutionMap().put(sequentialState, ExecutionMode.SEQUENTIAL);
 
 		IDFAState parallelState = addState(ExecutionMode.PARALLEL);
@@ -44,23 +44,23 @@ public class StreamExecutionModeTypeStateRule extends StreamAttributeTypestateRu
 		addTransition(parallelState, parallelState, parallelEvent);
 	}
 
-	protected ExecutionMode getStreamExecutionMode(IDFAState state) {
-		return this.getDFAStateToExecutionMap().get(state);
-	}
-
-	protected Map<IDFAState, ExecutionMode> getDFAStateToExecutionMap() {
-		return this.dfaStateToExecutionMap;
-	}
-
-	protected void setDFAStateToExecutionMap(HashMap<IDFAState, ExecutionMode> dfaStateToExecutionMap) {
-		this.dfaStateToExecutionMap = dfaStateToExecutionMap;
-	}
-
 	@Override
 	protected void addPossibleAttributes(Stream stream, Collection<IDFAState> states) {
 		super.addPossibleAttributes(stream, states);
 
 		Set<ExecutionMode> set = states.stream().map(this::getStreamExecutionMode).collect(Collectors.toSet());
 		stream.addPossibleExecutionModeCollection(set);
+	}
+
+	protected Map<IDFAState, ExecutionMode> getDFAStateToExecutionMap() {
+		return this.dfaStateToExecutionMap;
+	}
+
+	protected ExecutionMode getStreamExecutionMode(IDFAState state) {
+		return this.getDFAStateToExecutionMap().get(state);
+	}
+
+	protected void setDFAStateToExecutionMap(HashMap<IDFAState, ExecutionMode> dfaStateToExecutionMap) {
+		this.dfaStateToExecutionMap = dfaStateToExecutionMap;
 	}
 }

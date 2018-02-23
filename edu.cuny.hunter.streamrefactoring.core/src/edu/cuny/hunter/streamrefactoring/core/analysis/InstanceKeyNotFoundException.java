@@ -11,10 +11,6 @@ public class InstanceKeyNotFoundException extends Exception {
 		super(message);
 	}
 
-	public InstanceKeyNotFoundException(Throwable cause) {
-		super(cause);
-	}
-
 	public InstanceKeyNotFoundException(String message, Throwable cause) {
 		super(message, cause);
 	}
@@ -22,6 +18,10 @@ public class InstanceKeyNotFoundException extends Exception {
 	public InstanceKeyNotFoundException(String message, Throwable cause, boolean enableSuppression,
 			boolean writableStackTrace) {
 		super(message, cause, enableSuppression, writableStackTrace);
+	}
+
+	public InstanceKeyNotFoundException(Throwable cause) {
+		super(cause);
 	}
 
 }

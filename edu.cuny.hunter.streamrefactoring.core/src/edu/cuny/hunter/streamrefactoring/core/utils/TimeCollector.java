@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package edu.cuny.hunter.streamrefactoring.core.utils;
 
@@ -12,6 +12,16 @@ public class TimeCollector {
 	private long collectedTime;
 	private long start;
 	private boolean started;
+
+	public void clear() {
+		assert !started : "Shouldn't clear a running time collector.";
+
+		collectedTime = 0;
+	}
+
+	public long getCollectedTime() {
+		return collectedTime;
+	}
 
 	public void start() {
 		assert !started : "Time colletor is already started.";
@@ -26,15 +36,5 @@ public class TimeCollector {
 
 		final long elapsed = System.currentTimeMillis() - start;
 		collectedTime += elapsed;
-	}
-
-	public long getCollectedTime() {
-		return collectedTime;
-	}
-
-	public void clear() {
-		assert !started : "Shouldn't clear a running time collector.";
-		
-		collectedTime = 0;
 	}
 }

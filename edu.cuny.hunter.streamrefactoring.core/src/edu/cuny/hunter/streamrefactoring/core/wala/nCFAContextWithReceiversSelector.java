@@ -23,8 +23,6 @@ import edu.cuny.hunter.streamrefactoring.core.analysis.Util;
 
 public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 
-	private static final Logger LOGGER = Logger.getLogger(LOGGER_NAME);
-
 	protected class CallStringTriple {
 
 		CGNode node;
@@ -64,16 +62,18 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 	 */
 	protected static final int CONTEXT_LENGTH_FOR_STREAMS_DEFAULT = 2;
 
+	private static final Logger LOGGER = Logger.getLogger(LOGGER_NAME);
+
+	protected Map<CallStringTriple, CallStringWithReceivers> callStringWithReceiversMap = new HashMap<>();
+
 	/**
 	 * The N to use if the instance implements {@link BaseStream}.
 	 */
 	private int contextLengthForStreams = CONTEXT_LENGTH_FOR_STREAMS_DEFAULT;
 
-	protected Map<CallStringTriple, CallStringWithReceivers> callStringWithReceiversMap = new HashMap<>();
-
 	/**
 	 * Create a new {@link nCFAContextWithReceiversSelector}.
-	 * 
+	 *
 	 * @param n
 	 *            The N to use generally.
 	 * @param base
@@ -85,7 +85,7 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 
 	/**
 	 * Create a new {@link nCFAContextWithReceiversSelector}.
-	 * 
+	 *
 	 * @param n
 	 *            The N to use generally.
 	 * @param base
@@ -154,6 +154,10 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 		return this.callStringWithReceiversMap;
 	}
 
+	public int getContextLengthForStreams() {
+		return contextLengthForStreams;
+	}
+
 	/**
 	 * {@inheritDoc}
 	 *
@@ -171,10 +175,6 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 			return lengthForStreams;
 		} else
 			return super.getLength(caller, site, target);
-	}
-
-	public int getContextLengthForStreams() {
-		return contextLengthForStreams;
 	}
 
 	protected void setContextLengthForStreams(int contextLengthForStreams) {

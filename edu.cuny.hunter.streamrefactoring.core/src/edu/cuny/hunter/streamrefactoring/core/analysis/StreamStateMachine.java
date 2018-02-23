@@ -90,6 +90,25 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 public class StreamStateMachine {
 
+	public class Statistics {
+		private int numberOfStreamInstancesProcessed;
+		private int numberOfStreamInstancesSkipped;
+
+		public Statistics(int numberOfStreamInstancesProcessed, int numberOfStreamInstancesSkipped) {
+			this.numberOfStreamInstancesProcessed = numberOfStreamInstancesProcessed;
+			this.numberOfStreamInstancesSkipped = numberOfStreamInstancesSkipped;
+		}
+
+		public int getNumberOfStreamInstancesProcessed() {
+			return numberOfStreamInstancesProcessed;
+		}
+
+		public int getNumberOfStreamInstancesSkipped() {
+			return numberOfStreamInstancesSkipped;
+		}
+	}
+
+	@SuppressWarnings("unused")
 	private static final String ARRAYS_STREAM_CREATION_METHOD_NAME = "Arrays.stream";
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
@@ -926,10 +945,12 @@ public class StreamStateMachine {
 				.flatMap(ik -> this.getAllPredecessors(ik).stream()).collect(Collectors.toSet()));
 	}
 
-	public void start(Set<Stream> streamSet, EclipseProjectAnalysisEngine<InstanceKey> engine,
+	public Map<TypestateRule, Statistics> start(Set<Stream> streamSet, EclipseProjectAnalysisEngine<InstanceKey> engine,
 			OrderingInference orderingInference)
 			throws PropertiesException, CancelException, IOException, CoreException, NoniterableException,
 			NoninstantiableException, CannotExtractSpliteratorException, InvalidClassFileException {
+		Map<TypestateRule, Statistics> ret = new HashMap<>();
+
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
 
 		PropertiesManager manager = PropertiesManager.initFromMap(Collections.emptyMap());
@@ -962,8 +983,12 @@ public class StreamStateMachine {
 				throw new RuntimeException("Exception caught during typestate analysis.", e);
 			}
 
-			// typestate statistics.
+			// record typestate statistics.
 			outputTypeStateStatistics(result);
+
+			Statistics lastStatistics = ret.put(rule,
+					new Statistics(result.processedInstancesNum(), result.skippedInstances()));
+			assert lastStatistics == null : "Reassociating statistics.";
 
 			// for each instance in the typestate analysis result.
 			for (Iterator<InstanceKey> iterator = result.iterateInstances(); iterator.hasNext();) {
@@ -1224,6 +1249,7 @@ public class StreamStateMachine {
 						this.instancesWhoseReduceOrderingPossiblyMatters.contains(streamInstanceKey));
 			}
 		}
+		return ret;
 	}
 
 	private static void outputTypeStateStatistics(AggregateSolverResult result) {

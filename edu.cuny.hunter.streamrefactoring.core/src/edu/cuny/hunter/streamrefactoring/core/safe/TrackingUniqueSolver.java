@@ -27,19 +27,19 @@ public class TrackingUniqueSolver extends UniqueSolver {
 		super(cg, pointerAnalysis, dfa, options, live, ora, metrics, reporter, traceReporter, mergeFactory);
 	}
 
+	@Override
+	protected Collection<InstanceKey> computeTrackedInstances() throws PropertiesException {
+		Collection<InstanceKey> instances = super.computeTrackedInstances();
+		this.setTrackedInstances(instances);
+		return instances;
+	}
+
 	public Collection<InstanceKey> getTrackedInstances() {
 		return trackedInstances;
 	}
 
 	protected void setTrackedInstances(Collection<InstanceKey> trackedInstances) {
 		this.trackedInstances = trackedInstances;
-	}
-
-	@Override
-	protected Collection<InstanceKey> computeTrackedInstances() throws PropertiesException {
-		Collection<InstanceKey> instances = super.computeTrackedInstances();
-		this.setTrackedInstances(instances);
-		return instances;
 	}
 
 }

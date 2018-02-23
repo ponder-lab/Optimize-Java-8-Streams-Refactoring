@@ -25,7 +25,19 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 public class TypestateSolverFactory extends com.ibm.safe.typestate.core.TypestateSolverFactory {
 
-	protected TypestateSolverFactory() {
+	protected static ILiveObjectAnalysis getLiveObjectAnalysis(CallGraph cg, HeapGraph<?> hg, TypeStateOptions options)
+			throws PropertiesException {
+		return options.shouldUseLiveAnalysis() ? TypeStateSolverCreator.computeLiveObjectAnalysis(cg, hg, false) : null;
+	}
+
+	public static ISafeSolver getSolver(AnalysisOptions domoOptions, CallGraph cg, PointerAnalysis<?> pointerAnalysis,
+			HeapGraph<?> hg, TypeStateProperty dfa, BenignOracle ora, TypeStateOptions options,
+			TypeStateMetrics metrics, IReporter reporter, TraceReporter traceReporter)
+			throws PropertiesException, CancelException {
+		IMergeFunctionFactory mergeFactory = makeMergeFactory(options, TypeStateSolverKind.UNIQUE);
+		ILiveObjectAnalysis live = getLiveObjectAnalysis(cg, hg, options);
+		return new UniqueSolver(cg, pointerAnalysis, dfa, options, live, ora, metrics, reporter, traceReporter,
+				mergeFactory);
 	}
 
 	public static TrackingUniqueSolver getSolver(CallGraph cg, PointerAnalysis<?> pointerAnalysis, HeapGraph<?> hg,
@@ -47,18 +59,6 @@ public class TypestateSolverFactory extends com.ibm.safe.typestate.core.Typestat
 				traceReporter, mergeFactory, instruction, engine);
 	}
 
-	public static ISafeSolver getSolver(AnalysisOptions domoOptions, CallGraph cg, PointerAnalysis<?> pointerAnalysis,
-			HeapGraph<?> hg, TypeStateProperty dfa, BenignOracle ora, TypeStateOptions options,
-			TypeStateMetrics metrics, IReporter reporter, TraceReporter traceReporter)
-			throws PropertiesException, CancelException {
-		IMergeFunctionFactory mergeFactory = makeMergeFactory(options, TypeStateSolverKind.UNIQUE);
-		ILiveObjectAnalysis live = getLiveObjectAnalysis(cg, hg, options);
-		return new UniqueSolver(cg, pointerAnalysis, dfa, options, live, ora, metrics, reporter, traceReporter,
-				mergeFactory);
-	}
-
-	protected static ILiveObjectAnalysis getLiveObjectAnalysis(CallGraph cg, HeapGraph<?> hg, TypeStateOptions options)
-			throws PropertiesException {
-		return options.shouldUseLiveAnalysis() ? TypeStateSolverCreator.computeLiveObjectAnalysis(cg, hg, false) : null;
+	protected TypestateSolverFactory() {
 	}
 }
