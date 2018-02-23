@@ -207,9 +207,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 				IJavaProject[] javaProjects = Util.getSelectedJavaProjectsFromEvent(event);
 
-				List<String> resultsHeader = new ArrayList<>(
-						Arrays.asList("subject", "SLOC", "#entrypoints", "N", "#streams",
-								"#optimization available streams", "#optimizable streams", "#failed preconditions"));
+				List<String> resultsHeader = new ArrayList<>(Arrays.asList("subject", "SLOC", "#entrypoints", "N",
+						"#streams", "#optimization available streams", "#optimizable streams", "#failed preconditions",
+						"stream instances processed", "stream instances skipped"));
 
 				for (Refactoring refactoring : Refactoring.values())
 					resultsHeader.add(refactoring.toString());
@@ -401,6 +401,12 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 											: failedStream.getEnclosingType().getFullyQualifiedName(),
 									entry.getCode(), entry.getMessage());
 						}
+
+					// #stream instances analyzed.
+					resultsPrinter.print(processor.getNumberOfProcessedStreamInstances());
+
+					// #stream instances skipped.
+					resultsPrinter.print(processor.getNumberOfSkippedStreamInstances());
 
 					// Refactoring type counts.
 					for (Refactoring refactoring : Refactoring.values())

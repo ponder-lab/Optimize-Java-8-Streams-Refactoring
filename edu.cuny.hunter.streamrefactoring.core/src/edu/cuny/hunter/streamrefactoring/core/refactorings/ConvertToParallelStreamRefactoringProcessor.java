@@ -146,6 +146,10 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	private int nForStreams = N_FOR_STREAMS_DEFAULT;
 
+	private int numberOfProcessedStreamInstances;
+
+	private int numberOfSkippedStreamInstances;
+
 	public ConvertToParallelStreamRefactoringProcessor() throws JavaModelException {
 		this(null, null, false, true, false, false, Optional.empty());
 	}
@@ -241,6 +245,10 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 			// analyze and set entry points.
 			this.projectToEntryPoints = analyzer.analyze(Optional.of(this.getExcludedTimeCollector()));
+
+			// set statistics for stream instances.
+			this.setNumberOfProcessedStreamInstances(analyzer.getNumberOfProcessedStreamInstances());
+			this.setNumberOfSkippedStreamInstances(analyzer.getNumberOfSkippedStreamInstances());
 
 			// map empty set to unprocessed projects.
 			for (IJavaProject project : this.getJavaProjects())
@@ -529,5 +537,21 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	protected void setStreamSet(Set<Stream> streamSet) {
 		this.streamSet = streamSet;
+	}
+
+	public int getNumberOfProcessedStreamInstances() {
+		return this.numberOfProcessedStreamInstances;
+	}
+
+	protected void setNumberOfProcessedStreamInstances(int numberOfProcessedStreamInstances) {
+		this.numberOfProcessedStreamInstances = numberOfProcessedStreamInstances;
+	}
+
+	public int getNumberOfSkippedStreamInstances() {
+		return this.numberOfSkippedStreamInstances;
+	}
+
+	protected void setNumberOfSkippedStreamInstances(int numberOfSkippedStreamInstances) {
+		this.numberOfSkippedStreamInstances = numberOfSkippedStreamInstances;
 	}
 }

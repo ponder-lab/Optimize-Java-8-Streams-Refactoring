@@ -29,6 +29,7 @@ import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
 
 import com.ibm.safe.internal.exceptions.PropertiesException;
+import com.ibm.safe.rules.TypestateRule;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions.ReflectionOptions;
 import com.ibm.wala.ipa.callgraph.CallGraph;
@@ -42,6 +43,7 @@ import com.ibm.wala.ssa.SSAOptions;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.scope.JUnitEntryPoints;
 
+import edu.cuny.hunter.streamrefactoring.core.analysis.StreamStateMachine.Statistics;
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
@@ -80,6 +82,10 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * The N to use for instances of {@link BaseStream} in the nCFA.
 	 */
 	private int nForStreams = N_FOR_STREAMS_DEFAULT;
+
+	private int numberOfProcessedStreamInstances;
+
+	private int numberOfSkippedStreamInstances;
 
 	public StreamAnalyzer() {
 		this(false);
@@ -208,8 +214,16 @@ public class StreamAnalyzer extends ASTVisitor {
 			// start the state machine for each valid stream in the project.
 			StreamStateMachine stateMachine = new StreamStateMachine();
 			try {
-				stateMachine.start(projectToStreams.get(project).parallelStream().filter(s -> s.getStatus().isOK())
-						.collect(Collectors.toSet()), engine, orderingInference);
+				Map<TypestateRule, StreamStateMachine.Statistics> ruleToStats = stateMachine.start(projectToStreams
+						.get(project).parallelStream().filter(s -> s.getStatus().isOK()).collect(Collectors.toSet()),
+						engine, orderingInference);
+
+				// use just one the rules.
+				assert !ruleToStats.isEmpty() : "Should have stats available.";
+				Statistics statistics = ruleToStats.values().iterator().next();
+
+				this.setNumberOfProcessedStreamInstances(statistics.getNumberOfStreamInstancesProcessed());
+				this.setNumberOfSkippedStreamInstances(statistics.getNumberOfStreamInstancesSkipped());
 			} catch (PropertiesException | CancelException | NoniterableException | NoninstantiableException
 					| CannotExtractSpliteratorException | InvalidClassFileException | IOException e) {
 				LOGGER.log(Level.SEVERE, "Error while starting state machine.", e);
@@ -221,7 +235,6 @@ public class StreamAnalyzer extends ASTVisitor {
 					.collect(Collectors.toSet()))
 				stream.check();
 		} // end for each stream.
-
 		return ret;
 	}
 
@@ -434,5 +447,21 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	protected void setNForStreams(int nForStreams) {
 		this.nForStreams = nForStreams;
+	}
+
+	public int getNumberOfProcessedStreamInstances() {
+		return this.numberOfProcessedStreamInstances;
+	}
+
+	protected void setNumberOfProcessedStreamInstances(int numberOfProcessedStreamInstances) {
+		this.numberOfProcessedStreamInstances = numberOfProcessedStreamInstances;
+	}
+
+	public int getNumberOfSkippedStreamInstances() {
+		return this.numberOfSkippedStreamInstances;
+	}
+
+	protected void setNumberOfSkippedStreamInstances(int numberOfSkippedStreamInstances) {
+		this.numberOfSkippedStreamInstances = numberOfSkippedStreamInstances;
 	}
 }
