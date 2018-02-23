@@ -429,6 +429,12 @@ public class StreamStateMachine {
 		return ret;
 	}
 
+	private static void outputTypeStateStatistics(AggregateSolverResult result) {
+		LOGGER.info("Total instances: " + result.totalInstancesNum());
+		LOGGER.info("Processed instances: " + result.processedInstancesNum());
+		LOGGER.info("Skipped instances: " + result.skippedInstances());
+	}
+
 	private static IDFAState selectState(IDFAState state1, IDFAState state2) {
 		if (state1.getName().equals(BOTTOM_STATE_NAME))
 			return state2;
@@ -1250,11 +1256,5 @@ public class StreamStateMachine {
 			}
 		}
 		return ret;
-	}
-
-	private static void outputTypeStateStatistics(AggregateSolverResult result) {
-		LOGGER.info("Total instances: " + result.totalInstancesNum());
-		LOGGER.info("Processed instances: " + result.processedInstancesNum());
-		LOGGER.info("Skipped instances: " + result.skippedInstances());
 	}
 }
