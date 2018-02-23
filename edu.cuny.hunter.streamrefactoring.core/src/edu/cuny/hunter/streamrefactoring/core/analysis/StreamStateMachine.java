@@ -1022,11 +1022,12 @@ public class StreamStateMachine {
 										// search through each instruction in the
 										// block.
 										int processedInstructions = 0;
+
 										for (SSAInstruction instruction : block) {
-											// if it's a phi instruction.
-											if (instruction instanceof SSAPhiInstruction)
-												// skip it. The pointer analysis
-												// below will handle it.
+											// if it's not an invoke instruction.
+											if (!(instruction instanceof SSAAbstractInvokeInstruction))
+												// skip it. Phi instructions will be handled by the pointer analysis
+												// below.
 												continue;
 
 											// Get the possible receivers. This
