@@ -74,7 +74,7 @@ public final class Util {
 	 * make a {@link CallGraphBuilder} that uses call-string context sensitivity,
 	 * with call-string length limited to n, and a context-sensitive
 	 * allocation-site-based heap abstraction.
-	 * 
+	 *
 	 * @param nToUseForStreams
 	 *            The N to use specifically for instances of {@link BaseStream}.
 	 */

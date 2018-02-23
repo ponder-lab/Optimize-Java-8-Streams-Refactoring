@@ -23,14 +23,118 @@ import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 
 class OrderingInference {
 
-	private Objenesis objenesis = new ObjenesisStd();
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private IClassHierarchy classHierarchy;
 
-	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
+	private Objenesis objenesis = new ObjenesisStd();
 
 	public OrderingInference(IClassHierarchy classHierarchy) {
 		this.classHierarchy = classHierarchy;
+	}
+
+	private Object createInstance(Class<?> clazz) throws NoninstantiableException {
+		try {
+			return clazz.newInstance();
+		} catch (InstantiationException | IllegalAccessException e) {
+			ObjectInstantiator<?> instantiator = objenesis.getInstantiatorOf(clazz);
+			try {
+				return instantiator.newInstance();
+			} catch (InstantiationError e2) {
+				throw new NoninstantiableException(clazz + " cannot be instantiated: " + e2.getCause(), e2, clazz);
+			}
+		}
+	}
+
+	private String findStreamCreationMethod(Collection<TypeAbstraction> types) {
+		// find the first one.
+		for (TypeAbstraction typeAbstraction : types) {
+			String methodName = findStreamCreationMethod(typeAbstraction);
+
+			if (methodName != null)
+				return methodName;
+		}
+		// not found.
+		return null;
+	}
+
+	private String findStreamCreationMethod(IClass type) {
+		Collection<com.ibm.wala.classLoader.IMethod> allMethods = type.getAllMethods();
+		for (com.ibm.wala.classLoader.IMethod method : allMethods) {
+			TypeReference typeToCheck = Util.getEvaluationType(method);
+
+			// find the first one that returns a stream.
+			if (Util.implementsBaseStream(typeToCheck, this.getClassHierarchy()))
+				return method.getName().toString();
+		}
+
+		return null;
+	}
+
+	private String findStreamCreationMethod(TypeAbstraction typeAbstraction) {
+		IClass type = typeAbstraction.getType();
+		return findStreamCreationMethod(type);
+	}
+
+	protected IClassHierarchy getClassHierarchy() {
+		return classHierarchy;
+	}
+
+	private Spliterator<?> getSpliterator(Object instance, String calledMethodName)
+			throws CannotExtractSpliteratorException {
+		Objects.requireNonNull(instance);
+		Objects.requireNonNull(calledMethodName);
+
+		Spliterator<?> spliterator = null;
+
+		if (instance instanceof Iterable) {
+			try {
+				spliterator = ((Iterable<?>) instance).spliterator();
+			} catch (NullPointerException e) {
+				LOGGER.log(Level.WARNING, "Possible trouble creating instance (most likely private type).", e);
+				return null;
+			}
+		} else {
+			// try to call the stream() method to get the spliterator.
+			BaseStream<?, ?> baseStream = null;
+			try {
+				Method streamCreationMethod = instance.getClass().getMethod(calledMethodName);
+				Object stream = streamCreationMethod.invoke(instance);
+
+				if (stream instanceof BaseStream) {
+					baseStream = (BaseStream<?, ?>) stream;
+					spliterator = baseStream.spliterator();
+				} else
+					throw new CannotExtractSpliteratorException(
+							"Returned object of type: " + stream.getClass() + " doesn't implement BaseStream.",
+							stream.getClass());
+			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
+					| InvocationTargetException e) {
+				throw new CannotExtractSpliteratorException(
+						"Cannot extract the spliterator from object of type: " + instance.getClass(), e,
+						instance.getClass());
+			} finally {
+				if (baseStream != null)
+					baseStream.close();
+			}
+		}
+		return spliterator;
+	}
+
+	Ordering inferOrdering(Collection<TypeAbstraction> possibleTypes) throws InconsistentPossibleOrderingException,
+			NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
+		if (possibleTypes.isEmpty())
+			return null;
+		else {
+			String methodName = findStreamCreationMethod(possibleTypes);
+
+			if (methodName == null) {
+				LOGGER.warning(() -> "Can't find stream creation method for: " + possibleTypes);
+				return null;
+			}
+
+			return inferOrdering(possibleTypes, methodName);
+		}
 	}
 
 	Ordering inferOrdering(Collection<TypeAbstraction> possibleTypes, IMethod calledMethod)
@@ -58,52 +162,6 @@ class OrderingInference {
 		}
 
 		return ret;
-	}
-
-	Ordering inferOrdering(Collection<TypeAbstraction> possibleTypes) throws InconsistentPossibleOrderingException,
-			NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
-		if (possibleTypes.isEmpty())
-			return null;
-		else {
-			String methodName = findStreamCreationMethod(possibleTypes);
-
-			if (methodName == null) {
-				LOGGER.warning(() -> "Can't find stream creation method for: " + possibleTypes);
-				return null;
-			}
-
-			return inferOrdering(possibleTypes, methodName);
-		}
-	}
-
-	private String findStreamCreationMethod(Collection<TypeAbstraction> types) {
-		// find the first one.
-		for (TypeAbstraction typeAbstraction : types) {
-			String methodName = findStreamCreationMethod(typeAbstraction);
-
-			if (methodName != null)
-				return methodName;
-		}
-		// not found.
-		return null;
-	}
-
-	private String findStreamCreationMethod(TypeAbstraction typeAbstraction) {
-		IClass type = typeAbstraction.getType();
-		return findStreamCreationMethod(type);
-	}
-
-	private String findStreamCreationMethod(IClass type) {
-		Collection<com.ibm.wala.classLoader.IMethod> allMethods = type.getAllMethods();
-		for (com.ibm.wala.classLoader.IMethod method : allMethods) {
-			TypeReference typeToCheck = Util.getEvaluationType(method);
-
-			// find the first one that returns a stream.
-			if (Util.implementsBaseStream(typeToCheck, this.getClassHierarchy()))
-				return method.getName().toString();
-		}
-
-		return null;
 	}
 
 	// TODO: Cache this?
@@ -150,60 +208,6 @@ class OrderingInference {
 		}
 	}
 
-	private Object createInstance(Class<?> clazz) throws NoninstantiableException {
-		try {
-			return clazz.newInstance();
-		} catch (InstantiationException | IllegalAccessException e) {
-			ObjectInstantiator<?> instantiator = objenesis.getInstantiatorOf(clazz);
-			try {
-				return instantiator.newInstance();
-			} catch (InstantiationError e2) {
-				throw new NoninstantiableException(clazz + " cannot be instantiated: " + e2.getCause(), e2, clazz);
-			}
-		}
-	}
-
-	private Spliterator<?> getSpliterator(Object instance, String calledMethodName)
-			throws CannotExtractSpliteratorException {
-		Objects.requireNonNull(instance);
-		Objects.requireNonNull(calledMethodName);
-
-		Spliterator<?> spliterator = null;
-
-		if (instance instanceof Iterable) {
-			try {
-				spliterator = ((Iterable<?>) instance).spliterator();
-			} catch (NullPointerException e) {
-				LOGGER.log(Level.WARNING, "Possible trouble creating instance (most likely private type).", e);
-				return null;
-			}
-		} else {
-			// try to call the stream() method to get the spliterator.
-			BaseStream<?, ?> baseStream = null;
-			try {
-				Method streamCreationMethod = instance.getClass().getMethod(calledMethodName);
-				Object stream = streamCreationMethod.invoke(instance);
-
-				if (stream instanceof BaseStream) {
-					baseStream = (BaseStream<?, ?>) stream;
-					spliterator = baseStream.spliterator();
-				} else
-					throw new CannotExtractSpliteratorException(
-							"Returned object of type: " + stream.getClass() + " doesn't implement BaseStream.",
-							stream.getClass());
-			} catch (NoSuchMethodException | SecurityException | IllegalAccessException | IllegalArgumentException
-					| InvocationTargetException e) {
-				throw new CannotExtractSpliteratorException(
-						"Cannot extract the spliterator from object of type: " + instance.getClass(), e,
-						instance.getClass());
-			} finally {
-				if (baseStream != null)
-					baseStream.close();
-			}
-		}
-		return spliterator;
-	}
-
 	private Ordering inferOrdering(TypeAbstraction type, String calledMethodName)
 			throws NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
 		TypeReference typeReference = type.getTypeReference();
@@ -214,9 +218,5 @@ class OrderingInference {
 
 		String binaryName = Util.getBinaryName(typeReference);
 		return inferOrdering(binaryName, calledMethodName);
-	}
-
-	protected IClassHierarchy getClassHierarchy() {
-		return classHierarchy;
 	}
 }
