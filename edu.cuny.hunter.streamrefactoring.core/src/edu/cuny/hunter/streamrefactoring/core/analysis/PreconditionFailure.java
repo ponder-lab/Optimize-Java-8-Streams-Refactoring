@@ -19,7 +19,8 @@ public enum PreconditionFailure {
 	CURRENTLY_NOT_HANDLED(14), // should just be #97 currently.
 	STREAM_CODE_NOT_REACHABLE(15), // either pivotal code isn't reachable or
 									// entry points are misconfigured.
-	NO_ENTRY_POINT(16); // user didn't specify entry points.
+	NO_ENTRY_POINT(16), // user didn't specify entry points.
+	NO_APPLICATION_CODE_IN_CALL_STRINGS(17); // N may be too small.
 
 	private int code;
 

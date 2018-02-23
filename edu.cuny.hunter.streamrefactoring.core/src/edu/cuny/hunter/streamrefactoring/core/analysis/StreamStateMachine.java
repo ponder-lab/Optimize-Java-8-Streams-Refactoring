@@ -82,6 +82,7 @@ import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.util.strings.Atom;
 
 import edu.cuny.hunter.streamrefactoring.core.safe.ModifiedBenignOracle;
+import edu.cuny.hunter.streamrefactoring.core.safe.NoApplicationCodeExistsInCallStringsException;
 import edu.cuny.hunter.streamrefactoring.core.safe.TypestateSolverFactory;
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
@@ -201,18 +202,16 @@ public class StreamStateMachine {
 			return deriveRomForVoidMethod(invokeInstruction);
 	}
 
-	private static boolean deriveRomForVoidMethod(SSAInvokeInstruction invokeInstruction) {
+	private static boolean deriveRomForVoidMethod(SSAInvokeInstruction invokeInstruction)
+			throws UnknownIfReduceOrderMattersException {
 		MethodReference declaredTarget = invokeInstruction.getCallSite().getDeclaredTarget();
 
 		if (isTerminalOperationWhereReduceOrderMatters(declaredTarget))
 			return true;
 		else if (isTerminalOperationWhereReduceOrderDoesNotMatter(declaredTarget))
 			return false;
-		else {
-			boolean ret = true;
-			LOGGER.warning(() -> "Can't decipher ROM for method: " + declaredTarget + ". Defaulting to: " + ret);
-			return ret;
-		}
+		else
+			throw new UnknownIfReduceOrderMattersException("Can't decipher ROM for method: " + declaredTarget + ".");
 	}
 
 	/**
@@ -274,10 +273,10 @@ public class StreamStateMachine {
 			// who's the caller?
 			LOGGER.fine(() -> "Called method is: " + calledMethod);
 
-			TypeReference returnType = calledMethod.getReturnType();
-			LOGGER.fine(() -> "Return type is: " + returnType);
+			TypeReference evaluationType = Util.getEvaluationType(calledMethod);
+			LOGGER.fine(() -> "Evaluation type is: " + evaluationType);
 
-			boolean implementsBaseStream = Util.implementsBaseStream(returnType, hierarchy);
+			boolean implementsBaseStream = Util.implementsBaseStream(evaluationType, hierarchy);
 			LOGGER.fine(() -> "Is it a stream? " + implementsBaseStream);
 
 			if (implementsBaseStream) {
@@ -576,41 +575,39 @@ public class StreamStateMachine {
 
 				Boolean rom = null;
 
-				if (isVoid(possibleReturnTypes))
-					rom = deriveRomForVoidMethod(invokeInstruction);
-				else {
-					boolean scalar = Util.isScalar(possibleReturnTypes);
-					if (scalar)
-						try {
+				try {
+					if (isVoid(possibleReturnTypes))
+						rom = deriveRomForVoidMethod(invokeInstruction);
+					else {
+						boolean scalar = Util.isScalar(possibleReturnTypes);
+						if (scalar)
 							rom = deriveRomForScalarMethod(invokeInstruction);
-						} catch (UnknownIfReduceOrderMattersException e) {
-							// for each possible receiver associated with the terminal block.
-							OrdinalSet<InstanceKey> receivers = this.terminalBlockToPossibleReceivers.get(block);
+						else // !scalar
+							rom = this.deriveRomForNonScalarMethod(possibleReturnTypes, orderingInference);
+					}
+				} catch (UnknownIfReduceOrderMattersException e) {
+					// for each possible receiver associated with the terminal block.
+					OrdinalSet<InstanceKey> receivers = this.terminalBlockToPossibleReceivers.get(block);
 
-							for (InstanceKey instanceKey : receivers) {
-								// get the stream for the instance key.
-								Set<InstanceKey> originStreams = this.computePossibleOriginStreams(instanceKey);
+					for (InstanceKey instanceKey : receivers) {
+						// get the stream for the instance key.
+						Set<InstanceKey> originStreams = this.computePossibleOriginStreams(instanceKey);
 
-								// for each origin stream.
-								for (InstanceKey origin : originStreams) {
-									// get the "Stream" representing it.
-									Stream stream = this.instanceToStreamMap.get(origin);
+						// for each origin stream.
+						for (InstanceKey origin : originStreams) {
+							// get the "Stream" representing it.
+							Stream stream = this.instanceToStreamMap.get(origin);
 
-									if (stream == null)
-										LOGGER.warning(() -> "Can't find Stream instance for instance key: "
-												+ instanceKey + " using origin: " + origin);
-									else {
-										LOGGER.log(Level.WARNING, "Unable to derive ROM for : " + stream.getCreation(),
-												e);
-										stream.addStatusEntry(PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
-												"Cannot derive reduction ordering for stream: " + stream.getCreation()
-														+ ".");
-									}
-								}
+							if (stream == null)
+								LOGGER.warning(() -> "Can't find Stream instance for instance key: " + instanceKey
+										+ " using origin: " + origin);
+							else {
+								LOGGER.log(Level.WARNING, "Unable to derive ROM for: " + stream.getCreation(), e);
+								stream.addStatusEntry(PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING,
+										"Cannot derive reduction ordering for stream: " + stream.getCreation() + ".");
 							}
 						}
-					else // !scalar
-						rom = this.deriveRomForNonScalarMethod(possibleReturnTypes, orderingInference);
+					}
 				}
 
 				// if reduce ordering matters.
@@ -749,37 +746,17 @@ public class StreamStateMachine {
 				continue;
 
 			CallStringWithReceivers callString = Util.getCallString(instance);
-			CallSiteReference[] callSiteRefs = callString.getCallSiteRefs();
-			assert callSiteRefs.length == 2 : "Expecting call sites two-deep.";
+			assert callString.getMethods().length >= 1 : "Expecting call sites at least one-deep.";
 
-			// get the target of the caller.
-			MethodReference callerDeclaredTarget = callSiteRefs[1].getDeclaredTarget();
-
-			// get it's IR.
-			IMethod callerTargetMethod = engine.getClassHierarchy().resolveMethod(callerDeclaredTarget);
-			boolean fallback = false;
-
-			if (callerTargetMethod == null) {
-				LOGGER.warning("Cannot resolve caller declared target method: " + callerDeclaredTarget);
-
-				// fall back.
-				callerTargetMethod = callString.getMethods()[1];
-				LOGGER.warning("Falling back to method: " + callerTargetMethod);
-				fallback = true;
-			}
-
-			IR ir = engine.getCache().getIR(callerTargetMethod);
+			IR ir = engine.getCache().getIR(callString.getMethods()[0]);
 
 			if (ir == null) {
-				LOGGER.warning("Can't find IR for target: " + callerTargetMethod);
+				LOGGER.warning("Can't find IR for target: " + callString.getMethods()[0]);
 				continue; // next instance.
 			}
 
 			// get calls to the caller target.
-			// if we are falling back, use index 1, otherwise stick with index
-			// 0.
-			int callSiteRefsInx = fallback ? 1 : 0;
-			SSAAbstractInvokeInstruction[] calls = ir.getCalls(callSiteRefs[callSiteRefsInx]);
+			SSAAbstractInvokeInstruction[] calls = ir.getCalls(callString.getCallSiteRefs()[0]);
 			assert calls.length == 1 : "Are we only expecting one call here?";
 
 			// I guess we're only interested in ones with a single behavioral
@@ -787,8 +764,8 @@ public class StreamStateMachine {
 			if (calls[0].getNumberOfUses() == 2) {
 				// get the use of the first parameter.
 				int use = calls[0].getUse(1);
-				this.discoverLambdaSideEffects(engine, mod, Collections.singleton(instance), callerDeclaredTarget, ir,
-						use);
+				this.discoverLambdaSideEffects(engine, mod, Collections.singleton(instance),
+						callString.getMethods()[0].getReference(), ir, use);
 			}
 		}
 	}
@@ -870,16 +847,26 @@ public class StreamStateMachine {
 			try {
 				instanceKey = stream.getInstanceKey(this.trackedInstances, engine);
 			} catch (InstanceKeyNotFoundException e) {
-				LOGGER.log(Level.WARNING, "Encountered unreachable code while processing: " + stream.getCreation(), e);
+				LOGGER.log(Level.WARNING,
+						"Encountered unreachable code while processing: " + stream.getCreation() + ".", e);
 				stream.addStatusEntry(PreconditionFailure.STREAM_CODE_NOT_REACHABLE,
 						"Either pivital code isn't reachable for stream: " + stream.getCreation()
 								+ " or entry points are misconfigured.");
 				++skippedStreams;
 				continue; // next stream.
 			} catch (UnhandledCaseException e) {
-				String msg = "Encountered possible unhandled case (AIC #155) while processing: " + stream.getCreation();
+				String msg = "Encountered possible unhandled case (AIC #155) while processing: " + stream.getCreation()
+						+ ".";
 				LOGGER.log(Level.WARNING, msg, e);
 				stream.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, msg);
+				++skippedStreams;
+				continue; // next stream.
+			} catch (NoApplicationCodeExistsInCallStringsException e) {
+				LOGGER.log(Level.WARNING, "Did not encounter application code in call strings while processing: "
+						+ stream.getCreation() + ".", e);
+				stream.addStatusEntry(PreconditionFailure.NO_APPLICATION_CODE_IN_CALL_STRINGS,
+						"No application code in the call strings generated for stream: " + stream.getCreation()
+								+ " was found. The maximum call string length may need to be increased.");
 				++skippedStreams;
 				continue; // next stream.
 			}
@@ -919,7 +906,15 @@ public class StreamStateMachine {
 	}
 
 	public Collection<IDFAState> getStates(StreamAttributeTypestateRule rule, InstanceKey instanceKey) {
-		return this.originStreamToMergedTypeStateMap.get(instanceKey).get(rule);
+		Map<TypestateRule, Set<IDFAState>> mergedTypeState = this.originStreamToMergedTypeStateMap.get(instanceKey);
+
+		if (mergedTypeState == null) {
+			LOGGER.warning(
+					() -> "Can't find merged type state for rule: " + rule + " and instance key: " + instanceKey);
+			return Collections.emptySet();
+		}
+
+		return mergedTypeState.get(rule);
 	}
 
 	public Collection<InstanceKey> getTrackedInstances() {

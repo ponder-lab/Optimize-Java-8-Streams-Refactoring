@@ -2,18 +2,25 @@ package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 import static com.ibm.wala.ipa.callgraph.impl.Util.makeMainEntrypoints;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Scanner;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.BaseStream;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.IMethodBinding;
@@ -29,18 +36,24 @@ import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.cha.ClassHierarchyException;
+import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.SSAOptions;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.scope.JUnitEntryPoints;
 
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
+import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 @SuppressWarnings("restriction")
 public class StreamAnalyzer extends ASTVisitor {
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
+
+	private static final int N_FOR_STREAMS_DEFAULT = 2;
+
+	private static final String ENTRY_POINT_FILENAME = "entry_points.txt";
 
 	private static void addImplicitEntryPoints(Collection<Entrypoint> target, Iterable<Entrypoint> source) {
 		for (Entrypoint implicitEntryPoint : source)
@@ -63,6 +76,11 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	private Set<Stream> streamSet = new HashSet<>();
 
+	/**
+	 * The N to use for instances of {@link BaseStream} in the nCFA.
+	 */
+	private int nForStreams = N_FOR_STREAMS_DEFAULT;
+
 	public StreamAnalyzer() {
 		this(false);
 	}
@@ -71,9 +89,19 @@ public class StreamAnalyzer extends ASTVisitor {
 		super(visitDocTags);
 	}
 
+	public StreamAnalyzer(boolean visitDocTags, int nForStreams) {
+		super(visitDocTags);
+		this.nForStreams = nForStreams;
+	}
+
 	public StreamAnalyzer(boolean visitDocTags, boolean findImplicitEntryPoints) {
 		this(visitDocTags);
 		this.findImplicitEntryPoints = findImplicitEntryPoints;
+	}
+
+	public StreamAnalyzer(boolean visitDocTags, int nForStreams, boolean findImplicitEntryPoints) {
+		this(visitDocTags, findImplicitEntryPoints);
+		this.nForStreams = nForStreams;
 	}
 
 	public StreamAnalyzer(boolean visitDocTags, boolean findImplicitEntryPoints, boolean findImplicitTestEntryPoints,
@@ -83,12 +111,33 @@ public class StreamAnalyzer extends ASTVisitor {
 		this.findImplicitBenchmarkEntryPoints = findImplicitBenchmarkEntryPoints;
 	}
 
+	public StreamAnalyzer(boolean visitDocTags, int nForStreams, boolean findImplicitEntryPoints,
+			boolean findImplicitTestEntryPoints, boolean findImplicitBenchmarkEntryPoints) {
+		this(visitDocTags, findImplicitEntryPoints, findImplicitTestEntryPoints, findImplicitBenchmarkEntryPoints);
+		this.nForStreams = nForStreams;
+	}
+
+	/**
+	 * Analyzes this {@link StreamAnalyzer}'s streams.
+	 * 
+	 * @return A {@link Map} of project's analyzed along with the entry points used.
+	 * @see #analyze(Optional).
+	 */
+	public Map<IJavaProject, Collection<Entrypoint>> analyze() throws CoreException {
+		return this.analyze(Optional.empty());
+	}
+
 	/**
 	 * Analyzes this {@link StreamAnalyzer}'s streams.
 	 *
-	 * @return {@link Map} of project's analyzed along with the entry points used.
+	 * @param collector
+	 *            To exclude from the time certain parts of the analysis.
+	 * @return A {@link Map} of project's analyzed along with the entry points used.
+	 * @see #analyze().
 	 */
-	public Map<IJavaProject, Collection<Entrypoint>> analyze() throws CoreException {
+	public Map<IJavaProject, Collection<Entrypoint>> analyze(Optional<TimeCollector> collector) throws CoreException {
+		LOGGER.info(() -> "Using N = " + this.getNForStreams() + ".");
+
 		Map<IJavaProject, Collection<Entrypoint>> ret = new HashMap<>();
 
 		// collect the projects to be analyzed.
@@ -98,19 +147,23 @@ public class StreamAnalyzer extends ASTVisitor {
 		// process each project.
 		for (IJavaProject project : projectToStreams.keySet()) {
 			// create the analysis engine for the project.
+			// exclude from the analysis because the IR will be built here.
+
+			collector.ifPresent(TimeCollector::start);
 			EclipseProjectAnalysisEngine<InstanceKey> engine = null;
 			try {
-				engine = new EclipseProjectAnalysisEngine<>(project);
+				engine = new EclipseProjectAnalysisEngine<>(project, this.getNForStreams());
 				engine.buildAnalysisScope();
 			} catch (IOException e) {
 				LOGGER.log(Level.SEVERE, "Could not create analysis engine for: " + project.getElementName(), e);
 				throw new RuntimeException(e);
 			}
+			collector.ifPresent(TimeCollector::stop);
 
 			// build the call graph for the project.
 			Collection<Entrypoint> entryPoints = null;
 			try {
-				entryPoints = this.buildCallGraph(engine);
+				entryPoints = this.buildCallGraph(engine, collector);
 			} catch (IOException | CoreException | CancelException e) {
 				LOGGER.log(Level.SEVERE,
 						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
@@ -179,17 +232,36 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * @param engine
 	 *            The EclipseProjectAnalysisEngine for which to build the call
 	 *            graph.
+	 * @param collector
+	 *            A {@link TimeCollector} to exclude entry point finding.
 	 * @return The {@link Entrypoint}s used in building the {@link CallGraph}.
 	 */
-	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine)
+	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine,
+			Optional<TimeCollector> collector)
 			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
 		// if we haven't built the call graph yet.
 		if (!this.enginesWithBuiltCallGraphsToEntrypointsUsed.keySet().contains(engine)) {
-			// find explicit entry points.
-			Set<Entrypoint> entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
-			entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
+			// find entry points (but exclude it from the time).
+			collector.ifPresent(TimeCollector::start);
+			Set<Entrypoint> entryPoints;
 
-			if (this.findImplicitEntryPoints) {
+			// find the entry_points.txt in the project directory
+			File entryPointFile = getEntryPointsFile(engine.getProject().getResource().getLocation(),
+					ENTRY_POINT_FILENAME);
+
+			// if the file was found,
+			if (entryPointFile != null) {
+				// find explicit entry points from entry_points.txt. Ignore the explicit
+				// (annotation-based) entry points.
+				entryPoints = findEntryPointsFromFile(engine.getClassHierarchy(), entryPointFile);
+				entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point from file: " + ep));
+			} else {
+				// find explicit entry points.
+				entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
+				entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
+			}
+
+			if (this.shouldFindImplicitEntryPoints()) {
 				// also find implicit entry points.
 				Iterable<Entrypoint> mainEntrypoints = makeMainEntrypoints(engine.getClassHierarchy().getScope(),
 						engine.getClassHierarchy());
@@ -198,7 +270,7 @@ public class StreamAnalyzer extends ASTVisitor {
 				addImplicitEntryPoints(entryPoints, mainEntrypoints);
 			}
 
-			if (this.findImplicitTestEntryPoints) {
+			if (this.shouldFindImplicitTestEntryPoints()) {
 				// try to find test entry points.
 				Iterable<Entrypoint> jUnitEntryPoints = JUnitEntryPoints.make(engine.getClassHierarchy());
 
@@ -206,7 +278,7 @@ public class StreamAnalyzer extends ASTVisitor {
 				addImplicitEntryPoints(entryPoints, jUnitEntryPoints);
 			}
 
-			if (this.findImplicitBenchmarkEntryPoints) {
+			if (this.shouldFindImplicitBenchmarkEntryPoints()) {
 				// try to find benchmark entry points.
 				Set<Entrypoint> benchmarkEntryPoints = Util.findBenchmarkEntryPoints(engine.getClassHierarchy());
 
@@ -218,6 +290,8 @@ public class StreamAnalyzer extends ASTVisitor {
 				LOGGER.warning(() -> "Project: " + engine.getProject().getElementName() + " has no entry points.");
 				return entryPoints;
 			}
+
+			collector.ifPresent(TimeCollector::stop);
 
 			// set options.
 			AnalysisOptions options = engine.getDefaultOptions(entryPoints);
@@ -239,6 +313,53 @@ public class StreamAnalyzer extends ASTVisitor {
 		return this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine);
 	}
 
+	/**
+	 * Read entry_points.txt and get a set of method signatures, then, get entry
+	 * points by those signatures
+	 * 
+	 * @return a set of entry points
+	 * @throws IOException
+	 */
+	private static Set<Entrypoint> findEntryPointsFromFile(IClassHierarchy classHierarchy, File file)
+			throws IOException {
+		Set<String> signatures = new HashSet<>();
+
+		try (Scanner scanner = new Scanner(file)) {
+			while (scanner.hasNextLine()) {
+				String line = scanner.nextLine();
+				signatures.add(line);
+			}
+		}
+
+		Set<Entrypoint> entrypoints = Util.findEntryPoints(classHierarchy, signatures);
+		return entrypoints;
+	}
+
+	/**
+	 * Search entry_points.txt in project directory recursively.
+	 * 
+	 * @param directory
+	 *            Project directory.
+	 * @param fileName
+	 *            The target file.
+	 * @return null if the file does not exist and file if we found the file.
+	 */
+	private static File getEntryPointsFile(IPath directory, String fileName) {
+		// If file does not exist, find the file in upper level.
+		Path directoryPath = Paths.get(directory.toString());
+
+		File file;
+		do {
+			file = new File(directoryPath.resolve(ENTRY_POINT_FILENAME).toString());
+			directoryPath = directoryPath.getParent();
+		} while (!file.exists() && directoryPath != null);
+
+		if (!file.exists())
+			return null;
+		else
+			return file;
+	}
+
 	public Set<Stream> getStreamSet() {
 		return this.streamSet;
 	}
@@ -247,8 +368,24 @@ public class StreamAnalyzer extends ASTVisitor {
 		this.findImplicitEntryPoints = findImplicitEntryPoints;
 	}
 
+	public boolean shouldFindImplicitEntryPoints() {
+		return findImplicitEntryPoints;
+	}
+
 	public void setFindImplicitTestEntryPoints(boolean findImplicitTestEntryPoints) {
 		this.findImplicitTestEntryPoints = findImplicitTestEntryPoints;
+	}
+
+	public boolean shouldFindImplicitTestEntryPoints() {
+		return findImplicitTestEntryPoints;
+	}
+
+	public boolean shouldFindImplicitBenchmarkEntryPoints() {
+		return findImplicitBenchmarkEntryPoints;
+	}
+
+	public void setFindImplicitBenchmarkEntryPoints(boolean findImplicitBenchmarkEntryPoints) {
+		this.findImplicitBenchmarkEntryPoints = findImplicitBenchmarkEntryPoints;
 	}
 
 	/**
@@ -289,5 +426,13 @@ public class StreamAnalyzer extends ASTVisitor {
 		}
 
 		return super.visit(node);
+	}
+
+	public int getNForStreams() {
+		return nForStreams;
+	}
+
+	protected void setNForStreams(int nForStreams) {
+		this.nForStreams = nForStreams;
 	}
 }

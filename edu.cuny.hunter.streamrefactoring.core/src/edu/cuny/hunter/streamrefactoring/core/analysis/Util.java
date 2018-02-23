@@ -60,6 +60,7 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
 import com.ibm.wala.ssa.SSAPhiInstruction;
 import com.ibm.wala.ssa.Value;
+import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
@@ -264,6 +265,24 @@ public final class Util {
 		return result;
 	}
 
+	/**
+	 * find entry points from file
+	 */
+	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy, Set<String> signatures) {
+		final Set<Entrypoint> result = new HashSet<>();
+
+		for (IClass klass : classHierarchy)
+			if (!(isJDKClass(klass) || isLibraryClass(klass))) {
+				// iterate over all declared methods
+				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
+					if (signatures.contains(method.getSignature())) {
+						addEntryPoint(result, method, classHierarchy);
+					}
+				}
+			}
+		return result;
+	}
+
 	static Set<ITypeBinding> getAllInterfaces(ITypeBinding type) {
 		Set<ITypeBinding> ret = new HashSet<>();
 		ITypeBinding[] interfaces = type.getInterfaces();
@@ -374,98 +393,100 @@ public final class Util {
 				// Find the return type of the instruction.
 				TypeInference inference = TypeInference.make(node.getIR(), false);
 				Collection<TypeAbstraction> returnTypes = Util.getPossibleTypes(valueNumber, inference);
-				assert returnTypes.size() == 1 : "Not expecting more than one return type.";
-				TypeAbstraction rType = returnTypes.iterator().next();
 
-				PointType concreteType = new PointType(concreteClass);
+				// for each return type.
+				for (TypeAbstraction rType : returnTypes) {
+					PointType concreteType = new PointType(concreteClass);
 
-				if (rType.getType().getReference().equals(TypeReference.JavaLangObject)) {
-					IR ir = node.getIR();
-					IMethod method = ir.getMethod();
-					IBytecodeMethod bytecodeMethod = (IBytecodeMethod) method;
+					if (rType.getType().getReference().equals(TypeReference.JavaLangObject)) {
+						IR ir = node.getIR();
+						IMethod method = ir.getMethod();
+						IBytecodeMethod bytecodeMethod = (IBytecodeMethod) method;
 
-					// get the definition instruction.
-					SSAInvokeInstruction def = (SSAInvokeInstruction) node.getDU().getDef(valueNumber);
+						// get the definition instruction.
+						SSAInvokeInstruction def = (SSAInvokeInstruction) node.getDU().getDef(valueNumber);
 
-					// which index is it into the instruction array?
-					int instructionIndex = Util.indexOf(ir.getInstructions(), def);
+						// which index is it into the instruction array?
+						int instructionIndex = Util.indexOf(ir.getInstructions(), def);
 
-					// get the bytecode index.
-					int bytecodeIndex;
-					try {
-						bytecodeIndex = bytecodeMethod.getBytecodeIndex(instructionIndex);
-					} catch (InvalidClassFileException e) {
-						throw new IllegalArgumentException(
-								"Value number: " + valueNumber + " does not have a definition (" + instructionIndex
-										+ ") corresponding to a bytecode index.",
-								e);
-					}
-
-					// get the source information
-					SourcePosition sourcePosition;
-					try {
-						sourcePosition = method.getSourcePosition(bytecodeIndex);
-					} catch (InvalidClassFileException e) {
-						throw new IllegalArgumentException(
-								"Value number: " + valueNumber + " does not have bytecode index (" + bytecodeIndex
-										+ ") corresponding to a bytecode index.",
-								e);
-					}
-
-					// let's assume that the source file is in the same project.
-					IJavaProject enclosingProject = engine.getProject();
-
-					String fqn = method.getDeclaringClass().getName().getPackage().toUnicodeString() + "."
-							+ method.getDeclaringClass().getName().getClassName().toUnicodeString();
-					IType type = enclosingProject.findType(fqn.replace('/', '.'));
-					// FIXME: Need to (i) exclude from result timer and (ii) use the cache in
-					// ConvertToParallelStreamRefactoringProcessor #141.
-					CompilationUnit unit = RefactoringASTParser.parseWithASTProvider(type.getTypeRoot(), true, null);
-
-					// We have the CompilationUnit corresponding to the instruction's file. Can we
-					// correlate the instruction to the method invocation in the AST?
-					MethodInvocation correspondingInvocation = findCorrespondingMethodInvocation(unit, sourcePosition,
-							def.getCallSite().getDeclaredTarget());
-
-					// what does the method return?
-					ITypeBinding genericReturnType = correspondingInvocation.resolveMethodBinding().getReturnType();
-
-					// Is it compatible with the concrete type we got from WALA? But first, we'll
-					// need to translate the Eclipse JDT type over to a IClass.
-					TypeReference genericTypeRef = getJDTIdentifyMapper(correspondingInvocation)
-							.getTypeRef(genericReturnType);
-					IClass genericClass = node.getClassHierarchy().lookupClass(genericTypeRef);
-
-					boolean assignableFrom = node.getClassHierarchy().isAssignableFrom(genericClass, concreteClass);
-
-					// if it's assignable.
-					if (assignableFrom)
-						// would the ordering be consistent?
-						if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), concreteType,
-								orderingInference)) {
-							// if so, add it.
-							LOGGER.fine("Add type straight up: " + concreteType);
-							ret.add(concreteType);
-						} else {
-							// otherwise, would the generic type cause the
-							// ordering to be inconsistent?
-							PointType genericType = new PointType(genericClass);
-
-							if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), genericType,
-									orderingInference)) {
-								LOGGER.fine("Defaulting to generic type: " + genericType);
-								ret.add(genericType);
-							} else {
-								// fall back to the concrete type.
-								LOGGER.fine(
-										"Defaulting to concrete type eventhough it isn't consistent: " + concreteType);
-								ret.add(concreteType);
-							}
+						// get the bytecode index.
+						int bytecodeIndex;
+						try {
+							bytecodeIndex = bytecodeMethod.getBytecodeIndex(instructionIndex);
+						} catch (InvalidClassFileException e) {
+							throw new IllegalArgumentException(
+									"Value number: " + valueNumber + " does not have a definition (" + instructionIndex
+											+ ") corresponding to a bytecode index.",
+									e);
 						}
-				} else {
-					// just add it.
-					LOGGER.fine("Add type straight up: " + concreteType);
-					ret.add(concreteType);
+
+						// get the source information
+						SourcePosition sourcePosition;
+						try {
+							sourcePosition = method.getSourcePosition(bytecodeIndex);
+						} catch (InvalidClassFileException e) {
+							throw new IllegalArgumentException(
+									"Value number: " + valueNumber + " does not have bytecode index (" + bytecodeIndex
+											+ ") corresponding to a bytecode index.",
+									e);
+						}
+
+						// let's assume that the source file is in the same project.
+						IJavaProject enclosingProject = engine.getProject();
+
+						String fqn = method.getDeclaringClass().getName().getPackage().toUnicodeString() + "."
+								+ method.getDeclaringClass().getName().getClassName().toUnicodeString();
+						IType type = enclosingProject.findType(fqn.replace('/', '.'));
+						// FIXME: Need to (i) exclude from result timer and (ii) use the cache in
+						// ConvertToParallelStreamRefactoringProcessor #141.
+						CompilationUnit unit = RefactoringASTParser.parseWithASTProvider(type.getTypeRoot(), true,
+								null);
+
+						// We have the CompilationUnit corresponding to the instruction's file. Can we
+						// correlate the instruction to the method invocation in the AST?
+						MethodInvocation correspondingInvocation = findCorrespondingMethodInvocation(unit,
+								sourcePosition, def.getCallSite().getDeclaredTarget());
+
+						// what does the method return?
+						ITypeBinding genericReturnType = correspondingInvocation.resolveMethodBinding().getReturnType();
+
+						// Is it compatible with the concrete type we got from WALA? But first, we'll
+						// need to translate the Eclipse JDT type over to a IClass.
+						TypeReference genericTypeRef = getJDTIdentifyMapper(correspondingInvocation)
+								.getTypeRef(genericReturnType);
+						IClass genericClass = node.getClassHierarchy().lookupClass(genericTypeRef);
+
+						boolean assignableFrom = node.getClassHierarchy().isAssignableFrom(genericClass, concreteClass);
+
+						// if it's assignable.
+						if (assignableFrom)
+							// would the ordering be consistent?
+							if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), concreteType,
+									orderingInference)) {
+								// if so, add it.
+								LOGGER.fine("Add type straight up: " + concreteType);
+								ret.add(concreteType);
+							} else {
+								// otherwise, would the generic type cause the
+								// ordering to be inconsistent?
+								PointType genericType = new PointType(genericClass);
+
+								if (wouldOrderingBeConsistent(Collections.unmodifiableCollection(ret), genericType,
+										orderingInference)) {
+									LOGGER.fine("Defaulting to generic type: " + genericType);
+									ret.add(genericType);
+								} else {
+									// fall back to the concrete type.
+									LOGGER.fine("Defaulting to concrete type eventhough it isn't consistent: "
+											+ concreteType);
+									ret.add(concreteType);
+								}
+							}
+					} else {
+						// just add it.
+						LOGGER.fine("Add type straight up: " + concreteType);
+						ret.add(concreteType);
+					}
 				}
 			}
 		}
@@ -548,6 +569,7 @@ public final class Util {
 		else
 			return false;
 	}
+  
 
 	public static boolean isBaseStream(IClass clazz) {
 		return Util.isType(clazz, "java/util/stream", "BaseStream");
@@ -665,5 +687,44 @@ public final class Util {
 	}
 
 	private Util() {
+	}
+
+	/**
+	 * If it's a ctor, return the declaring class, otherwise, return the return
+	 * type.
+	 * 
+	 * @param method
+	 *            The {@link IMethod} in question.
+	 * @return The declaring class of target if target is a ctor and the return type
+	 *         otherwise.
+	 */
+	public static TypeReference getEvaluationType(IMethod method) {
+		// if it's a ctor.
+		if (method.isInit())
+			// then, use the declaring type.
+			return method.getDeclaringClass().getReference();
+		else // otherwise.
+				// use the return type.
+			return method.getReturnType();
+	}
+  
+	/**
+	 * Returns the index of the first {@link IMethod} in methods that is client
+	 * code.
+	 * 
+	 * @param methods
+	 *            The {@link IMethod}s in question.
+	 * @return The index of the first {@link IMethod} that is client code and -1 if
+	 *         none found.
+	 */
+	public static int findIndexOfFirstClientMethod(IMethod[] methods) {
+		for (int i = 0; i < methods.length; i++) {
+			IMethod meth = methods[i];
+	
+			if (meth.getDeclaringClass().getClassLoader().getReference().equals(ClassLoaderReference.Application))
+				return i;
+		}
+	
+		return -1; // not found.
 	}
 }

@@ -1,9 +1,14 @@
 package edu.cuny.hunter.streamrefactoring.eval.handlers;
 
+import static edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames.LOGGER_NAME;
 import static edu.cuny.hunter.streamrefactoring.core.utils.Util.createConvertToParallelStreamRefactoringProcessor;
 
+import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -12,7 +17,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import org.apache.commons.csv.CSVFormat;
@@ -23,6 +30,7 @@ import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
@@ -73,14 +81,26 @@ import net.sourceforge.metrics.core.sources.Dispatcher;
  */
 public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractHandler {
 
+	private static final String EVALUATION_PROPERTIES_FILE_NAME = "eval.properties";
+
+	private static final Logger LOGGER = Logger.getLogger(LOGGER_NAME);
+
 	private static final boolean BUILD_WORKSPACE = false;
+
 	private static final boolean FIND_IMPLICIT_BENCHMARK_ENTRYPOINTS_DEFAULT = false;
 	private static final String FIND_IMPLICIT_BENCHMARK_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitBenchmarkEntrypoints";
+
 	private static final boolean FIND_IMPLICIT_ENTRYPOINTS_DEFAULT = false;
 	private static final String FIND_IMPLICIT_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitEntrypoints";
+
 	private static final boolean FIND_IMPLICIT_TEST_ENTRYPOINTS_DEFAULT = false;
 	private static final String FIND_IMPLICIT_TEST_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitTestEntrypoints";
+
+	private static final int N_TO_USE_FOR_STREAMS_DEFAULT = 2;
+	private static final String N_TO_USE_FOR_STREAMS_PROPERTY_KEY = "nToUseForStreams";
+
 	private static final int LOGGING_LEVEL = IStatus.INFO;
+
 	private static final boolean PERFORM_CHANGE_DEFAULT = false;
 	private static final String PERFORM_CHANGE_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.performChange";
 
@@ -173,6 +193,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter streamExecutionModePrinter = null;
 			CSVPrinter streamOrderingPrinter = null;
 			CSVPrinter entryPointsPrinter = null;
+			PrintWriter entryPointsTXTPrinter = null;
 
 			ConvertToParallelStreamRefactoringProcessor processor = null;
 
@@ -187,8 +208,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 				IJavaProject[] javaProjects = Util.getSelectedJavaProjectsFromEvent(event);
 
 				List<String> resultsHeader = new ArrayList<>(
-						Arrays.asList("subject", "SLOC", "#entrypoints", "#streams", "#optimization available streams",
-								"#optimizable streams", "#failed preconditions"));
+						Arrays.asList("subject", "SLOC", "#entrypoints", "N", "#streams",
+								"#optimization available streams", "#optimizable streams", "#failed preconditions"));
 
 				for (Refactoring refactoring : Refactoring.values())
 					resultsHeader.add(refactoring.toString());
@@ -231,6 +252,13 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 				entryPointsPrinter = createCSVPrinter("entry_points.csv",
 						new String[] { "subject", "method", "type FQN" });
 
+				entryPointsTXTPrinter = new PrintWriter("entry_points.txt");
+
+				// set up analysis parameters for all projects.
+				boolean shouldFindImplicitEntrypoints = shouldFindImplicitEntrypoints();
+				boolean shouldFindImplicitTestEntrypoints = shouldFindImplicitTestEntrypoints();
+				boolean shouldFindImplicitBenchmarkEntrypoints = shouldFindImplicitBenchmarkEntrypoints();
+
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
 						throw new IllegalStateException(
@@ -242,12 +270,14 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					// lines of code
 					resultsPrinter.print(getProjectLinesOfCode(javaProject));
 
+					// set up analysis for single project.
 					TimeCollector resultsTimeCollector = new TimeCollector();
+					int nToUseForStreams = getNForStreams(javaProject);
 
 					resultsTimeCollector.start();
 					processor = createConvertToParallelStreamRefactoringProcessor(new IJavaProject[] { javaProject },
-							this.shouldFindImplicitEntrypoints(), this.shouldFindImplicitTestEntrypoints(),
-							this.shouldFindImplicitBenchmarkEntrypoints(), Optional.of(monitor));
+							nToUseForStreams, shouldFindImplicitEntrypoints, shouldFindImplicitTestEntrypoints,
+							shouldFindImplicitBenchmarkEntrypoints, Optional.of(monitor));
 					resultsTimeCollector.stop();
 					ConvertToParallelStreamRefactoringProcessor.setLoggingLevel(LOGGING_LEVEL);
 
@@ -265,7 +295,11 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						com.ibm.wala.classLoader.IMethod method = entryPoint.getMethod();
 						entryPointsPrinter.printRecord(javaProject.getElementName(), method.getSignature(),
 								method.getDeclaringClass().getName());
+						entryPointsTXTPrinter.println(method.getSignature());
 					}
+
+					// N.
+					resultsPrinter.print(nToUseForStreams);
 
 					// #streams.
 					resultsPrinter.print(processor.getStreamSet().size());
@@ -442,6 +476,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						streamOrderingPrinter.close();
 					if (entryPointsPrinter != null)
 						entryPointsPrinter.close();
+					if (entryPointsTXTPrinter != null)
+						entryPointsTXTPrinter.close();
 
 					// clear cache.
 					if (processor != null)
@@ -475,7 +511,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		return ret;
 	}
 
-	private boolean shouldFindImplicitBenchmarkEntrypoints() {
+	private static boolean shouldFindImplicitBenchmarkEntrypoints() {
 		String findImplicitBenchmarkEntrypoints = System.getenv(FIND_IMPLICIT_BENCHMARK_ENTRYPOINTS_PROPERTY_KEY);
 
 		if (findImplicitBenchmarkEntrypoints == null)
@@ -484,7 +520,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			return Boolean.valueOf(findImplicitBenchmarkEntrypoints);
 	}
 
-	private boolean shouldFindImplicitEntrypoints() {
+	private static boolean shouldFindImplicitEntrypoints() {
 		String findImplicitEntrypoits = System.getenv(FIND_IMPLICIT_ENTRYPOINTS_PROPERTY_KEY);
 
 		if (findImplicitEntrypoits == null)
@@ -493,7 +529,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			return Boolean.valueOf(findImplicitEntrypoits);
 	}
 
-	private boolean shouldFindImplicitTestEntrypoints() {
+	private static boolean shouldFindImplicitTestEntrypoints() {
 		String findImplicitTestEntrypoints = System.getenv(FIND_IMPLICIT_TEST_ENTRYPOINTS_PROPERTY_KEY);
 
 		if (findImplicitTestEntrypoints == null)
@@ -502,12 +538,40 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			return Boolean.valueOf(findImplicitTestEntrypoints);
 	}
 
-	private boolean shouldPerformChange() {
+	private static boolean shouldPerformChange() {
 		String performChangePropertyValue = System.getenv(PERFORM_CHANGE_PROPERTY_KEY);
 
 		if (performChangePropertyValue == null)
 			return PERFORM_CHANGE_DEFAULT;
 		else
 			return Boolean.valueOf(performChangePropertyValue);
+	}
+
+	private static int getNForStreams(IJavaProject project) throws IOException, JavaModelException {
+		Properties properties = new Properties();
+		IPath filePath = project.getCorrespondingResource().getLocation().append(EVALUATION_PROPERTIES_FILE_NAME);
+		File file = filePath.toFile();
+
+		if (file.exists())
+			try (Reader reader = new FileReader(file)) {
+				properties.load(reader);
+
+				String nToUseForStreams = properties.getProperty(N_TO_USE_FOR_STREAMS_PROPERTY_KEY);
+
+				if (nToUseForStreams == null) {
+					int ret = N_TO_USE_FOR_STREAMS_DEFAULT;
+					LOGGER.info("Using default N for streams: " + ret + ".");
+					return ret;
+				} else {
+					int ret = Integer.valueOf(nToUseForStreams);
+					LOGGER.info("Using properties file N for streams: " + ret + ".");
+					return ret;
+				}
+			}
+		else {
+			int ret = N_TO_USE_FOR_STREAMS_DEFAULT;
+			LOGGER.info("Using default N for streams: " + ret + ".");
+			return ret;
+		}
 	}
 }

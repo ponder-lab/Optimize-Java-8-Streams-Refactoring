@@ -78,6 +78,8 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	 */
 	private static int loggingLevel = IStatus.WARNING;
 
+	private static final int N_FOR_STREAMS_DEFAULT = 2;
+
 	@SuppressWarnings("unused")
 	private static final GroupCategorySet SET_CONVERT_STREAM_TO_PARALLEL = new GroupCategorySet(
 			new GroupCategory("edu.cuny.hunter.streamrefactoring", //$NON-NLS-1$
@@ -142,6 +144,8 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	private boolean useImplicitTestEntrypoints = false;
 
+	private int nForStreams = N_FOR_STREAMS_DEFAULT;
+
 	public ConvertToParallelStreamRefactoringProcessor() throws JavaModelException {
 		this(null, null, false, true, false, false, Optional.empty());
 	}
@@ -168,9 +172,28 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	}
 
 	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
+			final CodeGenerationSettings settings, boolean layer, int nForStreams, boolean useImplicitEntrypoints,
+			boolean useImplicitTestEntrypoints, boolean useImplicitBenchmarkEntrypoints,
+			Optional<IProgressMonitor> monitor) throws JavaModelException {
+		this(javaProjects, settings, layer, useImplicitEntrypoints, useImplicitTestEntrypoints,
+				useImplicitBenchmarkEntrypoints, monitor);
+		try {
+			this.nForStreams = nForStreams;
+		} finally {
+			monitor.ifPresent(IProgressMonitor::done);
+		}
+	}
+
+	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
 			final CodeGenerationSettings settings, boolean useImplicitJoinpoints, Optional<IProgressMonitor> monitor)
 			throws JavaModelException {
 		this(javaProjects, settings, false, useImplicitJoinpoints, false, false, monitor);
+	}
+
+	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
+			final CodeGenerationSettings settings, int nForStreams, boolean useImplicitJoinpoints,
+			Optional<IProgressMonitor> monitor) throws JavaModelException {
+		this(javaProjects, settings, false, nForStreams, useImplicitJoinpoints, false, false, monitor);
 	}
 
 	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
@@ -196,7 +219,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 			SubMonitor subMonitor = SubMonitor.convert(monitor, Messages.CheckingPreconditions,
 					this.getJavaProjects().length * 1000);
 			final RefactoringStatus status = new RefactoringStatus();
-			StreamAnalyzer analyzer = new StreamAnalyzer(false, this.getUseImplicitEntrypoints(),
+			StreamAnalyzer analyzer = new StreamAnalyzer(false, this.getNForStreams(), this.getUseImplicitEntrypoints(),
 					this.getUseImplicitTestEntrypoints(), this.getUseImplicitBenchmarkEntrypoints());
 			this.setStreamSet(analyzer.getStreamSet());
 
@@ -217,7 +240,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 			}
 
 			// analyze and set entry points.
-			this.projectToEntryPoints = analyzer.analyze();
+			this.projectToEntryPoints = analyzer.analyze(Optional.of(this.getExcludedTimeCollector()));
 
 			// map empty set to unprocessed projects.
 			for (IJavaProject project : this.getJavaProjects())
@@ -249,6 +272,14 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		} finally {
 			monitor.done();
 		}
+	}
+
+	public int getNForStreams() {
+		return this.nForStreams;
+	}
+
+	public void setNForStreams(int nForStreams) {
+		this.nForStreams = nForStreams;
 	}
 
 	@Override

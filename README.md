@@ -15,6 +15,8 @@ This prototype refactoring plug-in for [Eclipse](http://eclipse.org) represents 
 
 Explicit entry points may be marked using the appropriate annotation found in the corresponding [annotation library][annotations].
 
+Explicit entry points can also be marked using importing entry points from a txt file. Each time we run the tool, a txt file named "entry_points.txt" is generated and contained in the current directory of workspace. Then,  before next time we run tool to evaluate the same project, move or copy "entry_points.txt" into project directory or workspace directory of the project. While evaluating the project, the tool will ignore the explicit entry points which are added manually and recognize the explicit entry points through the file automatically.
+
 ### Limitations
 
 There are currently some limitations with embedded streams (i.e., streams declared as part of lambda expressions sent as arguments to intermediate stream operations). This is due to model differences between the Eclipse JDT and WALA. See [#155](https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/155) for details.
@@ -39,10 +41,17 @@ You should have the following projects in your workspace:
 
 ### Running the Evaluator
 
-[annotations]: https://github.com/ponder-lab/edu.cuny.hunter.streamrefactoring.annotations
+#### Configuring the Evaluation
+
+A file named `eval.properties` can be placed at the project root. The following keys are available:
+
+Key              | Value Type | Description
+---------------- | ---------- | ----------
+nToUseForStreams | Integer    | The value of N to use while building the nCFA for stream types.
 
 ### Further Information
 
 See the [wiki][wiki] for further information.
 
 [wiki]: https://github.com/ponder-lab/Java-8-Stream-Refactoring/wiki
+[annotations]: https://github.com/ponder-lab/edu.cuny.hunter.streamrefactoring.annotations
