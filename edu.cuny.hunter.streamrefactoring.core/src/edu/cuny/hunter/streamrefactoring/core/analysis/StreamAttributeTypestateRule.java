@@ -32,6 +32,29 @@ public abstract class StreamAttributeTypestateRule extends TypestateRule {
 		bottomState = addState(BOTTOM_STATE_NAME, true);
 	}
 
+	protected IDispatchEvent addEvent(String eventName, String eventPattern) {
+		IDispatchEventImpl event = new IDispatchEventImpl();
+
+		event.setName(eventName);
+		event.setPattern(eventPattern);
+
+		this.getTypeStateAutomaton().addEvent(event);
+		return event;
+	}
+
+	protected void addPossibleAttributes(Stream stream, Collection<IDFAState> states) {
+		Objects.requireNonNull(stream);
+		Objects.requireNonNull(states);
+	}
+
+	protected IDFAState addState(Enum<?> constant) {
+		return this.addState(constant.name().toLowerCase());
+	}
+
+	protected IDFAState addState(String stateName) {
+		return addState(stateName, false);
+	}
+
 	protected IDFAState addState(String stateName, boolean initialState) {
 		IDFAState state = new DFAState();
 
@@ -53,28 +76,5 @@ public abstract class StreamAttributeTypestateRule extends TypestateRule {
 
 		this.getTypeStateAutomaton().addTransition(transition);
 		return transition;
-	}
-
-	protected IDispatchEvent addEvent(String eventName, String eventPattern) {
-		IDispatchEventImpl event = new IDispatchEventImpl();
-
-		event.setName(eventName);
-		event.setPattern(eventPattern);
-
-		this.getTypeStateAutomaton().addEvent(event);
-		return event;
-	}
-
-	protected IDFAState addState(String stateName) {
-		return addState(stateName, false);
-	}
-
-	protected IDFAState addState(Enum<?> constant) {
-		return this.addState(constant.name().toLowerCase());
-	}
-
-	protected void addPossibleAttributes(Stream stream, Collection<IDFAState> states) {
-		Objects.requireNonNull(stream);
-		Objects.requireNonNull(states);
 	}
 }

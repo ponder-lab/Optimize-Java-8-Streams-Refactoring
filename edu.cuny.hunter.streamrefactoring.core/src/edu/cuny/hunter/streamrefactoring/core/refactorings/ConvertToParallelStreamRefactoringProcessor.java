@@ -125,6 +125,12 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	/** Does the refactoring use a working copy layer? */
 	private final boolean layer;
 
+	private int nForStreams = N_FOR_STREAMS_DEFAULT;
+
+	private int numberOfProcessedStreamInstances;
+
+	private int numberOfSkippedStreamInstances;
+
 	private Map<IJavaProject, Collection<Entrypoint>> projectToEntryPoints;
 
 	private SearchEngine searchEngine = new SearchEngine();
@@ -143,12 +149,6 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	private boolean useImplicitEntrypoints = true;
 
 	private boolean useImplicitTestEntrypoints = false;
-
-	private int nForStreams = N_FOR_STREAMS_DEFAULT;
-
-	private int numberOfProcessedStreamInstances;
-
-	private int numberOfSkippedStreamInstances;
 
 	public ConvertToParallelStreamRefactoringProcessor() throws JavaModelException {
 		this(null, null, false, true, false, false, Optional.empty());
@@ -280,14 +280,6 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		} finally {
 			monitor.done();
 		}
-	}
-
-	public int getNForStreams() {
-		return this.nForStreams;
-	}
-
-	public void setNForStreams(int nForStreams) {
-		this.nForStreams = nForStreams;
 	}
 
 	@Override
@@ -448,6 +440,18 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		return this.javaProjects;
 	}
 
+	public int getNForStreams() {
+		return this.nForStreams;
+	}
+
+	public int getNumberOfProcessedStreamInstances() {
+		return this.numberOfProcessedStreamInstances;
+	}
+
+	public int getNumberOfSkippedStreamInstances() {
+		return this.numberOfSkippedStreamInstances;
+	}
+
 	public Set<Stream> getOptimizableStreams() {
 		return this.getStreamSet().parallelStream().filter(s -> !s.getStatus().hasError()).collect(Collectors.toSet());
 	}
@@ -535,23 +539,19 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		manager.manage(rewrite.getCu(), change);
 	}
 
-	protected void setStreamSet(Set<Stream> streamSet) {
-		this.streamSet = streamSet;
-	}
-
-	public int getNumberOfProcessedStreamInstances() {
-		return this.numberOfProcessedStreamInstances;
+	public void setNForStreams(int nForStreams) {
+		this.nForStreams = nForStreams;
 	}
 
 	protected void setNumberOfProcessedStreamInstances(int numberOfProcessedStreamInstances) {
 		this.numberOfProcessedStreamInstances = numberOfProcessedStreamInstances;
 	}
 
-	public int getNumberOfSkippedStreamInstances() {
-		return this.numberOfSkippedStreamInstances;
-	}
-
 	protected void setNumberOfSkippedStreamInstances(int numberOfSkippedStreamInstances) {
 		this.numberOfSkippedStreamInstances = numberOfSkippedStreamInstances;
+	}
+
+	protected void setStreamSet(Set<Stream> streamSet) {
+		this.streamSet = streamSet;
 	}
 }

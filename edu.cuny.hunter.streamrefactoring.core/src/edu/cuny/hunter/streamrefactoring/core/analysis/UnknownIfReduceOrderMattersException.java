@@ -7,17 +7,17 @@ public class UnknownIfReduceOrderMattersException extends Exception {
 		super();
 	}
 
-	public UnknownIfReduceOrderMattersException(String message, Throwable cause, boolean enableSuppression,
-			boolean writableStackTrace) {
-		super(message, cause, enableSuppression, writableStackTrace);
+	public UnknownIfReduceOrderMattersException(String message) {
+		super(message);
 	}
 
 	public UnknownIfReduceOrderMattersException(String message, Throwable cause) {
 		super(message, cause);
 	}
 
-	public UnknownIfReduceOrderMattersException(String message) {
-		super(message);
+	public UnknownIfReduceOrderMattersException(String message, Throwable cause, boolean enableSuppression,
+			boolean writableStackTrace) {
+		super(message, cause, enableSuppression, writableStackTrace);
 	}
 
 	public UnknownIfReduceOrderMattersException(Throwable cause) {

@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package edu.cuny.hunter.streamrefactoring.core.descriptors;
 
@@ -19,14 +19,14 @@ public class ConvertStreamToParallelRefactoringDescriptor extends JavaRefactorin
 		super(REFACTORING_ID);
 	}
 
-	public ConvertStreamToParallelRefactoringDescriptor(String id, String project, String description,
-			String comment, @SuppressWarnings("rawtypes") Map arguments, int flags) {
-		super(id, project, description, comment, arguments, flags);
+	public ConvertStreamToParallelRefactoringDescriptor(String project, String description, String comment,
+			@SuppressWarnings("rawtypes") Map arguments, int flags) {
+		this(REFACTORING_ID, project, description, comment, arguments, flags);
 	}
 
-	public ConvertStreamToParallelRefactoringDescriptor(String project, String description,
-			String comment, @SuppressWarnings("rawtypes") Map arguments, int flags) {
-		this(REFACTORING_ID, project, description, comment, arguments, flags);
+	public ConvertStreamToParallelRefactoringDescriptor(String id, String project, String description, String comment,
+			@SuppressWarnings("rawtypes") Map arguments, int flags) {
+		super(id, project, description, comment, arguments, flags);
 	}
 
 }

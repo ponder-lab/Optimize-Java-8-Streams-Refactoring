@@ -1,5 +1,5 @@
 /**
- * 
+ *
  */
 package edu.cuny.hunter.streamrefactoring.ui.messages;
 

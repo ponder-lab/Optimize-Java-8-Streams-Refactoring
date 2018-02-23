@@ -81,7 +81,6 @@ import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.OrdinalSet;
 import com.ibm.wala.util.strings.Atom;
 
-import edu.cuny.hunter.streamrefactoring.core.analysis.StreamStateMachine.Statistics;
 import edu.cuny.hunter.streamrefactoring.core.safe.ModifiedBenignOracle;
 import edu.cuny.hunter.streamrefactoring.core.safe.NoApplicationCodeExistsInCallStringsException;
 import edu.cuny.hunter.streamrefactoring.core.safe.TypestateSolverFactory;
@@ -951,7 +950,7 @@ public class StreamStateMachine {
 			throws PropertiesException, CancelException, IOException, CoreException, NoniterableException,
 			NoninstantiableException, CannotExtractSpliteratorException, InvalidClassFileException {
 		Map<TypestateRule, Statistics> ret = new HashMap<>();
-		
+
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
 
 		PropertiesManager manager = PropertiesManager.initFromMap(Collections.emptyMap());

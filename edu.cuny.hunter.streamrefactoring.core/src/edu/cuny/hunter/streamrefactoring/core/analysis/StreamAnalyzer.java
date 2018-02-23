@@ -51,16 +51,63 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 @SuppressWarnings("restriction")
 public class StreamAnalyzer extends ASTVisitor {
 
+	private static final String ENTRY_POINT_FILENAME = "entry_points.txt";
+
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private static final int N_FOR_STREAMS_DEFAULT = 2;
-
-	private static final String ENTRY_POINT_FILENAME = "entry_points.txt";
 
 	private static void addImplicitEntryPoints(Collection<Entrypoint> target, Iterable<Entrypoint> source) {
 		for (Entrypoint implicitEntryPoint : source)
 			if (target.add(implicitEntryPoint))
 				LOGGER.info(() -> "Adding implicit entry point: " + implicitEntryPoint);
+	}
+
+	/**
+	 * Read entry_points.txt and get a set of method signatures, then, get entry
+	 * points by those signatures
+	 *
+	 * @return a set of entry points
+	 * @throws IOException
+	 */
+	private static Set<Entrypoint> findEntryPointsFromFile(IClassHierarchy classHierarchy, File file)
+			throws IOException {
+		Set<String> signatures = new HashSet<>();
+
+		try (Scanner scanner = new Scanner(file)) {
+			while (scanner.hasNextLine()) {
+				String line = scanner.nextLine();
+				signatures.add(line);
+			}
+		}
+
+		Set<Entrypoint> entrypoints = Util.findEntryPoints(classHierarchy, signatures);
+		return entrypoints;
+	}
+
+	/**
+	 * Search entry_points.txt in project directory recursively.
+	 *
+	 * @param directory
+	 *            Project directory.
+	 * @param fileName
+	 *            The target file.
+	 * @return null if the file does not exist and file if we found the file.
+	 */
+	private static File getEntryPointsFile(IPath directory, String fileName) {
+		// If file does not exist, find the file in upper level.
+		Path directoryPath = Paths.get(directory.toString());
+
+		File file;
+		do {
+			file = new File(directoryPath.resolve(ENTRY_POINT_FILENAME).toString());
+			directoryPath = directoryPath.getParent();
+		} while (!file.exists() && directoryPath != null);
+
+		if (!file.exists())
+			return null;
+		else
+			return file;
 	}
 
 	/**
@@ -76,8 +123,6 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	private boolean findImplicitTestEntryPoints;
 
-	private Set<Stream> streamSet = new HashSet<>();
-
 	/**
 	 * The N to use for instances of {@link BaseStream} in the nCFA.
 	 */
@@ -87,6 +132,8 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	private int numberOfSkippedStreamInstances;
 
+	private Set<Stream> streamSet = new HashSet<>();
+
 	public StreamAnalyzer() {
 		this(false);
 	}
@@ -95,19 +142,9 @@ public class StreamAnalyzer extends ASTVisitor {
 		super(visitDocTags);
 	}
 
-	public StreamAnalyzer(boolean visitDocTags, int nForStreams) {
-		super(visitDocTags);
-		this.nForStreams = nForStreams;
-	}
-
 	public StreamAnalyzer(boolean visitDocTags, boolean findImplicitEntryPoints) {
 		this(visitDocTags);
 		this.findImplicitEntryPoints = findImplicitEntryPoints;
-	}
-
-	public StreamAnalyzer(boolean visitDocTags, int nForStreams, boolean findImplicitEntryPoints) {
-		this(visitDocTags, findImplicitEntryPoints);
-		this.nForStreams = nForStreams;
 	}
 
 	public StreamAnalyzer(boolean visitDocTags, boolean findImplicitEntryPoints, boolean findImplicitTestEntryPoints,
@@ -115,6 +152,16 @@ public class StreamAnalyzer extends ASTVisitor {
 		this(visitDocTags, findImplicitEntryPoints);
 		this.findImplicitTestEntryPoints = findImplicitTestEntryPoints;
 		this.findImplicitBenchmarkEntryPoints = findImplicitBenchmarkEntryPoints;
+	}
+
+	public StreamAnalyzer(boolean visitDocTags, int nForStreams) {
+		super(visitDocTags);
+		this.nForStreams = nForStreams;
+	}
+
+	public StreamAnalyzer(boolean visitDocTags, int nForStreams, boolean findImplicitEntryPoints) {
+		this(visitDocTags, findImplicitEntryPoints);
+		this.nForStreams = nForStreams;
 	}
 
 	public StreamAnalyzer(boolean visitDocTags, int nForStreams, boolean findImplicitEntryPoints,
@@ -125,7 +172,7 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	/**
 	 * Analyzes this {@link StreamAnalyzer}'s streams.
-	 * 
+	 *
 	 * @return A {@link Map} of project's analyzed along with the entry points used.
 	 * @see #analyze(Optional).
 	 */
@@ -326,79 +373,56 @@ public class StreamAnalyzer extends ASTVisitor {
 		return this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine);
 	}
 
-	/**
-	 * Read entry_points.txt and get a set of method signatures, then, get entry
-	 * points by those signatures
-	 * 
-	 * @return a set of entry points
-	 * @throws IOException
-	 */
-	private static Set<Entrypoint> findEntryPointsFromFile(IClassHierarchy classHierarchy, File file)
-			throws IOException {
-		Set<String> signatures = new HashSet<>();
-
-		try (Scanner scanner = new Scanner(file)) {
-			while (scanner.hasNextLine()) {
-				String line = scanner.nextLine();
-				signatures.add(line);
-			}
-		}
-
-		Set<Entrypoint> entrypoints = Util.findEntryPoints(classHierarchy, signatures);
-		return entrypoints;
+	public int getNForStreams() {
+		return nForStreams;
 	}
 
-	/**
-	 * Search entry_points.txt in project directory recursively.
-	 * 
-	 * @param directory
-	 *            Project directory.
-	 * @param fileName
-	 *            The target file.
-	 * @return null if the file does not exist and file if we found the file.
-	 */
-	private static File getEntryPointsFile(IPath directory, String fileName) {
-		// If file does not exist, find the file in upper level.
-		Path directoryPath = Paths.get(directory.toString());
+	public int getNumberOfProcessedStreamInstances() {
+		return this.numberOfProcessedStreamInstances;
+	}
 
-		File file;
-		do {
-			file = new File(directoryPath.resolve(ENTRY_POINT_FILENAME).toString());
-			directoryPath = directoryPath.getParent();
-		} while (!file.exists() && directoryPath != null);
-
-		if (!file.exists())
-			return null;
-		else
-			return file;
+	public int getNumberOfSkippedStreamInstances() {
+		return this.numberOfSkippedStreamInstances;
 	}
 
 	public Set<Stream> getStreamSet() {
 		return this.streamSet;
 	}
 
-	public void setFindImplicitEntryPoints(boolean findImplicitEntryPoints) {
-		this.findImplicitEntryPoints = findImplicitEntryPoints;
+	public void setFindImplicitBenchmarkEntryPoints(boolean findImplicitBenchmarkEntryPoints) {
+		this.findImplicitBenchmarkEntryPoints = findImplicitBenchmarkEntryPoints;
 	}
 
-	public boolean shouldFindImplicitEntryPoints() {
-		return findImplicitEntryPoints;
+	public void setFindImplicitEntryPoints(boolean findImplicitEntryPoints) {
+		this.findImplicitEntryPoints = findImplicitEntryPoints;
 	}
 
 	public void setFindImplicitTestEntryPoints(boolean findImplicitTestEntryPoints) {
 		this.findImplicitTestEntryPoints = findImplicitTestEntryPoints;
 	}
 
-	public boolean shouldFindImplicitTestEntryPoints() {
-		return findImplicitTestEntryPoints;
+	protected void setNForStreams(int nForStreams) {
+		this.nForStreams = nForStreams;
+	}
+
+	protected void setNumberOfProcessedStreamInstances(int numberOfProcessedStreamInstances) {
+		this.numberOfProcessedStreamInstances = numberOfProcessedStreamInstances;
+	}
+
+	protected void setNumberOfSkippedStreamInstances(int numberOfSkippedStreamInstances) {
+		this.numberOfSkippedStreamInstances = numberOfSkippedStreamInstances;
 	}
 
 	public boolean shouldFindImplicitBenchmarkEntryPoints() {
 		return findImplicitBenchmarkEntryPoints;
 	}
 
-	public void setFindImplicitBenchmarkEntryPoints(boolean findImplicitBenchmarkEntryPoints) {
-		this.findImplicitBenchmarkEntryPoints = findImplicitBenchmarkEntryPoints;
+	public boolean shouldFindImplicitEntryPoints() {
+		return findImplicitEntryPoints;
+	}
+
+	public boolean shouldFindImplicitTestEntryPoints() {
+		return findImplicitTestEntryPoints;
 	}
 
 	/**
@@ -439,29 +463,5 @@ public class StreamAnalyzer extends ASTVisitor {
 		}
 
 		return super.visit(node);
-	}
-
-	public int getNForStreams() {
-		return nForStreams;
-	}
-
-	protected void setNForStreams(int nForStreams) {
-		this.nForStreams = nForStreams;
-	}
-
-	public int getNumberOfProcessedStreamInstances() {
-		return this.numberOfProcessedStreamInstances;
-	}
-
-	protected void setNumberOfProcessedStreamInstances(int numberOfProcessedStreamInstances) {
-		this.numberOfProcessedStreamInstances = numberOfProcessedStreamInstances;
-	}
-
-	public int getNumberOfSkippedStreamInstances() {
-		return this.numberOfSkippedStreamInstances;
-	}
-
-	protected void setNumberOfSkippedStreamInstances(int numberOfSkippedStreamInstances) {
-		this.numberOfSkippedStreamInstances = numberOfSkippedStreamInstances;
 	}
 }
