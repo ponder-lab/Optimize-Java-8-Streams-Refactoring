@@ -92,6 +92,26 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		return new CSVPrinter(new FileWriter(fileName, true), CSVFormat.EXCEL.withHeader(header));
 	}
 
+	private static File findEvaluationPropertiesFile(File directory) {
+		if (directory == null)
+			return null;
+
+		if (!directory.isDirectory())
+			throw new IllegalArgumentException("Expecting directory: " + directory + ".");
+
+		File evaluationFile = directory.toPath().resolve(EVALUATION_PROPERTIES_FILE_NAME).toFile();
+
+		if (evaluationFile != null && evaluationFile.exists())
+			return evaluationFile;
+		else
+			return findEvaluationPropertiesFile(directory.getParentFile());
+	}
+
+	private static File findEvaluationPropertiesFile(IJavaProject project) throws JavaModelException {
+		IPath location = project.getCorrespondingResource().getLocation();
+		return findEvaluationPropertiesFile(location.toFile());
+	}
+
 	private static IType[] getAllDeclaringTypeSubtypes(IMethod method) throws JavaModelException {
 		IType declaringType = method.getDeclaringType();
 		ITypeHierarchy typeHierarchy = declaringType.newTypeHierarchy(new NullProgressMonitor());
@@ -125,6 +145,33 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		} else {
 			System.err.println("WARNING: Could not retrieve metric source for method: " + method.getElementName());
 			return 0;
+		}
+	}
+
+	private static int getNForStreams(IJavaProject project) throws IOException, JavaModelException {
+		Properties properties = new Properties();
+		File file = findEvaluationPropertiesFile(project);
+
+		if (file != null && file.exists())
+			try (Reader reader = new FileReader(file)) {
+				properties.load(reader);
+
+				String nToUseForStreams = properties.getProperty(N_TO_USE_FOR_STREAMS_PROPERTY_KEY);
+
+				if (nToUseForStreams == null) {
+					int ret = N_TO_USE_FOR_STREAMS_DEFAULT;
+					LOGGER.info("Using default N for streams: " + ret + ".");
+					return ret;
+				} else {
+					int ret = Integer.valueOf(nToUseForStreams);
+					LOGGER.info("Using properties file N for streams: " + ret + ".");
+					return ret;
+				}
+			}
+		else {
+			int ret = N_TO_USE_FOR_STREAMS_DEFAULT;
+			LOGGER.info("Using default N for streams: " + ret + ".");
+			return ret;
 		}
 	}
 
