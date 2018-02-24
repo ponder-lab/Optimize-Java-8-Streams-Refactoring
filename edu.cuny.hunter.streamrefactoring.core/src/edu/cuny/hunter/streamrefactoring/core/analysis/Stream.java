@@ -156,8 +156,8 @@ public class Stream {
 
 		// Work around #97.
 		if (this.enclosingMethodDeclaration == null) {
-			LOGGER.warning("Stream: " + creation + " not handled.");
-			this.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, "Stream: " + creation
+			LOGGER.warning("Stream: " + this.creation + " not handled.");
+			this.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, "Stream: " + this.creation
 					+ " is most likely used in a context that is currently not handled by this plug-in.");
 		}
 	}
@@ -212,10 +212,10 @@ public class Stream {
 		}
 
 		// let's check that execution modes are consistent.
-		if (isConsistent(possibleExecutionModes, PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES,
+		if (this.isConsistent(possibleExecutionModes, PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES,
 				"Stream: " + creation + " has inconsitent possible execution modes.", creation)) {
 			// do we have consistent ordering?
-			if (isConsistent(possibleOrderings, PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS,
+			if (this.isConsistent(possibleOrderings, PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS,
 					"Stream: " + creation + " has inconsitent possible orderings.", creation)) {
 				ExecutionMode executionMode = possibleExecutionModes.iterator().next();
 				assert executionMode != null : "Execution mode is null";
@@ -229,7 +229,7 @@ public class Stream {
 					switch (ordering) {
 					case UNORDERED:
 						if (hasPossibleSideEffects)
-							addStatusEntry(PreconditionFailure.HAS_SIDE_EFFECTS, "Stream: " + creation
+							this.addStatusEntry(PreconditionFailure.HAS_SIDE_EFFECTS, "Stream: " + creation
 									+ " is associated with a behavioral parameter containing possible side-effects");
 						else {
 							// it passed P1.
@@ -240,7 +240,7 @@ public class Stream {
 						break;
 					case ORDERED:
 						if (hasPossibleSideEffects)
-							addStatusEntry(PreconditionFailure.HAS_SIDE_EFFECTS2, "Stream: " + creation
+							this.addStatusEntry(PreconditionFailure.HAS_SIDE_EFFECTS2, "Stream: " + creation
 									+ " is associated with a behavioral parameter containing possible side-effects");
 						else {
 							// check SIO.
@@ -258,7 +258,7 @@ public class Stream {
 											TransformationAction.CONVERT_TO_PARALLEL);
 									this.setPassingPrecondition(PreconditionSuccess.P3);
 								} else
-									addStatusEntry(PreconditionFailure.REDUCE_ORDERING_MATTERS,
+									this.addStatusEntry(PreconditionFailure.REDUCE_ORDERING_MATTERS,
 											"Ordering of the result produced by a terminal operation must be preserved");
 							}
 						}
@@ -282,12 +282,12 @@ public class Stream {
 								this.setPassingPrecondition(PreconditionSuccess.P5);
 							}
 						} else
-							addStatusEntry(PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS,
+							this.addStatusEntry(PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS,
 									"No stateful intermediate operation exists within the stream's pipeline.");
 
 						break;
 					case UNORDERED:
-						addStatusEntry(PreconditionFailure.UNORDERED, "Stream is unordered.");
+						this.addStatusEntry(PreconditionFailure.UNORDERED, "Stream is unordered.");
 						break;
 					}
 				}
@@ -322,7 +322,7 @@ public class Stream {
 	}
 
 	public MethodInvocation getCreation() {
-		return creation;
+		return this.creation;
 	}
 
 	public IJavaProject getCreationJavaProject() {
@@ -334,7 +334,7 @@ public class Stream {
 	}
 
 	public IMethod getEnclosingEclipseMethod() {
-		MethodDeclaration enclosingMethodDeclaration = getEnclosingMethodDeclaration();
+		MethodDeclaration enclosingMethodDeclaration = this.getEnclosingMethodDeclaration();
 
 		if (enclosingMethodDeclaration == null)
 			return null;
@@ -344,26 +344,26 @@ public class Stream {
 	}
 
 	public MethodDeclaration getEnclosingMethodDeclaration() {
-		return enclosingMethodDeclaration;
+		return this.enclosingMethodDeclaration;
 	}
 
 	private IR getEnclosingMethodIR(EclipseProjectAnalysisEngine<InstanceKey> engine)
 			throws IOException, CoreException, UnhandledCaseException {
-		if (enclosingMethodDeclarationIR == null) {
+		if (this.enclosingMethodDeclarationIR == null) {
 			// get the IR for the enclosing method.
-			com.ibm.wala.classLoader.IMethod resolvedMethod = getEnclosingWalaMethod(engine);
+			com.ibm.wala.classLoader.IMethod resolvedMethod = this.getEnclosingWalaMethod(engine);
 
 			if (resolvedMethod == null)
 				throw new UnhandledCaseException("Couldn't retrieve enclosing WALA method. Most likely an AIC #155.");
 
-			enclosingMethodDeclarationIR = engine.getCache().getIR(resolvedMethod);
+			this.enclosingMethodDeclarationIR = engine.getCache().getIR(resolvedMethod);
 
-			if (enclosingMethodDeclarationIR == null)
+			if (this.enclosingMethodDeclarationIR == null)
 				throw new IllegalStateException("IR is null for: " + resolvedMethod);
 
-			LOGGER.fine("IR is: " + enclosingMethodDeclarationIR);
+			LOGGER.fine("IR is: " + this.enclosingMethodDeclarationIR);
 		}
-		return enclosingMethodDeclarationIR;
+		return this.enclosingMethodDeclarationIR;
 	}
 
 	/**
@@ -384,7 +384,7 @@ public class Stream {
 	}
 
 	MethodReference getEnclosingMethodReference() {
-		MethodDeclaration enclosingMethodDeclaration = getEnclosingMethodDeclaration();
+		MethodDeclaration enclosingMethodDeclaration = this.getEnclosingMethodDeclaration();
 		JDTIdentityMapper mapper = getJDTIdentifyMapper(enclosingMethodDeclaration);
 		MethodReference methodRef = mapper.getMethodRef(enclosingMethodDeclaration.resolveBinding());
 
@@ -395,7 +395,7 @@ public class Stream {
 	}
 
 	public IType getEnclosingType() {
-		MethodDeclaration enclosingMethodDeclaration = getEnclosingMethodDeclaration();
+		MethodDeclaration enclosingMethodDeclaration = this.getEnclosingMethodDeclaration();
 
 		if (enclosingMethodDeclaration == null)
 			return null;
@@ -405,33 +405,33 @@ public class Stream {
 	}
 
 	public TypeDeclaration getEnclosingTypeDeclaration() {
-		return enclosingTypeDeclaration;
+		return this.enclosingTypeDeclaration;
 	}
 
 	public TypeReference getEnclosingTypeReference() {
-		JDTIdentityMapper mapper = getJDTIdentifyMapper(getEnclosingTypeDeclaration());
-		TypeReference ref = mapper.getTypeRef(getEnclosingTypeDeclaration().resolveBinding());
+		JDTIdentityMapper mapper = getJDTIdentifyMapper(this.getEnclosingTypeDeclaration());
+		TypeReference ref = mapper.getTypeRef(this.getEnclosingTypeDeclaration().resolveBinding());
 
 		if (ref == null)
 			throw new IllegalStateException(
-					"Could not get type reference for: " + getEnclosingTypeDeclaration().getName());
+					"Could not get type reference for: " + this.getEnclosingTypeDeclaration().getName());
 		return ref;
 	}
 
 	public com.ibm.wala.classLoader.IMethod getEnclosingWalaMethod(EclipseProjectAnalysisEngine<InstanceKey> engine)
 			throws IOException, CoreException {
 		IClassHierarchy classHierarchy = engine.getClassHierarchy();
-		MethodReference methodRef = getEnclosingMethodReference();
+		MethodReference methodRef = this.getEnclosingMethodReference();
 		com.ibm.wala.classLoader.IMethod resolvedMethod = classHierarchy.resolveMethod(methodRef);
 		return resolvedMethod;
 	}
 
 	protected ExecutionMode getInitialExecutionMode() {
-		return initialExecutionMode;
+		return this.initialExecutionMode;
 	}
 
 	protected Ordering getInitialOrdering() {
-		return initialOrdering;
+		return this.initialOrdering;
 	}
 
 	public InstanceKey getInstanceKey(Collection<InstanceKey> trackedInstances,
@@ -441,7 +441,7 @@ public class Stream {
 		// if not present.
 		if (this.instanceKey == null)
 			// compute it.
-			this.instanceKey = computeInstanceKey(trackedInstances, engine);
+			this.instanceKey = this.computeInstanceKey(trackedInstances, engine);
 		return this.instanceKey;
 	}
 
@@ -463,14 +463,14 @@ public class Stream {
 					// lines from the AST and the IR match. Let's dive a little
 					// deeper to be more confident of the correspondence.
 					if (matches(instruction, this.getCreation(), Optional.of(LOGGER))) {
-						instructionForCreation = Optional.of((SSAInvokeInstruction) instruction);
-						return instructionForCreation;
+						this.instructionForCreation = Optional.of((SSAInvokeInstruction) instruction);
+						return this.instructionForCreation;
 					}
 				}
 			}
-			instructionForCreation = Optional.empty();
+			this.instructionForCreation = Optional.empty();
 		}
-		return instructionForCreation;
+		return this.instructionForCreation;
 	}
 
 	private JDTIdentityMapper getJDTIdentifyMapperForCreation() {
@@ -485,7 +485,7 @@ public class Stream {
 		// if no other possible execution modes exist.
 		ExecutionMode initialExecutionMode = this.getInitialExecutionMode();
 
-		if (possibleExecutionModes.isEmpty())
+		if (this.possibleExecutionModes.isEmpty())
 			if (initialExecutionMode == null)
 				return null;
 			else
@@ -494,7 +494,7 @@ public class Stream {
 
 		// otherwise, return the internal possible execution modes but with the
 		// null value (bottom state) replaced by the initial state.
-		return possibleExecutionModes.stream().map(e -> e == null ? initialExecutionMode : e)
+		return this.possibleExecutionModes.stream().map(e -> e == null ? initialExecutionMode : e)
 				.collect(Collectors.toSet());
 	}
 
@@ -502,7 +502,7 @@ public class Stream {
 		Ordering initialOrdering = this.getInitialOrdering();
 
 		// if no other possible orderings exist.
-		if (possibleOrderings.isEmpty())
+		if (this.possibleOrderings.isEmpty())
 			// default to the initial ordering or null if there isn't any.
 			if (initialOrdering == null)
 				return null;
@@ -511,7 +511,7 @@ public class Stream {
 
 		// otherwise, return the internal possible orderings but with the null
 		// value (bottom state) replaced by the initial state.
-		return possibleOrderings.stream().map(e -> e == null ? initialOrdering : e).collect(Collectors.toSet());
+		return this.possibleOrderings.stream().map(e -> e == null ? initialOrdering : e).collect(Collectors.toSet());
 	}
 
 	public Refactoring getRefactoring() {
@@ -519,11 +519,11 @@ public class Stream {
 	}
 
 	public RefactoringStatus getStatus() {
-		return status;
+		return this.status;
 	}
 
 	public TypeReference getTypeReference() {
-		JDTIdentityMapper mapper = getJDTIdentifyMapperForCreation();
+		JDTIdentityMapper mapper = this.getJDTIdentifyMapperForCreation();
 		ITypeBinding typeBinding = this.getCreation().resolveTypeBinding();
 
 		// try to get the top-most type.
@@ -543,11 +543,11 @@ public class Stream {
 
 	private int getUseValueNumberForCreation(EclipseProjectAnalysisEngine<InstanceKey> engine)
 			throws InvalidClassFileException, IOException, CoreException, UnhandledCaseException {
-		return getInstructionForCreation(engine).map(i -> i.getUse(0)).orElse(-1);
+		return this.getInstructionForCreation(engine).map(i -> i.getUse(0)).orElse(-1);
 	}
 
 	public boolean hasNoTerminalOperation() {
-		return hasNoTerminalOperation;
+		return this.hasNoTerminalOperation;
 	}
 
 	/**
@@ -560,11 +560,11 @@ public class Stream {
 	 *         possible path.
 	 */
 	public boolean hasPossibleSideEffects() {
-		return hasPossibleSideEffects;
+		return this.hasPossibleSideEffects;
 	}
 
 	public boolean hasPossibleStatefulIntermediateOperations() {
-		return hasPossibleStatefulIntermediateOperations;
+		return this.hasPossibleStatefulIntermediateOperations;
 	}
 
 	public void inferInitialAttributes(EclipseProjectAnalysisEngine<InstanceKey> engine,
@@ -621,7 +621,7 @@ public class Stream {
 			}
 		} else { // instance method.
 			// get the use value number for the stream creation.
-			int valueNumber = getUseValueNumberForCreation(engine);
+			int valueNumber = this.getUseValueNumberForCreation(engine);
 
 			if (valueNumber < 0) {
 				LOGGER.warning("Use value number: " + valueNumber + " for stream creation: "
@@ -683,7 +683,7 @@ public class Stream {
 	private boolean isConsistent(Collection<?> collection, PreconditionFailure failure, String failureMessage,
 			MethodInvocation streamCreation) {
 		if (!allEqual(collection)) {
-			addStatusEntry(failure, failureMessage);
+			this.addStatusEntry(failure, failureMessage);
 			return false;
 		} else
 			return true;
@@ -745,33 +745,33 @@ public class Stream {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append("Stream [actions=");
-		builder.append(actions);
+		builder.append(this.actions);
 		builder.append(", creation=");
-		builder.append(creation);
+		builder.append(this.creation);
 		builder.append(", enclosingMethodDeclaration=");
-		builder.append(enclosingMethodDeclaration.getName());
+		builder.append(this.enclosingMethodDeclaration.getName());
 		builder.append(", hasPossibleSideEffects=");
-		builder.append(hasPossibleSideEffects);
+		builder.append(this.hasPossibleSideEffects);
 		builder.append(", hasPossibleStatefulIntermediateOperations=");
-		builder.append(hasPossibleStatefulIntermediateOperations);
+		builder.append(this.hasPossibleStatefulIntermediateOperations);
 		builder.append(", hasNoTerminalOperation=");
-		builder.append(hasNoTerminalOperation);
+		builder.append(this.hasNoTerminalOperation);
 		builder.append(", initialExecutionMode=");
-		builder.append(initialExecutionMode);
+		builder.append(this.initialExecutionMode);
 		builder.append(", initialOrdering=");
-		builder.append(initialOrdering);
+		builder.append(this.initialOrdering);
 		builder.append(", passingPrecondition=");
-		builder.append(passingPrecondition);
+		builder.append(this.passingPrecondition);
 		builder.append(", possibleExecutionModes=");
-		builder.append(possibleExecutionModes);
+		builder.append(this.possibleExecutionModes);
 		builder.append(", possibleOrderings=");
-		builder.append(possibleOrderings);
+		builder.append(this.possibleOrderings);
 		builder.append(", reduceOrderingPossiblyMatters=");
-		builder.append(reduceOrderingPossiblyMatters);
+		builder.append(this.reduceOrderingPossiblyMatters);
 		builder.append(", refactoring=");
-		builder.append(refactoring);
+		builder.append(this.refactoring);
 		builder.append(", status=");
-		builder.append(status.getSeverity());
+		builder.append(this.status.getSeverity());
 		builder.append("]");
 		return builder.toString();
 	}

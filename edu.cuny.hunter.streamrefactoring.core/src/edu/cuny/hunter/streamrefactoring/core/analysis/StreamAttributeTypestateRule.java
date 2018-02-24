@@ -29,7 +29,7 @@ public abstract class StreamAttributeTypestateRule extends TypestateRule {
 	protected void addAutomaton() {
 		// a bottom state result would need to defer to the initial stream
 		// ordering, which is in the field of the stream.
-		bottomState = addState(BOTTOM_STATE_NAME, true);
+		this.bottomState = this.addState(BOTTOM_STATE_NAME, true);
 	}
 
 	protected IDispatchEvent addEvent(String eventName, String eventPattern) {
@@ -52,7 +52,7 @@ public abstract class StreamAttributeTypestateRule extends TypestateRule {
 	}
 
 	protected IDFAState addState(String stateName) {
-		return addState(stateName, false);
+		return this.addState(stateName, false);
 	}
 
 	protected IDFAState addState(String stateName, boolean initialState) {

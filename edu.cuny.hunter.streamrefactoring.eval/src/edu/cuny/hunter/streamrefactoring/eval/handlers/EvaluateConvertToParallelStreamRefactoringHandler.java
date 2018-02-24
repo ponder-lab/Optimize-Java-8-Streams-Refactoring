@@ -510,7 +510,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 					// actually perform the refactoring if there are no fatal
 					// errors.
-					if (this.shouldPerformChange())
+					if (EvaluateConvertToParallelStreamRefactoringHandler.shouldPerformChange())
 						if (!status.hasFatalError()) {
 							resultsTimeCollector.start();
 							Change change = new ProcessorBasedRefactoring(processor)

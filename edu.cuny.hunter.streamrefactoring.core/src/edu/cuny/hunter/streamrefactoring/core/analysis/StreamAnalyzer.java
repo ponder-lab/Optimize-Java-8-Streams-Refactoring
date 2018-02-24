@@ -374,7 +374,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	}
 
 	public int getNForStreams() {
-		return nForStreams;
+		return this.nForStreams;
 	}
 
 	public int getNumberOfProcessedStreamInstances() {
@@ -414,15 +414,15 @@ public class StreamAnalyzer extends ASTVisitor {
 	}
 
 	public boolean shouldFindImplicitBenchmarkEntryPoints() {
-		return findImplicitBenchmarkEntryPoints;
+		return this.findImplicitBenchmarkEntryPoints;
 	}
 
 	public boolean shouldFindImplicitEntryPoints() {
-		return findImplicitEntryPoints;
+		return this.findImplicitEntryPoints;
 	}
 
 	public boolean shouldFindImplicitTestEntryPoints() {
-		return findImplicitTestEntryPoints;
+		return this.findImplicitTestEntryPoints;
 	}
 
 	/**

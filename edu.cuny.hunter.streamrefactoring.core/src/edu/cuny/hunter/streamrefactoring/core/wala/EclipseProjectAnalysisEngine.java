@@ -81,25 +81,26 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	}
 
 	void addToScopeNotWindows(String fileName, Path installPath) throws IOException {
-		scope.addToScope(Primordial, new JarFile(installPath.resolve("jre").resolve("lib").resolve(fileName).toFile()));
+		this.scope.addToScope(Primordial,
+				new JarFile(installPath.resolve("jre").resolve("lib").resolve(fileName).toFile()));
 	}
 
 	void addToScopeWindows(String fileName, Path installPath) throws IOException {
-		scope.addToScope(Primordial, new JarFile(installPath.resolve("lib").resolve(fileName).toFile()));
+		this.scope.addToScope(Primordial, new JarFile(installPath.resolve("lib").resolve(fileName).toFile()));
 	}
 
 	@Override
 	public void buildAnalysisScope() throws IOException {
 		try {
-			ePath = createProjectPath(getProject());
+			this.ePath = this.createProjectPath(this.getProject());
 		} catch (CoreException e) {
 			e.printStackTrace();
 			throw new RuntimeException(e);
 		}
-		scope = ePath.toAnalysisScope(makeAnalysisScope());
+		this.scope = this.ePath.toAnalysisScope(this.makeAnalysisScope());
 
 		// if no primordial classes are in scope.
-		if (scope.getModules(ClassLoaderReference.Primordial).isEmpty()) {
+		if (this.scope.getModules(ClassLoaderReference.Primordial).isEmpty()) {
 			// Add "real" libraries per
 			// https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/83.
 
@@ -108,24 +109,24 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 			Path installPath = installLocation.toPath();
 
 			if (Util.isWindows()) {
-				addToScopeWindows("resources.jar", installPath);
-				addToScopeWindows("rt.jar", installPath);
-				addToScopeWindows("jsse.jar", installPath);
-				addToScopeWindows("jce.jar", installPath);
-				addToScopeWindows("charsets.jar", installPath);
+				this.addToScopeWindows("resources.jar", installPath);
+				this.addToScopeWindows("rt.jar", installPath);
+				this.addToScopeWindows("jsse.jar", installPath);
+				this.addToScopeWindows("jce.jar", installPath);
+				this.addToScopeWindows("charsets.jar", installPath);
 			} else {
-				addToScopeNotWindows("resources.jar", installPath);
-				addToScopeNotWindows("rt.jar", installPath);
-				addToScopeNotWindows("jsse.jar", installPath);
-				addToScopeNotWindows("jce.jar", installPath);
-				addToScopeNotWindows("charsets.jar", installPath);
+				this.addToScopeNotWindows("resources.jar", installPath);
+				this.addToScopeNotWindows("rt.jar", installPath);
+				this.addToScopeNotWindows("jsse.jar", installPath);
+				this.addToScopeNotWindows("jce.jar", installPath);
+				this.addToScopeNotWindows("charsets.jar", installPath);
 			}
 
 		}
 
-		if (getExclusionsFile() != null) {
+		if (this.getExclusionsFile() != null) {
 			InputStream stream = this.getClass().getResourceAsStream("/EclipseDefaultExclusions.txt");
-			scope.setExclusions(new FileOfClasses(stream));
+			this.scope.setExclusions(new FileOfClasses(stream));
 		}
 	}
 
@@ -140,19 +141,19 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 			throws CallGraphBuilderCancelException, CancelException {
 		LOGGER.entering(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
 
-		if (callGraphBuilder == null) {
+		if (this.callGraphBuilder == null) {
 			LOGGER.info("Creating new call graph builder.");
-			callGraphBuilder = buildCallGraph(this.getClassHierarchy(), options, true, null);
+			this.callGraphBuilder = this.buildCallGraph(this.getClassHierarchy(), options, true, null);
 		} else
 			LOGGER.info("Reusing call graph builder.");
 
 		LOGGER.exiting(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
-		return callGraphBuilder.makeCallGraph(options, null);
+		return this.callGraphBuilder.makeCallGraph(options, null);
 	}
 
 	public CallGraph buildSafeCallGraph(Iterable<Entrypoint> entryPoints)
 			throws IllegalArgumentException, CallGraphBuilderCancelException, CancelException {
-		return this.buildSafeCallGraph(getDefaultOptions(entryPoints));
+		return this.buildSafeCallGraph(this.getDefaultOptions(entryPoints));
 	}
 
 	public void clearCallGraphBuilder() {
@@ -172,18 +173,18 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	}
 
 	public CallGraphBuilder<?> getCallGraphBuilder() {
-		return callGraphBuilder;
+		return this.callGraphBuilder;
 	}
 
 	@Override
 	protected CallGraphBuilder<?> getCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options,
 			IAnalysisCacheView cache) {
 		LOGGER.fine(() -> "Using N = " + this.getNToUseForStreams() + ".");
-		return Util.makeNCFABuilder(N, options, (AnalysisCache) cache, cha, scope, this.getNToUseForStreams());
+		return Util.makeNCFABuilder(N, options, (AnalysisCache) cache, cha, this.scope, this.getNToUseForStreams());
 	}
 
 	public int getNToUseForStreams() {
-		return nToUseForStreams;
+		return this.nToUseForStreams;
 	}
 
 	/**
@@ -192,7 +193,7 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	 * @return The project used to create this engine.
 	 */
 	public IJavaProject getProject() {
-		return project;
+		return this.project;
 	}
 
 	protected void setNToUseForStreams(int nToUseForStreams) {

@@ -100,11 +100,11 @@ public class StreamStateMachine {
 		}
 
 		public int getNumberOfStreamInstancesProcessed() {
-			return numberOfStreamInstancesProcessed;
+			return this.numberOfStreamInstancesProcessed;
 		}
 
 		public int getNumberOfStreamInstancesSkipped() {
-			return numberOfStreamInstancesSkipped;
+			return this.numberOfStreamInstancesSkipped;
 		}
 	}
 

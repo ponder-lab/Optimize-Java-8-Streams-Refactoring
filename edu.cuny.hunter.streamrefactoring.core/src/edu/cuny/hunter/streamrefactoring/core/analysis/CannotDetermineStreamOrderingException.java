@@ -27,6 +27,6 @@ public class CannotDetermineStreamOrderingException extends Exception {
 	}
 
 	public Class<?> getSourceType() {
-		return sourceType;
+		return this.sourceType;
 	}
 }

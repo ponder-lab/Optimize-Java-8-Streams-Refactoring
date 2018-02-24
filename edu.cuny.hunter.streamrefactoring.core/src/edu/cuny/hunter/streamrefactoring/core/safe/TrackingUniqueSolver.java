@@ -35,7 +35,7 @@ public class TrackingUniqueSolver extends UniqueSolver {
 	}
 
 	public Collection<InstanceKey> getTrackedInstances() {
-		return trackedInstances;
+		return this.trackedInstances;
 	}
 
 	protected void setTrackedInstances(Collection<InstanceKey> trackedInstances) {

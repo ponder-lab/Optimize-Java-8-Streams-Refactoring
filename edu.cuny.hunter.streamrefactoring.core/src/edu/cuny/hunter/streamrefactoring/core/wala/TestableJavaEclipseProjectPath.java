@@ -55,11 +55,11 @@ public class TestableJavaEclipseProjectPath extends JavaEclipseProjectPath {
 			// should ignore directories as well..
 			return;
 		}
-		if (isPrimordialJarFile(j)) {
+		if (this.isPrimordialJarFile(j)) {
 			// force it.
 			loader = Loader.PRIMORDIAL;
 		}
-		List<Module> s = MapUtil.findOrCreateList(modules, loader);
+		List<Module> s = MapUtil.findOrCreateList(this.modules, loader);
 		s.add(file.isDirectory() ? (Module) new BinaryDirectoryTreeModule(file) : (Module) new JarFileModule(j));
 	}
 }

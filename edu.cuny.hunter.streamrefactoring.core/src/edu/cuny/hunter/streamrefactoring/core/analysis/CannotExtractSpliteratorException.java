@@ -28,6 +28,6 @@ public class CannotExtractSpliteratorException extends Exception {
 	}
 
 	public Class<? extends Object> getFromType() {
-		return fromType;
+		return this.fromType;
 	}
 }

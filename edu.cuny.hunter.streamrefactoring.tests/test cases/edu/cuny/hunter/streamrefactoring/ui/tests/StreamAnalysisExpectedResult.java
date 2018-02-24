@@ -51,46 +51,46 @@ class StreamAnalysisExpectedResult {
 	}
 
 	public Set<TransformationAction> getExpectedActions() {
-		return expectedActions;
+		return this.expectedActions;
 	}
 
 	public String getExpectedCreation() {
-		return expectedCreation;
+		return this.expectedCreation;
 	}
 
 	public Set<ExecutionMode> getExpectedExecutionModes() {
-		return expectedExecutionModes;
+		return this.expectedExecutionModes;
 	}
 
 	public Set<PreconditionFailure> getExpectedFailures() {
-		return expectedFailures;
+		return this.expectedFailures;
 	}
 
 	public Set<Ordering> getExpectedOrderings() {
-		return expectedOrderings;
+		return this.expectedOrderings;
 	}
 
 	public PreconditionSuccess getExpectedPassingPrecondition() {
-		return expectedPassingPrecondition;
+		return this.expectedPassingPrecondition;
 	}
 
 	public Refactoring getExpectedRefactoring() {
-		return expectedRefactoring;
+		return this.expectedRefactoring;
 	}
 
 	public int getExpectedStatusSeverity() {
-		return expectedStatusSeverity;
+		return this.expectedStatusSeverity;
 	}
 
 	public boolean isExpectingSideEffects() {
-		return expectingSideEffects;
+		return this.expectingSideEffects;
 	}
 
 	public boolean isExpectingStatefulIntermediateOperation() {
-		return expectingStatefulIntermediateOperation;
+		return this.expectingStatefulIntermediateOperation;
 	}
 
 	public boolean isExpectingThatReduceOrderingMatters() {
-		return expectingThatReduceOrderingMatters;
+		return this.expectingThatReduceOrderingMatters;
 	}
 }

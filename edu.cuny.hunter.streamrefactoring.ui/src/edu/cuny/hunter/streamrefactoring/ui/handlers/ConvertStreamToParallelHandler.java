@@ -88,10 +88,10 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 				// if (RefactoringAvailabilityTester.isInterfaceMigrationAvailable(method,
 				// monitor)) {
 				if (true) {
-					logPossiblyMigratableMethod(method);
+					this.logPossiblyMigratableMethod(method);
 					methodSet.add(method);
 				} else
-					logNonMigratableMethod(method);
+					this.logNonMigratableMethod(method);
 
 		}
 
@@ -104,7 +104,7 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 		IType[] types = cu.getTypes();
 
 		for (IType iType : types)
-			methodSet.addAll(extractMethodsFromClass(iType, monitor));
+			methodSet.addAll(this.extractMethodsFromClass(iType, monitor));
 
 		return methodSet;
 	}
@@ -115,7 +115,7 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 
 		IPackageFragmentRoot[] roots = jProj.getPackageFragmentRoots();
 		for (IPackageFragmentRoot iPackageFragmentRoot : roots)
-			methodSet.addAll(extractMethodsFromPackageFragmentRoot(iPackageFragmentRoot, monitor));
+			methodSet.addAll(this.extractMethodsFromPackageFragmentRoot(iPackageFragmentRoot, monitor));
 
 		return methodSet;
 	}
@@ -126,7 +126,7 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 		ICompilationUnit[] units = frag.getCompilationUnits();
 
 		for (ICompilationUnit iCompilationUnit : units)
-			methodSet.addAll(extractMethodsFromCompilationUnit(iCompilationUnit, monitor));
+			methodSet.addAll(this.extractMethodsFromCompilationUnit(iCompilationUnit, monitor));
 
 		return methodSet;
 	}
@@ -138,7 +138,7 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 		IJavaElement[] children = root.getChildren();
 		for (IJavaElement child : children)
 			if (child.getElementType() == IJavaElement.PACKAGE_FRAGMENT)
-				methodSet.addAll(extractMethodsFromPackageFragment((IPackageFragment) child, monitor));
+				methodSet.addAll(this.extractMethodsFromPackageFragment((IPackageFragment) child, monitor));
 
 		return methodSet;
 	}
@@ -155,10 +155,10 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 	}
 
 	private void logNonMigratableMethod(IMethod method) {
-		logMethod(method, "Method: %s is not migratable.");
+		this.logMethod(method, "Method: %s is not migratable.");
 	}
 
 	private void logPossiblyMigratableMethod(IMethod method) {
-		logMethod(method, "Method: %s is possibly migratable.");
+		this.logMethod(method, "Method: %s is possibly migratable.");
 	}
 }

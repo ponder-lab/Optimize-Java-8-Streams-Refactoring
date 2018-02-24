@@ -14,27 +14,27 @@ public class TimeCollector {
 	private boolean started;
 
 	public void clear() {
-		assert !started : "Shouldn't clear a running time collector.";
+		assert !this.started : "Shouldn't clear a running time collector.";
 
-		collectedTime = 0;
+		this.collectedTime = 0;
 	}
 
 	public long getCollectedTime() {
-		return collectedTime;
+		return this.collectedTime;
 	}
 
 	public void start() {
-		assert !started : "Time colletor is already started.";
-		started = true;
+		assert !this.started : "Time colletor is already started.";
+		this.started = true;
 
-		start = System.currentTimeMillis();
+		this.start = System.currentTimeMillis();
 	}
 
 	public void stop() {
-		assert started : "Trying to stop a time collector that isn't started.";
-		started = false;
+		assert this.started : "Trying to stop a time collector that isn't started.";
+		this.started = false;
 
-		final long elapsed = System.currentTimeMillis() - start;
-		collectedTime += elapsed;
+		final long elapsed = System.currentTimeMillis() - this.start;
+		this.collectedTime += elapsed;
 	}
 }

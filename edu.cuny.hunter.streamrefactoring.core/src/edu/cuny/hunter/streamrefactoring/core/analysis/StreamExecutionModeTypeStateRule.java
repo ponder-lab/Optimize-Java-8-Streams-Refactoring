@@ -22,26 +22,26 @@ public class StreamExecutionModeTypeStateRule extends StreamAttributeTypestateRu
 	protected void addAutomaton() {
 		super.addAutomaton();
 
-		IDFAState sequentialState = addState(ExecutionMode.SEQUENTIAL);
+		IDFAState sequentialState = this.addState(ExecutionMode.SEQUENTIAL);
 
 		if (this.getDFAStateToExecutionMap() == null)
 			this.setDFAStateToExecutionMap(new HashMap<>(2));
 
 		this.getDFAStateToExecutionMap().put(sequentialState, ExecutionMode.SEQUENTIAL);
 
-		IDFAState parallelState = addState(ExecutionMode.PARALLEL);
+		IDFAState parallelState = this.addState(ExecutionMode.PARALLEL);
 		this.getDFAStateToExecutionMap().put(parallelState, ExecutionMode.PARALLEL);
 
-		IDispatchEvent parallelEvent = addEvent("parallel", ".*parallel\\(\\).*");
-		IDispatchEvent sequentialEvent = addEvent("sequential", ".*sequential\\(\\).*");
+		IDispatchEvent parallelEvent = this.addEvent("parallel", ".*parallel\\(\\).*");
+		IDispatchEvent sequentialEvent = this.addEvent("sequential", ".*sequential\\(\\).*");
 
 		// TODO: Need to add concat().
-		addTransition(bottomState, parallelState, parallelEvent);
-		addTransition(bottomState, sequentialState, sequentialEvent);
-		addTransition(sequentialState, parallelState, parallelEvent);
-		addTransition(sequentialState, sequentialState, sequentialEvent);
-		addTransition(parallelState, sequentialState, sequentialEvent);
-		addTransition(parallelState, parallelState, parallelEvent);
+		this.addTransition(this.bottomState, parallelState, parallelEvent);
+		this.addTransition(this.bottomState, sequentialState, sequentialEvent);
+		this.addTransition(sequentialState, parallelState, parallelEvent);
+		this.addTransition(sequentialState, sequentialState, sequentialEvent);
+		this.addTransition(parallelState, sequentialState, sequentialEvent);
+		this.addTransition(parallelState, parallelState, parallelEvent);
 	}
 
 	@Override

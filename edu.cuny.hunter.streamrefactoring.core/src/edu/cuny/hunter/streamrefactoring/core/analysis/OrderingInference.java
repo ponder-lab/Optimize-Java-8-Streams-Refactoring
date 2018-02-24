@@ -37,7 +37,7 @@ class OrderingInference {
 		try {
 			return clazz.newInstance();
 		} catch (InstantiationException | IllegalAccessException e) {
-			ObjectInstantiator<?> instantiator = objenesis.getInstantiatorOf(clazz);
+			ObjectInstantiator<?> instantiator = this.objenesis.getInstantiatorOf(clazz);
 			try {
 				return instantiator.newInstance();
 			} catch (InstantiationError e2) {
@@ -49,7 +49,7 @@ class OrderingInference {
 	private String findStreamCreationMethod(Collection<TypeAbstraction> types) {
 		// find the first one.
 		for (TypeAbstraction typeAbstraction : types) {
-			String methodName = findStreamCreationMethod(typeAbstraction);
+			String methodName = this.findStreamCreationMethod(typeAbstraction);
 
 			if (methodName != null)
 				return methodName;
@@ -73,11 +73,11 @@ class OrderingInference {
 
 	private String findStreamCreationMethod(TypeAbstraction typeAbstraction) {
 		IClass type = typeAbstraction.getType();
-		return findStreamCreationMethod(type);
+		return this.findStreamCreationMethod(type);
 	}
 
 	protected IClassHierarchy getClassHierarchy() {
-		return classHierarchy;
+		return this.classHierarchy;
 	}
 
 	private Spliterator<?> getSpliterator(Object instance, String calledMethodName)
@@ -126,21 +126,21 @@ class OrderingInference {
 		if (possibleTypes.isEmpty())
 			return null;
 		else {
-			String methodName = findStreamCreationMethod(possibleTypes);
+			String methodName = this.findStreamCreationMethod(possibleTypes);
 
 			if (methodName == null) {
 				LOGGER.warning(() -> "Can't find stream creation method for: " + possibleTypes);
 				return null;
 			}
 
-			return inferOrdering(possibleTypes, methodName);
+			return this.inferOrdering(possibleTypes, methodName);
 		}
 	}
 
 	Ordering inferOrdering(Collection<TypeAbstraction> possibleTypes, IMethod calledMethod)
 			throws InconsistentPossibleOrderingException, NoniterableException, NoninstantiableException,
 			CannotExtractSpliteratorException {
-		return inferOrdering(possibleTypes, calledMethod.getElementName());
+		return this.inferOrdering(possibleTypes, calledMethod.getElementName());
 	}
 
 	private Ordering inferOrdering(Collection<TypeAbstraction> possibleTypes, String calledMethodName)
@@ -150,7 +150,7 @@ class OrderingInference {
 
 		for (TypeAbstraction typeAbstraction : possibleTypes) {
 			if (typeAbstraction != TypeAbstraction.TOP) {
-				Ordering ordering = inferOrdering(typeAbstraction, calledMethodName);
+				Ordering ordering = this.inferOrdering(typeAbstraction, calledMethodName);
 
 				if (ret == null)
 					ret = ordering;
@@ -172,10 +172,10 @@ class OrderingInference {
 
 			// is it instantiable?
 			if (!Util.isAbstractType(clazz)) {
-				Object instance = createInstance(clazz);
+				Object instance = this.createInstance(clazz);
 				boolean ordered;
 
-				Spliterator<?> spliterator = getSpliterator(instance, calledMethodName);
+				Spliterator<?> spliterator = this.getSpliterator(instance, calledMethodName);
 
 				if (spliterator == null) {
 					LOGGER.warning("Can't extract spliterator. Defaulting to: " + Ordering.ORDERED);
@@ -217,6 +217,6 @@ class OrderingInference {
 			return Ordering.ORDERED;
 
 		String binaryName = Util.getBinaryName(typeReference);
-		return inferOrdering(binaryName, calledMethodName);
+		return this.inferOrdering(binaryName, calledMethodName);
 	}
 }

@@ -155,7 +155,7 @@ public class nCFAContextWithReceiversSelector extends nCFAContextSelector {
 	}
 
 	public int getContextLengthForStreams() {
-		return contextLengthForStreams;
+		return this.contextLengthForStreams;
 	}
 
 	/**

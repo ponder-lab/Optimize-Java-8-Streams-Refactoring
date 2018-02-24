@@ -43,6 +43,6 @@ public enum PreconditionFailure {
 	}
 
 	public int getCode() {
-		return code;
+		return this.code;
 	}
 }
