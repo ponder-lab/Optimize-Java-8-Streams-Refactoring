@@ -215,7 +215,7 @@ public class Stream {
 
 		// let's check that execution modes are consistent.
 		if (this.isConsistent(possibleExecutionModes, PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES,
-				"Stream: " + creation + " has inconsitent possible execution modes.", creation)) {
+				"Stream: " + creation + " has inconsitent possible execution modes.", creation))
 			// do we have consistent ordering?
 			if (this.isConsistent(possibleOrderings, PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS,
 					"Stream: " + creation + " has inconsitent possible orderings.", creation)) {
@@ -244,26 +244,22 @@ public class Stream {
 						if (hasPossibleSideEffects)
 							this.addStatusEntry(PreconditionFailure.HAS_SIDE_EFFECTS2, "Stream: " + creation
 									+ " is associated with a behavioral parameter containing possible side-effects");
-						else {
-							// check SIO.
-							if (!hasPossibleStatefulIntermediateOperations) {
-								// it passed P2.
-								this.setRefactoring(Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL);
-								this.setTransformationAction(TransformationAction.CONVERT_TO_PARALLEL);
-								this.setPassingPrecondition(PreconditionSuccess.P2);
-							} else {
-								// check ROM.
-								if (!reduceOrderingPossiblyMatters) {
-									// it passes P3.
-									this.setRefactoring(Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL);
-									this.setTransformationAction(TransformationAction.UNORDER,
-											TransformationAction.CONVERT_TO_PARALLEL);
-									this.setPassingPrecondition(PreconditionSuccess.P3);
-								} else
-									this.addStatusEntry(PreconditionFailure.REDUCE_ORDERING_MATTERS,
-											"Ordering of the result produced by a terminal operation must be preserved");
-							}
-						}
+						else // check SIO.
+						if (!hasPossibleStatefulIntermediateOperations) {
+							// it passed P2.
+							this.setRefactoring(Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL);
+							this.setTransformationAction(TransformationAction.CONVERT_TO_PARALLEL);
+							this.setPassingPrecondition(PreconditionSuccess.P2);
+						} else // check ROM.
+						if (!reduceOrderingPossiblyMatters) {
+							// it passes P3.
+							this.setRefactoring(Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL);
+							this.setTransformationAction(TransformationAction.UNORDER,
+									TransformationAction.CONVERT_TO_PARALLEL);
+							this.setPassingPrecondition(PreconditionSuccess.P3);
+						} else
+							this.addStatusEntry(PreconditionFailure.REDUCE_ORDERING_MATTERS,
+									"Ordering of the result produced by a terminal operation must be preserved");
 						break;
 					}
 					break;
@@ -294,7 +290,6 @@ public class Stream {
 					}
 				}
 			}
-		}
 	}
 
 	protected InstanceKey computeInstanceKey(Collection<InstanceKey> trackedInstances,
@@ -461,14 +456,13 @@ public class Stream {
 				int lineNumberFromIR = getLineNumberFromIR(method, instruction);
 				int lineNumberFromAST = getLineNumberFromAST(methodName);
 
-				if (lineNumberFromIR == lineNumberFromAST) {
+				if (lineNumberFromIR == lineNumberFromAST)
 					// lines from the AST and the IR match. Let's dive a little
 					// deeper to be more confident of the correspondence.
 					if (matches(instruction, this.getCreation(), Optional.of(LOGGER))) {
 						this.instructionForCreation = Optional.of((SSAInvokeInstruction) instruction);
 						return this.instructionForCreation;
 					}
-				}
 			}
 			this.instructionForCreation = Optional.empty();
 		}
@@ -535,13 +529,12 @@ public class Stream {
 		// try to get the top-most type.
 		ITypeBinding[] allSuperTypes = Bindings.getAllSuperTypes(typeBinding);
 
-		for (ITypeBinding supertype : allSuperTypes) {
+		for (ITypeBinding supertype : allSuperTypes)
 			// if it's the top-most interface.
 			if (supertype.isInterface() && supertype.getName().startsWith(BASE_STREAM_TYPE_NAME)) {
 				typeBinding = supertype; // use it.
 				break;
 			}
-		}
 
 		TypeReference typeRef = mapper.getTypeRef(typeBinding);
 		return typeRef;
@@ -605,7 +598,7 @@ public class Stream {
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
 
-		if (JdtFlags.isStatic(calledMethodBinding)) {
+		if (JdtFlags.isStatic(calledMethodBinding))
 			// static methods returning unordered streams.
 			switch (expressionTypeQualifiedName) {
 			case JAVA_UTIL_STREAM_STREAM:
@@ -625,8 +618,8 @@ public class Stream {
 						+ ". Falling back to: " + defaultOrdering + ".");
 				this.setInitialOrdering(defaultOrdering);
 			}
-		} else { // instance method.
-			// get the use value number for the stream creation.
+		else { // instance method.
+				// get the use value number for the stream creation.
 			int valueNumber = this.getUseValueNumberForCreation(engine);
 
 			if (valueNumber < 0) {

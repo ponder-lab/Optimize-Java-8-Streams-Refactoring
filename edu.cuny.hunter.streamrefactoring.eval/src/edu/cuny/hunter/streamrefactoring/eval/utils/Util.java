@@ -18,14 +18,13 @@ public class Util {
 			return null;
 
 		StringBuilder sb = new StringBuilder();
-		sb.append((method.getElementName()) + "(");
+		sb.append(method.getElementName() + "(");
 		ILocalVariable[] parameters = method.getParameters();
 		for (int i = 0; i < parameters.length; i++) {
 			sb.append(edu.cuny.hunter.streamrefactoring.core.utils.Util
 					.getQualifiedNameFromTypeSignature(parameters[i].getTypeSignature(), method.getDeclaringType()));
-			if (i != (parameters.length - 1)) {
+			if (i != parameters.length - 1)
 				sb.append(",");
-			}
 		}
 		sb.append(")");
 		return sb.toString();

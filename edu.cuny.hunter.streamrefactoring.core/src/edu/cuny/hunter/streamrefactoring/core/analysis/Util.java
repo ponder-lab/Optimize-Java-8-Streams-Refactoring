@@ -272,14 +272,11 @@ public final class Util {
 		final Set<Entrypoint> result = new HashSet<>();
 
 		for (IClass klass : classHierarchy)
-			if (!(isJDKClass(klass) || isLibraryClass(klass))) {
+			if (!(isJDKClass(klass) || isLibraryClass(klass)))
 				// iterate over all declared methods
-				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
-					if (signatures.contains(method.getSignature())) {
+				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods())
+					if (signatures.contains(method.getSignature()))
 						addEntryPoint(result, method, classHierarchy);
-					}
-				}
-			}
 		return result;
 	}
 

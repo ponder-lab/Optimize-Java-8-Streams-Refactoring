@@ -43,9 +43,9 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 
 		Set<IJavaProject> javaProjectSet = new HashSet<>();
 
-		if (list != null) {
+		if (list != null)
 			try {
-				for (Object obj : list) {
+				for (Object obj : list)
 					if (obj instanceof IJavaElement) {
 						IJavaElement jElem = (IJavaElement) obj;
 						switch (jElem.getElementType()) {
@@ -64,7 +64,6 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 							break;
 						}
 					}
-				}
 
 				Shell shell = HandlerUtil.getActiveShellChecked(event);
 				ConvertStreamToParallelRefactoringWizard.startRefactoring(
@@ -73,7 +72,6 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 				JavaPlugin.log(e);
 				throw new ExecutionException("Failed to start refactoring", e);
 			}
-		}
 		// TODO: What do we do if there was no input? Do we display some
 		// message?
 		return null;
@@ -83,7 +81,7 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 			throws JavaModelException {
 		Set<IMethod> methodSet = new HashSet<>();
 
-		if (type.isClass()) {
+		if (type.isClass())
 			for (IMethod method : type.getMethods())
 				// if (RefactoringAvailabilityTester.isInterfaceMigrationAvailable(method,
 				// monitor)) {
@@ -92,8 +90,6 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 					methodSet.add(method);
 				} else
 					this.logNonMigratableMethod(method);
-
-		}
 
 		return methodSet;
 	}
