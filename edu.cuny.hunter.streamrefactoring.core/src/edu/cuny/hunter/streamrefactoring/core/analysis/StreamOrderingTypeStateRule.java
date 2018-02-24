@@ -23,12 +23,12 @@ public class StreamOrderingTypeStateRule extends StreamAttributeTypestateRule {
 		super.addAutomaton();
 
 		IDFAState orderedState = addState(Ordering.ORDERED);
-
+		
 		if (this.getDFAStateToOrderingMap() == null)
 			this.setDFAStateToOrderingMap(new HashMap<>(2));
-
+		
 		this.getDFAStateToOrderingMap().put(orderedState, Ordering.ORDERED);
-
+		
 		IDFAState unorderedState = addState(Ordering.UNORDERED);
 		this.getDFAStateToOrderingMap().put(unorderedState, Ordering.UNORDERED);
 
@@ -52,12 +52,12 @@ public class StreamOrderingTypeStateRule extends StreamAttributeTypestateRule {
 		stream.addPossibleOrderingCollection(set);
 	}
 
-	protected Map<IDFAState, Ordering> getDFAStateToOrderingMap() {
-		return dfaStateToOrderingMap;
-	}
-
 	public Ordering getOrdering(IDFAState state) {
 		return this.getDFAStateToOrderingMap().get(state);
+	}
+
+	protected Map<IDFAState, Ordering> getDFAStateToOrderingMap() {
+		return dfaStateToOrderingMap;
 	}
 
 	protected void setDFAStateToOrderingMap(Map<IDFAState, Ordering> dfaStateToOrderingMap) {

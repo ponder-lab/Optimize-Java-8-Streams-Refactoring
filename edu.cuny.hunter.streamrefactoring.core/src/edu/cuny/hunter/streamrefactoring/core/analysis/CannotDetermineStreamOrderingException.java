@@ -13,17 +13,17 @@ public class CannotDetermineStreamOrderingException extends Exception {
 		super(message);
 	}
 
-	public CannotDetermineStreamOrderingException(String message, Throwable cause, boolean enableSuppression,
-			boolean writableStackTrace, Class<?> sourceType) {
-		super(message, cause, enableSuppression, writableStackTrace);
+	public CannotDetermineStreamOrderingException(Throwable cause, Class<?> sourceType) {
+		super(cause);
 	}
 
 	public CannotDetermineStreamOrderingException(String message, Throwable cause, Class<?> sourceType) {
 		super(message, cause);
 	}
 
-	public CannotDetermineStreamOrderingException(Throwable cause, Class<?> sourceType) {
-		super(cause);
+	public CannotDetermineStreamOrderingException(String message, Throwable cause, boolean enableSuppression,
+			boolean writableStackTrace, Class<?> sourceType) {
+		super(message, cause, enableSuppression, writableStackTrace);
 	}
 
 	public Class<?> getSourceType() {

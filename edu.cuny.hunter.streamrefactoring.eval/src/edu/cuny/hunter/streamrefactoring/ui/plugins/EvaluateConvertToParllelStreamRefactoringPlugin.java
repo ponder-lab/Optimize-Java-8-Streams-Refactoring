@@ -4,9 +4,9 @@ import org.eclipse.core.runtime.Plugin;
 import org.osgi.framework.BundleContext;
 
 public class EvaluateConvertToParllelStreamRefactoringPlugin extends Plugin {
-
+	
 	private static EvaluateConvertToParllelStreamRefactoringPlugin plugin;
-
+	
 	public static Plugin getDefault() {
 		return plugin;
 	}

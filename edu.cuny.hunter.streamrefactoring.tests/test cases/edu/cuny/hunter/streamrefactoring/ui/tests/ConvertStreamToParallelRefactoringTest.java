@@ -1,3 +1,6 @@
+/**
+ *
+ */
 package edu.cuny.hunter.streamrefactoring.ui.tests;
 
 import java.io.File;
@@ -6,8 +9,6 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -37,6 +38,7 @@ import org.eclipse.jdt.ui.tests.refactoring.Java18Setup;
 import org.eclipse.jdt.ui.tests.refactoring.RefactoringTest;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 
+import edu.cuny.hunter.streamrefactoring.core.analysis.CollectorKind;
 import edu.cuny.hunter.streamrefactoring.core.analysis.ExecutionMode;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Ordering;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
@@ -51,7 +53,6 @@ import junit.framework.TestSuite;
 /**
  * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi
  *         Khatchadourian</a>
- * @author <a href="mailto:ytang3@gradcenter.cuny.edu">Yiming Tang</a>
  *
  */
 @SuppressWarnings("restriction")
@@ -59,13 +60,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	private static final Class<ConvertStreamToParallelRefactoringTest> CLAZZ = ConvertStreamToParallelRefactoringTest.class;
 
-	private static final String ENTRY_POINT_FILENAME = "entry_points.txt";
-
 	private static final Logger LOGGER = Logger.getLogger(CLAZZ.getName());
 
 	private static final int MAX_RETRY = 5;
-
-	private static final int N_TO_USE_FOR_STREAMS_DEFAULT = 2;
 
 	private static final String REFACTORING_PATH = "ConvertStreamToParallel/";
 
@@ -104,21 +101,6 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		return compileSuccess;
 	}
 
-	/**
-	 * Copy entry_points.txt from current directory to the corresponding directory
-	 * in junit-workspace
-	 *
-	 * @return true: copy successfully / false: the source file does not exist
-	 */
-	private static boolean copyEntryPointFile(Path source, Path target) throws IOException {
-		File file = getEntryPointFile(source);
-		if (file != null) {
-			Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING);
-			return true;
-		} else
-			return false;
-	}
-
 	public static ICompilationUnit createCU(IPackageFragment pack, String name, String contents) throws Exception {
 		ICompilationUnit compilationUnit = pack.getCompilationUnit(name);
 
@@ -142,40 +124,6 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		return cu;
 	}
 
-	private static String errorMessage(String attribute, StreamAnalysisExpectedResult result) {
-		return "Unexpected " + attribute + " for " + result.getExpectedCreation() + ".";
-	}
-
-	private static Path getAbsolutePath(String fileName) {
-		Path path = Paths.get(RESOURCE_PATH, fileName);
-		Path absolutePath = path.toAbsolutePath();
-		return absolutePath;
-	}
-
-	/**
-	 * get the entry_points.txt
-	 */
-	private static File getEntryPointFile(Path filePath) {
-		File file = new File(filePath.toString());
-		if (file.exists())
-			return file;
-		else
-			return null;
-	}
-
-	/**
-	 * Returns the path of where the entry points file should be copied relative to
-	 * the given {@link IJavaElement}.
-	 *
-	 * @param element
-	 *            The {@link IJavaElement} in question.
-	 * @return The {@link Path} where the entry points file should be copied
-	 *         relative to the given {@link IJavaElement}.
-	 */
-	private static Path getEntryPointFileDestinationPath(IJavaElement element) {
-		return Paths.get(element.getResource().getLocation().toString() + File.separator + ENTRY_POINT_FILENAME);
-	}
-
 	public static Test setUpTest(Test test) {
 		return new Java18Setup(test);
 	}
@@ -186,8 +134,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	private static void tryDeletingAllJavaClassFiles(IPackageFragment pack) throws JavaModelException {
 		IJavaElement[] kids = pack.getChildren();
-		for (int i = 0; i < kids.length; i++) {
-			if (kids[i] instanceof ISourceManipulation) {
+		for (int i = 0; i < kids.length; i++)
+			if (kids[i] instanceof ISourceManipulation)
 				if (kids[i].exists() && !kids[i].isReadOnly()) {
 					IPath path = kids[i].getPath();
 
@@ -226,8 +174,6 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 								"Class file for " + kids[i].getElementName() + " does not exist.", e);
 					}
 				}
-			}
-		}
 	}
 
 	public ConvertStreamToParallelRefactoringTest(String name) {
@@ -260,40 +206,15 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	@Override
 	protected ICompilationUnit createCUfromTestFile(IPackageFragment pack, String cuName, boolean input)
 			throws Exception {
-		String testFileName;
-
-		if (input) {
-			testFileName = getInputTestFileName(cuName);
-		} else // output case.
-			testFileName = getOutputTestFileName(cuName);
-
-		String contents = getFileContents(testFileName);
-
+		String contents = input ? this.getFileContents(this.getInputTestFileName(cuName))
+				: this.getFileContents(this.getOutputTestFileName(cuName));
 		return createCU(pack, cuName + ".java", contents);
 	}
 
-	/**
-	 * @return The {@link Path} of where the entry_points.txt file should be copied
-	 *         to in the junit workspace.
-	 */
-	@SuppressWarnings("unused")
-	private Path getDestinationWorkspacePath() {
-		return getEntryPointFileDestinationPath(this.getPackageP().getJavaProject().getParent());
-	}
-
-	/**
-	 * @return The {@link Path} of where the entry points file should be copied to
-	 *         for the current project under test.
-	 */
-	private Path getEntryPointFileProjectDestinationPath() {
-		return getEntryPointFileDestinationPath(this.getPackageP().getJavaProject());
-	}
-
-	/**
-	 * @return an absolute path of entry_points.txt in the project directory.
-	 */
-	private Path getEntryPointFileProjectSourcePath() {
-		return getAbsolutePath(this.getTestPath() + this.getName()).resolve(ENTRY_POINT_FILENAME);
+	private Path getAbsolutionPath(String fileName) {
+		Path path = Paths.get(RESOURCE_PATH, fileName);
+		Path absolutePath = path.toAbsolutePath();
+		return absolutePath;
 	}
 
 	/*
@@ -307,7 +228,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 */
 	@Override
 	public String getFileContents(String fileName) throws IOException {
-		Path absolutePath = getAbsolutePath(fileName);
+		Path absolutePath = this.getAbsolutionPath(fileName);
 		byte[] encoded = Files.readAllBytes(absolutePath);
 		return new String(encoded, Charset.defaultCharset());
 	}
@@ -324,11 +245,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	/**
 	 * Runs a single analysis test.
 	 */
-	private void helper(int nToUseForStreams, StreamAnalysisExpectedResult... expectedResults) throws Exception {
-		LOGGER.fine("Using N = " + nToUseForStreams + ".");
-
+	private void helper(StreamAnalysisExpectedResult... expectedResults) throws Exception {
 		// compute the actual results.
-		ICompilationUnit cu = createCUfromTestFile(getPackageP(), "A");
+		ICompilationUnit cu = this.createCUfromTestFile(this.getPackageP(), "A");
 
 		ASTParser parser = ASTParser.newParser(AST.JLS8);
 		parser.setResolveBindings(true);
@@ -336,7 +255,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 		ASTNode ast = parser.createAST(new NullProgressMonitor());
 
-		StreamAnalyzer analyzer = new StreamAnalyzer(false, nToUseForStreams);
+		StreamAnalyzer analyzer = new StreamAnalyzer(false);
 		ast.accept(analyzer);
 
 		analyzer.analyze();
@@ -361,90 +280,32 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 					expectingStreams.size());
 
 			Stream stream = expectingStreams.get(0);
-
-			Set<ExecutionMode> executionModes = stream.getPossibleExecutionModes();
-			assertEquals(errorMessage("execution mode", result), result.getExpectedExecutionModes(), executionModes);
-
-			Set<Ordering> orderings = stream.getPossibleOrderings();
-			assertEquals(errorMessage("orderings", result), result.getExpectedOrderings(), orderings);
-
-			assertEquals(errorMessage("side effects", result), result.isExpectingSideEffects(),
-					stream.hasPossibleSideEffects());
-			assertEquals(errorMessage("stateful intermediate operations", result),
-					result.isExpectingStatefulIntermediateOperation(),
-					stream.hasPossibleStatefulIntermediateOperations());
-			assertEquals(errorMessage("ROM", result), result.isExpectingThatReduceOrderingMatters(),
-					stream.reduceOrderingPossiblyMatters());
-			assertEquals(errorMessage("transformation actions", result), result.getExpectedActions(),
-					stream.getActions());
-			assertEquals(errorMessage("passing precondition", result), result.getExpectedPassingPrecondition(),
-					stream.getPassingPrecondition());
-			assertEquals(errorMessage("refactoring", result), result.getExpectedRefactoring(), stream.getRefactoring());
-			assertEquals(errorMessage("status severity", result), result.getExpectedStatusSeverity(),
-					stream.getStatus().getSeverity());
-
-			Set<Integer> actualCodes = Arrays.stream(stream.getStatus().getEntries()).map(e -> e.getCode())
-					.collect(Collectors.toSet());
-
-			Set<Integer> expectedCodes = result.getExpectedFailures().stream().map(e -> e.getCode())
-					.collect(Collectors.toSet());
-
-			assertEquals(errorMessage("status codes", result), expectedCodes, actualCodes);
+			result.evaluate(stream);
 		}
 	}
 
-	/**
-	 * Runs a single analysis test.
-	 */
-	private void helper(StreamAnalysisExpectedResult... expectedResults) throws Exception {
-		helper(N_TO_USE_FOR_STREAMS_DEFAULT, expectedResults);
-	}
-
 	private void refreshFromLocal() throws CoreException {
-		if (getRoot().exists())
-			getRoot().getResource().refreshLocal(IResource.DEPTH_INFINITE, null);
-		else if (getPackageP().exists())// don't refresh package if root already
-										// refreshed
-			getPackageP().getResource().refreshLocal(IResource.DEPTH_INFINITE, null);
+		if (this.getRoot().exists())
+			this.getRoot().getResource().refreshLocal(IResource.DEPTH_INFINITE, null);
+		else if (this.getPackageP().exists())// don't refresh package if root already
+			// refreshed
+			this.getPackageP().getResource().refreshLocal(IResource.DEPTH_INFINITE, null);
 	}
 
 	public void setFileContents(String fileName, String contents) throws IOException {
-		Path absolutePath = getAbsolutePath(fileName);
+		Path absolutePath = this.getAbsolutionPath(fileName);
 		Files.write(absolutePath, contents.getBytes());
 	}
 
 	@Override
-	protected void setUp() throws Exception {
-		super.setUp();
-
-		// this is the source path.
-		Path entryPointFileProjectSourcePath = getEntryPointFileProjectSourcePath();
-		Path entryPointFileProjectDestinationPath = getEntryPointFileProjectDestinationPath();
-
-		// TODO: we also need to copy entry_points.txt to workspace directory here
-		// something like copyEntryPointFile(absoluteProjectPath,
-		// getDestinationWorkSpacePath())
-		if (copyEntryPointFile(entryPointFileProjectSourcePath, entryPointFileProjectDestinationPath))
-			LOGGER.info("Copied " + ENTRY_POINT_FILENAME + " successfully.");
-		else
-			LOGGER.info(ENTRY_POINT_FILENAME + " does not exist.");
-	}
-
-	@Override
 	protected void tearDown() throws Exception {
-		refreshFromLocal();
-		performDummySearch();
+		this.refreshFromLocal();
+		this.performDummySearch();
 
-		final boolean pExists = getPackageP().exists();
-
-		// this is destination path.
-		Path destinationProjectPath = getEntryPointFileProjectDestinationPath();
-
-		if (getEntryPointFile(destinationProjectPath) != null)
-			Files.delete(destinationProjectPath);
+		final boolean pExists = this.getPackageP().exists();
 
 		if (pExists)
-			tryDeletingAllJavaClassFiles(getPackageP());
+			tryDeletingAllJavaClassFiles(this.getPackageP());
 
 		super.tearDown();
 	}
@@ -456,7 +317,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	public void testAnonymousInnerClass() throws Exception {
 		boolean passed = false;
 		try {
-			helper(new StreamAnalysisExpectedResult("new ArrayList().stream()",
+			this.helper(new StreamAnalysisExpectedResult("new ArrayList().stream()",
 					Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, false, false,
 					EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
 					Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
@@ -471,7 +332,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * Test #34.
 	 */
 	public void testArraysAsList() throws Exception {
-		helper(new StreamAnalysisExpectedResult("Arrays.asList().stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
+		this.helper(new StreamAnalysisExpectedResult("Arrays.asList().stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
 				EnumSet.of(Ordering.ORDERED), false, false, false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL),
 				PreconditionSuccess.P2, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
 				Collections.emptySet()));
@@ -481,138 +342,161 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * Test #80.
 	 */
 	public void testArraysStream() throws Exception {
-		helper(new StreamAnalysisExpectedResult("Arrays.stream(new Object[1])",
-				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, false, false,
-				null, null, null, RefactoringStatus.ERROR,
-				EnumSet.of(PreconditionFailure.NO_APPLICATION_CODE_IN_CALL_STRINGS)));
-	}
-
-	/**
-	 * Test #80. We need to increase N here to 3.
-	 */
-	public void testArraysStream2() throws Exception {
-		helper(3, new StreamAnalysisExpectedResult("Arrays.stream(new Object[1])",
+		this.helper(new StreamAnalysisExpectedResult("Arrays.stream(new Object[1])",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, false, false,
 				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	public void testBitSet() throws Exception {
-		helper(new StreamAnalysisExpectedResult("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+		this.helper(new StreamAnalysisExpectedResult("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
 				Collections.singleton(Ordering.ORDERED), false, false, false,
 				Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	public void testCollectionFromParameter() throws Exception {
-		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
-				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
+		this.helper(new StreamAnalysisExpectedResult("h.parallelStream()",
+				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, true,
+				false, null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
 	}
 
 	public void testCollectionFromParameter2() throws Exception {
-		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
-				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
+		this.helper(new StreamAnalysisExpectedResult("h.parallelStream()",
+				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, true,
+				false, null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
 	}
 
 	/**
 	 * Test for #98.
 	 */
 	public void testCollectionFromParameter3() throws Exception {
-		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
-				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
+		this.helper(new StreamAnalysisExpectedResult("h.parallelStream()",
+				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, true,
+				false, null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
 	}
 
 	/**
 	 * Test for #98. Ordering.ORDERED because we are falling back.
 	 */
 	public void testCollectionFromParameter4() throws Exception {
-		helper(new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
-				Collections.singleton(Ordering.ORDERED), false, false, false, null, null, null, RefactoringStatus.ERROR,
-				EnumSet.of(PreconditionFailure.STREAM_CODE_NOT_REACHABLE)));
+		this.helper(
+				new StreamAnalysisExpectedResult("h.parallelStream()", Collections.singleton(ExecutionMode.PARALLEL),
+						Collections.singleton(Ordering.ORDERED), false, false, false, null, null, null,
+						RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.STREAM_CODE_NOT_REACHABLE)));
 	}
 
 	// Test #65,
 	public void testConcat() throws Exception {
-		helper(new StreamAnalysisExpectedResult("concat(new HashSet().parallelStream(),new HashSet().parallelStream())",
+		this.helper(new StreamAnalysisExpectedResult(
+				"concat(new HashSet().parallelStream(),new HashSet().parallelStream())",
 				EnumSet.of(ExecutionMode.SEQUENTIAL), null, false, false, false, null, null, null,
 				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
 	}
 
+	/**
+	 * Test #64. Test P6 in table3.
+	 */
+	public void testConcurrentReduction() throws Exception {
+		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("orderedWidgets.stream()",
+				EnumSet.of(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), CollectorKind.CONCURRENT, true,
+				false, true, EnumSet.of(TransformationAction.CONVERT_COLLECTOR_TO_NON_CONCURRENT),
+				PreconditionSuccess.P6, Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK,
+				Collections.emptySet()));
+	}
+
+	/**
+	 * Test #64. Test P7 in table 3.
+	 */
+	public void testConcurrentReduction1() throws Exception {
+		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("orderedWidgets.stream()",
+				EnumSet.of(ExecutionMode.PARALLEL), EnumSet.of(Ordering.ORDERED), CollectorKind.NONCONCURRENT, false,
+				false, true, EnumSet.of(TransformationAction.CONVERT_TO_SEQUENTIAL), PreconditionSuccess.P7,
+				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
+	}
+
+	/**
+	 * Test #64. Test P8 in table 3.
+	 */
+	public void testConcurrentReduction2() throws Exception {
+		HashSet<TransformationAction> transformations = new HashSet<>();
+		transformations.add(TransformationAction.CONVERT_COLLECTOR_TO_NON_CONCURRENT);
+		transformations.add(TransformationAction.CONVERT_TO_SEQUENTIAL);
+
+		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("orderedWidgets.stream()",
+				EnumSet.of(ExecutionMode.PARALLEL), EnumSet.of(Ordering.ORDERED), CollectorKind.CONCURRENT, false,
+				false, true, transformations, PreconditionSuccess.P8, Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION,
+				RefactoringStatus.OK, Collections.emptySet()));
+	}
+
+	/**
+	 * Test #64. Test P9 in table 3.
+	 */
+	public void testConcurrentReduction3() throws Exception {
+		HashSet<TransformationAction> transformations = new HashSet<>();
+		transformations.add(TransformationAction.CONVERT_COLLECTOR_TO_CONCURRENT);
+		transformations.add(TransformationAction.CONVERT_TO_PARALLEL);
+
+		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("orderedWidgets.stream()",
+				EnumSet.of(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), CollectorKind.NONCONCURRENT, false,
+				false, false, transformations, PreconditionSuccess.P9, Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION,
+				RefactoringStatus.OK, Collections.emptySet()));
+	}
+
+	/**
+	 * Test #64. Test P10 in table 3.
+	 */
+	public void testConcurrentReduction4() throws Exception {
+		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("orderedWidgets.stream()",
+				EnumSet.of(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), CollectorKind.CONCURRENT, false,
+				false, false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P10,
+				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
+	}
+
+	/**
+	 * Test #64. Test P11 in table 3.
+	 */
+	public void testConcurrentReduction5() throws Exception {
+		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("orderedWidgets.stream()",
+				EnumSet.of(ExecutionMode.PARALLEL), EnumSet.of(Ordering.ORDERED), CollectorKind.NONCONCURRENT, false,
+				false, false, EnumSet.of(TransformationAction.CONVERT_COLLECTOR_TO_CONCURRENT), PreconditionSuccess.P11,
+				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
+	}
+
 	public void testConstructor() throws Exception {
-		helper(new StreamAnalysisExpectedResult("new ArrayList().stream()",
+		this.helper(new StreamAnalysisExpectedResult("new ArrayList().stream()",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, false, false,
 				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	public void testDoubleStreamOf() throws Exception {
-		helper(new StreamAnalysisExpectedResult("DoubleStream.of(1.111)",
+		this.helper(new StreamAnalysisExpectedResult("DoubleStream.of(1.111)",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
 				false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 
 	}
 
-	/**
-	 * Test #172. This is a control group for testing entry point file.
-	 */
-	public void testEntryPointFile() throws Exception {
-		helper(new StreamAnalysisExpectedResult("h1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
-				Collections.singleton(Ordering.UNORDERED), false, false, false,
-				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
-				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
-	}
-
-	/**
-	 * Test #172. Test correct entry point file.
-	 */
-	public void testEntryPointFile1() throws Exception {
-		helper(new StreamAnalysisExpectedResult("h1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
-				Collections.singleton(Ordering.UNORDERED), false, false, false,
-				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
-				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
-	}
-
-	/**
-	 * Test #172. Test entry point file which is not corresponding to the source
-	 * code.
-	 */
-	public void testEntryPointFile2() throws Exception {
-		helper(new StreamAnalysisExpectedResult("h1.stream()", null, null, false, false, false, null, null, null,
-				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.NO_ENTRY_POINT)));
-	}
-
-	/**
-	 * Test #172. Test whether the tool can ignore the explicit entry points in the
-	 * source code when the entry_points.txt exists
-	 */
-	public void testEntryPointFile3() throws Exception {
-		helper(new StreamAnalysisExpectedResult("h1.stream()", null, null, false, false, false, null, null, null,
-				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.NO_ENTRY_POINT)));
-	}
-
 	public void testEntrySet() throws Exception {
-		helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
+		this.helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
 				EnumSet.of(Ordering.UNORDERED), false, false, false,
 				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	public void testEntrySet2() throws Exception {
-		helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", null, null, false, false, false, null, null,
-				null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
+		this.helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", null, null, false, false, false, null,
+				null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
 	}
 
 	public void testEntrySet3() throws Exception {
-		helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", null, null, false, false, false, null, null,
-				null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
+		this.helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", null, null, false, false, false, null,
+				null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
 	}
 
 	public void testEntrySet4() throws Exception {
-		helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
+		this.helper(new StreamAnalysisExpectedResult("map.entrySet().stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
 				EnumSet.of(Ordering.UNORDERED), true, false, false, null, null, null, RefactoringStatus.ERROR,
 				EnumSet.of(PreconditionFailure.NON_DETERMINABLE_REDUCTION_ORDERING)));
 	}
@@ -621,7 +505,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * Test #125. A test case that includes a field.
 	 */
 	public void testField() throws Exception {
-		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+		this.helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED), false, true,
 				false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
@@ -633,7 +517,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * @throws Exception
 	 */
 	public void testGenerate() throws Exception {
-		helper(new StreamAnalysisExpectedResult("Stream.generate(() -> 1)",
+		this.helper(new StreamAnalysisExpectedResult("Stream.generate(() -> 1)",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED), false,
 				false, false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
@@ -641,37 +525,35 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public void testHashSetParallelStream() throws Exception {
-		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()",
+		this.helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()",
 				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, false,
 				false, null, null, null, RefactoringStatus.ERROR,
 				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
 	}
 
 	public void testHashSetParallelStream2() throws Exception {
-		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()",
+		this.helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()",
 				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, true,
 				false, null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
 	}
 
 	public void testImplicitEntryPoint() throws Exception {
-		helper(new StreamAnalysisExpectedResult("IntStream.of(1)", EnumSet.of(ExecutionMode.SEQUENTIAL),
+		this.helper(new StreamAnalysisExpectedResult("IntStream.of(1)", EnumSet.of(ExecutionMode.SEQUENTIAL),
 				EnumSet.of(Ordering.ORDERED), false, false, false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL),
 				PreconditionSuccess.P2, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
 				Collections.emptySet()));
 	}
 
-	// N needs to be 3 here.
 	public void testIntermediateOperations() throws Exception {
-		helper(3,
-				new StreamAnalysisExpectedResult("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
-						Collections.singleton(Ordering.ORDERED), false, true, false,
-						EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
-						PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
-						Collections.emptySet()));
+		this.helper(new StreamAnalysisExpectedResult("set.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+				Collections.singleton(Ordering.ORDERED), false, true, false,
+				EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
+				PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
+				Collections.emptySet()));
 	}
 
 	public void testIntStreamGenerate() throws Exception {
-		helper(new StreamAnalysisExpectedResult("IntStream.generate(() -> 1)",
+		this.helper(new StreamAnalysisExpectedResult("IntStream.generate(() -> 1)",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
 				false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
@@ -679,7 +561,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public void testIntStreamOf() throws Exception {
-		helper(new StreamAnalysisExpectedResult("IntStream.of(1)", Collections.singleton(ExecutionMode.SEQUENTIAL),
+		this.helper(new StreamAnalysisExpectedResult("IntStream.of(1)", Collections.singleton(ExecutionMode.SEQUENTIAL),
 				Collections.singleton(Ordering.ORDERED), false, false, false,
 				Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
@@ -687,15 +569,15 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public void testLongStreamOf() throws Exception {
-		helper(new StreamAnalysisExpectedResult("LongStream.of(1111)", Collections.singleton(ExecutionMode.SEQUENTIAL),
-				Collections.singleton(Ordering.ORDERED), false, false, false,
-				Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
+		this.helper(new StreamAnalysisExpectedResult("LongStream.of(1111)",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
+				false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 
 	}
 
 	public void testMotivatingExample() throws Exception {
-		helper(new StreamAnalysisExpectedResult("unorderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
+		this.helper(new StreamAnalysisExpectedResult("unorderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
 				EnumSet.of(Ordering.ORDERED), false, false, true, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL),
 				PreconditionSuccess.P2, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
 				Collections.emptySet()),
@@ -710,7 +592,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public void testMultipleCallsToEnclosingMethod() throws Exception {
-		helper(new StreamAnalysisExpectedResult("DoubleStream.of(1.111)",
+		this.helper(new StreamAnalysisExpectedResult("DoubleStream.of(1.111)",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
 				false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
@@ -720,7 +602,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * Test #122.
 	 */
 	public void testMultipleEntryPoints() throws Exception {
-		helper(new StreamAnalysisExpectedResult("h1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+		this.helper(new StreamAnalysisExpectedResult("h1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
 				Collections.singleton(Ordering.UNORDERED), false, false, false,
 				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
@@ -730,7 +612,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * This should change once #103 is fixed.
 	 */
 	public void testNonInternalAPI() throws Exception {
-		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()",
+		this.helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()",
 				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, false,
 				false, null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.UNORDERED)));
 	}
@@ -739,7 +621,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * Related to #126. Suggested by @mbagherz.
 	 */
 	public void testNonInternalAPI10() throws Exception {
-		helper(new StreamAnalysisExpectedResult("new HashSet<Object>().stream()",
+		this.helper(new StreamAnalysisExpectedResult("new HashSet<Object>().stream()",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, true, false,
 				EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
 				PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
@@ -747,14 +629,14 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public void testNonInternalAPI2() throws Exception {
-		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+		this.helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED), false, true,
 				false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	public void testNonInternalAPI3() throws Exception {
-		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+		this.helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED), false, true,
 				false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
@@ -768,7 +650,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		orderings.add(Ordering.UNORDERED);
 		orderings.add(Ordering.ORDERED);
 
-		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+		this.helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), orderings, false, true, false, null, null, null,
 				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS)));
 	}
@@ -780,7 +662,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		HashSet<ExecutionMode> executionModes = new HashSet<>();
 		executionModes.add(ExecutionMode.PARALLEL);
 		executionModes.add(ExecutionMode.SEQUENTIAL);
-		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()", executionModes,
+		this.helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()", executionModes,
 				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
 				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES)));
 	}
@@ -792,7 +674,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		HashSet<ExecutionMode> executionModes = new HashSet<>();
 		executionModes.add(ExecutionMode.PARALLEL);
 		executionModes.add(ExecutionMode.SEQUENTIAL);
-		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()", executionModes,
+		this.helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()", executionModes,
 				Collections.singleton(Ordering.UNORDERED), false, true, false, null, null, null,
 				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES)));
 	}
@@ -802,7 +684,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * Related to #126.
 	 */
 	public void testNonInternalAPI7() throws Exception {
-		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+		this.helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, true, false,
 				EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
 				PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
@@ -815,7 +697,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * operation is called.
 	 */
 	public void testNonInternalAPI8() throws Exception {
-		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+		this.helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), false, true, false,
 				EnumSet.of(TransformationAction.UNORDER, TransformationAction.CONVERT_TO_PARALLEL),
 				PreconditionSuccess.P3, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
@@ -830,7 +712,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		orderings.add(Ordering.UNORDERED);
 		orderings.add(Ordering.ORDERED);
 
-		helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
+		this.helper(new StreamAnalysisExpectedResult("new HashSet<>().stream()",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), orderings, false, true, false, null, null, null,
 				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS)));
 	}
@@ -839,29 +721,30 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * Test #122. Remove an annotation from testMultipleEntryPoints().
 	 */
 	public void testOneEntryPoint() throws Exception {
-		helper(new StreamAnalysisExpectedResult("h2.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
+		this.helper(new StreamAnalysisExpectedResult("h2.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
 				Collections.singleton(Ordering.UNORDERED), false, false, false,
 				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	public void testStaticInitializer() throws Exception {
-		helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()", null, null, false, false, false,
-				null, null, null, RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
+		this.helper(new StreamAnalysisExpectedResult("new HashSet<>().parallelStream()", null, null, false, false,
+				false, null, null, null, RefactoringStatus.ERROR,
+				EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
 	}
 
 	public void testStreamOf() throws Exception {
-		helper(new StreamAnalysisExpectedResult("Stream.of(\"a\")", Collections.singleton(ExecutionMode.SEQUENTIAL),
-				Collections.singleton(Ordering.ORDERED), false, false, false,
-				Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
+		this.helper(new StreamAnalysisExpectedResult("Stream.of(\"a\")",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
+				false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
 
 	}
 
 	public void testTerminalOp1() throws Exception {
-		helper(new StreamAnalysisExpectedResult("collection1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
-				Collections.singleton(Ordering.UNORDERED), false, false, false,
-				Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
+		this.helper(new StreamAnalysisExpectedResult("collection1.stream()",
+				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED), false,
+				false, false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P1,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()),
 
 				new StreamAnalysisExpectedResult("collection2.stream()",
@@ -871,9 +754,11 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public void testTerminalOp2() throws Exception {
-		helper(new StreamAnalysisExpectedResult("collection1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
-				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
-				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)),
+		this.helper(
+				new StreamAnalysisExpectedResult("collection1.stream()",
+						Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED),
+						false, false, false, null, null, null, RefactoringStatus.ERROR,
+						Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)),
 
 				new StreamAnalysisExpectedResult("collection2.stream()",
 						Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED),
@@ -883,9 +768,11 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public void testTerminalOp3() throws Exception {
-		helper(new StreamAnalysisExpectedResult("collection1.stream()", Collections.singleton(ExecutionMode.SEQUENTIAL),
-				Collections.singleton(Ordering.UNORDERED), false, false, false, null, null, null,
-				RefactoringStatus.ERROR, Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)),
+		this.helper(
+				new StreamAnalysisExpectedResult("collection1.stream()",
+						Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED),
+						false, false, false, null, null, null, RefactoringStatus.ERROR,
+						Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)),
 
 				new StreamAnalysisExpectedResult("collection2.stream()",
 						Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.UNORDERED),
@@ -894,14 +781,14 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	public void testTypeResolution() throws Exception {
-		helper(new StreamAnalysisExpectedResult("anotherSet.parallelStream()",
+		this.helper(new StreamAnalysisExpectedResult("anotherSet.parallelStream()",
 				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, false,
 				false, null, null, null, RefactoringStatus.ERROR,
 				Collections.singleton(PreconditionFailure.NO_TERMINAL_OPERATIONS)));
 	}
 
 	public void testTypeResolution2() throws Exception {
-		helper(new StreamAnalysisExpectedResult("anotherSet.parallelStream()",
+		this.helper(new StreamAnalysisExpectedResult("anotherSet.parallelStream()",
 				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, false,
 				false, null, null, null, RefactoringStatus.ERROR,
 				Collections.singleton(PreconditionFailure.UNORDERED)));
@@ -911,7 +798,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 * Test #119.
 	 */
 	public void testWithoutEntryPoint() throws Exception {
-		helper(new StreamAnalysisExpectedResult("h1.stream()", null, null, false, false, false, null, null, null,
+		this.helper(new StreamAnalysisExpectedResult("h1.stream()", null, null, false, false, false, null, null, null,
 				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.NO_ENTRY_POINT)));
 	}
 }

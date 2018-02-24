@@ -16,6 +16,10 @@ public class NoEnclosingMethodNodeFoundException extends Exception {
 		super(message);
 	}
 
+	public NoEnclosingMethodNodeFoundException(Throwable cause) {
+		super(cause);
+	}
+
 	public NoEnclosingMethodNodeFoundException(String message, Throwable cause) {
 		super(message, cause);
 	}
@@ -23,10 +27,6 @@ public class NoEnclosingMethodNodeFoundException extends Exception {
 	public NoEnclosingMethodNodeFoundException(String message, Throwable cause, boolean enableSuppression,
 			boolean writableStackTrace) {
 		super(message, cause, enableSuppression, writableStackTrace);
-	}
-
-	public NoEnclosingMethodNodeFoundException(Throwable cause) {
-		super(cause);
 	}
 
 	public MethodReference getMethodReference() {

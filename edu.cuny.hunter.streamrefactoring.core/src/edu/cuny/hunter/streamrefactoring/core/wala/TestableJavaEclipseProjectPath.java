@@ -19,29 +19,16 @@ import com.ibm.wala.util.collections.MapUtil;
 
 public class TestableJavaEclipseProjectPath extends JavaEclipseProjectPath {
 
-	public static EclipseProjectPath<?, IJavaProject> create(IJavaProject project, AnalysisScopeType scopeType)
-			throws IOException, CoreException {
-		TestableJavaEclipseProjectPath path = new TestableJavaEclipseProjectPath(scopeType);
-		path.create(project.getProject());
-		return path;
-	}
-
 	public TestableJavaEclipseProjectPath(EclipseProjectPath.AnalysisScopeType scopeType)
 			throws IOException, CoreException {
 		super(scopeType);
 	}
 
 	@Override
-	protected boolean isPrimordialJarFile(JarFile j) {
-		return j.getName().endsWith("rtstubs18.jar");
-	}
-
-	@Override
 	protected void resolveLibraryPathEntry(EclipseProjectPath.ILoader loader, IPath p) {
 
 		if (p.lastSegment().matches("rtstubs[0-9]*\\.jar"))
-			// Don't resolve per
-			// https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/83.
+			// Don't resolve per https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/83.
 			return;
 
 		File file = makeAbsolute(p).toFile();
@@ -61,5 +48,17 @@ public class TestableJavaEclipseProjectPath extends JavaEclipseProjectPath {
 		}
 		List<Module> s = MapUtil.findOrCreateList(modules, loader);
 		s.add(file.isDirectory() ? (Module) new BinaryDirectoryTreeModule(file) : (Module) new JarFileModule(j));
+	}
+
+	@Override
+	protected boolean isPrimordialJarFile(JarFile j) {
+		return j.getName().endsWith("rtstubs18.jar");
+	}
+
+	public static EclipseProjectPath<?, IJavaProject> create(IJavaProject project, AnalysisScopeType scopeType)
+			throws IOException, CoreException {
+		TestableJavaEclipseProjectPath path = new TestableJavaEclipseProjectPath(scopeType);
+		path.create(project.getProject());
+		return path;
 	}
 }

@@ -3,17 +3,11 @@
  */
 package edu.cuny.hunter.streamrefactoring.core.wala;
 
-import static com.ibm.wala.ide.util.EclipseProjectPath.AnalysisScopeType.NO_SOURCE;
-import static com.ibm.wala.types.ClassLoaderReference.Primordial;
-import static edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames.LOGGER_NAME;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Path;
 import java.util.jar.JarFile;
 import java.util.logging.Logger;
-import java.util.stream.BaseStream;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.NullProgressMonitor;
@@ -23,6 +17,7 @@ import org.eclipse.jdt.launching.JavaRuntime;
 
 import com.ibm.wala.cast.java.client.JDTJavaSourceAnalysisEngine;
 import com.ibm.wala.ide.util.EclipseProjectPath;
+import com.ibm.wala.ide.util.EclipseProjectPath.AnalysisScopeType;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.CallGraph;
@@ -37,33 +32,24 @@ import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.config.FileOfClasses;
 
+import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
+
 /**
  * Modified from EclipseAnalysisEngine.java, originally from Keshmesh. Authored
  * by Mohsen Vakilian and Stas Negara. Modified by Nicholas Chen and Raffi
  * Khatchadourian.
- *
+ * 
  */
 public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJavaSourceAnalysisEngine<I> {
 
-	private static final Logger LOGGER = Logger.getLogger(LOGGER_NAME);
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	/**
 	 * The N value used to create the {@link nCFABuilder}.
 	 */
 	private static final int N = 1;
 
-	/**
-	 * The default N value used for instances of {@link BaseStream} to create the
-	 * {@link nCFABuilder}.
-	 */
-	private static final int N_FOR_STREAMS_DEFAULT = 2;
-
 	private CallGraphBuilder<?> callGraphBuilder;
-
-	/**
-	 * The N to use for instances of {@link BaseStream}.
-	 */
-	private int nToUseForStreams = N_FOR_STREAMS_DEFAULT;
 
 	/**
 	 * The project used to create this engine.
@@ -73,19 +59,6 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	public EclipseProjectAnalysisEngine(IJavaProject project) throws IOException, CoreException {
 		super(project);
 		this.project = project;
-	}
-
-	public EclipseProjectAnalysisEngine(IJavaProject project, int nForStreams) throws IOException, CoreException {
-		this(project);
-		this.nToUseForStreams = nForStreams;
-	}
-
-	void addToScopeNotWindows(String fileName, Path installPath) throws IOException {
-		scope.addToScope(Primordial, new JarFile(installPath.resolve("jre").resolve("lib").resolve(fileName).toFile()));
-	}
-
-	void addToScopeWindows(String fileName, Path installPath) throws IOException {
-		scope.addToScope(Primordial, new JarFile(installPath.resolve("lib").resolve(fileName).toFile()));
 	}
 
 	@Override
@@ -105,7 +78,7 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 
 			IVMInstall defaultVMInstall = JavaRuntime.getDefaultVMInstall();
 			File installLocation = defaultVMInstall.getInstallLocation();
-			Path installPath = installLocation.toPath();
+			java.nio.file.Path installPath = installLocation.toPath();
 
 			if (Util.isWindows()) {
 				addToScopeWindows("resources.jar", installPath);
@@ -127,6 +100,28 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 			InputStream stream = this.getClass().getResourceAsStream("/EclipseDefaultExclusions.txt");
 			scope.setExclusions(new FileOfClasses(stream));
 		}
+	}
+
+	void addToScopeWindows(String fileName, java.nio.file.Path installPath) throws IOException {
+		scope.addToScope(ClassLoaderReference.Primordial,
+				new JarFile(installPath.resolve("lib").resolve(fileName).toFile()));
+	}
+
+	void addToScopeNotWindows(String fileName, java.nio.file.Path installPath) throws IOException {
+		scope.addToScope(ClassLoaderReference.Primordial,
+				new JarFile(installPath.resolve("jre").resolve("lib").resolve(fileName).toFile()));
+	}
+
+	@Override
+	protected EclipseProjectPath<?, IJavaProject> createProjectPath(IJavaProject project)
+			throws IOException, CoreException {
+		project.open(new NullProgressMonitor());
+		return TestableJavaEclipseProjectPath.create(project, AnalysisScopeType.NO_SOURCE);
+	}
+
+	@Override
+	public CallGraph getCallGraph() {
+		return super.getCallGraph();
 	}
 
 	@Override
@@ -155,22 +150,6 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 		return this.buildSafeCallGraph(getDefaultOptions(entryPoints));
 	}
 
-	public void clearCallGraphBuilder() {
-		this.callGraphBuilder = null;
-	}
-
-	@Override
-	protected EclipseProjectPath<?, IJavaProject> createProjectPath(IJavaProject project)
-			throws IOException, CoreException {
-		project.open(new NullProgressMonitor());
-		return TestableJavaEclipseProjectPath.create(project, NO_SOURCE);
-	}
-
-	@Override
-	public CallGraph getCallGraph() {
-		return super.getCallGraph();
-	}
-
 	public CallGraphBuilder<?> getCallGraphBuilder() {
 		return callGraphBuilder;
 	}
@@ -178,24 +157,19 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	@Override
 	protected CallGraphBuilder<?> getCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options,
 			IAnalysisCacheView cache) {
-		LOGGER.fine(() -> "Using N = " + this.getNToUseForStreams() + ".");
-		return Util.makeNCFABuilder(N, options, (AnalysisCache) cache, cha, scope, this.getNToUseForStreams());
+		return Util.makeNCFABuilder(N, options, (AnalysisCache) cache, cha, scope);
 	}
 
-	public int getNToUseForStreams() {
-		return nToUseForStreams;
+	public void clearCallGraphBuilder() {
+		this.callGraphBuilder = null;
 	}
 
 	/**
 	 * Get the project used to create this engine.
-	 *
+	 * 
 	 * @return The project used to create this engine.
 	 */
 	public IJavaProject getProject() {
 		return project;
-	}
-
-	protected void setNToUseForStreams(int nToUseForStreams) {
-		this.nToUseForStreams = nToUseForStreams;
 	}
 }

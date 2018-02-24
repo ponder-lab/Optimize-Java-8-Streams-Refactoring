@@ -1,2 +1,0 @@
-p.A.<init>()V
-p.A.m()V

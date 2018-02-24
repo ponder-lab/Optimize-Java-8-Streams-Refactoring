@@ -59,7 +59,6 @@ import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
 
-import edu.cuny.hunter.streamrefactoring.core.safe.NoApplicationCodeExistsInCallStringsException;
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
@@ -74,21 +73,21 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 @SuppressWarnings("restriction")
 public class Stream {
 
-	private static final String BASE_STREAM_TYPE_NAME = "BaseStream";
-
 	private static final String GENERATE_METHOD_ID = "generate(java.util.function.Supplier)";
 
 	private static final String JAVA_UTIL_STREAM_DOUBLE_STREAM = "java.util.stream.DoubleStream";
 
-	private static final String JAVA_UTIL_STREAM_INT_STREAM = "java.util.stream.IntStream";
-
 	private static final String JAVA_UTIL_STREAM_LONG_STREAM = "java.util.stream.LongStream";
+
+	private static final String JAVA_UTIL_STREAM_INT_STREAM = "java.util.stream.IntStream";
 
 	private static final String JAVA_UTIL_STREAM_STREAM = "java.util.stream.Stream";
 
-	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
-
 	private static final String PARALLEL_STREAM_CREATION_METHOD_ID = "parallelStream()";
+
+	private static final String BASE_STREAM_TYPE_NAME = "BaseStream";
+
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private static final String PLUGIN_ID = FrameworkUtil.getBundle(Stream.class).getSymbolicName();
 
@@ -96,17 +95,21 @@ public class Stream {
 
 	private final MethodInvocation creation;
 
+	private Optional<SSAInvokeInstruction> instructionForCreation;
+
 	private final MethodDeclaration enclosingMethodDeclaration;
 
 	private IR enclosingMethodDeclarationIR;
 
 	private final TypeDeclaration enclosingTypeDeclaration;
-
-	private boolean hasNoTerminalOperation;
+	
+	private CollectorKind collectorKind;
 
 	private boolean hasPossibleSideEffects;
 
 	private boolean hasPossibleStatefulIntermediateOperations;
+
+	private boolean hasNoTerminalOperation;
 
 	/**
 	 * The execution mode derived from the declaration of the stream.
@@ -119,8 +122,6 @@ public class Stream {
 	private Ordering initialOrdering;
 
 	private InstanceKey instanceKey;
-
-	private Optional<SSAInvokeInstruction> instructionForCreation;
 
 	private PreconditionSuccess passingPrecondition;
 
@@ -160,6 +161,13 @@ public class Stream {
 			this.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, "Stream: " + creation
 					+ " is most likely used in a context that is currently not handled by this plug-in.");
 		}
+	}
+
+	public void inferInitialAttributes(EclipseProjectAnalysisEngine<InstanceKey> engine,
+			OrderingInference orderingInference) throws InvalidClassFileException, IOException, CoreException,
+			UnhandledCaseException, StreamCreationNotConsideredException {
+		this.inferInitialExecution();
+		this.inferInitialOrdering(engine, orderingInference);
 	}
 
 	protected void addPossibleExecutionMode(ExecutionMode executionMode) {
@@ -295,25 +303,6 @@ public class Stream {
 		}
 	}
 
-	protected InstanceKey computeInstanceKey(Collection<InstanceKey> trackedInstances,
-			EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws InvalidClassFileException, IOException, CoreException, UnhandledCaseException,
-			NoApplicationCodeExistsInCallStringsException, InstanceKeyNotFoundException {
-		Optional<SSAInvokeInstruction> instructionForCreation = this.getInstructionForCreation(engine);
-
-		if (instructionForCreation.isPresent()) {
-			SSAInvokeInstruction instruction = instructionForCreation.get();
-
-			for (InstanceKey ik : trackedInstances)
-				if (instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction,
-						this.getEnclosingMethodReference(), engine))
-					return ik;
-		}
-
-		throw new InstanceKeyNotFoundException(
-				"Can't find instance key for: " + this.getCreation() + " using tracked instances: " + trackedInstances);
-	}
-
 	public Set<TransformationAction> getActions() {
 		if (this.actions != null)
 			return Collections.unmodifiableSet(this.actions);
@@ -435,14 +424,18 @@ public class Stream {
 	}
 
 	public InstanceKey getInstanceKey(Collection<InstanceKey> trackedInstances,
-			EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws InvalidClassFileException, IOException, CoreException, InstanceKeyNotFoundException,
-			UnhandledCaseException, NoApplicationCodeExistsInCallStringsException {
-		// if not present.
-		if (this.instanceKey == null)
-			// compute it.
-			this.instanceKey = computeInstanceKey(trackedInstances, engine);
-		return this.instanceKey;
+			EclipseProjectAnalysisEngine<InstanceKey> engine) throws InvalidClassFileException, IOException,
+			CoreException, InstanceKeyNotFoundException, UnhandledCaseException {
+		if (instanceKey == null) {
+			instanceKey = this.getInstructionForCreation(engine)
+					.flatMap(instruction -> trackedInstances.stream()
+							.filter(ik -> instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction,
+									this.getEnclosingMethodReference(), engine.getCallGraph()))
+							.findFirst())
+					.orElseThrow(() -> new InstanceKeyNotFoundException("Can't find instance key for: "
+							+ this.getCreation() + " using tracked instances: " + trackedInstances));
+		}
+		return instanceKey;
 	}
 
 	Optional<SSAInvokeInstruction> getInstructionForCreation(EclipseProjectAnalysisEngine<InstanceKey> engine)
@@ -514,6 +507,10 @@ public class Stream {
 		return possibleOrderings.stream().map(e -> e == null ? initialOrdering : e).collect(Collectors.toSet());
 	}
 
+	public CollectorKind getCollectorKind() {
+		return this.collectorKind;
+	}
+	
 	public Refactoring getRefactoring() {
 		return this.refactoring;
 	}
@@ -546,10 +543,6 @@ public class Stream {
 		return getInstructionForCreation(engine).map(i -> i.getUse(0)).orElse(-1);
 	}
 
-	public boolean hasNoTerminalOperation() {
-		return hasNoTerminalOperation;
-	}
-
 	/**
 	 * Returns true iff any behavioral parameters (λ-expressions) associated with
 	 * any operations in the stream's pipeline has side-effects on any possible
@@ -567,11 +560,8 @@ public class Stream {
 		return hasPossibleStatefulIntermediateOperations;
 	}
 
-	public void inferInitialAttributes(EclipseProjectAnalysisEngine<InstanceKey> engine,
-			OrderingInference orderingInference) throws InvalidClassFileException, IOException, CoreException,
-			UnhandledCaseException, StreamCreationNotConsideredException {
-		this.inferInitialExecution();
-		this.inferInitialOrdering(engine, orderingInference);
+	public boolean hasNoTerminalOperation() {
+		return hasNoTerminalOperation;
 	}
 
 	private void inferInitialExecution() throws JavaModelException {
@@ -693,16 +683,16 @@ public class Stream {
 		return this.reduceOrderingPossiblyMatters;
 	}
 
-	public void setHasNoTerminalOperation(boolean hasNoTerminalOperation) {
-		this.hasNoTerminalOperation = hasNoTerminalOperation;
-	}
-
 	protected void setHasPossibleSideEffects(boolean hasPossibleSideEffects) {
 		this.hasPossibleSideEffects = hasPossibleSideEffects;
 	}
 
 	protected void setHasPossibleStatefulIntermediateOperations(boolean hasPossibleStatefulIntermediateOperations) {
 		this.hasPossibleStatefulIntermediateOperations = hasPossibleStatefulIntermediateOperations;
+	}
+
+	public void setHasNoTerminalOperation(boolean hasNoTerminalOperation) {
+		this.hasNoTerminalOperation = hasNoTerminalOperation;
 	}
 
 	protected void setInitialExecutionMode(ExecutionMode initialExecutionMode) {
@@ -713,6 +703,10 @@ public class Stream {
 	protected void setInitialOrdering(Ordering initialOrdering) {
 		Objects.requireNonNull(initialOrdering);
 		this.initialOrdering = initialOrdering;
+	}
+	
+	protected void setCollectorKind(CollectorKind collectorKind) {
+		this.collectorKind = collectorKind;
 	}
 
 	private void setPassingPrecondition(PreconditionSuccess succcess) {
