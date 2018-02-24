@@ -23,7 +23,6 @@ class StreamAnalysisExpectedResult {
 
 	private Set<PreconditionFailure> expectedFailures;
 
-
 	private Set<Ordering> expectedOrderings;
 
 	private PreconditionSuccess expectedPassingPrecondition;
@@ -54,6 +53,38 @@ class StreamAnalysisExpectedResult {
 		this.expectedRefactoring = expectedRefactoring;
 		this.expectedStatusSeverity = expectedStatusSeverity;
 		this.expectedFailures = expectedFailures;
+	}
+
+	protected String errorMessage(String attribute) {
+		return "Unexpected " + attribute + " for " + this.getExpectedCreation() + ".";
+	}
+
+	public void evaluate(Stream stream) {
+		Set<ExecutionMode> executionModes = stream.getPossibleExecutionModes();
+		assertEquals(this.errorMessage("execution mode"), this.getExpectedExecutionModes(), executionModes);
+
+		Set<Ordering> orderings = stream.getPossibleOrderings();
+		assertEquals(this.errorMessage("orderings"), this.getExpectedOrderings(), orderings);
+
+		assertEquals(this.errorMessage("side effects"), this.isExpectingSideEffects(), stream.hasPossibleSideEffects());
+		assertEquals(this.errorMessage("stateful intermediate operations"),
+				this.isExpectingStatefulIntermediateOperation(), stream.hasPossibleStatefulIntermediateOperations());
+		assertEquals(this.errorMessage("ROM"), this.isExpectingThatReduceOrderingMatters(),
+				stream.reduceOrderingPossiblyMatters());
+		assertEquals(this.errorMessage("transformation actions"), this.getExpectedActions(), stream.getActions());
+		assertEquals(this.errorMessage("passing precondition"), this.getExpectedPassingPrecondition(),
+				stream.getPassingPrecondition());
+		assertEquals(this.errorMessage("refactoring"), this.getExpectedRefactoring(), stream.getRefactoring());
+		assertEquals(this.errorMessage("status severity"), this.getExpectedStatusSeverity(),
+				stream.getStatus().getSeverity());
+
+		Set<Integer> actualCodes = Arrays.stream(stream.getStatus().getEntries()).map(e -> e.getCode())
+				.collect(Collectors.toSet());
+
+		Set<Integer> expectedCodes = this.getExpectedFailures().stream().map(e -> e.getCode())
+				.collect(Collectors.toSet());
+
+		assertEquals(this.errorMessage("status codes"), expectedCodes, actualCodes);
 	}
 
 	public Set<TransformationAction> getExpectedActions() {
@@ -98,35 +129,5 @@ class StreamAnalysisExpectedResult {
 
 	public boolean isExpectingThatReduceOrderingMatters() {
 		return this.expectingThatReduceOrderingMatters;
-	}
-
-	public void evaluate(Stream stream) {
-		Set<ExecutionMode> executionModes = stream.getPossibleExecutionModes();
-		assertEquals(errorMessage("execution mode"), this.getExpectedExecutionModes(), executionModes);
-
-		Set<Ordering> orderings = stream.getPossibleOrderings();
-		assertEquals(errorMessage("orderings"), this.getExpectedOrderings(), orderings);
-
-		assertEquals(errorMessage("side effects"), isExpectingSideEffects(), stream.hasPossibleSideEffects());
-		assertEquals(errorMessage("stateful intermediate operations"), isExpectingStatefulIntermediateOperation(),
-				stream.hasPossibleStatefulIntermediateOperations());
-		assertEquals(errorMessage("ROM"), isExpectingThatReduceOrderingMatters(),
-				stream.reduceOrderingPossiblyMatters());
-		assertEquals(errorMessage("transformation actions"), getExpectedActions(), stream.getActions());
-		assertEquals(errorMessage("passing precondition"), getExpectedPassingPrecondition(),
-				stream.getPassingPrecondition());
-		assertEquals(errorMessage("refactoring"), getExpectedRefactoring(), stream.getRefactoring());
-		assertEquals(errorMessage("status severity"), getExpectedStatusSeverity(), stream.getStatus().getSeverity());
-
-		Set<Integer> actualCodes = Arrays.stream(stream.getStatus().getEntries()).map(e -> e.getCode())
-				.collect(Collectors.toSet());
-
-		Set<Integer> expectedCodes = getExpectedFailures().stream().map(e -> e.getCode()).collect(Collectors.toSet());
-
-		assertEquals(errorMessage("status codes"), expectedCodes, actualCodes);
-	}
-
-	protected String errorMessage(String attribute) {
-		return "Unexpected " + attribute + " for " + this.getExpectedCreation() + ".";
 	}
 }
