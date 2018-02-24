@@ -32,11 +32,9 @@ public class AnalysisUtils {
 		if (annotations == null)
 			return false;
 
-		for (Annotation annotation : annotations) {
-			if (annotation.getType().getName().getClassName().toString().contains("JFlowFactory")) {
+		for (Annotation annotation : annotations)
+			if (annotation.getType().getName().getClassName().toString().contains("JFlowFactory"))
 				return true;
-			}
-		}
 		return false;
 	}
 

@@ -112,19 +112,16 @@ public class Util {
 				ClassLoaderReference methodClassLoader = method.getReference().getDeclaringClass().getClassLoader();
 
 				// if we haven't encountered application code in the call string yet.
-				if (!applicationCodeInCallString) {
-					// get the class loaders.
-
+				if (!applicationCodeInCallString)
 					// if either the call site reference class loader or the (enclosing) method
 					// class loader is of type Application.
 					if (callSiteReferenceClassLoaderReference.equals(ClassLoaderReference.Application)
 							|| methodClassLoader.equals(ClassLoaderReference.Application))
 						// then, we've seen application code.
 						applicationCodeInCallString = true;
-				}
 
 				// if all non-application code in the call strings return streams.
-				if (allNonApplicationCodeReturnsStreams) {
+				if (allNonApplicationCodeReturnsStreams)
 					// find out if this one does as well.
 					if (!callSiteReferenceClassLoaderReference.equals(ClassLoaderReference.Application)) {
 						IMethod target = engine.getClassHierarchy()
@@ -139,7 +136,6 @@ public class Util {
 							// we found one that doesn't.
 							allNonApplicationCodeReturnsStreams = false;
 					}
-				}
 
 				// if the call site reference equals the call site corresponding
 				// to the creation instruction.

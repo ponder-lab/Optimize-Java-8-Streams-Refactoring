@@ -87,14 +87,14 @@ class OrderingInference {
 
 		Spliterator<?> spliterator = null;
 
-		if (instance instanceof Iterable) {
+		if (instance instanceof Iterable)
 			try {
 				spliterator = ((Iterable<?>) instance).spliterator();
 			} catch (NullPointerException e) {
 				LOGGER.log(Level.WARNING, "Possible trouble creating instance (most likely private type).", e);
 				return null;
 			}
-		} else {
+		else {
 			// try to call the stream() method to get the spliterator.
 			BaseStream<?, ?> baseStream = null;
 			try {
@@ -148,18 +148,16 @@ class OrderingInference {
 			CannotExtractSpliteratorException {
 		Ordering ret = null;
 
-		for (TypeAbstraction typeAbstraction : possibleTypes) {
+		for (TypeAbstraction typeAbstraction : possibleTypes)
 			if (typeAbstraction != TypeAbstraction.TOP) {
 				Ordering ordering = this.inferOrdering(typeAbstraction, calledMethodName);
 
 				if (ret == null)
 					ret = ordering;
-				else if (ret != ordering) {
+				else if (ret != ordering)
 					throw new InconsistentPossibleOrderingException(
 							"Types have inconsistent orderings: " + possibleTypes);
-				}
 			}
-		}
 
 		return ret;
 	}

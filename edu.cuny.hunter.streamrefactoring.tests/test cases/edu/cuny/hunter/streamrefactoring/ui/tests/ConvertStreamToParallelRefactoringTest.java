@@ -186,8 +186,8 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 
 	private static void tryDeletingAllJavaClassFiles(IPackageFragment pack) throws JavaModelException {
 		IJavaElement[] kids = pack.getChildren();
-		for (int i = 0; i < kids.length; i++) {
-			if (kids[i] instanceof ISourceManipulation) {
+		for (int i = 0; i < kids.length; i++)
+			if (kids[i] instanceof ISourceManipulation)
 				if (kids[i].exists() && !kids[i].isReadOnly()) {
 					IPath path = kids[i].getPath();
 
@@ -226,8 +226,6 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 								"Class file for " + kids[i].getElementName() + " does not exist.", e);
 					}
 				}
-			}
-		}
 	}
 
 	public ConvertStreamToParallelRefactoringTest(String name) {
@@ -262,9 +260,9 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 			throws Exception {
 		String testFileName;
 
-		if (input) {
+		if (input)
 			testFileName = this.getInputTestFileName(cuName);
-		} else // output case.
+		else // output case.
 			testFileName = this.getOutputTestFileName(cuName);
 
 		String contents = this.getFileContents(testFileName);
