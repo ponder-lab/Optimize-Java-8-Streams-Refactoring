@@ -112,6 +112,26 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		return new CSVPrinter(new FileWriter(fileName, true), CSVFormat.EXCEL.withHeader(header));
 	}
 
+	private static File findEvaluationPropertiesFile(File directory) {
+		if (directory == null)
+			return null;
+
+		if (!directory.isDirectory())
+			throw new IllegalArgumentException("Expecting directory: " + directory + ".");
+
+		File evaluationFile = directory.toPath().resolve(EVALUATION_PROPERTIES_FILE_NAME).toFile();
+
+		if (evaluationFile != null && evaluationFile.exists())
+			return evaluationFile;
+		else
+			return findEvaluationPropertiesFile(directory.getParentFile());
+	}
+
+	private static File findEvaluationPropertiesFile(IJavaProject project) throws JavaModelException {
+		IPath location = project.getCorrespondingResource().getLocation();
+		return findEvaluationPropertiesFile(location.toFile());
+	}
+
 	private static IType[] getAllDeclaringTypeSubtypes(IMethod method) throws JavaModelException {
 		IType declaringType = method.getDeclaringType();
 		ITypeHierarchy typeHierarchy = declaringType.newTypeHierarchy(new NullProgressMonitor());
@@ -150,10 +170,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 	private static int getNForStreams(IJavaProject project) throws IOException, JavaModelException {
 		Properties properties = new Properties();
-		IPath filePath = project.getCorrespondingResource().getLocation().append(EVALUATION_PROPERTIES_FILE_NAME);
-		File file = filePath.toFile();
+		File file = findEvaluationPropertiesFile(project);
 
-		if (file.exists())
+		if (file != null && file.exists())
 			try (Reader reader = new FileReader(file)) {
 				properties.load(reader);
 
