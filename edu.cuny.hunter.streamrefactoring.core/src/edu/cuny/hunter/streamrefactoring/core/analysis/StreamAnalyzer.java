@@ -319,31 +319,31 @@ public class StreamAnalyzer extends ASTVisitor {
 				// find explicit entry points.
 				entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
 				entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
-			}
 
-			if (this.shouldFindImplicitEntryPoints()) {
-				// also find implicit entry points.
-				Iterable<Entrypoint> mainEntrypoints = makeMainEntrypoints(engine.getClassHierarchy().getScope(),
-						engine.getClassHierarchy());
+				if (this.shouldFindImplicitEntryPoints()) {
+					// also find implicit entry points.
+					Iterable<Entrypoint> mainEntrypoints = makeMainEntrypoints(engine.getClassHierarchy().getScope(),
+							engine.getClassHierarchy());
 
-				// add them as well.
-				addImplicitEntryPoints(entryPoints, mainEntrypoints);
-			}
+					// add them as well.
+					addImplicitEntryPoints(entryPoints, mainEntrypoints);
+				}
 
-			if (this.shouldFindImplicitTestEntryPoints()) {
-				// try to find test entry points.
-				Iterable<Entrypoint> jUnitEntryPoints = JUnitEntryPoints.make(engine.getClassHierarchy());
+				if (this.shouldFindImplicitTestEntryPoints()) {
+					// try to find test entry points.
+					Iterable<Entrypoint> jUnitEntryPoints = JUnitEntryPoints.make(engine.getClassHierarchy());
 
-				// add them as well.
-				addImplicitEntryPoints(entryPoints, jUnitEntryPoints);
-			}
+					// add them as well.
+					addImplicitEntryPoints(entryPoints, jUnitEntryPoints);
+				}
 
-			if (this.shouldFindImplicitBenchmarkEntryPoints()) {
-				// try to find benchmark entry points.
-				Set<Entrypoint> benchmarkEntryPoints = Util.findBenchmarkEntryPoints(engine.getClassHierarchy());
+				if (this.shouldFindImplicitBenchmarkEntryPoints()) {
+					// try to find benchmark entry points.
+					Set<Entrypoint> benchmarkEntryPoints = Util.findBenchmarkEntryPoints(engine.getClassHierarchy());
 
-				// add them as well.
-				addImplicitEntryPoints(entryPoints, benchmarkEntryPoints);
+					// add them as well.
+					addImplicitEntryPoints(entryPoints, benchmarkEntryPoints);
+				}
 			}
 
 			if (entryPoints.isEmpty()) {
