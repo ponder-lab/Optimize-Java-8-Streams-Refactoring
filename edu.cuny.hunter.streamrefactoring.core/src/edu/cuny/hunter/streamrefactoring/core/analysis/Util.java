@@ -576,6 +576,10 @@ public final class Util {
 		return implementsType(reference, classHierarchy, Util::isIterable);
 	}
 
+	public static boolean implementsMap(TypeReference reference, IClassHierarchy hierarchy) {
+		return implementsType(reference, hierarchy, Util::isMap);
+	}
+
 	public static boolean implementsType(TypeReference typeReference, IClassHierarchy classHierarchy,
 			Predicate<IClass> predicate) {
 		IClass clazz = classHierarchy.lookupClass(typeReference);
@@ -616,6 +620,10 @@ public final class Util {
 
 	public static boolean isCollector(IClass clazz) {
 		return Util.isType(clazz, "java/util/stream", "Collector");
+	}
+
+	public static boolean isMap(IClass clazz) {
+		return Util.isType(clazz, "java/util", "Map");
 	}
 
 	/**

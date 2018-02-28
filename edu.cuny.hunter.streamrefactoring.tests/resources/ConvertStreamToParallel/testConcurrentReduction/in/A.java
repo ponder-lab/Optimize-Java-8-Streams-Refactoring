@@ -33,14 +33,11 @@ public class A {
 		}
 	}
 
-	/**
-	 * P6 in table 3
-	 */
 	@EntryPoint
 	void m() {
 		Collection<Widget> orderedWidgets = new ArrayList<>();
 
-		Map<Color, Set<Widget>> widgetsByColor2 = orderedWidgets.stream().collect(Collectors.groupingByConcurrent(
-				Widget::getColor, ConcurrentSkipListMap::new, Collectors.toCollection(LinkedHashSet::new)));
+		Map<Color, List<Widget>> widgetsByColor = orderedWidgets.parallelStream()
+				.collect(Collectors.groupingBy(Widget::getColor));
 	}
 }
