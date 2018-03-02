@@ -518,68 +518,71 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	 */
 	public void testConcurrentReduction() throws Exception {
 		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("orderedWidgets.parallelStream()",
-				EnumSet.of(ExecutionMode.PARALLEL), EnumSet.of(Ordering.ORDERED), CollectorKind.NONCONCURRENT, true,
+				EnumSet.of(ExecutionMode.PARALLEL), EnumSet.of(Ordering.ORDERED), CollectorKind.NONCONCURRENT, false,
 				false, true, EnumSet.of(TransformationAction.CONVERT_TO_SEQUENTIAL), PreconditionSuccess.P7,
 				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
 	}
 
 	/**
-	 * Test #64. Test P7 in table 3.
+	 * Test #64.
 	 */
 	public void testConcurrentReduction1() throws Exception {
-		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("orderedWidgets.stream()",
-				EnumSet.of(ExecutionMode.PARALLEL), EnumSet.of(Ordering.ORDERED), CollectorKind.NONCONCURRENT, false,
-				false, true, EnumSet.of(TransformationAction.CONVERT_TO_SEQUENTIAL), PreconditionSuccess.P7,
-				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
+		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("unorderedWidgets.stream()",
+				EnumSet.of(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.UNORDERED), CollectorKind.NONCONCURRENT,
+				false, false, true,
+				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL,
+						TransformationAction.CONVERT_COLLECTOR_TO_CONCURRENT),
+				PreconditionSuccess.P12, Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK,
+				Collections.emptySet()));
 	}
 
 	/**
-	 * Test #64. Test P8 in table 3.
+	 * Test #64.
 	 */
 	public void testConcurrentReduction2() throws Exception {
-		HashSet<TransformationAction> transformations = new HashSet<>();
-		transformations.add(TransformationAction.CONVERT_COLLECTOR_TO_NON_CONCURRENT);
-		transformations.add(TransformationAction.CONVERT_TO_SEQUENTIAL);
-
-		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("orderedWidgets.stream()",
-				EnumSet.of(ExecutionMode.PARALLEL), EnumSet.of(Ordering.ORDERED), CollectorKind.CONCURRENT, false,
-				false, true, transformations, PreconditionSuccess.P8, Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION,
-				RefactoringStatus.OK, Collections.emptySet()));
-	}
-
-	/**
-	 * Test #64. Test P9 in table 3.
-	 */
-	public void testConcurrentReduction3() throws Exception {
-		HashSet<TransformationAction> transformations = new HashSet<>();
-		transformations.add(TransformationAction.CONVERT_COLLECTOR_TO_CONCURRENT);
-		transformations.add(TransformationAction.CONVERT_TO_PARALLEL);
-
 		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("orderedWidgets.stream()",
 				EnumSet.of(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), CollectorKind.NONCONCURRENT, false,
-				false, false, transformations, PreconditionSuccess.P9, Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION,
-				RefactoringStatus.OK, Collections.emptySet()));
+				false, false,
+				EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL,
+						TransformationAction.CONVERT_COLLECTOR_TO_CONCURRENT),
+				PreconditionSuccess.P9, Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK,
+				Collections.emptySet()));
 	}
 
 	/**
-	 * Test #64. Test P10 in table 3.
+	 * Test #64.
 	 */
-	public void testConcurrentReduction4() throws Exception {
+	public void testConcurrentReduction3() throws Exception {
 		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("orderedWidgets.stream()",
 				EnumSet.of(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), CollectorKind.CONCURRENT, false,
-				false, false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P10,
-				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
+				false, true, EnumSet.of(TransformationAction.CONVERT_COLLECTOR_TO_NON_CONCURRENT),
+				PreconditionSuccess.P6, Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK,
+				Collections.emptySet()));
 	}
 
 	/**
-	 * Test #64. Test P11 in table 3.
+	 * TODO: Test #64.
 	 */
-	public void testConcurrentReduction5() throws Exception {
-		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("orderedWidgets.stream()",
-				EnumSet.of(ExecutionMode.PARALLEL), EnumSet.of(Ordering.ORDERED), CollectorKind.NONCONCURRENT, false,
-				false, false, EnumSet.of(TransformationAction.CONVERT_COLLECTOR_TO_CONCURRENT), PreconditionSuccess.P11,
-				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
-	}
+	// @formatter:off
+//	public void testConcurrentReduction4() throws Exception {
+//		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("orderedWidgets.stream()",
+//				EnumSet.of(ExecutionMode.SEQUENTIAL), EnumSet.of(Ordering.ORDERED), CollectorKind.CONCURRENT, false,
+//				false, false, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P10,
+//				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
+//	}
+	// @formatter:on
+
+	/**
+	 * TODO: Test #64.
+	 */
+	// @formatter:off
+//	public void testConcurrentReduction5() throws Exception {
+//		this.helper(new StreamAnalysisExpectedResultWithCollectorKind("orderedWidgets.stream()",
+//				EnumSet.of(ExecutionMode.PARALLEL), EnumSet.of(Ordering.ORDERED), CollectorKind.NONCONCURRENT, false,
+//				false, false, EnumSet.of(TransformationAction.CONVERT_COLLECTOR_TO_CONCURRENT), PreconditionSuccess.P11,
+//				Refactoring.OPTIMIZE_COMPLEX_MUTABLE_REDUCTION, RefactoringStatus.OK, Collections.emptySet()));
+//	}
+	// @formatter:on
 
 	public void testConstructor() throws Exception {
 		this.helper(new StreamAnalysisExpectedResult("new ArrayList().stream()",

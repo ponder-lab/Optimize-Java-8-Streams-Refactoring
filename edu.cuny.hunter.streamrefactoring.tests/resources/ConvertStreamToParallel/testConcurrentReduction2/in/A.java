@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
 import edu.cuny.hunter.streamrefactoring.annotations.*;
@@ -13,7 +14,12 @@ public class A {
 
 	static class Widget {
 		enum Color {
-			RED, BLUE, GREEN, PINK, ORANGE, YELLOW
+			RED,
+			BLUE,
+			GREEN,
+			PINK,
+			ORANGE,
+			YELLOW
 		};
 
 		public Color getColor() {
@@ -21,13 +27,11 @@ public class A {
 		}
 	}
 
-	/**
-	 * P8 in table 3
-	 */
 	@EntryPoint
 	void m() {
 		Collection<Widget> orderedWidgets = new ArrayList<>();
-		Map<Color, List<Widget>> widgetsByColor = orderedWidgets.parallelStream()
-				.collect(Collectors.groupingByConcurrent(Widget::getColor));
+
+		Map<Color, Set<Widget>> widgetsByColor2 = orderedWidgets.stream()
+				.collect(Collectors.groupingBy(Widget::getColor, HashMap::new, Collectors.toSet()));
 	}
 }

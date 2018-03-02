@@ -217,8 +217,8 @@ public class StreamStateMachine {
 				.allMatch(t -> Util.implementsMap(t, hierarchy));
 
 		if (allImplementMap) {
-			// TODO: we should be the complex mutable reduction case. Note that it may not be a
-			// call to collect(). It could be a call to reduce().
+			// TODO: we should be the complex mutable reduction case #64. Note that it may
+			// not be a call to collect(). It could be a call to reduce().
 		}
 
 		MethodReference declaredTarget = invokeInstruction.getCallSite().getDeclaredTarget();

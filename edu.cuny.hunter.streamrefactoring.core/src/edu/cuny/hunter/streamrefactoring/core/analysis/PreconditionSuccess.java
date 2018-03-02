@@ -11,5 +11,7 @@ public enum PreconditionSuccess {
 	P8,
 	P9,
 	P10,
-	P11
+	P11,
+	P12,
+	P13
 }

@@ -13,7 +13,12 @@ public class A {
 
 	static class Widget {
 		enum Color {
-			RED, BLUE, GREEN, PINK, ORANGE, YELLOW
+			RED,
+			BLUE,
+			GREEN,
+			PINK,
+			ORANGE,
+			YELLOW
 		};
 
 		public Color getColor() {
@@ -21,13 +26,13 @@ public class A {
 		}
 	}
 
-	/**
-	 * P7 in table 3
-	 */
 	@EntryPoint
 	void m() {
-		Collection<Widget> orderedWidgets = new ArrayList<>();
-		Map<Color, List<Widget>> widgetsByColor = orderedWidgets.parallelStream()
+		// an "unordered" collection of widgets.
+		Collection<Widget> unorderedWidgets = new HashSet<>();
+		// populate the collection ...
+
+		Map<Color, List<Widget>> widgetsByColor = unorderedWidgets.stream()
 				.collect(Collectors.groupingBy(Widget::getColor));
 	}
 }
