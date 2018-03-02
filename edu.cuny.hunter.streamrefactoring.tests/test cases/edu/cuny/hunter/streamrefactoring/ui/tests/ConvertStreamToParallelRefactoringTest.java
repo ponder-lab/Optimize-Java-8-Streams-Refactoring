@@ -142,10 +142,6 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		return cu;
 	}
 
-	private static String errorMessage(String attribute, StreamAnalysisExpectedResult result) {
-		return "Unexpected " + attribute + " for " + result.getExpectedCreation() + ".";
-	}
-
 	private static Path getAbsolutePath(String fileName) {
 		Path path = Paths.get(RESOURCE_PATH, fileName);
 		Path absolutePath = path.toAbsolutePath();
