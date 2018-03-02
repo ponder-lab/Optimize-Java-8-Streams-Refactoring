@@ -576,6 +576,10 @@ public final class Util {
 		return implementsType(reference, classHierarchy, Util::isIterable);
 	}
 
+	public static boolean implementsMap(TypeReference reference, IClassHierarchy hierarchy) {
+		return implementsType(reference, hierarchy, Util::isMap);
+	}
+
 	public static boolean implementsType(TypeReference typeReference, IClassHierarchy classHierarchy,
 			Predicate<IClass> predicate) {
 		IClass clazz = classHierarchy.lookupClass(typeReference);
@@ -618,6 +622,10 @@ public final class Util {
 		return Util.isType(clazz, "java/util/stream", "Collector");
 	}
 
+	public static boolean isMap(IClass clazz) {
+		return Util.isType(clazz, "java/util", "Map");
+	}
+
 	/**
 	 * check whether the annotation is "EntryPoint"
 	 */
@@ -655,8 +663,7 @@ public final class Util {
 			return true;
 		else if (typeReference.isReferenceType()) {
 			IClass type = typeAbstraction.getType();
-			return !edu.cuny.hunter.streamrefactoring.core.analysis.Util.isIterable(type)
-					&& type.getAllImplementedInterfaces().stream().noneMatch(Util::isIterable);
+			return !isIterable(type) && type.getAllImplementedInterfaces().stream().noneMatch(Util::isIterable);
 		} else
 			throw new IllegalArgumentException("Can't tell if type is scalar: " + typeAbstraction);
 	}

@@ -101,6 +101,8 @@ public class Stream {
 	private IR enclosingMethodDeclarationIR;
 
 	private final TypeDeclaration enclosingTypeDeclaration;
+	
+	private CollectorKind collectorKind;
 
 	private boolean hasNoTerminalOperation;
 
@@ -508,6 +510,10 @@ public class Stream {
 		return this.possibleOrderings.stream().map(e -> e == null ? initialOrdering : e).collect(Collectors.toSet());
 	}
 
+	public CollectorKind getCollectorKind() {
+		return this.collectorKind;
+	}
+	
 	public Refactoring getRefactoring() {
 		return this.refactoring;
 	}
@@ -706,6 +712,10 @@ public class Stream {
 	protected void setInitialOrdering(Ordering initialOrdering) {
 		Objects.requireNonNull(initialOrdering);
 		this.initialOrdering = initialOrdering;
+	}
+	
+	protected void setCollectorKind(CollectorKind collectorKind) {
+		this.collectorKind = collectorKind;
 	}
 
 	private void setPassingPrecondition(PreconditionSuccess succcess) {

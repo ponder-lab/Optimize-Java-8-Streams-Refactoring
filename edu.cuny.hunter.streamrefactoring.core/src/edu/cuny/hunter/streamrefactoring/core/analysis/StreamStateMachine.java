@@ -58,6 +58,7 @@ import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
+import com.ibm.wala.ipa.cha.ClassHierarchy;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.ipa.modref.ModRef;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
@@ -209,8 +210,17 @@ public class StreamStateMachine {
 		// @formatter:on
 	}
 
-	private static boolean deriveRomForScalarMethod(SSAInvokeInstruction invokeInstruction)
+	private static boolean deriveRomForScalarMethod(Collection<TypeAbstraction> possibleReturnTypes,
+			SSAInvokeInstruction invokeInstruction, IClassHierarchy hierarchy)
 			throws UnknownIfReduceOrderMattersException {
+		boolean allImplementMap = possibleReturnTypes.stream().map(TypeAbstraction::getTypeReference)
+				.allMatch(t -> Util.implementsMap(t, hierarchy));
+
+		if (allImplementMap) {
+			// TODO: we should be the complex mutable reduction case #64. Note that it may
+			// not be a call to collect(). It could be a call to reduce().
+		}
+
 		MethodReference declaredTarget = invokeInstruction.getCallSite().getDeclaredTarget();
 
 		if (isTerminalOperationWhereReduceOrderMattersIsUnknown(declaredTarget))
@@ -553,7 +563,7 @@ public class StreamStateMachine {
 			// default to ordered.
 			ordering = Ordering.ORDERED;
 			LOGGER.warning("Can't determine ordering for possible return types: " + possibleReturnTypes
-					+ ". Defaulting to: " + ordering);
+					+ ". Defaulting to: " + ordering + ".");
 		}
 
 		switch (ordering) {
@@ -606,7 +616,8 @@ public class StreamStateMachine {
 					else {
 						boolean scalar = Util.isScalar(possibleReturnTypes);
 						if (scalar)
-							rom = deriveRomForScalarMethod(invokeInstruction);
+							rom = deriveRomForScalarMethod(possibleReturnTypes, invokeInstruction,
+									engine.getClassHierarchy());
 						else // !scalar
 							rom = this.deriveRomForNonScalarMethod(possibleReturnTypes, orderingInference);
 					}

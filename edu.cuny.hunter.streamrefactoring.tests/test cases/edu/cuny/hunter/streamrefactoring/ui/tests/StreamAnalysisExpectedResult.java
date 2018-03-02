@@ -1,12 +1,17 @@
 package edu.cuny.hunter.streamrefactoring.ui.tests;
 
+import static org.junit.Assert.assertEquals;
+
+import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.ExecutionMode;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Ordering;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionSuccess;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Refactoring;
+import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
 
 class StreamAnalysisExpectedResult {
@@ -48,6 +53,38 @@ class StreamAnalysisExpectedResult {
 		this.expectedRefactoring = expectedRefactoring;
 		this.expectedStatusSeverity = expectedStatusSeverity;
 		this.expectedFailures = expectedFailures;
+	}
+
+	protected String errorMessage(String attribute) {
+		return "Unexpected " + attribute + " for " + this.getExpectedCreation() + ".";
+	}
+
+	public void evaluate(Stream stream) {
+		Set<ExecutionMode> executionModes = stream.getPossibleExecutionModes();
+		assertEquals(this.errorMessage("execution mode"), this.getExpectedExecutionModes(), executionModes);
+
+		Set<Ordering> orderings = stream.getPossibleOrderings();
+		assertEquals(this.errorMessage("orderings"), this.getExpectedOrderings(), orderings);
+
+		assertEquals(this.errorMessage("side effects"), this.isExpectingSideEffects(), stream.hasPossibleSideEffects());
+		assertEquals(this.errorMessage("stateful intermediate operations"),
+				this.isExpectingStatefulIntermediateOperation(), stream.hasPossibleStatefulIntermediateOperations());
+		assertEquals(this.errorMessage("ROM"), this.isExpectingThatReduceOrderingMatters(),
+				stream.reduceOrderingPossiblyMatters());
+		assertEquals(this.errorMessage("transformation actions"), this.getExpectedActions(), stream.getActions());
+		assertEquals(this.errorMessage("passing precondition"), this.getExpectedPassingPrecondition(),
+				stream.getPassingPrecondition());
+		assertEquals(this.errorMessage("refactoring"), this.getExpectedRefactoring(), stream.getRefactoring());
+		assertEquals(this.errorMessage("status severity"), this.getExpectedStatusSeverity(),
+				stream.getStatus().getSeverity());
+
+		Set<Integer> actualCodes = Arrays.stream(stream.getStatus().getEntries()).map(e -> e.getCode())
+				.collect(Collectors.toSet());
+
+		Set<Integer> expectedCodes = this.getExpectedFailures().stream().map(e -> e.getCode())
+				.collect(Collectors.toSet());
+
+		assertEquals(this.errorMessage("status codes"), expectedCodes, actualCodes);
 	}
 
 	public Set<TransformationAction> getExpectedActions() {
