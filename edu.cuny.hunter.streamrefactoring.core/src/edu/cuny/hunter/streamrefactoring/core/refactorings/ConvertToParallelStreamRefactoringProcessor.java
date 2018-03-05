@@ -181,11 +181,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		this(javaProjects, settings, layer, useImplicitEntrypoints, useImplicitTestEntrypoints,
 				useImplicitBenchmarkEntrypoints, monitor);
-		try {
-			this.nForStreams = nForStreams;
-		} finally {
-			monitor.ifPresent(IProgressMonitor::done);
-		}
+		this.nForStreams = nForStreams;
 	}
 
 	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
