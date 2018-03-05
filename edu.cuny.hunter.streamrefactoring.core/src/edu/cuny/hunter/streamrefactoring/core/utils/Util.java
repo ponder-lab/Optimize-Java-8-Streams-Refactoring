@@ -37,20 +37,22 @@ import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStre
 public final class Util {
 	public static ConvertToParallelStreamRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
 			IJavaProject[] projects, boolean useImplicitEntrypoints, boolean useImplicitTestEntrypoints,
-			boolean useImplicitBenchmarkEntrypoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
+			boolean useImplicitBenchmarkEntrypoints, boolean useImplicitJavaFXEntrypoints,
+			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(projects[0]);
 		ConvertToParallelStreamRefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor(
 				projects, settings, false, useImplicitEntrypoints, useImplicitTestEntrypoints,
-				useImplicitBenchmarkEntrypoints, monitor);
+				useImplicitBenchmarkEntrypoints, useImplicitJavaFXEntrypoints, monitor);
 		return processor;
 	}
 
 	public static ConvertToParallelStreamRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
 			IJavaProject[] projects, int nForStreams, boolean useImplicitEntrypoints,
 			boolean useImplicitTestEntrypoints, boolean useImplicitBenchmarkEntrypoints,
-			Optional<IProgressMonitor> monitor) throws JavaModelException {
+			boolean useImplicitJavaFXEntrypoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
 		ConvertToParallelStreamRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(
-				projects, useImplicitEntrypoints, useImplicitTestEntrypoints, useImplicitBenchmarkEntrypoints, monitor);
+				projects, useImplicitEntrypoints, useImplicitTestEntrypoints, useImplicitBenchmarkEntrypoints,
+				useImplicitJavaFXEntrypoints, monitor);
 		processor.setNForStreams(nForStreams);
 		return processor;
 	}

@@ -88,20 +88,29 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	private static final boolean FIND_IMPLICIT_BENCHMARK_ENTRYPOINTS_DEFAULT = false;
 
 	private static final String FIND_IMPLICIT_BENCHMARK_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitBenchmarkEntrypoints";
+
 	private static final boolean FIND_IMPLICIT_ENTRYPOINTS_DEFAULT = false;
 
 	private static final String FIND_IMPLICIT_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitEntrypoints";
+
+	private static final boolean FIND_IMPLICIT_JAVAFX_ENTRYPOINTS_DEFAULT = false;
+
+	private static final String FIND_IMPLICIT_JAVAFX_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitJavaFXEntrypoints";
+
 	private static final boolean FIND_IMPLICIT_TEST_ENTRYPOINTS_DEFAULT = false;
 
 	private static final String FIND_IMPLICIT_TEST_ENTRYPOINTS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.findImplicitTestEntrypoints";
+
 	private static final Logger LOGGER = Logger.getLogger(LOGGER_NAME);
 
 	private static final int LOGGING_LEVEL = IStatus.INFO;
+
 	private static final int N_TO_USE_FOR_STREAMS_DEFAULT = 2;
 
 	private static final String N_TO_USE_FOR_STREAMS_PROPERTY_KEY = "nToUseForStreams";
 
 	private static final boolean PERFORM_CHANGE_DEFAULT = false;
+
 	private static final String PERFORM_CHANGE_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.performChange";
 
 	private static String[] buildAttributeColumns(String attribute) {
@@ -241,6 +250,15 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			return Boolean.valueOf(findImplicitEntrypoits);
 	}
 
+	private static boolean shouldFindImplicitJavaFXEntrypoints() {
+		String findImplicitJavaFXEntrypoints = System.getenv(FIND_IMPLICIT_JAVAFX_ENTRYPOINTS_PROPERTY_KEY);
+
+		if (findImplicitJavaFXEntrypoints == null)
+			return FIND_IMPLICIT_JAVAFX_ENTRYPOINTS_DEFAULT;
+		else
+			return Boolean.valueOf(findImplicitJavaFXEntrypoints);
+	}
+
 	private static boolean shouldFindImplicitTestEntrypoints() {
 		String findImplicitTestEntrypoints = System.getenv(FIND_IMPLICIT_TEST_ENTRYPOINTS_PROPERTY_KEY);
 
@@ -341,6 +359,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 				boolean shouldFindImplicitEntrypoints = shouldFindImplicitEntrypoints();
 				boolean shouldFindImplicitTestEntrypoints = shouldFindImplicitTestEntrypoints();
 				boolean shouldFindImplicitBenchmarkEntrypoints = shouldFindImplicitBenchmarkEntrypoints();
+				boolean shouldFindImplicitJavaFXEntrypoints = shouldFindImplicitJavaFXEntrypoints();
 
 				for (IJavaProject javaProject : javaProjects) {
 					if (!javaProject.isStructureKnown())
@@ -360,7 +379,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					resultsTimeCollector.start();
 					processor = createConvertToParallelStreamRefactoringProcessor(new IJavaProject[] { javaProject },
 							nToUseForStreams, shouldFindImplicitEntrypoints, shouldFindImplicitTestEntrypoints,
-							shouldFindImplicitBenchmarkEntrypoints, Optional.of(monitor));
+							shouldFindImplicitBenchmarkEntrypoints, shouldFindImplicitJavaFXEntrypoints,
+							Optional.of(monitor));
 					resultsTimeCollector.stop();
 					ConvertToParallelStreamRefactoringProcessor.setLoggingLevel(LOGGING_LEVEL);
 

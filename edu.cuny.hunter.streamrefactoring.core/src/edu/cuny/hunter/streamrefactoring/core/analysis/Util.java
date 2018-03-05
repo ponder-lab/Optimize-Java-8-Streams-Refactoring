@@ -118,7 +118,11 @@ public final class Util {
 	private static final String BENCHMARK_ANNOTATION_NAME = "org.openjdk.jmh.annotations.Benchmark";
 
 	private static final String BENCHMARK_SETUP_ANNOTATION_NAME = "org.openjdk.jmh.annotations.Setup";
+
 	private static final String ENTRYPOINT_ANNOTATION_NAME = "edu.cuny.hunter.streamrefactoring.annotations.EntryPoint";
+
+	private static final String FXML_ANNOTATION_NAME = "javafx.fxml.FXML";
+
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private static void addEntryPoint(Set<Entrypoint> result, final IMethod method, IClassHierarchy classHierarchy) {
@@ -317,6 +321,10 @@ public final class Util {
 		}
 
 		return -1; // not found.
+	}
+
+	public static Set<Entrypoint> findJavaFXEntryPoints(IClassHierarchy classHierarchy) {
+		return findEntryPoints(classHierarchy, tn -> isFXML(tn));
 	}
 
 	static Set<ITypeBinding> getAllInterfaces(ITypeBinding type) {
@@ -646,6 +654,10 @@ public final class Util {
 	 */
 	private static boolean isEntryPointClass(TypeName typeName) {
 		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(ENTRYPOINT_ANNOTATION_NAME);
+	}
+
+	private static boolean isFXML(TypeName typeName) {
+		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(FXML_ANNOTATION_NAME);
 	}
 
 	public static boolean isIterable(IClass clazz) {

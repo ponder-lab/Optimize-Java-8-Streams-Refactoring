@@ -121,6 +121,8 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	private boolean findImplicitEntryPoints = true;
 
+	private boolean findImplicitJavaFXEntryPoints;
+
 	private boolean findImplicitTestEntryPoints;
 
 	/**
@@ -148,10 +150,11 @@ public class StreamAnalyzer extends ASTVisitor {
 	}
 
 	public StreamAnalyzer(boolean visitDocTags, boolean findImplicitEntryPoints, boolean findImplicitTestEntryPoints,
-			boolean findImplicitBenchmarkEntryPoints) {
+			boolean findImplicitBenchmarkEntryPoints, boolean findImplicitJavaFXEntryPoints) {
 		this(visitDocTags, findImplicitEntryPoints);
 		this.findImplicitTestEntryPoints = findImplicitTestEntryPoints;
 		this.findImplicitBenchmarkEntryPoints = findImplicitBenchmarkEntryPoints;
+		this.findImplicitJavaFXEntryPoints = findImplicitJavaFXEntryPoints;
 	}
 
 	public StreamAnalyzer(boolean visitDocTags, int nForStreams) {
@@ -165,8 +168,10 @@ public class StreamAnalyzer extends ASTVisitor {
 	}
 
 	public StreamAnalyzer(boolean visitDocTags, int nForStreams, boolean findImplicitEntryPoints,
-			boolean findImplicitTestEntryPoints, boolean findImplicitBenchmarkEntryPoints) {
-		this(visitDocTags, findImplicitEntryPoints, findImplicitTestEntryPoints, findImplicitBenchmarkEntryPoints);
+			boolean findImplicitTestEntryPoints, boolean findImplicitBenchmarkEntryPoints,
+			boolean findImplicitJavaFXEntryPoints) {
+		this(visitDocTags, findImplicitEntryPoints, findImplicitTestEntryPoints, findImplicitBenchmarkEntryPoints,
+				findImplicitJavaFXEntryPoints);
 		this.nForStreams = nForStreams;
 	}
 
@@ -344,6 +349,14 @@ public class StreamAnalyzer extends ASTVisitor {
 					// add them as well.
 					addImplicitEntryPoints(entryPoints, benchmarkEntryPoints);
 				}
+
+				if (this.shouldFindImplicitJavaFXEntryPoints()) {
+					// try to find benchmark entry points.
+					Set<Entrypoint> benchmarkEntryPoints = Util.findJavaFXEntryPoints(engine.getClassHierarchy());
+
+					// add them as well.
+					addImplicitEntryPoints(entryPoints, benchmarkEntryPoints);
+				}
 			}
 
 			if (entryPoints.isEmpty()) {
@@ -397,6 +410,10 @@ public class StreamAnalyzer extends ASTVisitor {
 		this.findImplicitEntryPoints = findImplicitEntryPoints;
 	}
 
+	public void setFindImplicitJavaFXEntryPoints(boolean findImplicitJavaFXEntryPoints) {
+		this.findImplicitJavaFXEntryPoints = findImplicitJavaFXEntryPoints;
+	}
+
 	public void setFindImplicitTestEntryPoints(boolean findImplicitTestEntryPoints) {
 		this.findImplicitTestEntryPoints = findImplicitTestEntryPoints;
 	}
@@ -419,6 +436,10 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	public boolean shouldFindImplicitEntryPoints() {
 		return this.findImplicitEntryPoints;
+	}
+
+	public boolean shouldFindImplicitJavaFXEntryPoints() {
+		return this.findImplicitJavaFXEntryPoints;
 	}
 
 	public boolean shouldFindImplicitTestEntryPoints() {

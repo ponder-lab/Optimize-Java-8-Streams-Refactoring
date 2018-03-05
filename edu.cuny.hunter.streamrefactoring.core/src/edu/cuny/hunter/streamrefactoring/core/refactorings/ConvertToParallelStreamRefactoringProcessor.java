@@ -148,21 +148,23 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	private boolean useImplicitEntrypoints = true;
 
+	private boolean useImplicitJavaFXEntrypoints = false;
+
 	private boolean useImplicitTestEntrypoints = false;
 
 	public ConvertToParallelStreamRefactoringProcessor() throws JavaModelException {
-		this(null, null, false, true, false, false, Optional.empty());
+		this(null, null, false, true, false, false, false, Optional.empty());
 	}
 
 	public ConvertToParallelStreamRefactoringProcessor(final CodeGenerationSettings settings,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
-		this(null, settings, false, true, false, false, monitor);
+		this(null, settings, false, true, false, false, false, monitor);
 	}
 
 	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
 			final CodeGenerationSettings settings, boolean layer, boolean useImplicitEntrypoints,
 			boolean useImplicitTestEntrypoints, boolean useImplicitBenchmarkEntrypoints,
-			Optional<IProgressMonitor> monitor) throws JavaModelException {
+			boolean useImplicitJavaFXEntrypoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
 		try {
 			this.javaProjects = javaProjects;
 			this.settings = settings;
@@ -170,6 +172,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 			this.useImplicitEntrypoints = useImplicitEntrypoints;
 			this.useImplicitTestEntrypoints = useImplicitTestEntrypoints;
 			this.useImplicitBenchmarkEntrypoints = useImplicitBenchmarkEntrypoints;
+			this.useImplicitJavaFXEntrypoints = useImplicitJavaFXEntrypoints;
 		} finally {
 			monitor.ifPresent(IProgressMonitor::done);
 		}
@@ -178,31 +181,31 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
 			final CodeGenerationSettings settings, boolean layer, int nForStreams, boolean useImplicitEntrypoints,
 			boolean useImplicitTestEntrypoints, boolean useImplicitBenchmarkEntrypoints,
-			Optional<IProgressMonitor> monitor) throws JavaModelException {
+			boolean useImplicitJavaFXEntrypoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
 		this(javaProjects, settings, layer, useImplicitEntrypoints, useImplicitTestEntrypoints,
-				useImplicitBenchmarkEntrypoints, monitor);
+				useImplicitBenchmarkEntrypoints, useImplicitJavaFXEntrypoints, monitor);
 		this.nForStreams = nForStreams;
 	}
 
 	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
 			final CodeGenerationSettings settings, boolean useImplicitJoinpoints, Optional<IProgressMonitor> monitor)
 			throws JavaModelException {
-		this(javaProjects, settings, false, useImplicitJoinpoints, false, false, monitor);
+		this(javaProjects, settings, false, useImplicitJoinpoints, false, false, false, monitor);
 	}
 
 	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
 			final CodeGenerationSettings settings, int nForStreams, boolean useImplicitJoinpoints,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
-		this(javaProjects, settings, false, nForStreams, useImplicitJoinpoints, false, false, monitor);
+		this(javaProjects, settings, false, nForStreams, useImplicitJoinpoints, false, false, false, monitor);
 	}
 
 	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
 			final CodeGenerationSettings settings, Optional<IProgressMonitor> monitor) throws JavaModelException {
-		this(javaProjects, settings, false, true, false, false, monitor);
+		this(javaProjects, settings, false, true, false, false, false, monitor);
 	}
 
 	public ConvertToParallelStreamRefactoringProcessor(Optional<IProgressMonitor> monitor) throws JavaModelException {
-		this(null, null, false, true, false, false, monitor);
+		this(null, null, false, true, false, false, false, monitor);
 	}
 
 	private RefactoringStatus checkExistence(IMember member, PreconditionFailure failure) {
@@ -220,7 +223,8 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 					this.getJavaProjects().length * 1000);
 			final RefactoringStatus status = new RefactoringStatus();
 			StreamAnalyzer analyzer = new StreamAnalyzer(false, this.getNForStreams(), this.getUseImplicitEntrypoints(),
-					this.getUseImplicitTestEntrypoints(), this.getUseImplicitBenchmarkEntrypoints());
+					this.getUseImplicitTestEntrypoints(), this.getUseImplicitBenchmarkEntrypoints(),
+					this.getUseImplicitJavaFXEntrypoints());
 			this.setStreamSet(analyzer.getStreamSet());
 
 			for (IJavaProject jproj : this.getJavaProjects()) {
@@ -498,6 +502,10 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	private boolean getUseImplicitEntrypoints() {
 		return this.useImplicitEntrypoints;
+	}
+
+	private boolean getUseImplicitJavaFXEntrypoints() {
+		return this.useImplicitJavaFXEntrypoints;
 	}
 
 	private boolean getUseImplicitTestEntrypoints() {
