@@ -115,11 +115,11 @@ public final class Util {
 		}
 	}
 
-	private static final String BENCHMARK = "org.openjdk.jmh.annotations.Benchmark";
-	private static final String ENTRYPOINT = "edu.cuny.hunter.streamrefactoring.annotations.EntryPoint";
-	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
+	private static final String BENCHMARK_ANNOTATION_NAME = "org.openjdk.jmh.annotations.Benchmark";
 
-	private static final String SETUP = "org.openjdk.jmh.annotations.Setup";
+	private static final String BENCHMARK_SETUP_ANNOTATION_NAME = "org.openjdk.jmh.annotations.Setup";
+	private static final String ENTRYPOINT_ANNOTATION_NAME = "edu.cuny.hunter.streamrefactoring.annotations.EntryPoint";
+	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private static void addEntryPoint(Set<Entrypoint> result, final IMethod method, IClassHierarchy classHierarchy) {
 		if (method != null) {
@@ -187,7 +187,7 @@ public final class Util {
 					for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations()) {
 						TypeName annotationName = annotation.getType().getName();
 
-						if (isBenchmark(annotationName) || isSetup(annotationName)) {
+						if (isBenchmark(annotationName) || isBenchmarkSetup(annotationName)) {
 							addEntryPoint(result, method, classHierarchy);
 							isBenchmarkClass = true;
 							break;
@@ -611,7 +611,11 @@ public final class Util {
 	}
 
 	private static boolean isBenchmark(TypeName typeName) {
-		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(BENCHMARK);
+		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(BENCHMARK_ANNOTATION_NAME);
+	}
+
+	private static boolean isBenchmarkSetup(TypeName typeName) {
+		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(BENCHMARK_SETUP_ANNOTATION_NAME);
 	}
 
 	public static boolean isCollector(IClass clazz) {
@@ -622,7 +626,7 @@ public final class Util {
 	 * check whether the annotation is "EntryPoint"
 	 */
 	private static boolean isEntryPointClass(TypeName typeName) {
-		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(ENTRYPOINT);
+		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(ENTRYPOINT_ANNOTATION_NAME);
 	}
 
 	public static boolean isIterable(IClass clazz) {
@@ -659,10 +663,6 @@ public final class Util {
 					&& type.getAllImplementedInterfaces().stream().noneMatch(Util::isIterable);
 		} else
 			throw new IllegalArgumentException("Can't tell if type is scalar: " + typeAbstraction);
-	}
-
-	private static boolean isSetup(TypeName typeName) {
-		return AnalysisUtils.walaTypeNameToJavaName(typeName).equals(SETUP);
 	}
 
 	static boolean isType(IClass clazz, String packagePath, String typeName) {
