@@ -266,7 +266,8 @@ public final class Util {
 	}
 
 	/**
-	 * find entry points from file
+	 * Find entry points from a {@link Set} of method signatures. No further
+	 * processing is done of the class declaring the method.
 	 */
 	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy, Set<String> signatures) {
 		final Set<Entrypoint> result = new HashSet<>();
