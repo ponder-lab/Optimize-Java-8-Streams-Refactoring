@@ -173,38 +173,7 @@ public final class Util {
 	}
 
 	public static Set<Entrypoint> findBenchmarkEntryPoints(IClassHierarchy classHierarchy) {
-		final Set<Entrypoint> result = new HashSet<>();
-
-		for (IClass klass : classHierarchy)
-			if (!(isJDKClass(klass) || isLibraryClass(klass))) {
-				boolean isBenchmarkClass = false;
-				// iterate over all declared methods
-				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
-					// if method has an annotation
-					if (!(method instanceof ShrikeCTMethod))
-						throw new IllegalArgumentException("@EntryPoint only works for byte code.");
-
-					for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations()) {
-						TypeName annotationName = annotation.getType().getName();
-
-						if (isBenchmark(annotationName) || isBenchmarkSetup(annotationName)) {
-							addEntryPoint(result, method, classHierarchy);
-							isBenchmarkClass = true;
-							break;
-						}
-					}
-				}
-
-				if (isBenchmarkClass) {
-					// add static initializer.
-					addEntryPoint(result, klass.getClassInitializer(), classHierarchy);
-
-					// add default ctor.
-					addEntryPoint(result, klass.getMethod(MethodReference.initSelector), classHierarchy);
-				}
-			}
-
-		return result;
+		return findEntryPoints(classHierarchy, tn -> isBenchmark(tn) || isBenchmarkSetup(tn));
 	}
 
 	private static MethodInvocation findCorrespondingMethodInvocation(CompilationUnit unit,
@@ -259,6 +228,55 @@ public final class Util {
 						IMethod ctor = getUniqueConstructor(klass);
 						addEntryPoint(result, ctor, classHierarchy);
 					}
+				}
+			}
+
+		return result;
+	}
+
+	/**
+	 * Find entry points in the given {@link IClassHierarchy} whose annotations
+	 * satisfy the given {@link Predicate} over annotation {@link TypeName}s.
+	 * Processing is done on the class declaring the entry point method.
+	 *
+	 * @param classHierarchy
+	 *            The {@link IClassHierarchy} to search through.
+	 * @param predicate
+	 *            The {@link Predicate} to test annotation {@link TypeName}s
+	 *            against.
+	 * @return A {@link Set} of {@link Entrypoint}s corresponding to methods
+	 *         annotated with annotations satisfying the given predicate over type
+	 *         names.
+	 */
+	public static Set<Entrypoint> findEntryPoints(IClassHierarchy classHierarchy, Predicate<TypeName> predicate) {
+		final Set<Entrypoint> result = new HashSet<>();
+
+		for (IClass klass : classHierarchy)
+			if (!(isJDKClass(klass) || isLibraryClass(klass))) {
+				boolean isAnnotationClass = false;
+				// iterate over all declared methods
+				for (com.ibm.wala.classLoader.IMethod method : klass.getDeclaredMethods()) {
+					// if method has an annotation
+					if (!(method instanceof ShrikeCTMethod))
+						throw new IllegalArgumentException("@EntryPoint only works for byte code.");
+
+					for (Annotation annotation : ((ShrikeCTMethod) method).getAnnotations()) {
+						TypeName annotationName = annotation.getType().getName();
+
+						if (predicate.test(annotationName)) {
+							addEntryPoint(result, method, classHierarchy);
+							isAnnotationClass = true;
+							break;
+						}
+					}
+				}
+
+				if (isAnnotationClass) {
+					// add static initializer.
+					addEntryPoint(result, klass.getClassInitializer(), classHierarchy);
+
+					// add default ctor.
+					addEntryPoint(result, klass.getMethod(MethodReference.initSelector), classHierarchy);
 				}
 			}
 
