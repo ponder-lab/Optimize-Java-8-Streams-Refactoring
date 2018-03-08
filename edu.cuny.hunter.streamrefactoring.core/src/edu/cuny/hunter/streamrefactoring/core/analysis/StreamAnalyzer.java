@@ -3,7 +3,9 @@ package edu.cuny.hunter.streamrefactoring.core.analysis;
 import static com.ibm.wala.ipa.callgraph.impl.Util.makeMainEntrypoints;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
@@ -32,6 +34,7 @@ import com.ibm.safe.internal.exceptions.PropertiesException;
 import com.ibm.safe.rules.TypestateRule;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions.ReflectionOptions;
+import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
@@ -41,6 +44,7 @@ import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.SSAOptions;
 import com.ibm.wala.util.CancelException;
+import com.ibm.wala.util.graph.traverse.DFS;
 import com.ibm.wala.util.scope.JUnitEntryPoints;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamStateMachine.Statistics;
@@ -52,6 +56,8 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 public class StreamAnalyzer extends ASTVisitor {
 
 	private static final String ENTRY_POINT_FILENAME = "entry_points.txt";
+	
+    private static final String DEAD_ENTRY_POINT_FILENAME = "dead_entry_points.txt";
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
@@ -379,11 +385,79 @@ public class StreamAnalyzer extends ASTVisitor {
 						+ engine.getProject().getElementName());
 				throw e;
 			}
+			
+            pruneEntryPoints(entryPoints, engine);
+			
 			// TODO: Can I slice the graph so that only nodes relevant to the
 			// instance in question are present?
 			this.enginesWithBuiltCallGraphsToEntrypointsUsed.put(engine, entryPoints);
 		}
 		return this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine);
+	}
+
+	/**
+	 * Report dead entry points
+	 */
+	private void pruneEntryPoints(Set<Entrypoint> entryPoints, EclipseProjectAnalysisEngine<InstanceKey> engine)
+			throws IOException, CoreException {
+		CallGraph callGraph = engine.getCallGraph();
+
+		// get a set of entry point nodes
+		Collection<CGNode> entryPointNodes = callGraph.getEntrypointNodes();
+
+		// get a set of stream creation method nodes
+		Set<CGNode> streamNodes = new HashSet<CGNode>();
+		Iterator<Stream> streamIterator = this.getStreamSet().iterator();
+		while (streamIterator.hasNext()) {
+			Stream stream = streamIterator.next();
+			try {
+				streamNodes.add(stream.getEnclosingMethodNode(engine));
+			} catch (NoEnclosingMethodNodeFoundException e) {
+				// TODO throw in the high level?
+				e.printStackTrace();
+			}
+		}
+
+		// get a set of dead entry point nodes
+		Set<CGNode> deadEntryPoints = new HashSet<CGNode>();
+		for (CGNode entryPointNode : entryPointNodes) {
+			if (!isReachable(entryPointNode, streamNodes, callGraph))
+				deadEntryPoints.add(entryPointNode);
+		}
+
+		// print dead entry points into a text file
+		reportBadEntryPoints(deadEntryPoints);
+	}
+
+	/**
+	 * Given an entry point node and a set of steam creation nodes, check whether
+	 * exists an stream creation node which is reachable from the entry point
+	 * 
+	 * @return true: reachable false: unreachable
+	 */
+	private boolean isReachable(CGNode entryPointNode, Collection<CGNode> streamNodes, CallGraph callGraph) {
+		// get a set of start nodes for DFS
+		Set<CGNode> singleEntryPointNode = new HashSet<>();
+		singleEntryPointNode.add(entryPointNode);
+
+		// get all reachable nodes from the entry point node
+		final Set<CGNode> reachableNodes = DFS.getReachableNodes(callGraph, singleEntryPointNode);
+
+		for (CGNode reachableNode : reachableNodes)
+			if (streamNodes.contains(reachableNode))
+				return true;
+		return false;
+	}
+
+	/**
+	 * Print all dead entry points into a txt file
+	 */
+	private void reportBadEntryPoints(Set<CGNode> deadEntryPoints) throws FileNotFoundException {
+		PrintWriter deadEntryPointPrinter = new PrintWriter(DEAD_ENTRY_POINT_FILENAME);
+		for (CGNode entrypoint : deadEntryPoints) {
+			deadEntryPointPrinter.println(entrypoint.getMethod().getSignature());
+		}
+		deadEntryPointPrinter.close();
 	}
 
 	public int getNForStreams() {
