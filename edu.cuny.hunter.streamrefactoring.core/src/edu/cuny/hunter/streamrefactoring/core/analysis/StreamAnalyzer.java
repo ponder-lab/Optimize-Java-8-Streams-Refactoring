@@ -426,7 +426,7 @@ public class StreamAnalyzer extends ASTVisitor {
 		}
 
 		// print dead entry points into a text file
-		reportBadEntryPoints(deadEntryPoints);
+		reportDeadEntryPoints(deadEntryPoints);
 	}
 
 	/**
@@ -452,7 +452,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	/**
 	 * Print all dead entry points into a txt file
 	 */
-	private void reportBadEntryPoints(Set<CGNode> deadEntryPoints) throws FileNotFoundException {
+	private void reportDeadEntryPoints(Set<CGNode> deadEntryPoints) throws FileNotFoundException {
 		PrintWriter deadEntryPointPrinter = new PrintWriter(DEAD_ENTRY_POINT_FILENAME);
 		for (CGNode entrypoint : deadEntryPoints) {
 			deadEntryPointPrinter.println(entrypoint.getMethod().getSignature());
