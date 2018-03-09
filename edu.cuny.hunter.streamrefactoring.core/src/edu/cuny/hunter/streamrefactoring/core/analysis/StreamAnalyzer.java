@@ -385,9 +385,9 @@ public class StreamAnalyzer extends ASTVisitor {
 						+ engine.getProject().getElementName());
 				throw e;
 			}
-			
-            pruneEntryPoints(entryPoints, engine);
-			
+
+			pruneEntryPoints(entryPoints, engine);
+
 			// TODO: Can I slice the graph so that only nodes relevant to the
 			// instance in question are present?
 			this.enginesWithBuiltCallGraphsToEntrypointsUsed.put(engine, entryPoints);
@@ -418,15 +418,51 @@ public class StreamAnalyzer extends ASTVisitor {
 			}
 		}
 
-		// get a set of dead entry point nodes
-		Set<CGNode> deadEntryPoints = new HashSet<CGNode>();
-		for (CGNode entryPointNode : entryPointNodes) {
-			if (!isReachable(entryPointNode, streamNodes, callGraph))
-				deadEntryPoints.add(entryPointNode);
-		}
+		Set<CGNode> deadEntryPoints = getDeadEntryPointNodes(entryPointNodes, streamNodes, callGraph);
 
 		// print dead entry points into a text file
 		reportDeadEntryPoints(deadEntryPoints);
+	}
+
+	/**
+	 * Get all possible dead entry point nodes.
+	 */
+	private Set<CGNode> getDeadEntryPointNodes(Collection<CGNode> entryPointNodes, Set<CGNode> streamNodes,
+			CallGraph callGraph) {
+		Set<CGNode> deadEntryPoints = new HashSet<CGNode>();
+		Set<String> aliveClass = new HashSet<String>();
+		Set<CGNode> cotersOrStaticInitializerNodes = new HashSet<CGNode>();
+		for (CGNode entryPointNode : entryPointNodes) {
+			// We will process coters and static initializers later
+			if (isCotersOrStaticInitializers(entryPointNode)) {
+				cotersOrStaticInitializerNodes.add(entryPointNode);
+				continue;
+			}
+
+			if (!isReachable(entryPointNode, streamNodes, callGraph))
+				deadEntryPoints.add(entryPointNode);
+			else
+				aliveClass.add(entryPointNode.getMethod().getDeclaringClass().toString());
+		}
+		// the coters and static initializer nodes should not be in the set of alive
+		// nodes.
+		for (CGNode entryPointNode : cotersOrStaticInitializerNodes)
+			if (!aliveClass.contains(entryPointNode.getMethod().getDeclaringClass().toString()))
+				deadEntryPoints.add(entryPointNode);
+		return deadEntryPoints;
+	}
+
+	/**
+	 * If the method which is represented by a cgNode is a constructor, then return
+	 * true, else return false
+	 */
+	private boolean isCotersOrStaticInitializers(CGNode cgNode) {
+		String signature = cgNode.getMethod().getSignature();
+		if (signature.contains("<init>"))
+			return true;
+		if (signature.contains("<clinit>"))
+			return true;
+		return false;
 	}
 
 	/**
@@ -454,6 +490,9 @@ public class StreamAnalyzer extends ASTVisitor {
 	 */
 	private void reportDeadEntryPoints(Set<CGNode> deadEntryPoints) throws FileNotFoundException {
 		PrintWriter deadEntryPointPrinter = new PrintWriter(DEAD_ENTRY_POINT_FILENAME);
+		// clear the file
+		deadEntryPointPrinter.print("");
+		// print the dead entry points
 		for (CGNode entrypoint : deadEntryPoints) {
 			deadEntryPointPrinter.println(entrypoint.getMethod().getSignature());
 		}
