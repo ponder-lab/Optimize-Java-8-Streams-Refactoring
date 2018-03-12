@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -27,6 +28,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
+import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.ISourceManipulation;
 import org.eclipse.jdt.core.JavaModelException;
@@ -41,6 +43,7 @@ import edu.cuny.hunter.streamrefactoring.core.analysis.ExecutionMode;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Ordering;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionSuccess;
+import edu.cuny.hunter.streamrefactoring.core.analysis.ProjectAnalysisResult;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Refactoring;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalyzer;
@@ -317,6 +320,39 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	@Override
 	public String getRefactoringPath() {
 		return REFACTORING_PATH;
+	}
+
+	/**
+	 * This method is used to test reporting dead entry points. The dead entry
+	 * points should be printed in the console and project workspace.
+	 * 
+	 * @param nToUseForStreams
+	 * @throws Exception
+	 */
+	private void helper(int nToUseForStreams) throws Exception {
+		LOGGER.fine("Using N = " + nToUseForStreams + ".");
+
+		// compute the actual results.
+		ICompilationUnit cu = this.createCUfromTestFile(this.getPackageP(), "A");
+
+		ASTParser parser = ASTParser.newParser(AST.JLS8);
+		parser.setResolveBindings(true);
+		parser.setSource(cu);
+
+		ASTNode ast = parser.createAST(new NullProgressMonitor());
+
+		StreamAnalyzer analyzer = new StreamAnalyzer(false, nToUseForStreams);
+		ast.accept(analyzer);
+
+		Map<IJavaProject, ProjectAnalysisResult> projectAnalysisResults = analyzer.analyze();
+
+		Collection<IJavaProject> projects = projectAnalysisResults.keySet();
+
+		for (IJavaProject project : projects) {
+			System.out.println(project.getElementName());
+			ProjectAnalysisResult projectAnalysisResult = projectAnalysisResults.get(project);
+			projectAnalysisResult.getDeadEntryPoints().forEach(e -> System.out.println(e));
+		}
 	}
 
 	/**
@@ -918,5 +954,26 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	public void testWithoutEntryPoint() throws Exception {
 		this.helper(new StreamAnalysisExpectedResult("h1.stream()", null, null, false, false, false, null, null, null,
 				RefactoringStatus.ERROR, EnumSet.of(PreconditionFailure.NO_ENTRY_POINT)));
+	}
+
+	/**
+	 * Test #187
+	 */
+	public void testReportDeadEntryPoints1() throws Exception {
+		this.helper(N_TO_USE_FOR_STREAMS_DEFAULT);
+	}
+
+	/**
+	 * Test #187
+	 */
+	public void testReportDeadEntryPoints() throws Exception {
+		this.helper(N_TO_USE_FOR_STREAMS_DEFAULT);
+	}
+
+	/**
+	 * Test #187
+	 */
+	public void testReportDeadEntryPoints2() throws Exception {
+		this.helper(N_TO_USE_FOR_STREAMS_DEFAULT);
 	}
 }
