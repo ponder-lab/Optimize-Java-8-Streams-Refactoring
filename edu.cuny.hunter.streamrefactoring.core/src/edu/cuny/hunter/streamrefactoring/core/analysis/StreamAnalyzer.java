@@ -439,11 +439,11 @@ public class StreamAnalyzer extends ASTVisitor {
 			CallGraph callGraph) {
 		Set<CGNode> deadEntryPoints = new HashSet<CGNode>();
 		Set<String> aliveClass = new HashSet<String>();
-		Set<CGNode> cotersOrStaticInitializerNodes = new HashSet<CGNode>();
+		Set<CGNode> ctorsOrStaticInitializerNodes = new HashSet<CGNode>();
 		for (CGNode entryPointNode : entryPointNodes) {
-			// We will process coters and static initializers later
-			if (isCotersOrStaticInitializers(entryPointNode)) {
-				cotersOrStaticInitializerNodes.add(entryPointNode);
+			// We will process ctors and static initializers later
+			if (isCtorsOrStaticInitializers(entryPointNode)) {
+				ctorsOrStaticInitializerNodes.add(entryPointNode);
 				continue;
 			}
 
@@ -452,9 +452,9 @@ public class StreamAnalyzer extends ASTVisitor {
 			else
 				aliveClass.add(entryPointNode.getMethod().getDeclaringClass().toString());
 		}
-		// the coters and static initializer nodes should not be in the set of alive
+		// the ctors and static initializer nodes should not be in the set of alive
 		// nodes.
-		for (CGNode entryPointNode : cotersOrStaticInitializerNodes)
+		for (CGNode entryPointNode : ctorsOrStaticInitializerNodes)
 			if (!aliveClass.contains(entryPointNode.getMethod().getDeclaringClass().toString()))
 				deadEntryPoints.add(entryPointNode);
 		return deadEntryPoints;
@@ -464,7 +464,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * If the method which is represented by a cgNode is a constructor, then return
 	 * true, else return false
 	 */
-	private boolean isCotersOrStaticInitializers(CGNode cgNode) {
+	private boolean isCtorsOrStaticInitializers(CGNode cgNode) {
 		String signature = cgNode.getMethod().getSignature();
 		if (signature.contains("<init>"))
 			return true;
