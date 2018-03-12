@@ -56,8 +56,6 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 public class StreamAnalyzer extends ASTVisitor {
 
 	private static final String ENTRY_POINT_FILENAME = "entry_points.txt";
-	
-    private static final String DEAD_ENTRY_POINT_FILENAME = "dead_entry_points.txt";
 
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
@@ -184,10 +182,11 @@ public class StreamAnalyzer extends ASTVisitor {
 	/**
 	 * Analyzes this {@link StreamAnalyzer}'s streams.
 	 *
-	 * @return A {@link Map} of project's analyzed along with the entry points used.
+	 * @return A {@link Map} of project's analyzed along with the entry points used
+	 *         and the dead entry points.
 	 * @see #analyze(Optional).
 	 */
-	public Map<IJavaProject, Collection<Entrypoint>> analyze() throws CoreException {
+	public Map<IJavaProject, ProjectAnalysisResult> analyze() throws CoreException {
 		return this.analyze(Optional.empty());
 	}
 
@@ -196,13 +195,14 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *
 	 * @param collector
 	 *            To exclude from the time certain parts of the analysis.
-	 * @return A {@link Map} of project's analyzed along with the entry points used.
+	 * @return A {@link Map} of project's analyzed along with the entry points used
+	 *         and the dead entry points.
 	 * @see #analyze().
 	 */
-	public Map<IJavaProject, Collection<Entrypoint>> analyze(Optional<TimeCollector> collector) throws CoreException {
+	public Map<IJavaProject, ProjectAnalysisResult> analyze(Optional<TimeCollector> collector) throws CoreException {
 		LOGGER.fine(() -> "Using N = " + this.getNForStreams() + ".");
 
-		Map<IJavaProject, Collection<Entrypoint>> ret = new HashMap<>();
+		Map<IJavaProject, ProjectAnalysisResult> ret = new HashMap<>();
 
 		// collect the projects to be analyzed.
 		Map<IJavaProject, Set<Stream>> projectToStreams = this.getStreamSet().stream().filter(s -> s.getStatus().isOK())
@@ -225,9 +225,9 @@ public class StreamAnalyzer extends ASTVisitor {
 			collector.ifPresent(TimeCollector::stop);
 
 			// build the call graph for the project.
-			Collection<Entrypoint> entryPoints = null;
+			ProjectAnalysisResult projectAnalysisResult = new ProjectAnalysisResult();
 			try {
-				entryPoints = this.buildCallGraph(engine, collector);
+				projectAnalysisResult = this.buildCallGraph(engine, collector);
 			} catch (IOException | CoreException | CancelException e) {
 				LOGGER.log(Level.SEVERE,
 						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
@@ -235,9 +235,9 @@ public class StreamAnalyzer extends ASTVisitor {
 			}
 
 			// save the entry points.
-			ret.put(project, entryPoints);
+			ret.put(project, projectAnalysisResult);
 
-			if (entryPoints.isEmpty()) {
+			if (projectAnalysisResult.getUsedEntryPoints().isEmpty()) {
 				// add a status entry for each stream in the project
 				for (Stream stream : projectToStreams.get(project))
 					stream.addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
@@ -305,11 +305,15 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *            graph.
 	 * @param collector
 	 *            A {@link TimeCollector} to exclude entry point finding.
-	 * @return The {@link Entrypoint}s used in building the {@link CallGraph}.
+	 * @return A set of entry points used in building the {@link CallGraph} and a
+	 *         set of dead entry points.
 	 */
-	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine,
+	protected ProjectAnalysisResult buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine,
 			Optional<TimeCollector> collector)
 			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
+
+		Collection<CGNode> deadEntryPoints = new HashSet<CGNode>();
+
 		// if we haven't built the call graph yet.
 		if (!this.enginesWithBuiltCallGraphsToEntrypointsUsed.keySet().contains(engine)) {
 			// find entry points (but exclude it from the time).
@@ -367,7 +371,7 @@ public class StreamAnalyzer extends ASTVisitor {
 
 			if (entryPoints.isEmpty()) {
 				LOGGER.warning(() -> "Project: " + engine.getProject().getElementName() + " has no entry points.");
-				return entryPoints;
+				return new ProjectAnalysisResult();
 			}
 
 			collector.ifPresent(TimeCollector::stop);
@@ -386,20 +390,24 @@ public class StreamAnalyzer extends ASTVisitor {
 				throw e;
 			}
 
-			pruneEntryPoints(entryPoints, engine);
+			deadEntryPoints = reportDeadEntryPoints(entryPoints, engine);
 
 			// TODO: Can I slice the graph so that only nodes relevant to the
 			// instance in question are present?
 			this.enginesWithBuiltCallGraphsToEntrypointsUsed.put(engine, entryPoints);
 		}
-		return this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine);
+		// Get the project analysis result
+		ProjectAnalysisResult projectAnalysisResult = new ProjectAnalysisResult();
+		projectAnalysisResult.setUsedEntryPoints(this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine));
+		projectAnalysisResult.setDeadEntryPoints(deadEntryPoints);
+		return projectAnalysisResult;
 	}
 
 	/**
-	 * Report dead entry points
+	 * Report and get dead entry points
 	 */
-	private void pruneEntryPoints(Set<Entrypoint> entryPoints, EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws IOException, CoreException {
+	private Collection<CGNode> reportDeadEntryPoints(Set<Entrypoint> entryPoints,
+			EclipseProjectAnalysisEngine<InstanceKey> engine) throws IOException, CoreException {
 		CallGraph callGraph = engine.getCallGraph();
 
 		// get a set of entry point nodes
@@ -421,8 +429,7 @@ public class StreamAnalyzer extends ASTVisitor {
 
 		Set<CGNode> deadEntryPoints = getDeadEntryPointNodes(entryPointNodes, streamNodes, callGraph);
 
-		// print dead entry points into a text file
-		reportDeadEntryPoints(deadEntryPoints);
+		return deadEntryPoints;
 	}
 
 	/**
@@ -484,20 +491,6 @@ public class StreamAnalyzer extends ASTVisitor {
 			if (streamNodes.contains(reachableNode))
 				return true;
 		return false;
-	}
-
-	/**
-	 * Print all dead entry points into a txt file
-	 */
-	private void reportDeadEntryPoints(Set<CGNode> deadEntryPoints) throws FileNotFoundException {
-		PrintWriter deadEntryPointPrinter = new PrintWriter(DEAD_ENTRY_POINT_FILENAME);
-		// clear the file
-		deadEntryPointPrinter.print("");
-		// print the dead entry points
-		for (CGNode entrypoint : deadEntryPoints) {
-			deadEntryPointPrinter.println(entrypoint.getMethod().getSignature());
-		}
-		deadEntryPointPrinter.close();
 	}
 
 	public int getNForStreams() {

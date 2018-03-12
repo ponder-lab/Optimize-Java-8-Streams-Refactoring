@@ -54,6 +54,7 @@ import org.osgi.framework.FrameworkUtil;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
+import edu.cuny.hunter.streamrefactoring.core.analysis.ProjectAnalysisResult;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalyzer;
 import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
@@ -131,7 +132,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	private int numberOfSkippedStreamInstances;
 
-	private Map<IJavaProject, Collection<Entrypoint>> projectToEntryPoints;
+	private Map<IJavaProject, ProjectAnalysisResult> projectToEntryPoints;
 
 	private SearchEngine searchEngine = new SearchEngine();
 
@@ -252,7 +253,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 			// map empty set to unprocessed projects.
 			for (IJavaProject project : this.getJavaProjects())
-				this.projectToEntryPoints.computeIfAbsent(project, p -> Collections.emptySet());
+				this.projectToEntryPoints.computeIfAbsent(project, p -> new ProjectAnalysisResult());
 
 			// get the status of each stream.
 			RefactoringStatus collectedStatus = this.getStreamSet().stream().map(Stream::getStatus)
@@ -423,7 +424,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		return null;
 	}
 
-	public Collection<Entrypoint> getEntryPoints(IJavaProject javaProject) {
+	public ProjectAnalysisResult getEntryPoints(IJavaProject javaProject) {
 		return this.projectToEntryPoints.get(javaProject);
 	}
 

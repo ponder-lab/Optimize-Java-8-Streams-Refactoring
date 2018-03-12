@@ -59,10 +59,12 @@ import org.osgi.framework.FrameworkUtil;
 
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
+import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionSuccess;
+import edu.cuny.hunter.streamrefactoring.core.analysis.ProjectAnalysisResult;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Refactoring;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
@@ -204,7 +206,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		}
 	}
 
-	private static Collection<Entrypoint> getProjectEntryPoints(IJavaProject javaProject,
+	private static ProjectAnalysisResult getProjectEntryPoints(IJavaProject javaProject,
 			ConvertToParallelStreamRefactoringProcessor processor) {
 		return processor.getEntryPoints(javaProject);
 	}
@@ -295,6 +297,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter streamOrderingPrinter = null;
 			CSVPrinter entryPointsPrinter = null;
 			PrintWriter entryPointsTXTPrinter = null;
+			PrintWriter deadEntryPointPrinter = null;
 
 			ConvertToParallelStreamRefactoringProcessor processor = null;
 
@@ -354,6 +357,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						new String[] { "subject", "method", "type FQN" });
 
 				entryPointsTXTPrinter = new PrintWriter("entry_points.txt");
+				
+				deadEntryPointPrinter = new PrintWriter("dead_entry_points.txt");
 
 				// set up analysis parameters for all projects.
 				boolean shouldFindImplicitEntrypoints = shouldFindImplicitEntrypoints();
@@ -390,8 +395,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 							.checkAllConditions(new NullProgressMonitor());
 					resultsTimeCollector.stop();
 
-					// print entry points.
-					Collection<Entrypoint> entryPoints = getProjectEntryPoints(javaProject, processor);
+					// print used entry points.
+					ProjectAnalysisResult projectAnalysisResult = getProjectEntryPoints(javaProject, processor);
+					Collection<Entrypoint> entryPoints = projectAnalysisResult.getUsedEntryPoints();
 					resultsPrinter.print(entryPoints.size()); // number.
 
 					for (Entrypoint entryPoint : entryPoints) {
@@ -399,6 +405,15 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						entryPointsPrinter.printRecord(javaProject.getElementName(), method.getSignature(),
 								method.getDeclaringClass().getName());
 						entryPointsTXTPrinter.println(method.getSignature());
+					}
+
+					// print dead entry points.
+					Collection<CGNode> deadEntryPoints = projectAnalysisResult.getDeadEntryPoints();
+					// clear the file
+					deadEntryPointPrinter.print("");
+					// print the dead entry points
+					for (CGNode entrypoint : deadEntryPoints) {
+						deadEntryPointPrinter.println(entrypoint.getMethod().getSignature());
 					}
 
 					// N.
@@ -587,6 +602,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						entryPointsPrinter.close();
 					if (entryPointsTXTPrinter != null)
 						entryPointsTXTPrinter.close();
+					if (deadEntryPointPrinter != null)
+						deadEntryPointPrinter.close();
 
 					// clear cache.
 					if (processor != null)
