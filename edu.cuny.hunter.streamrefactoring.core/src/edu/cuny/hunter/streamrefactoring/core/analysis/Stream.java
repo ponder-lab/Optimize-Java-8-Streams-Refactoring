@@ -362,12 +362,12 @@ public class Stream {
 	}
 
 	/**
-	 * @return The {@link CGNode} representing the enclosing method of this stream.
+	 * @return The {@link CGNode}s representing the enclosing method of this stream.
 	 * @throws NoEnclosingMethodNodeFoundException
 	 *             If the call graph doesn't contain a node for the enclosing
 	 *             method.
 	 */
-	protected CGNode getEnclosingMethodNode(EclipseProjectAnalysisEngine<InstanceKey> engine)
+	protected Collection<CGNode> getEnclosingMethodNodes(EclipseProjectAnalysisEngine<InstanceKey> engine)
 			throws IOException, CoreException, NoEnclosingMethodNodeFoundException {
 		MethodReference methodReference = this.getEnclosingMethodReference();
 		Set<CGNode> nodes = engine.getCallGraph().getNodes(methodReference);
@@ -375,7 +375,7 @@ public class Stream {
 		if (nodes.isEmpty())
 			throw new NoEnclosingMethodNodeFoundException(methodReference);
 		else
-			return nodes.iterator().next(); // just return the first.
+			return nodes;
 	}
 
 	MethodReference getEnclosingMethodReference() {
@@ -622,12 +622,12 @@ public class Stream {
 				throw new UnhandledCaseException("Encountered unhandled case, most likely an embedded stream.");
 			}
 
-			// get the enclosing method node.
-			CGNode node = null;
+			// get the enclosing method nodes.
+			Collection<CGNode> nodeCollection = null;
 			try {
-				node = this.getEnclosingMethodNode(engine);
+				nodeCollection = this.getEnclosingMethodNodes(engine);
 			} catch (NoEnclosingMethodNodeFoundException e) {
-				LOGGER.log(Level.WARNING, "Can't find enclosing method node for " + this.getCreation()
+				LOGGER.log(Level.WARNING, "Can't find enclosing method nodes for " + this.getCreation()
 						+ ". Falling back to: " + Ordering.ORDERED + ".", e);
 				this.setInitialOrdering(Ordering.ORDERED);
 				return;
@@ -638,7 +638,8 @@ public class Stream {
 			IMethod calledMethod = null;
 			Ordering ordering = null;
 			try {
-				possibleTypes = getPossibleTypesInterprocedurally(node, valueNumber, engine, orderingInference);
+				possibleTypes = getPossibleTypesInterprocedurally(nodeCollection, valueNumber, engine,
+						orderingInference);
 
 				// Possible types: check each one.
 				calledMethod = (IMethod) calledMethodBinding.getJavaElement();
