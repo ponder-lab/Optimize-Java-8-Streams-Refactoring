@@ -590,8 +590,8 @@ public class StreamStateMachine {
 				if (numOfRetVals > 0) {
 					int returnValue = invokeInstruction.getReturnValue(0);
 
-					possibleReturnTypes = Util.getPossibleTypesInterprocedurally(Collections.singleton(block.getNode()),
-							returnValue, engine, orderingInference);
+					possibleReturnTypes = Util.getPossibleTypesInterprocedurally(block.getNode(), returnValue, engine,
+							orderingInference);
 
 					LOGGER.fine("Possible reduce types are: " + possibleReturnTypes);
 				} else
