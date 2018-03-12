@@ -411,11 +411,12 @@ public class StreamAnalyzer extends ASTVisitor {
 		while (streamIterator.hasNext()) {
 			Stream stream = streamIterator.next();
 			try {
-				streamNodes.add(stream.getEnclosingMethodNode(engine));
+				streamNodes.addAll(stream.getEnclosingMethodNodes(engine));
 			} catch (NoEnclosingMethodNodeFoundException e) {
-				// TODO throw in the high level?
+				// TODO Throw in the top level?
 				e.printStackTrace();
 			}
+
 		}
 
 		Set<CGNode> deadEntryPoints = getDeadEntryPointNodes(entryPointNodes, streamNodes, callGraph);
