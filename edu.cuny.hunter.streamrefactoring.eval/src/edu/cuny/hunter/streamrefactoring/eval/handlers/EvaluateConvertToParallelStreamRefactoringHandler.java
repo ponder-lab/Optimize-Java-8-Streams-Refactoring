@@ -110,6 +110,10 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 	private static final String N_TO_USE_FOR_STREAMS_PROPERTY_KEY = "nToUseForStreams";
 
+	private static final boolean PERFORM_ANALYSIS_DEFAULT = true;
+
+	private static final String PERFORM_ANALYSIS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.performAnalysis";
+
 	private static final boolean PERFORM_CHANGE_DEFAULT = false;
 
 	private static final String PERFORM_CHANGE_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.performChange";
@@ -272,6 +276,15 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			return Boolean.valueOf(findImplicitTestEntrypoints);
 	}
 
+	private static boolean shouldPerformAnalysis() {
+		String value = System.getenv(PERFORM_ANALYSIS_PROPERTY_KEY);
+
+		if (value == null)
+			return PERFORM_ANALYSIS_DEFAULT;
+		else
+			return Boolean.valueOf(value);
+	}
+
 	private static boolean shouldPerformChange() {
 		String performChangePropertyValue = System.getenv(PERFORM_CHANGE_PROPERTY_KEY);
 
@@ -395,10 +408,14 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					ConvertToParallelStreamRefactoringProcessor.setLoggingLevel(LOGGING_LEVEL);
 
 					// run the precondition checking.
-					resultsTimeCollector.start();
-					RefactoringStatus status = new ProcessorBasedRefactoring(processor)
-							.checkAllConditions(new NullProgressMonitor());
-					resultsTimeCollector.stop();
+					RefactoringStatus status = null;
+
+					if (shouldPerformAnalysis()) {
+						resultsTimeCollector.start();
+						status = new ProcessorBasedRefactoring(processor).checkAllConditions(new NullProgressMonitor());
+						resultsTimeCollector.stop();
+					} else
+						status = new RefactoringStatus();
 
 					// print entry points.
 					Collection<Entrypoint> entryPoints = getProjectEntryPoints(javaProject, processor);
