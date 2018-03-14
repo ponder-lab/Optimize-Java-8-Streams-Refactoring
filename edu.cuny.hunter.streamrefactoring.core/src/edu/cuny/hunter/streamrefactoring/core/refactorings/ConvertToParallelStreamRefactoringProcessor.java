@@ -105,8 +105,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	 * Minimum logging level. One of the constants in
 	 * org.eclipse.core.runtime.IStatus.
 	 *
-	 * @param level
-	 *            The minimum logging level to set.
+	 * @param level The minimum logging level to set.
 	 * @see org.eclipse.core.runtime.IStatus.
 	 */
 	public static void setLoggingLevel(int level) {
@@ -373,8 +372,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	/**
 	 * Creates a working copy layer if necessary.
 	 *
-	 * @param monitor
-	 *            the progress monitor to use
+	 * @param monitor the progress monitor to use
 	 * @return a status describing the outcome of the operation
 	 */
 	private RefactoringStatus createWorkingCopyLayer(IProgressMonitor monitor) {
