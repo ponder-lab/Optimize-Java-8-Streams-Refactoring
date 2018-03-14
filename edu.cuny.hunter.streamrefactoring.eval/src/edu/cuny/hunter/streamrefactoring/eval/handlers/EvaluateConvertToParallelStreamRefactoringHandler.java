@@ -69,6 +69,7 @@ import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
 import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
 import edu.cuny.hunter.streamrefactoring.eval.utils.Util;
+import net.sourceforge.metrics.core.Constants;
 import net.sourceforge.metrics.core.Metric;
 import net.sourceforge.metrics.core.sources.AbstractMetricSource;
 import net.sourceforge.metrics.core.sources.Dispatcher;
@@ -164,15 +165,20 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		return methods;
 	}
 
+	@SuppressWarnings("unused")
 	private static int getMethodLinesOfCode(IMethod method) {
-		AbstractMetricSource metricSource = Dispatcher.getAbstractMetricSource(method);
+		return getMetric(method, Constants.MLOC);
+	}
+
+	private static int getMetric(IJavaElement elem, String key) {
+		AbstractMetricSource metricSource = Dispatcher.getAbstractMetricSource(elem);
 
 		if (metricSource != null) {
-			Metric value = metricSource.getValue("MLOC");
-			int mLOC = value.intValue();
-			return mLOC;
+			Metric value = metricSource.getValue(key);
+			int tLOC = value.intValue();
+			return tLOC;
 		} else {
-			System.err.println("WARNING: Could not retrieve metric source for method: " + method.getElementName());
+			System.err.println("WARNING: Could not retrieve metric source for: " + elem.getElementName());
 			return 0;
 		}
 	}
@@ -204,23 +210,21 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		}
 	}
 
+	private static int getNumberOfClasses(IJavaProject javaProject) {
+		return getMetric(javaProject, Constants.NUM_TYPES);
+	}
+
+	private static int getNumberOfMethods(IJavaProject javaProject) {
+		return getMetric(javaProject, Constants.NUM_METHODS);
+	}
+
 	private static Collection<Entrypoint> getProjectEntryPoints(IJavaProject javaProject,
 			ConvertToParallelStreamRefactoringProcessor processor) {
 		return processor.getEntryPoints(javaProject);
 	}
 
 	private static int getProjectLinesOfCode(IJavaProject javaProject) {
-		AbstractMetricSource metricSource = Dispatcher.getAbstractMetricSource(javaProject);
-
-		if (metricSource != null) {
-			Metric value = metricSource.getValue("TLOC");
-			int tLOC = value.intValue();
-			return tLOC;
-		} else {
-			System.err
-					.println("WARNING: Could not retrieve metric source for project: " + javaProject.getElementName());
-			return 0;
-		}
+		return getMetric(javaProject, Constants.TLOC);
 	}
 
 	private static void printStreamAttributesWithMultipleValues(Set<?> set, CSVPrinter printer, Stream stream,
@@ -308,9 +312,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 				IJavaProject[] javaProjects = Util.getSelectedJavaProjectsFromEvent(event);
 
-				List<String> resultsHeader = new ArrayList<>(Arrays.asList("subject", "SLOC", "#entrypoints", "N",
-						"#streams", "#optimization available streams", "#optimizable streams", "#failed preconditions",
-						"stream instances processed", "stream instances skipped"));
+				List<String> resultsHeader = new ArrayList<>(Arrays.asList("subject", "SLOC", "classes", "methods",
+						"#entrypoints", "N", "#streams", "#optimization available streams", "#optimizable streams",
+						"#failed preconditions", "stream instances processed", "stream instances skipped"));
 
 				for (Refactoring refactoring : Refactoring.values())
 					resultsHeader.add(refactoring.toString());
@@ -371,6 +375,12 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 					// lines of code
 					resultsPrinter.print(getProjectLinesOfCode(javaProject));
+
+					// number of classes.
+					resultsPrinter.print(getNumberOfClasses(javaProject));
+
+					// number of methods.
+					resultsPrinter.print(getNumberOfMethods(javaProject));
 
 					// set up analysis for single project.
 					TimeCollector resultsTimeCollector = new TimeCollector();
