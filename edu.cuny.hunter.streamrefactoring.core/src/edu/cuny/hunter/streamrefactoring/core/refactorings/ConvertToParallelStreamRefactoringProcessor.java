@@ -424,7 +424,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	}
 
 	public Collection<Entrypoint> getEntryPoints(IJavaProject javaProject) {
-		return this.projectToEntryPoints.get(javaProject);
+		return this.projectToEntryPoints == null ? Collections.emptySet() : this.projectToEntryPoints.get(javaProject);
 	}
 
 	public TimeCollector getExcludedTimeCollector() {
@@ -453,7 +453,9 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	}
 
 	public Set<Stream> getOptimizableStreams() {
-		return this.getStreamSet().parallelStream().filter(s -> !s.getStatus().hasError()).collect(Collectors.toSet());
+		Set<Stream> streamSet = this.getStreamSet();
+		return streamSet == null ? Collections.emptySet()
+				: streamSet.parallelStream().filter(s -> !s.getStatus().hasError()).collect(Collectors.toSet());
 	}
 
 	@Override

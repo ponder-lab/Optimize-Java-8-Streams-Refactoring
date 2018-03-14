@@ -415,10 +415,12 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					resultsPrinter.print(nToUseForStreams);
 
 					// #streams.
-					resultsPrinter.print(processor.getStreamSet().size());
+					Set<Stream> streamSet = processor.getStreamSet();
+					resultsPrinter.print(streamSet == null ? 0 : streamSet.size());
 
 					// #optimization available streams. These are the "filtered" streams.
-					Set<Stream> candidates = processor.getStreamSet().parallelStream().filter(s -> {
+					Set<Stream> candidates = streamSet == null ? Collections.emptySet()
+							: streamSet.parallelStream().filter(s -> {
 						String pluginId = FrameworkUtil.getBundle(Stream.class).getSymbolicName();
 
 						// error related to reachability.
@@ -444,7 +446,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 										: stream.getEnclosingType().getFullyQualifiedName());
 
 					// stream attributes.
-					for (Stream stream : processor.getStreamSet()) {
+					if (streamSet != null)
+						for (Stream stream : streamSet) {
 						streamAttributesPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
 								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
 								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
@@ -463,8 +466,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						printStreamAttributesWithMultipleValues(stream.getPossibleExecutionModes(),
 								streamExecutionModePrinter, stream, method, javaProject);
 
-						printStreamAttributesWithMultipleValues(stream.getPossibleOrderings(), streamOrderingPrinter,
-								stream, method, javaProject);
+							printStreamAttributesWithMultipleValues(stream.getPossibleOrderings(),
+									streamOrderingPrinter, stream, method, javaProject);
 
 					}
 
@@ -523,20 +526,22 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 					// Refactoring type counts.
 					for (Refactoring refactoring : Refactoring.values())
-						resultsPrinter.print(processor.getStreamSet().parallelStream().map(Stream::getRefactoring)
+						resultsPrinter.print(streamSet == null ? 0
+								: streamSet.parallelStream().map(Stream::getRefactoring)
 								.filter(r -> Objects.equals(r, refactoring)).count());
 
 					// Precondition success counts.
 					for (PreconditionSuccess preconditionSuccess : PreconditionSuccess.values())
-						resultsPrinter
-								.print(processor.getStreamSet().parallelStream().map(Stream::getPassingPrecondition)
+						resultsPrinter.print(streamSet == null ? 0
+								: streamSet.parallelStream().map(Stream::getPassingPrecondition)
 										.filter(pp -> Objects.equals(pp, preconditionSuccess)).count());
 
 					// Transformation counts.
 					for (TransformationAction action : TransformationAction.values())
-						resultsPrinter.print(processor.getStreamSet().parallelStream().map(Stream::getActions)
-								.filter(Objects::nonNull).flatMap(as -> as.parallelStream())
-								.filter(a -> Objects.equals(a, action)).count());
+						resultsPrinter.print(streamSet == null ? 0
+								: streamSet.parallelStream().map(Stream::getActions).filter(Objects::nonNull)
+										.flatMap(as -> as.parallelStream()).filter(a -> Objects.equals(a, action))
+										.count());
 
 					// actually perform the refactoring if there are no fatal
 					// errors.
