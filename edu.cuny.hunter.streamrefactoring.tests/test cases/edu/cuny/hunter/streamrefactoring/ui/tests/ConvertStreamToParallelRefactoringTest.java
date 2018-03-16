@@ -149,6 +149,15 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		return "Unexpected " + attribute + " for " + result.getExpectedCreation() + ".";
 	}
 
+	private static String errorMessage(Object deadEntryPoint, boolean isExpect) {
+		if (isExpect)
+			// the expected dead entry point does not in the set of actual dead entry points
+			return "Cannot get the expected dead entry point:" + deadEntryPoint + ".";
+		else
+			// the actual entry point is unexpected
+			return "Unexpected dead entry points: " + deadEntryPoint + ".";
+	}
+
 	private static Path getAbsolutePath(String fileName) {
 		Path path = Paths.get(RESOURCE_PATH, fileName);
 		Path absolutePath = path.toAbsolutePath();
@@ -323,13 +332,39 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	}
 
 	/**
-	 * This method is used to test reporting dead entry points. The dead entry
-	 * points should be printed in the console and project workspace.
+	 * To test reporting dead entry points.
 	 * 
-	 * @param nToUseForStreams
+	 * @param expectedDeadEntryPoints
+	 *            a set of expected entry points
 	 * @throws Exception
 	 */
-	private void helper(int nToUseForStreams) throws Exception {
+	private void helper(Collection<Object> expectedDeadEntryPoints) throws Exception {
+		StreamAnalyzer analyzer = getAnalyzer(N_TO_USE_FOR_STREAMS_DEFAULT);
+
+		Map<IJavaProject, ProjectAnalysisResult> projectAnalysisResults = analyzer.analyze();
+
+		Collection<IJavaProject> projects = projectAnalysisResults.keySet();
+
+		// get a set of method signatures for the dead entry points
+		Collection<Object> deadEntryPoints = new HashSet<Object>();
+		for (IJavaProject project : projects) {
+			ProjectAnalysisResult projectAnalysisResult = projectAnalysisResults.get(project);
+			projectAnalysisResult.getDeadEntryPoints().forEach(e -> {
+				deadEntryPoints.add(e.getMethod().getSignature());
+			});
+		}
+
+		expectedDeadEntryPoints.forEach(e -> {
+			assertTrue(errorMessage(e, true), deadEntryPoints.contains(e));
+		});
+
+		deadEntryPoints.forEach(e -> {
+			assertTrue(errorMessage(e, false), expectedDeadEntryPoints.contains(e));
+		});
+
+	}
+
+	private StreamAnalyzer getAnalyzer(int nToUseForStreams) throws Exception {
 		LOGGER.fine("Using N = " + nToUseForStreams + ".");
 
 		// compute the actual results.
@@ -344,37 +379,17 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 		StreamAnalyzer analyzer = new StreamAnalyzer(false, nToUseForStreams);
 		ast.accept(analyzer);
 
-		Map<IJavaProject, ProjectAnalysisResult> projectAnalysisResults = analyzer.analyze();
+		return analyzer;
 
-		Collection<IJavaProject> projects = projectAnalysisResults.keySet();
-
-		for (IJavaProject project : projects) {
-			System.out.println(project.getElementName());
-			ProjectAnalysisResult projectAnalysisResult = projectAnalysisResults.get(project);
-			projectAnalysisResult.getDeadEntryPoints().forEach(e -> System.out.println(e));
-		}
 	}
 
 	/**
 	 * Runs a single analysis test.
 	 */
 	private void helper(int nToUseForStreams, StreamAnalysisExpectedResult... expectedResults) throws Exception {
-		LOGGER.fine("Using N = " + nToUseForStreams + ".");
 
-		// compute the actual results.
-		ICompilationUnit cu = this.createCUfromTestFile(this.getPackageP(), "A");
-
-		ASTParser parser = ASTParser.newParser(AST.JLS8);
-		parser.setResolveBindings(true);
-		parser.setSource(cu);
-
-		ASTNode ast = parser.createAST(new NullProgressMonitor());
-
-		StreamAnalyzer analyzer = new StreamAnalyzer(false, nToUseForStreams);
-		ast.accept(analyzer);
-
+		StreamAnalyzer analyzer = getAnalyzer(nToUseForStreams);
 		analyzer.analyze();
-
 		Set<Stream> resultingStreams = analyzer.getStreamSet();
 		assertNotNull(resultingStreams);
 
@@ -959,21 +974,25 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 	/**
 	 * Test #187
 	 */
-	public void testReportDeadEntryPoints1() throws Exception {
-		this.helper(N_TO_USE_FOR_STREAMS_DEFAULT);
+	public void testReportDeadEntryPoints() throws Exception {
+		Collection<Object> expectedDeadEntryPoints = new HashSet<Object>();
+		expectedDeadEntryPoints.add("p.A.mm()V");
+		this.helper(expectedDeadEntryPoints);
 	}
 
 	/**
 	 * Test #187
 	 */
-	public void testReportDeadEntryPoints() throws Exception {
-		this.helper(N_TO_USE_FOR_STREAMS_DEFAULT);
+	public void testReportDeadEntryPoints1() throws Exception {
+		Collection<Object> expectedDeadEntryPoints = new HashSet<Object>();
+		expectedDeadEntryPoints.add("p.A.mm()V");
+		this.helper(expectedDeadEntryPoints);
 	}
 
 	/**
 	 * Test #187
 	 */
 	public void testReportDeadEntryPoints2() throws Exception {
-		this.helper(N_TO_USE_FOR_STREAMS_DEFAULT);
+		this.helper(Collections.emptySet());
 	}
 }

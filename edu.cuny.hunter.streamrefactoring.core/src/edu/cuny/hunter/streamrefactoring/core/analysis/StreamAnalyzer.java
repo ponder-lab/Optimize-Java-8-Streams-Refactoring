@@ -3,9 +3,7 @@ package edu.cuny.hunter.streamrefactoring.core.analysis;
 import static com.ibm.wala.ipa.callgraph.impl.Util.makeMainEntrypoints;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
@@ -43,6 +41,7 @@ import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.SSAOptions;
+import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.graph.traverse.DFS;
 import com.ibm.wala.util.scope.JUnitEntryPoints;
@@ -195,8 +194,8 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *
 	 * @param collector
 	 *            To exclude from the time certain parts of the analysis.
-	 * @return A {@link Map} of project's analyzed along with the entry points used
-	 *         and the dead entry points.
+	 * @return A {@link Map} of project's analyzed along with the associated
+	 *         {@link ProjectAnalysisResult}
 	 * @see #analyze().
 	 */
 	public Map<IJavaProject, ProjectAnalysisResult> analyze(Optional<TimeCollector> collector) throws CoreException {
@@ -224,15 +223,22 @@ public class StreamAnalyzer extends ASTVisitor {
 			}
 			collector.ifPresent(TimeCollector::stop);
 
-			// build the call graph for the project.
-			ProjectAnalysisResult projectAnalysisResult = new ProjectAnalysisResult();
+			Collection<Entrypoint> usedEntryPoints;
+			Collection<CGNode> deadEntryPoints = new HashSet<CGNode>();
 			try {
-				projectAnalysisResult = this.buildCallGraph(engine, collector);
+				// build the call graph for the project,
+				// also get a set of used entry points.
+				usedEntryPoints = this.buildCallGraph(engine, collector);
 			} catch (IOException | CoreException | CancelException e) {
 				LOGGER.log(Level.SEVERE,
 						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
 				throw new RuntimeException(e);
 			}
+			
+			deadEntryPoints = reportDeadEntryPoints(engine);
+
+			// save the project analysis result
+			ProjectAnalysisResult projectAnalysisResult = new ProjectAnalysisResult(usedEntryPoints, deadEntryPoints);
 
 			// save the entry points.
 			ret.put(project, projectAnalysisResult);
@@ -305,15 +311,11 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *            graph.
 	 * @param collector
 	 *            A {@link TimeCollector} to exclude entry point finding.
-	 * @return A set of entry points used in building the {@link CallGraph} and a
-	 *         set of dead entry points.
+	 * @return A set of entry points used in building the {@link CallGraph}
 	 */
-	protected ProjectAnalysisResult buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine,
+	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine,
 			Optional<TimeCollector> collector)
 			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
-
-		Collection<CGNode> deadEntryPoints = new HashSet<CGNode>();
-
 		// if we haven't built the call graph yet.
 		if (!this.enginesWithBuiltCallGraphsToEntrypointsUsed.keySet().contains(engine)) {
 			// find entry points (but exclude it from the time).
@@ -371,7 +373,7 @@ public class StreamAnalyzer extends ASTVisitor {
 
 			if (entryPoints.isEmpty()) {
 				LOGGER.warning(() -> "Project: " + engine.getProject().getElementName() + " has no entry points.");
-				return new ProjectAnalysisResult();
+				return entryPoints;
 			}
 
 			collector.ifPresent(TimeCollector::stop);
@@ -390,24 +392,18 @@ public class StreamAnalyzer extends ASTVisitor {
 				throw e;
 			}
 
-			deadEntryPoints = reportDeadEntryPoints(entryPoints, engine);
-
 			// TODO: Can I slice the graph so that only nodes relevant to the
 			// instance in question are present?
 			this.enginesWithBuiltCallGraphsToEntrypointsUsed.put(engine, entryPoints);
 		}
 		// Get the project analysis result
-		ProjectAnalysisResult projectAnalysisResult = new ProjectAnalysisResult();
-		projectAnalysisResult.setUsedEntryPoints(this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine));
-		projectAnalysisResult.setDeadEntryPoints(deadEntryPoints);
-		return projectAnalysisResult;
+		return this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine);
 	}
 
 	/**
 	 * Report and get dead entry points
 	 */
-	private Collection<CGNode> reportDeadEntryPoints(Set<Entrypoint> entryPoints,
-			EclipseProjectAnalysisEngine<InstanceKey> engine) throws IOException, CoreException {
+	private Collection<CGNode> reportDeadEntryPoints(EclipseProjectAnalysisEngine<InstanceKey> engine) {
 		CallGraph callGraph = engine.getCallGraph();
 
 		// get a set of entry point nodes
@@ -420,11 +416,11 @@ public class StreamAnalyzer extends ASTVisitor {
 			Stream stream = streamIterator.next();
 			try {
 				streamNodes.addAll(stream.getEnclosingMethodNodes(engine));
-			} catch (NoEnclosingMethodNodeFoundException e) {
-				// TODO Throw in the top level?
-				e.printStackTrace();
+			} catch (IOException | CoreException | NoEnclosingMethodNodeFoundException e) {
+				LOGGER.log(Level.SEVERE, e, () -> "Exception encountered while get enclosing method nodes: "
+						+ stream.getEnclosingMethodDeclaration());
+				return new HashSet<CGNode>();
 			}
-
 		}
 
 		Set<CGNode> deadEntryPoints = getDeadEntryPointNodes(entryPointNodes, streamNodes, callGraph);
@@ -438,11 +434,11 @@ public class StreamAnalyzer extends ASTVisitor {
 	private Set<CGNode> getDeadEntryPointNodes(Collection<CGNode> entryPointNodes, Set<CGNode> streamNodes,
 			CallGraph callGraph) {
 		Set<CGNode> deadEntryPoints = new HashSet<CGNode>();
-		Set<String> aliveClass = new HashSet<String>();
+		Set<Object> aliveClass = new HashSet<Object>();
 		Set<CGNode> ctorsOrStaticInitializerNodes = new HashSet<CGNode>();
 		for (CGNode entryPointNode : entryPointNodes) {
 			// We will process ctors and static initializers later
-			if (isCtorsOrStaticInitializers(entryPointNode)) {
+			if (isCtors(entryPointNode) || isStaticInitializers(entryPointNode)) {
 				ctorsOrStaticInitializerNodes.add(entryPointNode);
 				continue;
 			}
@@ -464,13 +460,16 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * If the method which is represented by a cgNode is a constructor, then return
 	 * true, else return false
 	 */
-	private boolean isCtorsOrStaticInitializers(CGNode cgNode) {
-		String signature = cgNode.getMethod().getSignature();
-		if (signature.contains("<init>"))
-			return true;
-		if (signature.contains("<clinit>"))
-			return true;
-		return false;
+	private boolean isCtors(CGNode cgNode) {
+		return cgNode.getMethod().getReference().isInit();
+	}
+
+	/**
+	 * If the method which is represented by a cgNode is a static initializer, then
+	 * return true, else return false
+	 */
+	private boolean isStaticInitializers(CGNode cgNode) {
+		return cgNode.getMethod().getReference().getName().equals(MethodReference.clinitName);
 	}
 
 	/**

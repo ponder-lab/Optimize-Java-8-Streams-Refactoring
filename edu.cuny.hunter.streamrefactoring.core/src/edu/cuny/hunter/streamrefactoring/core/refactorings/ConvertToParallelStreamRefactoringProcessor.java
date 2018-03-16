@@ -253,7 +253,8 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 			// map empty set to unprocessed projects.
 			for (IJavaProject project : this.getJavaProjects())
-				this.projectToEntryPoints.computeIfAbsent(project, p -> new ProjectAnalysisResult());
+				this.projectToEntryPoints.computeIfAbsent(project,
+						p -> new ProjectAnalysisResult(Collections.emptySet(), Collections.emptySet()));
 
 			// get the status of each stream.
 			RefactoringStatus collectedStatus = this.getStreamSet().stream().map(Stream::getStatus)
@@ -424,7 +425,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		return null;
 	}
 
-	public ProjectAnalysisResult getEntryPoints(IJavaProject javaProject) {
+	public ProjectAnalysisResult getProjectAnalysisResult(IJavaProject javaProject) {
 		return this.projectToEntryPoints.get(javaProject);
 	}
 

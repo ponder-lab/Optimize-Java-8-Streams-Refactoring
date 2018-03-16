@@ -206,9 +206,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		}
 	}
 
-	private static ProjectAnalysisResult getProjectEntryPoints(IJavaProject javaProject,
+	private static ProjectAnalysisResult getProjectAnalysisResult(IJavaProject javaProject,
 			ConvertToParallelStreamRefactoringProcessor processor) {
-		return processor.getEntryPoints(javaProject);
+		return processor.getProjectAnalysisResult(javaProject);
 	}
 
 	private static int getProjectLinesOfCode(IJavaProject javaProject) {
@@ -396,7 +396,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					resultsTimeCollector.stop();
 
 					// print used entry points.
-					ProjectAnalysisResult projectAnalysisResult = getProjectEntryPoints(javaProject, processor);
+					ProjectAnalysisResult projectAnalysisResult = getProjectAnalysisResult(javaProject, processor);
 					Collection<Entrypoint> entryPoints = projectAnalysisResult.getUsedEntryPoints();
 					resultsPrinter.print(entryPoints.size()); // number.
 
