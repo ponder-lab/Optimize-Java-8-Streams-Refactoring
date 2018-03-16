@@ -45,6 +45,7 @@ import org.eclipse.ltk.core.refactoring.GroupCategory;
 import org.eclipse.ltk.core.refactoring.GroupCategorySet;
 import org.eclipse.ltk.core.refactoring.RefactoringDescriptor;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
+import org.eclipse.ltk.core.refactoring.history.RefactoringHistory;
 import org.eclipse.ltk.core.refactoring.participants.CheckConditionsContext;
 import org.eclipse.ltk.core.refactoring.participants.RefactoringParticipant;
 import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
@@ -106,8 +107,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	 * Minimum logging level. One of the constants in
 	 * org.eclipse.core.runtime.IStatus.
 	 *
-	 * @param level
-	 *            The minimum logging level to set.
+	 * @param level The minimum logging level to set.
 	 * @see org.eclipse.core.runtime.IStatus.
 	 */
 	public static void setLoggingLevel(int level) {
@@ -375,8 +375,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	/**
 	 * Creates a working copy layer if necessary.
 	 *
-	 * @param monitor
-	 *            the progress monitor to use
+	 * @param monitor the progress monitor to use
 	 * @return a status describing the outcome of the operation
 	 */
 	private RefactoringStatus createWorkingCopyLayer(IProgressMonitor monitor) {
@@ -426,7 +425,9 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	}
 
 	public ProjectAnalysisResult getProjectAnalysisResult(IJavaProject javaProject) {
-		return this.projectToEntryPoints.get(javaProject);
+		return this.projectToEntryPoints == null
+				? new ProjectAnalysisResult(Collections.emptySet(), Collections.emptySet())
+				: this.projectToEntryPoints.get(javaProject);
 	}
 
 	public TimeCollector getExcludedTimeCollector() {
@@ -455,7 +456,9 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	}
 
 	public Set<Stream> getOptimizableStreams() {
-		return this.getStreamSet().parallelStream().filter(s -> !s.getStatus().hasError()).collect(Collectors.toSet());
+		Set<Stream> streamSet = this.getStreamSet();
+		return streamSet == null ? Collections.emptySet()
+				: streamSet.parallelStream().filter(s -> !s.getStatus().hasError()).collect(Collectors.toSet());
 	}
 
 	@Override

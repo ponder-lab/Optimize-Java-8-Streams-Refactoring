@@ -71,6 +71,7 @@ import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
 import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
 import edu.cuny.hunter.streamrefactoring.eval.utils.Util;
+import net.sourceforge.metrics.core.Constants;
 import net.sourceforge.metrics.core.Metric;
 import net.sourceforge.metrics.core.sources.AbstractMetricSource;
 import net.sourceforge.metrics.core.sources.Dispatcher;
@@ -110,6 +111,10 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	private static final int N_TO_USE_FOR_STREAMS_DEFAULT = 2;
 
 	private static final String N_TO_USE_FOR_STREAMS_PROPERTY_KEY = "nToUseForStreams";
+
+	private static final boolean PERFORM_ANALYSIS_DEFAULT = true;
+
+	private static final String PERFORM_ANALYSIS_PROPERTY_KEY = "edu.cuny.hunter.streamrefactoring.eval.performAnalysis";
 
 	private static final boolean PERFORM_CHANGE_DEFAULT = false;
 
@@ -166,15 +171,20 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		return methods;
 	}
 
+	@SuppressWarnings("unused")
 	private static int getMethodLinesOfCode(IMethod method) {
-		AbstractMetricSource metricSource = Dispatcher.getAbstractMetricSource(method);
+		return getMetric(method, Constants.MLOC);
+	}
+
+	private static int getMetric(IJavaElement elem, String key) {
+		AbstractMetricSource metricSource = Dispatcher.getAbstractMetricSource(elem);
 
 		if (metricSource != null) {
-			Metric value = metricSource.getValue("MLOC");
-			int mLOC = value.intValue();
-			return mLOC;
+			Metric value = metricSource.getValue(key);
+			int tLOC = value.intValue();
+			return tLOC;
 		} else {
-			System.err.println("WARNING: Could not retrieve metric source for method: " + method.getElementName());
+			System.err.println("WARNING: Could not retrieve metric source for: " + elem.getElementName());
 			return 0;
 		}
 	}
@@ -206,23 +216,21 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		}
 	}
 
+	private static int getNumberOfClasses(IJavaProject javaProject) {
+		return getMetric(javaProject, Constants.NUM_TYPES);
+	}
+
+	private static int getNumberOfMethods(IJavaProject javaProject) {
+		return getMetric(javaProject, Constants.NUM_METHODS);
+	}
+
 	private static ProjectAnalysisResult getProjectAnalysisResult(IJavaProject javaProject,
 			ConvertToParallelStreamRefactoringProcessor processor) {
 		return processor.getProjectAnalysisResult(javaProject);
 	}
 
 	private static int getProjectLinesOfCode(IJavaProject javaProject) {
-		AbstractMetricSource metricSource = Dispatcher.getAbstractMetricSource(javaProject);
-
-		if (metricSource != null) {
-			Metric value = metricSource.getValue("TLOC");
-			int tLOC = value.intValue();
-			return tLOC;
-		} else {
-			System.err
-					.println("WARNING: Could not retrieve metric source for project: " + javaProject.getElementName());
-			return 0;
-		}
+		return getMetric(javaProject, Constants.TLOC);
 	}
 
 	private static void printStreamAttributesWithMultipleValues(Set<?> set, CSVPrinter printer, Stream stream,
@@ -270,6 +278,15 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			return Boolean.valueOf(findImplicitTestEntrypoints);
 	}
 
+	private static boolean shouldPerformAnalysis() {
+		String value = System.getenv(PERFORM_ANALYSIS_PROPERTY_KEY);
+
+		if (value == null)
+			return PERFORM_ANALYSIS_DEFAULT;
+		else
+			return Boolean.valueOf(value);
+	}
+
 	private static boolean shouldPerformChange() {
 		String performChangePropertyValue = System.getenv(PERFORM_CHANGE_PROPERTY_KEY);
 
@@ -311,9 +328,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 				IJavaProject[] javaProjects = Util.getSelectedJavaProjectsFromEvent(event);
 
-				List<String> resultsHeader = new ArrayList<>(Arrays.asList("subject", "SLOC", "#entrypoints", "N",
-						"#streams", "#optimization available streams", "#optimizable streams", "#failed preconditions",
-						"stream instances processed", "stream instances skipped"));
+				List<String> resultsHeader = new ArrayList<>(Arrays.asList("subject", "SLOC", "classes", "methods",
+						"#entrypoints", "N", "#streams", "#optimization available streams", "#optimizable streams",
+						"#failed preconditions", "stream instances processed", "stream instances skipped"));
 
 				for (Refactoring refactoring : Refactoring.values())
 					resultsHeader.add(refactoring.toString());
@@ -377,6 +394,12 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					// lines of code
 					resultsPrinter.print(getProjectLinesOfCode(javaProject));
 
+					// number of classes.
+					resultsPrinter.print(getNumberOfClasses(javaProject));
+
+					// number of methods.
+					resultsPrinter.print(getNumberOfMethods(javaProject));
+
 					// set up analysis for single project.
 					TimeCollector resultsTimeCollector = new TimeCollector();
 					int nToUseForStreams = getNForStreams(javaProject);
@@ -390,10 +413,14 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					ConvertToParallelStreamRefactoringProcessor.setLoggingLevel(LOGGING_LEVEL);
 
 					// run the precondition checking.
-					resultsTimeCollector.start();
-					RefactoringStatus status = new ProcessorBasedRefactoring(processor)
-							.checkAllConditions(new NullProgressMonitor());
-					resultsTimeCollector.stop();
+					RefactoringStatus status = null;
+
+					if (shouldPerformAnalysis()) {
+						resultsTimeCollector.start();
+						status = new ProcessorBasedRefactoring(processor).checkAllConditions(new NullProgressMonitor());
+						resultsTimeCollector.stop();
+					} else
+						status = new RefactoringStatus();
 
 					// print used entry points.
 					ProjectAnalysisResult projectAnalysisResult = getProjectAnalysisResult(javaProject, processor);
@@ -420,23 +447,25 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					resultsPrinter.print(nToUseForStreams);
 
 					// #streams.
-					resultsPrinter.print(processor.getStreamSet().size());
+					Set<Stream> streamSet = processor.getStreamSet();
+					resultsPrinter.print(streamSet == null ? 0 : streamSet.size());
 
 					// #optimization available streams. These are the "filtered" streams.
-					Set<Stream> candidates = processor.getStreamSet().parallelStream().filter(s -> {
-						String pluginId = FrameworkUtil.getBundle(Stream.class).getSymbolicName();
+					Set<Stream> candidates = streamSet == null ? Collections.emptySet()
+							: streamSet.parallelStream().filter(s -> {
+								String pluginId = FrameworkUtil.getBundle(Stream.class).getSymbolicName();
 
-						// error related to reachability.
-						RefactoringStatusEntry reachabilityError = s.getStatus().getEntryMatchingCode(pluginId,
-								PreconditionFailure.STREAM_CODE_NOT_REACHABLE.getCode());
+								// error related to reachability.
+								RefactoringStatusEntry reachabilityError = s.getStatus().getEntryMatchingCode(pluginId,
+										PreconditionFailure.STREAM_CODE_NOT_REACHABLE.getCode());
 
-						// error related to missing entry points.
-						RefactoringStatusEntry entryPointError = s.getStatus().getEntryMatchingCode(pluginId,
-								PreconditionFailure.NO_ENTRY_POINT.getCode());
+								// error related to missing entry points.
+								RefactoringStatusEntry entryPointError = s.getStatus().getEntryMatchingCode(pluginId,
+										PreconditionFailure.NO_ENTRY_POINT.getCode());
 
-						// filter streams without such errors.
-						return reachabilityError == null && entryPointError == null;
-					}).collect(Collectors.toSet());
+								// filter streams without such errors.
+								return reachabilityError == null && entryPointError == null;
+							}).collect(Collectors.toSet());
 
 					resultsPrinter.print(candidates.size()); // number.
 
@@ -449,29 +478,30 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 										: stream.getEnclosingType().getFullyQualifiedName());
 
 					// stream attributes.
-					for (Stream stream : processor.getStreamSet()) {
-						streamAttributesPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
-								stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
-								Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
-								stream.getEnclosingType() == null ? null
-										: stream.getEnclosingType().getFullyQualifiedName(),
-								stream.hasPossibleSideEffects(), stream.hasPossibleStatefulIntermediateOperations(),
-								stream.reduceOrderingPossiblyMatters(), stream.getRefactoring(),
-								stream.getPassingPrecondition(), stream.getStatus().isOK() ? 0
-										: stream.getStatus().getEntryWithHighestSeverity().getSeverity());
+					if (streamSet != null)
+						for (Stream stream : streamSet) {
+							streamAttributesPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
+									stream.getCreation().getStartPosition(), stream.getCreation().getLength(),
+									Util.getMethodIdentifier(stream.getEnclosingEclipseMethod()),
+									stream.getEnclosingType() == null ? null
+											: stream.getEnclosingType().getFullyQualifiedName(),
+									stream.hasPossibleSideEffects(), stream.hasPossibleStatefulIntermediateOperations(),
+									stream.reduceOrderingPossiblyMatters(), stream.getRefactoring(),
+									stream.getPassingPrecondition(), stream.getStatus().isOK() ? 0
+											: stream.getStatus().getEntryWithHighestSeverity().getSeverity());
 
-						String method = Util.getMethodIdentifier(stream.getEnclosingEclipseMethod());
+							String method = Util.getMethodIdentifier(stream.getEnclosingEclipseMethod());
 
-						printStreamAttributesWithMultipleValues(stream.getActions(), streamActionsPrinter, stream,
-								method, javaProject);
+							printStreamAttributesWithMultipleValues(stream.getActions(), streamActionsPrinter, stream,
+									method, javaProject);
 
-						printStreamAttributesWithMultipleValues(stream.getPossibleExecutionModes(),
-								streamExecutionModePrinter, stream, method, javaProject);
+							printStreamAttributesWithMultipleValues(stream.getPossibleExecutionModes(),
+									streamExecutionModePrinter, stream, method, javaProject);
 
-						printStreamAttributesWithMultipleValues(stream.getPossibleOrderings(), streamOrderingPrinter,
-								stream, method, javaProject);
+							printStreamAttributesWithMultipleValues(stream.getPossibleOrderings(),
+									streamOrderingPrinter, stream, method, javaProject);
 
-					}
+						}
 
 					// #optimizable streams.
 					Set<Stream> optimizableStreams = processor.getOptimizableStreams();
@@ -528,24 +558,26 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 					// Refactoring type counts.
 					for (Refactoring refactoring : Refactoring.values())
-						resultsPrinter.print(processor.getStreamSet().parallelStream().map(Stream::getRefactoring)
-								.filter(r -> Objects.equals(r, refactoring)).count());
+						resultsPrinter.print(streamSet == null ? 0
+								: streamSet.parallelStream().map(Stream::getRefactoring)
+										.filter(r -> Objects.equals(r, refactoring)).count());
 
 					// Precondition success counts.
 					for (PreconditionSuccess preconditionSuccess : PreconditionSuccess.values())
-						resultsPrinter
-								.print(processor.getStreamSet().parallelStream().map(Stream::getPassingPrecondition)
+						resultsPrinter.print(streamSet == null ? 0
+								: streamSet.parallelStream().map(Stream::getPassingPrecondition)
 										.filter(pp -> Objects.equals(pp, preconditionSuccess)).count());
 
 					// Transformation counts.
 					for (TransformationAction action : TransformationAction.values())
-						resultsPrinter.print(processor.getStreamSet().parallelStream().map(Stream::getActions)
-								.filter(Objects::nonNull).flatMap(as -> as.parallelStream())
-								.filter(a -> Objects.equals(a, action)).count());
+						resultsPrinter.print(streamSet == null ? 0
+								: streamSet.parallelStream().map(Stream::getActions).filter(Objects::nonNull)
+										.flatMap(as -> as.parallelStream()).filter(a -> Objects.equals(a, action))
+										.count());
 
 					// actually perform the refactoring if there are no fatal
 					// errors.
-					if (EvaluateConvertToParallelStreamRefactoringHandler.shouldPerformChange())
+					if (shouldPerformChange())
 						if (!status.hasFatalError()) {
 							resultsTimeCollector.start();
 							Change change = new ProcessorBasedRefactoring(processor)
