@@ -448,7 +448,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			else
 				aliveClass.add(entryPointNode.getMethod().getDeclaringClass().toString());
 		}
-		// the ctors and static initializer nodes should not be in the set of alive
+		// the ctors and static initializer nodes should be in the set of alive
 		// nodes.
 		for (CGNode entryPointNode : ctorsOrStaticInitializerNodes)
 			if (!aliveClass.contains(entryPointNode.getMethod().getDeclaringClass().toString()))
