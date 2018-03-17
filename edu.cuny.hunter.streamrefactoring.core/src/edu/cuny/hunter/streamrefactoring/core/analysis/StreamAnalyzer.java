@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -235,7 +236,10 @@ public class StreamAnalyzer extends ASTVisitor {
 				throw new RuntimeException(e);
 			}
 			
-			deadEntryPoints = reportDeadEntryPoints(engine);
+			if (!usedEntryPoints.isEmpty())
+				deadEntryPoints = reportDeadEntryPoints(engine);
+			else
+				deadEntryPoints = Collections.emptySet();
 
 			// save the project analysis result
 			ProjectAnalysisResult projectAnalysisResult = new ProjectAnalysisResult(usedEntryPoints, deadEntryPoints);
