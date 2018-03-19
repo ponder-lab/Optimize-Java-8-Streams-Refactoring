@@ -182,8 +182,8 @@ public class StreamAnalyzer extends ASTVisitor {
 	/**
 	 * Analyzes this {@link StreamAnalyzer}'s streams.
 	 *
-	 * @return A {@link Map} of project's analyzed along with the entry points used
-	 *         and the dead entry points.
+	 * @return * @return A {@link Map} of project's analyzed along with the
+	 *         associated {@link ProjectAnalysisResult}
 	 * @see #analyze(Optional).
 	 */
 	public Map<IJavaProject, ProjectAnalysisResult> analyze() throws CoreException {
@@ -315,7 +315,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *            graph.
 	 * @param collector
 	 *            A {@link TimeCollector} to exclude entry point finding.
-	 * @return A set of entry points used in building the {@link CallGraph}
+	 * @return The {@link Entrypoint} used in building the {@link CallGraph}.
 	 */
 	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine,
 			Optional<TimeCollector> collector)
@@ -400,7 +400,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			// instance in question are present?
 			this.enginesWithBuiltCallGraphsToEntrypointsUsed.put(engine, entryPoints);
 		}
-		// Get the project analysis result
+		// get the project analysis result
 		return this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine);
 	}
 
