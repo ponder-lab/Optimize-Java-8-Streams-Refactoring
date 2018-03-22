@@ -425,7 +425,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	public ProjectAnalysisResult getProjectAnalysisResult(IJavaProject javaProject) {
 		return this.projectToEntryPoints == null
-				? new ProjectAnalysisResult(Collections.emptySet(), Collections.emptySet())
+				? new ProjectAnalysisResult()
 				: this.projectToEntryPoints.get(javaProject);
 	}
 
