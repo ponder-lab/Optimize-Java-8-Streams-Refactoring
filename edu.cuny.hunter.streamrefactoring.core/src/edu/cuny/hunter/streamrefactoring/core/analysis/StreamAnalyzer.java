@@ -441,7 +441,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *            An {@link EclipseProjectAnalysisEngine}.
 	 * @return a set of {@link CGNode}s for stream creation methods.
 	 * @throws NoEnclosingMethodNodeFoundException
-V
+	 *             the call graph doesn't contain a node for the enclosing method.
 	 * 
 	 */
 	private Set<CGNode> getStreamCreationNodes(Iterator<Stream> streamIterator,
