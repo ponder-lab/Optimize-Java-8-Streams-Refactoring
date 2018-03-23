@@ -25,5 +25,4 @@ public class ProjectAnalysisResult {
 	public Collection<CGNode> getDeadEntryPoints() {
 		return this.deadEntryPoints;
 	}
-
 }
