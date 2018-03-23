@@ -16,6 +16,10 @@ public class ProjectAnalysisResult {
 		this.deadEntryPoints = deadEntryPoints;
 	}
 
+	public ProjectAnalysisResult() {
+		super();
+	}
+
 	// Get used entry points.
 	public Collection<Entrypoint> getUsedEntryPoints() {
 		return this.usedEntryPoints;
