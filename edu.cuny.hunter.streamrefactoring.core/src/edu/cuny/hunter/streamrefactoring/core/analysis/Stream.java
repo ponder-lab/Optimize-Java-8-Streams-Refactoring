@@ -368,7 +368,7 @@ public class Stream {
 	 *             method.
 	 */
 	protected Collection<CGNode> getEnclosingMethodNodes(EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws IOException, CoreException, NoEnclosingMethodNodeFoundException {
+			throws NoEnclosingMethodNodeFoundException {
 		MethodReference methodReference = this.getEnclosingMethodReference();
 		Set<CGNode> nodes = engine.getCallGraph().getNodes(methodReference);
 
