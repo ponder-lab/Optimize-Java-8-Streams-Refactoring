@@ -760,8 +760,8 @@ public final class Util {
 	}
 	
 	/**
-	 * @param a
-	 *            {@link CGNode}
+	 * @param cgNode
+	 *            a {@link CGNode}
 	 * @return a boolean value. true: the method which is represented by a cgNode is
 	 *         a constructor; false: the method which is represented by a cgNode is
 	 *         not a constructor
@@ -771,8 +771,8 @@ public final class Util {
 	}
 
 	/**
-	 * @param a
-	 *            {@link CGNode}
+	 * @param cgNode
+	 *            a {@link CGNode}
 	 * @return a boolean value. true: the method which is represented by the cgNode
 	 *         is a static initializer; false: the method which is represented by
 	 *         the cgNode is not a static initializer

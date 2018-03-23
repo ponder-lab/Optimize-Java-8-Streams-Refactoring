@@ -182,8 +182,8 @@ public class StreamAnalyzer extends ASTVisitor {
 	/**
 	 * Analyzes this {@link StreamAnalyzer}'s streams.
 	 *
-	 * @return * @return A {@link Map} of project's analyzed along with the
-	 *         associated {@link ProjectAnalysisResult}
+	 * @return A {@link Map} of project's analyzed along with the associated
+	 *         {@link ProjectAnalysisResult}
 	 * @see #analyze(Optional).
 	 */
 	public Map<IJavaProject, ProjectAnalysisResult> analyze() throws CoreException {
