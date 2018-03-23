@@ -758,6 +758,29 @@ public final class Util {
 
 		return true;
 	}
+	
+	/**
+	 * @param a
+	 *            {@link CGNode}
+	 * @return a boolean value. true: the method which is represented by a cgNode is
+	 *         a constructor; false: the method which is represented by a cgNode is
+	 *         not a constructor
+	 */
+	public static boolean isCtors(CGNode cgNode) {
+		return cgNode.getMethod().getReference().isInit();
+	}
+
+	/**
+	 * @param a
+	 *            {@link CGNode}
+	 * @return a boolean value. true: the method which is represented by the cgNode
+	 *         is a static initializer; false: the method which is represented by
+	 *         the cgNode is not a static initializer
+	 * 
+	 */
+	public static boolean isStaticInitializers(CGNode cgNode) {
+		return cgNode.getMethod().getReference().getName().equals(MethodReference.clinitName);
+	}
 
 	private Util() {
 	}

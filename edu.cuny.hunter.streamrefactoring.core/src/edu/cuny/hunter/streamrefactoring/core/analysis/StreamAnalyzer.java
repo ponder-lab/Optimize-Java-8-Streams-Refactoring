@@ -31,6 +31,7 @@ import org.eclipse.jdt.internal.corext.util.JdtFlags;
 
 import com.ibm.safe.internal.exceptions.PropertiesException;
 import com.ibm.safe.rules.TypestateRule;
+import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions.ReflectionOptions;
 import com.ibm.wala.ipa.callgraph.CGNode;
@@ -42,7 +43,6 @@ import com.ibm.wala.ipa.cha.ClassHierarchyException;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.SSAOptions;
-import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.graph.traverse.DFS;
 import com.ibm.wala.util.scope.JUnitEntryPoints;
@@ -224,8 +224,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			}
 			collector.ifPresent(TimeCollector::stop);
 
-			Collection<Entrypoint> usedEntryPoints;
-			Collection<CGNode> deadEntryPoints = new HashSet<CGNode>();
+			Collection<Entrypoint> usedEntryPoints = null;
 			try {
 				// build the call graph for the project,
 				// also get a set of used entry points.
@@ -235,9 +234,10 @@ public class StreamAnalyzer extends ASTVisitor {
 						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
 				throw new RuntimeException(e);
 			}
-			
+
+			Collection<CGNode> deadEntryPoints;
 			if (!usedEntryPoints.isEmpty())
-				deadEntryPoints = reportDeadEntryPoints(engine);
+				deadEntryPoints = discoverDeadEntryPoints(engine);
 			else
 				deadEntryPoints = Collections.emptySet();
 
@@ -315,7 +315,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *            graph.
 	 * @param collector
 	 *            A {@link TimeCollector} to exclude entry point finding.
-	 * @return The {@link Entrypoint} used in building the {@link CallGraph}.
+	 * @return The {@link Entrypoint}s used in building the {@link CallGraph}.
 	 */
 	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine,
 			Optional<TimeCollector> collector)
@@ -405,17 +405,37 @@ public class StreamAnalyzer extends ASTVisitor {
 	}
 
 	/**
-	 * Report and get dead entry points
+	 * Discover dead entry points.
+	 * 
+	 * @param engine
+	 *            an {@link EclipseProjectAnalysisEngine}.
+	 * @return a collection of dead entry points.
 	 */
-	private Collection<CGNode> reportDeadEntryPoints(EclipseProjectAnalysisEngine<InstanceKey> engine) {
+	private Collection<CGNode> discoverDeadEntryPoints(EclipseProjectAnalysisEngine<InstanceKey> engine) {
 		CallGraph callGraph = engine.getCallGraph();
 
 		// get a set of entry point nodes
 		Collection<CGNode> entryPointNodes = callGraph.getEntrypointNodes();
 
-		// get a set of stream creation method nodes
+		Set<CGNode> streamNodes = getStreamCreationNodes(this.getStreamSet().iterator(), engine);
+
+		Set<CGNode> deadEntryPoints = getDeadEntryPointNodes(entryPointNodes, streamNodes, callGraph);
+
+		return deadEntryPoints;
+	}
+
+	/**
+	 * Get a set of stream creation method nodes.
+	 * 
+	 * @param streamIterator
+	 *            An iterator of {@link Stream}s.
+	 * @param engine
+	 *            An {@link EclipseProjectAnalysisEngine}.
+	 * @return a set of {@link CGNode}s for stream creation methods.
+	 */
+	private Set<CGNode> getStreamCreationNodes(Iterator<Stream> streamIterator,
+			EclipseProjectAnalysisEngine<InstanceKey> engine) {
 		Set<CGNode> streamNodes = new HashSet<CGNode>();
-		Iterator<Stream> streamIterator = this.getStreamSet().iterator();
 		while (streamIterator.hasNext()) {
 			Stream stream = streamIterator.next();
 			try {
@@ -426,23 +446,28 @@ public class StreamAnalyzer extends ASTVisitor {
 				return new HashSet<CGNode>();
 			}
 		}
-
-		Set<CGNode> deadEntryPoints = getDeadEntryPointNodes(entryPointNodes, streamNodes, callGraph);
-
-		return deadEntryPoints;
+		return streamNodes;
 	}
 
 	/**
 	 * Get all possible dead entry point nodes.
+	 * 
+	 * @param entryPointNodes
+	 *            collection of entry point {@link CGNode}s.
+	 * @param streamNodes
+	 *            a set of stream creation nodes.
+	 * @param callGraph
+	 *            a {@link CallGraph}.
+	 * @return a set of dead entry points.
 	 */
 	private Set<CGNode> getDeadEntryPointNodes(Collection<CGNode> entryPointNodes, Set<CGNode> streamNodes,
 			CallGraph callGraph) {
 		Set<CGNode> deadEntryPoints = new HashSet<CGNode>();
-		Set<Object> aliveClass = new HashSet<Object>();
+		Set<IClass> aliveClass = new HashSet<IClass>();
 		Set<CGNode> ctorsOrStaticInitializerNodes = new HashSet<CGNode>();
 		for (CGNode entryPointNode : entryPointNodes) {
 			// We will process ctors and static initializers later
-			if (isCtors(entryPointNode) || isStaticInitializers(entryPointNode)) {
+			if (Util.isCtors(entryPointNode) || Util.isStaticInitializers(entryPointNode)) {
 				ctorsOrStaticInitializerNodes.add(entryPointNode);
 				continue;
 			}
@@ -450,37 +475,26 @@ public class StreamAnalyzer extends ASTVisitor {
 			if (!isReachable(entryPointNode, streamNodes, callGraph))
 				deadEntryPoints.add(entryPointNode);
 			else
-				aliveClass.add(entryPointNode.getMethod().getDeclaringClass().toString());
+				aliveClass.add(entryPointNode.getMethod().getDeclaringClass());
 		}
 		// the ctors and static initializer nodes should be in the set of alive
-		// nodes.
+		// nodes if at least one entry point is alive in its class
 		for (CGNode entryPointNode : ctorsOrStaticInitializerNodes)
-			if (!aliveClass.contains(entryPointNode.getMethod().getDeclaringClass().toString()))
+			if (!aliveClass.contains(entryPointNode.getMethod().getDeclaringClass()))
 				deadEntryPoints.add(entryPointNode);
 		return deadEntryPoints;
-	}
-
-	/**
-	 * If the method which is represented by a cgNode is a constructor, then return
-	 * true, else return false
-	 */
-	private boolean isCtors(CGNode cgNode) {
-		return cgNode.getMethod().getReference().isInit();
-	}
-
-	/**
-	 * If the method which is represented by a cgNode is a static initializer, then
-	 * return true, else return false
-	 */
-	private boolean isStaticInitializers(CGNode cgNode) {
-		return cgNode.getMethod().getReference().getName().equals(MethodReference.clinitName);
 	}
 
 	/**
 	 * Given an entry point node and a set of steam creation nodes, check whether
 	 * exists an stream creation node which is reachable from the entry point
 	 * 
-	 * @return true: reachable false: unreachable
+	 * @param entryPointNode
+	 *            a {@CGNode}
+	 * @param streamNodes
+	 *            a set of stream creation nodes.
+	 * @param callGraph
+	 * @return true: reachable; false: unreachable
 	 */
 	private boolean isReachable(CGNode entryPointNode, Collection<CGNode> streamNodes, CallGraph callGraph) {
 		// get a set of start nodes for DFS

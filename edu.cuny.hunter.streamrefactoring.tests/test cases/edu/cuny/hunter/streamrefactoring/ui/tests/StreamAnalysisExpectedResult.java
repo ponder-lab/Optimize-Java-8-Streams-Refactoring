@@ -14,6 +14,8 @@ class StreamAnalysisExpectedResult {
 
 	private String expectedCreation;
 
+	private Set<String> expectedDeadEntryPoints;
+
 	private Set<ExecutionMode> expectedExecutionModes;
 
 	private Set<PreconditionFailure> expectedFailures;
@@ -36,7 +38,8 @@ class StreamAnalysisExpectedResult {
 			Set<Ordering> expectedOrderings, boolean expectingSideEffects,
 			boolean expectingStatefulIntermediateOperation, boolean expectingThatReduceOrderingMatters,
 			Set<TransformationAction> expectedActions, PreconditionSuccess expectedPassingPrecondition,
-			Refactoring expectedRefactoring, int expectedStatusSeverity, Set<PreconditionFailure> expectedFailures) {
+			Refactoring expectedRefactoring, int expectedStatusSeverity, Set<PreconditionFailure> expectedFailures,
+			Set<String> expectedDeadEntryPoints) {
 		this.expectedCreation = expectedCreation;
 		this.expectedExecutionModes = expectedExecutionModes;
 		this.expectedOrderings = expectedOrderings;
@@ -48,6 +51,7 @@ class StreamAnalysisExpectedResult {
 		this.expectedRefactoring = expectedRefactoring;
 		this.expectedStatusSeverity = expectedStatusSeverity;
 		this.expectedFailures = expectedFailures;
+		this.expectedDeadEntryPoints = expectedDeadEntryPoints;
 	}
 
 	public Set<TransformationAction> getExpectedActions() {
@@ -56,6 +60,10 @@ class StreamAnalysisExpectedResult {
 
 	public String getExpectedCreation() {
 		return this.expectedCreation;
+	}
+
+	public Set<String> getExpectedDeadEntryPoints() {
+		return this.expectedDeadEntryPoints;
 	}
 
 	public Set<ExecutionMode> getExpectedExecutionModes() {

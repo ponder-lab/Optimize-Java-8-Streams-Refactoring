@@ -436,8 +436,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 					// print dead entry points.
 					Collection<CGNode> deadEntryPoints = projectAnalysisResult.getDeadEntryPoints();
-					// clear the file
-					deadEntryPointPrinter.print("");
 					// print the dead entry points
 					for (CGNode entrypoint : deadEntryPoints) {
 						deadEntryPointPrinter.println(entrypoint.getMethod().getSignature());
