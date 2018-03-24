@@ -229,35 +229,30 @@ public class StreamAnalyzer extends ASTVisitor {
 				// build the call graph for the project,
 				// also get a set of used entry points.
 				usedEntryPoints = this.buildCallGraph(engine, collector);
-
-				Collection<CGNode> deadEntryPoints;
-				if (!usedEntryPoints.isEmpty())
-					deadEntryPoints = discoverDeadEntryPoints(engine);
-				else
-					deadEntryPoints = Collections.emptySet();
-
-				// save the project analysis result
-				ProjectAnalysisResult projectAnalysisResult = new ProjectAnalysisResult(usedEntryPoints,
-						deadEntryPoints);
-
-				// save the entry points.
-				ret.put(project, projectAnalysisResult);
-
-				if (projectAnalysisResult.getUsedEntryPoints().isEmpty()) {
-					// add a status entry for each stream in the project
-					for (Stream stream : projectToStreams.get(project))
-						stream.addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
-								"Project: " + engine.getProject().getElementName() + " has no entry points.");
-					return ret;
-				}
-
 			} catch (IOException | CoreException | CancelException e) {
 				LOGGER.log(Level.SEVERE,
 						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
 				throw new RuntimeException(e);
-			} catch (NoEnclosingMethodNodeFoundException e) {
-				LOGGER.log(Level.SEVERE, "Exception encountered while get a node for the enclosing method.", e);
-				throw new RuntimeException(e);
+			}
+
+			Collection<CGNode> deadEntryPoints;
+			if (!usedEntryPoints.isEmpty())
+				deadEntryPoints = discoverDeadEntryPoints(engine);
+			else
+				deadEntryPoints = Collections.emptySet();
+
+			// save the project analysis result
+			ProjectAnalysisResult projectAnalysisResult = new ProjectAnalysisResult(usedEntryPoints, deadEntryPoints);
+
+			// save the entry points.
+			ret.put(project, projectAnalysisResult);
+
+			if (projectAnalysisResult.getUsedEntryPoints().isEmpty()) {
+				// add a status entry for each stream in the project
+				for (Stream stream : projectToStreams.get(project))
+					stream.addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
+							"Project: " + engine.getProject().getElementName() + " has no entry points.");
+				return ret;
 			}
 
 			OrderingInference orderingInference = new OrderingInference(engine.getClassHierarchy());
@@ -415,11 +410,8 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * @param engine
 	 *            an {@link EclipseProjectAnalysisEngine}.
 	 * @return a collection of dead entry points.
-	 * @throws NoEnclosingMethodNodeFoundException
-	 *             the call graph doesn't contain a node for the enclosing method.
 	 */
-	private Collection<CGNode> discoverDeadEntryPoints(EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws NoEnclosingMethodNodeFoundException {
+	private Collection<CGNode> discoverDeadEntryPoints(EclipseProjectAnalysisEngine<InstanceKey> engine) {
 		CallGraph callGraph = engine.getCallGraph();
 
 		// get a set of entry point nodes
@@ -440,15 +432,18 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * @param engine
 	 *            An {@link EclipseProjectAnalysisEngine}.
 	 * @return a set of {@link CGNode}s for stream creation methods.
-	 * @throws NoEnclosingMethodNodeFoundException
-	 *             the call graph doesn't contain a node for the enclosing method.
 	 */
 	private Set<CGNode> getStreamCreationNodes(Iterator<Stream> streamIterator,
-			EclipseProjectAnalysisEngine<InstanceKey> engine) throws NoEnclosingMethodNodeFoundException {
+			EclipseProjectAnalysisEngine<InstanceKey> engine) {
 		Set<CGNode> streamNodes = new HashSet<CGNode>();
 		while (streamIterator.hasNext()) {
 			Stream stream = streamIterator.next();
-			streamNodes.addAll(stream.getEnclosingMethodNodes(engine));
+			try {
+				streamNodes.addAll(stream.getEnclosingMethodNodes(engine));
+			} catch (NoEnclosingMethodNodeFoundException e) {
+				LOGGER.log(Level.WARNING, "Exception encountered while get a node for the enclosing method.", e);
+			}
+
 		}
 		return streamNodes;
 	}
