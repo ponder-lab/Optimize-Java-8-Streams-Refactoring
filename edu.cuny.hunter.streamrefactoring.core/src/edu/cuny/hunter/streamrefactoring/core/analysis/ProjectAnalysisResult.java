@@ -17,7 +17,6 @@ public class ProjectAnalysisResult {
 	}
 
 	public ProjectAnalysisResult() {
-		super();
 	}
 
 	// Get used entry points.
