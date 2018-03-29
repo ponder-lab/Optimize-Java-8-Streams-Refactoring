@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -225,21 +224,24 @@ public class StreamAnalyzer extends ASTVisitor {
 			collector.ifPresent(TimeCollector::stop);
 
 			Collection<Entrypoint> usedEntryPoints = null;
+			Collection<CGNode> deadEntryPoints = new HashSet<>();
 			try {
 				// build the call graph for the project,
 				// also get a set of used entry points.
 				usedEntryPoints = this.buildCallGraph(engine, collector);
+
+				if (!usedEntryPoints.isEmpty())
+					deadEntryPoints = discoverDeadEntryPoints(engine);
+
+				// rebuild the callgraph
+				usedEntryPoints = getPrunedEntryPoints(deadEntryPoints, usedEntryPoints);
+				buildCallGraphFromEntryPoints(engine, usedEntryPoints);
+
 			} catch (IOException | CoreException | CancelException e) {
 				LOGGER.log(Level.SEVERE,
 						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
 				throw new RuntimeException(e);
 			}
-
-			Collection<CGNode> deadEntryPoints;
-			if (!usedEntryPoints.isEmpty())
-				deadEntryPoints = discoverDeadEntryPoints(engine);
-			else
-				deadEntryPoints = Collections.emptySet();
 
 			// save the project analysis result
 			ProjectAnalysisResult projectAnalysisResult = new ProjectAnalysisResult(usedEntryPoints, deadEntryPoints);
@@ -307,6 +309,103 @@ public class StreamAnalyzer extends ASTVisitor {
 	}
 
 	/**
+	 * Get a set of pruned entry points.
+	 * 
+	 * @param deadEntryPoints
+	 *            A collection of dead entry points.
+	 * @param usedEntryPoints
+	 *            A collection of entry points used to build the first call graph.
+	 * @return A collection of entry points.
+	 */
+	protected static Collection<Entrypoint> getPrunedEntryPoints(Collection<CGNode> deadEntryPoints,
+			Collection<Entrypoint> usedEntryPoints) {
+		deadEntryPoints.forEach(e -> {
+			// get the corresponding entry point of the cgNode
+			// is in the set of entry points
+			Iterator<Entrypoint> entryPointIterator = usedEntryPoints.iterator();
+			Entrypoint entrypoint = null;
+			while (entryPointIterator.hasNext()) {
+				entrypoint = entryPointIterator.next();
+				if (entrypoint.getMethod().equals(e.getMethod()))
+					break;
+			}
+
+			if (entrypoint != null)
+				usedEntryPoints.remove(entrypoint);
+		});
+
+		return usedEntryPoints;
+	}
+
+	/**
+	 * Discover a set of entry points used to build the {@link CallGraph}.
+	 * 
+	 * @param engine
+	 *            The EclipseProjectAnalysisEngine for which to build the call
+	 *            graph.
+	 * @return The {@link Entrypoint}s used in building the {@link CallGraph}.
+	 */
+	protected Set<Entrypoint> discoverEntryPoints(EclipseProjectAnalysisEngine<InstanceKey> engine) throws IOException {
+		Set<Entrypoint> entryPoints;
+
+		// find the entry_points.txt in the project directory
+		File entryPointFile = getEntryPointsFile(engine.getProject().getResource().getLocation(), ENTRY_POINT_FILENAME);
+
+		// if the file was found,
+		if (entryPointFile != null) {
+			// find explicit entry points from entry_points.txt. Ignore the explicit
+			// (annotation-based) entry points.
+			entryPoints = findEntryPointsFromFile(engine.getClassHierarchy(), entryPointFile);
+			entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point from file: " + ep));
+		} else {
+			// find explicit entry points.
+			entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
+			entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
+
+			if (this.shouldFindImplicitEntryPoints()) {
+				// also find implicit entry points.
+				Iterable<Entrypoint> mainEntrypoints = makeMainEntrypoints(engine.getClassHierarchy().getScope(),
+						engine.getClassHierarchy());
+
+				// add them as well.
+				addImplicitEntryPoints(entryPoints, mainEntrypoints);
+			}
+
+			if (this.shouldFindImplicitTestEntryPoints()) {
+				// try to find test entry points.
+				Iterable<Entrypoint> jUnitEntryPoints = JUnitEntryPoints.make(engine.getClassHierarchy());
+
+				// add them as well.
+				addImplicitEntryPoints(entryPoints, jUnitEntryPoints);
+			}
+
+			if (this.shouldFindImplicitBenchmarkEntryPoints()) {
+				// try to find benchmark entry points.
+				Set<Entrypoint> benchmarkEntryPoints = Util.findBenchmarkEntryPoints(engine.getClassHierarchy());
+
+				// add them as well.
+				addImplicitEntryPoints(entryPoints, benchmarkEntryPoints);
+			}
+
+			if (this.shouldFindImplicitJavaFXEntryPoints()) {
+				// try to find benchmark entry points.
+				Set<Entrypoint> benchmarkEntryPoints = Util.findJavaFXEntryPoints(engine.getClassHierarchy());
+
+				// add them as well.
+				addImplicitEntryPoints(entryPoints, benchmarkEntryPoints);
+			}
+		}
+
+		if (entryPoints.isEmpty()) {
+			LOGGER.warning(() -> "Project: " + engine.getProject().getElementName() + " has no entry points.");
+			return entryPoints;
+		}
+
+		return entryPoints;
+
+	}
+
+	/**
 	 * Builds the call graph that is part of the
 	 * {@link EclipseProjectAnalysisEngine}.
 	 *
@@ -324,91 +423,53 @@ public class StreamAnalyzer extends ASTVisitor {
 		if (!this.enginesWithBuiltCallGraphsToEntrypointsUsed.keySet().contains(engine)) {
 			// find entry points (but exclude it from the time).
 			collector.ifPresent(TimeCollector::start);
-			Set<Entrypoint> entryPoints;
-
-			// find the entry_points.txt in the project directory
-			File entryPointFile = getEntryPointsFile(engine.getProject().getResource().getLocation(),
-					ENTRY_POINT_FILENAME);
-
-			// if the file was found,
-			if (entryPointFile != null) {
-				// find explicit entry points from entry_points.txt. Ignore the explicit
-				// (annotation-based) entry points.
-				entryPoints = findEntryPointsFromFile(engine.getClassHierarchy(), entryPointFile);
-				entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point from file: " + ep));
-			} else {
-				// find explicit entry points.
-				entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
-				entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
-
-				if (this.shouldFindImplicitEntryPoints()) {
-					// also find implicit entry points.
-					Iterable<Entrypoint> mainEntrypoints = makeMainEntrypoints(engine.getClassHierarchy().getScope(),
-							engine.getClassHierarchy());
-
-					// add them as well.
-					addImplicitEntryPoints(entryPoints, mainEntrypoints);
-				}
-
-				if (this.shouldFindImplicitTestEntryPoints()) {
-					// try to find test entry points.
-					Iterable<Entrypoint> jUnitEntryPoints = JUnitEntryPoints.make(engine.getClassHierarchy());
-
-					// add them as well.
-					addImplicitEntryPoints(entryPoints, jUnitEntryPoints);
-				}
-
-				if (this.shouldFindImplicitBenchmarkEntryPoints()) {
-					// try to find benchmark entry points.
-					Set<Entrypoint> benchmarkEntryPoints = Util.findBenchmarkEntryPoints(engine.getClassHierarchy());
-
-					// add them as well.
-					addImplicitEntryPoints(entryPoints, benchmarkEntryPoints);
-				}
-
-				if (this.shouldFindImplicitJavaFXEntryPoints()) {
-					// try to find benchmark entry points.
-					Set<Entrypoint> benchmarkEntryPoints = Util.findJavaFXEntryPoints(engine.getClassHierarchy());
-
-					// add them as well.
-					addImplicitEntryPoints(entryPoints, benchmarkEntryPoints);
-				}
-			}
-
-			if (entryPoints.isEmpty()) {
-				LOGGER.warning(() -> "Project: " + engine.getProject().getElementName() + " has no entry points.");
-				return entryPoints;
-			}
-
+			Set<Entrypoint> entryPoints = discoverEntryPoints(engine);
 			collector.ifPresent(TimeCollector::stop);
 
-			// set options.
-			AnalysisOptions options = engine.getDefaultOptions(entryPoints);
-			// Turn off reflection analysis.
-			options.setReflectionOptions(ReflectionOptions.NONE);
-			options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
-
-			try {
-				engine.buildSafeCallGraph(options);
-			} catch (IllegalStateException e) {
-				LOGGER.log(Level.SEVERE, e, () -> "Exception encountered while building call graph for project: "
-						+ engine.getProject().getElementName());
-				throw e;
-			}
-
-			// TODO: Can I slice the graph so that only nodes relevant to the
-			// instance in question are present?
-			this.enginesWithBuiltCallGraphsToEntrypointsUsed.put(engine, entryPoints);
+			buildCallGraphFromEntryPoints(engine, entryPoints);
 		}
 		// get the project analysis result
 		return this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine);
 	}
 
 	/**
+	 * Given entry points, builds the call graph that is part of the
+	 * {@link EclipseProjectAnalysisEngine}.
+	 *
+	 * @param engine
+	 *            The EclipseProjectAnalysisEngine for which to build the call
+	 *            graph.
+	 * @param collection
+	 *            The {@link entryPoints} used in building the {@link CallGraph}.
+	 */
+	protected void buildCallGraphFromEntryPoints(EclipseProjectAnalysisEngine<InstanceKey> engine,
+			Collection<Entrypoint> collection) throws CallGraphBuilderCancelException, CancelException {
+
+		// set options.
+		AnalysisOptions options = engine.getDefaultOptions(collection);
+		// Turn off reflection analysis.
+		options.setReflectionOptions(ReflectionOptions.NONE);
+		options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
+
+		try {
+			engine.buildSafeCallGraph(options);
+		} catch (IllegalStateException e) {
+			LOGGER.log(Level.SEVERE, e, () -> "Exception encountered while building call graph for project: "
+					+ engine.getProject().getElementName());
+			throw e;
+		}
+
+		// TODO: Can I slice the graph so that only nodes relevant to the
+		// instance in question are present?
+		this.enginesWithBuiltCallGraphsToEntrypointsUsed.put(engine, collection);
+
+	}
+
+	/**
 	 * Discover dead entry points.
 	 * 
 	 * @param engine
-	 *            an {@link EclipseProjectAnalysisEngine}.
+	 *            An {@link EclipseProjectAnalysisEngine}.
 	 * @return a collection of dead entry points.
 	 */
 	private Collection<CGNode> discoverDeadEntryPoints(EclipseProjectAnalysisEngine<InstanceKey> engine) {
@@ -420,6 +481,10 @@ public class StreamAnalyzer extends ASTVisitor {
 		Set<CGNode> streamNodes = getStreamCreationNodes(this.getStreamSet().iterator(), engine);
 
 		Set<CGNode> deadEntryPoints = getDeadEntryPointNodes(entryPointNodes, streamNodes, callGraph);
+
+		deadEntryPoints.forEach(e -> {
+			LOGGER.info(() -> "Discover dead entry point: " + e.getMethod().getSignature());
+		});
 
 		return deadEntryPoints;
 	}
@@ -435,7 +500,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	 */
 	private Set<CGNode> getStreamCreationNodes(Iterator<Stream> streamIterator,
 			EclipseProjectAnalysisEngine<InstanceKey> engine) {
-		Set<CGNode> streamNodes = new HashSet<CGNode>();
+		Set<CGNode> streamNodes = new HashSet<>();
 		while (streamIterator.hasNext()) {
 			Stream stream = streamIterator.next();
 			try {
@@ -459,14 +524,14 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *            a {@link CallGraph}.
 	 * @return a set of dead entry points.
 	 */
-	private Set<CGNode> getDeadEntryPointNodes(Collection<CGNode> entryPointNodes, Set<CGNode> streamNodes,
+	private static Set<CGNode> getDeadEntryPointNodes(Collection<CGNode> entryPointNodes, Set<CGNode> streamNodes,
 			CallGraph callGraph) {
-		Set<CGNode> deadEntryPoints = new HashSet<CGNode>();
-		Set<IClass> aliveClass = new HashSet<IClass>();
-		Set<CGNode> ctorsOrStaticInitializerNodes = new HashSet<CGNode>();
+		Set<CGNode> deadEntryPoints = new HashSet<>();
+		Set<IClass> aliveClass = new HashSet<>();
+		Set<CGNode> ctorsOrStaticInitializerNodes = new HashSet<>();
 		for (CGNode entryPointNode : entryPointNodes) {
 			// We will process ctors and static initializers later
-			if (Util.isCtors(entryPointNode) || Util.isStaticInitializers(entryPointNode)) {
+			if (Util.isCtor(entryPointNode) || Util.isStaticInitializer(entryPointNode)) {
 				ctorsOrStaticInitializerNodes.add(entryPointNode);
 				continue;
 			}
@@ -495,7 +560,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * @param callGraph
 	 * @return true: reachable; false: unreachable
 	 */
-	private boolean isReachable(CGNode entryPointNode, Collection<CGNode> streamNodes, CallGraph callGraph) {
+	private static boolean isReachable(CGNode entryPointNode, Collection<CGNode> streamNodes, CallGraph callGraph) {
 		// get a set of start nodes for DFS
 		Set<CGNode> singleEntryPointNode = new HashSet<>();
 		singleEntryPointNode.add(entryPointNode);
