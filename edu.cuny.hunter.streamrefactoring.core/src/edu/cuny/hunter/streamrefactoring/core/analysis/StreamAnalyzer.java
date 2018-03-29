@@ -319,21 +319,21 @@ public class StreamAnalyzer extends ASTVisitor {
 	 */
 	protected static Collection<Entrypoint> getPrunedEntryPoints(Collection<CGNode> deadEntryPoints,
 			Collection<Entrypoint> usedEntryPoints) {
-		deadEntryPoints.forEach(e -> {
-			// get the corresponding entry point of the cgNode
-			// is in the set of entry points
-			Iterator<Entrypoint> entryPointIterator = usedEntryPoints.iterator();
-			Entrypoint entrypoint = null;
-			while (entryPointIterator.hasNext()) {
-				entrypoint = entryPointIterator.next();
-				if (entrypoint.getMethod().equals(e.getMethod()))
+		Collection<Entrypoint> deadEntryPointCollection = new HashSet<>();
+		usedEntryPoints.forEach(e -> {
+			// check whether the used entry point
+			// is in the set of dead entry point
+			Iterator<CGNode> deadEntryPointIterator = deadEntryPoints.iterator();
+
+			while (deadEntryPointIterator.hasNext()) {
+				CGNode deadEntryPoint = deadEntryPointIterator.next();
+				if (e.getMethod().equals(deadEntryPoint.getMethod())) {
+					deadEntryPointCollection.add(e);
 					break;
+				}
 			}
-
-			if (entrypoint != null)
-				usedEntryPoints.remove(entrypoint);
 		});
-
+		usedEntryPoints.removeAll(deadEntryPointCollection);
 		return usedEntryPoints;
 	}
 
