@@ -230,12 +230,12 @@ public class StreamAnalyzer extends ASTVisitor {
 				// also get a set of used entry points.
 				usedEntryPoints = this.buildCallGraph(engine, collector);
 
-				if (!usedEntryPoints.isEmpty())
+				if (!usedEntryPoints.isEmpty()) {
 					deadEntryPoints = discoverDeadEntryPoints(engine);
-
-				// rebuild the callgraph
-				usedEntryPoints = getPrunedEntryPoints(deadEntryPoints, usedEntryPoints);
-				buildCallGraphFromEntryPoints(engine, usedEntryPoints);
+					// rebuild the callgraph
+					usedEntryPoints = getPrunedEntryPoints(deadEntryPoints, usedEntryPoints);
+					buildCallGraphFromEntryPoints(engine, usedEntryPoints);
+				}
 
 			} catch (IOException | CoreException | CancelException e) {
 				LOGGER.log(Level.SEVERE,
@@ -396,11 +396,6 @@ public class StreamAnalyzer extends ASTVisitor {
 			}
 		}
 
-		if (entryPoints.isEmpty()) {
-			LOGGER.warning(() -> "Project: " + engine.getProject().getElementName() + " has no entry points.");
-			return entryPoints;
-		}
-
 		return entryPoints;
 
 	}
@@ -425,6 +420,11 @@ public class StreamAnalyzer extends ASTVisitor {
 			collector.ifPresent(TimeCollector::start);
 			Set<Entrypoint> entryPoints = discoverEntryPoints(engine);
 			collector.ifPresent(TimeCollector::stop);
+
+			if (entryPoints.isEmpty()) {
+				LOGGER.warning(() -> "Project: " + engine.getProject().getElementName() + " has no entry points.");
+				return entryPoints;
+			}
 
 			buildCallGraphFromEntryPoints(engine, entryPoints);
 		}
