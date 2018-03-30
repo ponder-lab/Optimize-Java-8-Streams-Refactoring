@@ -232,7 +232,7 @@ public class StreamAnalyzer extends ASTVisitor {
 
 				if (!usedEntryPoints.isEmpty()) {
 					deadEntryPoints = discoverDeadEntryPoints(engine);
-					// rebuild the callgraph
+					// rebuild the call graph
 					usedEntryPoints = getPrunedEntryPoints(deadEntryPoints, usedEntryPoints);
 					buildCallGraphFromEntryPoints(engine, usedEntryPoints);
 				}
