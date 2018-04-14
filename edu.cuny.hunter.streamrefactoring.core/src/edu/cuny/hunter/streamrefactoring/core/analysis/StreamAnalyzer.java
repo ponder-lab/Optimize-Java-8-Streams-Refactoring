@@ -233,8 +233,8 @@ public class StreamAnalyzer extends ASTVisitor {
 				if (!usedEntryPoints.isEmpty()) {
 					deadEntryPoints = discoverDeadEntryPoints(engine);
 					// rebuild the call graph
-					usedEntryPoints = getPrunedEntryPoints(deadEntryPoints, usedEntryPoints);
-					buildCallGraphFromEntryPoints(engine, usedEntryPoints);
+
+					// we do not need to prune dead entry points here
 				}
 
 			} catch (IOException | CoreException | CancelException e) {
@@ -257,53 +257,9 @@ public class StreamAnalyzer extends ASTVisitor {
 				return ret;
 			}
 
-			OrderingInference orderingInference = new OrderingInference(engine.getClassHierarchy());
-
-			for (Iterator<Stream> iterator = projectToStreams.get(project).iterator(); iterator.hasNext();) {
-				Stream stream = iterator.next();
-				try {
-					stream.inferInitialAttributes(engine, orderingInference);
-				} catch (InvalidClassFileException | IOException e) {
-					LOGGER.log(Level.SEVERE, "Exception encountered while processing: " + stream.getCreation() + ".",
-							e);
-					throw new RuntimeException(e);
-				} catch (UnhandledCaseException e) {
-					LOGGER.log(Level.WARNING, "Unhandled case encountered while processing: " + stream.getCreation(),
-							e);
-					stream.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED,
-							"Stream: " + stream.getCreation() + " has an unhandled case: " + e.getMessage());
-				} catch (StreamCreationNotConsideredException e) {
-					LOGGER.log(Level.WARNING, "Unconsidered case encountered while processing: " + stream.getCreation(),
-							e);
-					// remove it from consideration.
-					iterator.remove();
-					this.getStreamSet().remove(stream);
-				}
-			}
-
-			// start the state machine for each valid stream in the project.
-			StreamStateMachine stateMachine = new StreamStateMachine();
-			try {
-				Map<TypestateRule, StreamStateMachine.Statistics> ruleToStats = stateMachine.start(projectToStreams
-						.get(project).parallelStream().filter(s -> s.getStatus().isOK()).collect(Collectors.toSet()),
-						engine, orderingInference);
-
-				// use just one the rules.
-				assert !ruleToStats.isEmpty() : "Should have stats available.";
-				Statistics statistics = ruleToStats.values().iterator().next();
-
-				this.setNumberOfProcessedStreamInstances(statistics.getNumberOfStreamInstancesProcessed());
-				this.setNumberOfSkippedStreamInstances(statistics.getNumberOfStreamInstancesSkipped());
-			} catch (PropertiesException | CancelException | NoniterableException | NoninstantiableException
-					| CannotExtractSpliteratorException | InvalidClassFileException | IOException e) {
-				LOGGER.log(Level.SEVERE, "Error while starting state machine.", e);
-				throw new RuntimeException(e);
-			}
-
-			// check preconditions.
-			for (Stream stream : projectToStreams.get(project).parallelStream().filter(s -> s.getStatus().isOK())
-					.collect(Collectors.toSet()))
-				stream.check();
+			// delete codes here
+			// because we only need codes to print dead entry points
+			
 		} // end for each stream.
 		return ret;
 	}
