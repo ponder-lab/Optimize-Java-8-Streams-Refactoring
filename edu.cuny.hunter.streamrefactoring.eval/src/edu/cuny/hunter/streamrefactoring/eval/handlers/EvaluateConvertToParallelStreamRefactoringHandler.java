@@ -314,7 +314,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter streamOrderingPrinter = null;
 			CSVPrinter entryPointsPrinter = null;
 			PrintWriter entryPointsTXTPrinter = null;
-			PrintWriter deadEntryPointPrinter = null;
+			PrintWriter deadEntryPointTXTPrinter = null;
+			CSVPrinter deadEntryPointPrinter = null;
 
 			ConvertToParallelStreamRefactoringProcessor processor = null;
 
@@ -374,8 +375,11 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						new String[] { "subject", "method", "type FQN" });
 
 				entryPointsTXTPrinter = new PrintWriter("entry_points.txt");
-				
-				deadEntryPointPrinter = new PrintWriter("dead_entry_points.txt");
+
+				deadEntryPointTXTPrinter = new PrintWriter("dead_entry_points.txt");
+
+				deadEntryPointPrinter = createCSVPrinter("dead_entry_points.csv",
+						new String[] { "subject", "method", "type FQN" });
 
 				// set up analysis parameters for all projects.
 				boolean shouldFindImplicitEntrypoints = shouldFindImplicitEntrypoints();
@@ -437,8 +441,11 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					// print dead entry points.
 					Collection<CGNode> deadEntryPoints = projectAnalysisResult.getDeadEntryPoints();
 					// print the dead entry points
-					for (CGNode entrypoint : deadEntryPoints) {
-						deadEntryPointPrinter.println(entrypoint.getMethod().getSignature());
+					for (CGNode entryPoint : deadEntryPoints) {
+						com.ibm.wala.classLoader.IMethod method = entryPoint.getMethod();
+						deadEntryPointPrinter.printRecord(javaProject.getElementName(), method.getSignature(),
+								method.getDeclaringClass().getName());
+						deadEntryPointTXTPrinter.println(method.getSignature());
 					}
 
 					// N.
@@ -632,6 +639,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						entryPointsPrinter.close();
 					if (entryPointsTXTPrinter != null)
 						entryPointsTXTPrinter.close();
+					if (deadEntryPointPrinter != null)
+						deadEntryPointPrinter.close();
 					if (deadEntryPointPrinter != null)
 						deadEntryPointPrinter.close();
 
