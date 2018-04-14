@@ -59,10 +59,12 @@ import org.osgi.framework.FrameworkUtil;
 
 import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
+import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionSuccess;
+import edu.cuny.hunter.streamrefactoring.core.analysis.ProjectAnalysisResult;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Refactoring;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
@@ -222,9 +224,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		return getMetric(javaProject, Constants.NUM_METHODS);
 	}
 
-	private static Collection<Entrypoint> getProjectEntryPoints(IJavaProject javaProject,
+	private static ProjectAnalysisResult getProjectAnalysisResult(IJavaProject javaProject,
 			ConvertToParallelStreamRefactoringProcessor processor) {
-		return processor.getEntryPoints(javaProject);
+		return processor.getProjectAnalysisResult(javaProject);
 	}
 
 	private static int getProjectLinesOfCode(IJavaProject javaProject) {
@@ -312,6 +314,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter streamOrderingPrinter = null;
 			CSVPrinter entryPointsPrinter = null;
 			PrintWriter entryPointsTXTPrinter = null;
+			PrintWriter deadEntryPointTXTPrinter = null;
+			CSVPrinter deadEntryPointPrinter = null;
 
 			ConvertToParallelStreamRefactoringProcessor processor = null;
 
@@ -372,6 +376,11 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 				entryPointsTXTPrinter = new PrintWriter("entry_points.txt");
 
+				deadEntryPointTXTPrinter = new PrintWriter("dead_entry_points.txt");
+
+				deadEntryPointPrinter = createCSVPrinter("dead_entry_points.csv",
+						new String[] { "subject", "method", "type FQN" });
+
 				// set up analysis parameters for all projects.
 				boolean shouldFindImplicitEntrypoints = shouldFindImplicitEntrypoints();
 				boolean shouldFindImplicitTestEntrypoints = shouldFindImplicitTestEntrypoints();
@@ -417,8 +426,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					} else
 						status = new RefactoringStatus();
 
-					// print entry points.
-					Collection<Entrypoint> entryPoints = getProjectEntryPoints(javaProject, processor);
+					// print used entry points.
+					ProjectAnalysisResult projectAnalysisResult = getProjectAnalysisResult(javaProject, processor);
+					Collection<Entrypoint> entryPoints = projectAnalysisResult.getUsedEntryPoints();
 					resultsPrinter.print(entryPoints.size()); // number.
 
 					for (Entrypoint entryPoint : entryPoints) {
@@ -426,6 +436,16 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						entryPointsPrinter.printRecord(javaProject.getElementName(), method.getSignature(),
 								method.getDeclaringClass().getName());
 						entryPointsTXTPrinter.println(method.getSignature());
+					}
+
+					// print dead entry points.
+					Collection<CGNode> deadEntryPoints = projectAnalysisResult.getDeadEntryPoints();
+					// print the dead entry points
+					for (CGNode entryPoint : deadEntryPoints) {
+						com.ibm.wala.classLoader.IMethod method = entryPoint.getMethod();
+						deadEntryPointPrinter.printRecord(javaProject.getElementName(), method.getSignature(),
+								method.getDeclaringClass().getName());
+						deadEntryPointTXTPrinter.println(method.getSignature());
 					}
 
 					// N.
@@ -619,6 +639,10 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						entryPointsPrinter.close();
 					if (entryPointsTXTPrinter != null)
 						entryPointsTXTPrinter.close();
+					if (deadEntryPointPrinter != null)
+						deadEntryPointPrinter.close();
+					if (deadEntryPointTXTPrinter != null)
+						deadEntryPointTXTPrinter.close();
 
 					// clear cache.
 					if (processor != null)
