@@ -641,8 +641,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						entryPointsTXTPrinter.close();
 					if (deadEntryPointPrinter != null)
 						deadEntryPointPrinter.close();
-					if (deadEntryPointPrinter != null)
-						deadEntryPointPrinter.close();
+					if (deadEntryPointTXTPrinter != null)
+						deadEntryPointTXTPrinter.close();
 
 					// clear cache.
 					if (processor != null)
