@@ -30,8 +30,10 @@ import org.eclipse.jdt.internal.corext.util.JdtFlags;
 
 import com.ibm.safe.internal.exceptions.PropertiesException;
 import com.ibm.safe.rules.TypestateRule;
+import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions.ReflectionOptions;
+import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
@@ -41,6 +43,7 @@ import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.shrikeCT.InvalidClassFileException;
 import com.ibm.wala.ssa.SSAOptions;
 import com.ibm.wala.util.CancelException;
+import com.ibm.wala.util.graph.traverse.DFS;
 import com.ibm.wala.util.scope.JUnitEntryPoints;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamStateMachine.Statistics;
@@ -178,10 +181,11 @@ public class StreamAnalyzer extends ASTVisitor {
 	/**
 	 * Analyzes this {@link StreamAnalyzer}'s streams.
 	 *
-	 * @return A {@link Map} of project's analyzed along with the entry points used.
+	 * @return A {@link Map} of project's analyzed along with the associated
+	 *         {@link ProjectAnalysisResult}
 	 * @see #analyze(Optional).
 	 */
-	public Map<IJavaProject, Collection<Entrypoint>> analyze() throws CoreException {
+	public Map<IJavaProject, ProjectAnalysisResult> analyze() throws CoreException {
 		return this.analyze(Optional.empty());
 	}
 
@@ -190,13 +194,14 @@ public class StreamAnalyzer extends ASTVisitor {
 	 *
 	 * @param collector
 	 *            To exclude from the time certain parts of the analysis.
-	 * @return A {@link Map} of project's analyzed along with the entry points used.
+	 * @return A {@link Map} of project's analyzed along with the associated
+	 *         {@link ProjectAnalysisResult}
 	 * @see #analyze().
 	 */
-	public Map<IJavaProject, Collection<Entrypoint>> analyze(Optional<TimeCollector> collector) throws CoreException {
+	public Map<IJavaProject, ProjectAnalysisResult> analyze(Optional<TimeCollector> collector) throws CoreException {
 		LOGGER.fine(() -> "Using N = " + this.getNForStreams() + ".");
 
-		Map<IJavaProject, Collection<Entrypoint>> ret = new HashMap<>();
+		Map<IJavaProject, ProjectAnalysisResult> ret = new HashMap<>();
 
 		// collect the projects to be analyzed.
 		Map<IJavaProject, Set<Stream>> projectToStreams = this.getStreamSet().stream().filter(s -> s.getStatus().isOK())
@@ -218,20 +223,33 @@ public class StreamAnalyzer extends ASTVisitor {
 			}
 			collector.ifPresent(TimeCollector::stop);
 
-			// build the call graph for the project.
-			Collection<Entrypoint> entryPoints = null;
+			Collection<Entrypoint> usedEntryPoints = null;
+			Collection<CGNode> deadEntryPoints = new HashSet<>();
 			try {
-				entryPoints = this.buildCallGraph(engine, collector);
+				// build the call graph for the project,
+				// also get a set of used entry points.
+				usedEntryPoints = this.buildCallGraph(engine, collector);
+
+				if (!usedEntryPoints.isEmpty()) {
+					deadEntryPoints = discoverDeadEntryPoints(engine);
+					// rebuild the call graph
+					usedEntryPoints = getPrunedEntryPoints(deadEntryPoints, usedEntryPoints);
+					buildCallGraphFromEntryPoints(engine, usedEntryPoints);
+				}
+
 			} catch (IOException | CoreException | CancelException e) {
 				LOGGER.log(Level.SEVERE,
 						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
 				throw new RuntimeException(e);
 			}
 
-			// save the entry points.
-			ret.put(project, entryPoints);
+			// save the project analysis result
+			ProjectAnalysisResult projectAnalysisResult = new ProjectAnalysisResult(usedEntryPoints, deadEntryPoints);
 
-			if (entryPoints.isEmpty()) {
+			// save the entry points.
+			ret.put(project, projectAnalysisResult);
+
+			if (projectAnalysisResult.getUsedEntryPoints().isEmpty()) {
 				// add a status entry for each stream in the project
 				for (Stream stream : projectToStreams.get(project))
 					stream.addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
@@ -291,6 +309,98 @@ public class StreamAnalyzer extends ASTVisitor {
 	}
 
 	/**
+	 * Get a set of pruned entry points.
+	 * 
+	 * @param deadEntryPoints
+	 *            A collection of dead entry points.
+	 * @param usedEntryPoints
+	 *            A collection of entry points used to build the first call graph.
+	 * @return A collection of entry points.
+	 */
+	protected static Collection<Entrypoint> getPrunedEntryPoints(Collection<CGNode> deadEntryPoints,
+			Collection<Entrypoint> usedEntryPoints) {
+		Collection<Entrypoint> deadEntryPointCollection = new HashSet<>();
+		usedEntryPoints.forEach(e -> {
+			// check whether the used entry point
+			// is in the set of dead entry point
+			Iterator<CGNode> deadEntryPointIterator = deadEntryPoints.iterator();
+
+			while (deadEntryPointIterator.hasNext()) {
+				CGNode deadEntryPoint = deadEntryPointIterator.next();
+				if (e.getMethod().equals(deadEntryPoint.getMethod())) {
+					deadEntryPointCollection.add(e);
+					break;
+				}
+			}
+		});
+		usedEntryPoints.removeAll(deadEntryPointCollection);
+		return usedEntryPoints;
+	}
+
+	/**
+	 * Discover a set of entry points used to build the {@link CallGraph}.
+	 * 
+	 * @param engine
+	 *            The EclipseProjectAnalysisEngine for which to build the call
+	 *            graph.
+	 * @return The {@link Entrypoint}s used in building the {@link CallGraph}.
+	 */
+	protected Set<Entrypoint> discoverEntryPoints(EclipseProjectAnalysisEngine<InstanceKey> engine) throws IOException {
+		Set<Entrypoint> entryPoints;
+
+		// find the entry_points.txt in the project directory
+		File entryPointFile = getEntryPointsFile(engine.getProject().getResource().getLocation(), ENTRY_POINT_FILENAME);
+
+		// if the file was found,
+		if (entryPointFile != null) {
+			// find explicit entry points from entry_points.txt. Ignore the explicit
+			// (annotation-based) entry points.
+			entryPoints = findEntryPointsFromFile(engine.getClassHierarchy(), entryPointFile);
+			entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point from file: " + ep));
+		} else {
+			// find explicit entry points.
+			entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
+			entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
+
+			if (this.shouldFindImplicitEntryPoints()) {
+				// also find implicit entry points.
+				Iterable<Entrypoint> mainEntrypoints = makeMainEntrypoints(engine.getClassHierarchy().getScope(),
+						engine.getClassHierarchy());
+
+				// add them as well.
+				addImplicitEntryPoints(entryPoints, mainEntrypoints);
+			}
+
+			if (this.shouldFindImplicitTestEntryPoints()) {
+				// try to find test entry points.
+				Iterable<Entrypoint> jUnitEntryPoints = JUnitEntryPoints.make(engine.getClassHierarchy());
+
+				// add them as well.
+				addImplicitEntryPoints(entryPoints, jUnitEntryPoints);
+			}
+
+			if (this.shouldFindImplicitBenchmarkEntryPoints()) {
+				// try to find benchmark entry points.
+				Set<Entrypoint> benchmarkEntryPoints = Util.findBenchmarkEntryPoints(engine.getClassHierarchy());
+
+				// add them as well.
+				addImplicitEntryPoints(entryPoints, benchmarkEntryPoints);
+			}
+
+			if (this.shouldFindImplicitJavaFXEntryPoints()) {
+				// try to find benchmark entry points.
+				Set<Entrypoint> benchmarkEntryPoints = Util.findJavaFXEntryPoints(engine.getClassHierarchy());
+
+				// add them as well.
+				addImplicitEntryPoints(entryPoints, benchmarkEntryPoints);
+			}
+		}
+
+		return entryPoints;
+
+	}
+
+	/**
 	 * Builds the call graph that is part of the
 	 * {@link EclipseProjectAnalysisEngine}.
 	 *
@@ -308,82 +418,160 @@ public class StreamAnalyzer extends ASTVisitor {
 		if (!this.enginesWithBuiltCallGraphsToEntrypointsUsed.keySet().contains(engine)) {
 			// find entry points (but exclude it from the time).
 			collector.ifPresent(TimeCollector::start);
-			Set<Entrypoint> entryPoints;
-
-			// find the entry_points.txt in the project directory
-			File entryPointFile = getEntryPointsFile(engine.getProject().getResource().getLocation(),
-					ENTRY_POINT_FILENAME);
-
-			// if the file was found,
-			if (entryPointFile != null) {
-				// find explicit entry points from entry_points.txt. Ignore the explicit
-				// (annotation-based) entry points.
-				entryPoints = findEntryPointsFromFile(engine.getClassHierarchy(), entryPointFile);
-				entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point from file: " + ep));
-			} else {
-				// find explicit entry points.
-				entryPoints = Util.findEntryPoints(engine.getClassHierarchy());
-				entryPoints.forEach(ep -> LOGGER.info(() -> "Adding explicit entry point: " + ep));
-
-				if (this.shouldFindImplicitEntryPoints()) {
-					// also find implicit entry points.
-					Iterable<Entrypoint> mainEntrypoints = makeMainEntrypoints(engine.getClassHierarchy().getScope(),
-							engine.getClassHierarchy());
-
-					// add them as well.
-					addImplicitEntryPoints(entryPoints, mainEntrypoints);
-				}
-
-				if (this.shouldFindImplicitTestEntryPoints()) {
-					// try to find test entry points.
-					Iterable<Entrypoint> jUnitEntryPoints = JUnitEntryPoints.make(engine.getClassHierarchy());
-
-					// add them as well.
-					addImplicitEntryPoints(entryPoints, jUnitEntryPoints);
-				}
-
-				if (this.shouldFindImplicitBenchmarkEntryPoints()) {
-					// try to find benchmark entry points.
-					Set<Entrypoint> benchmarkEntryPoints = Util.findBenchmarkEntryPoints(engine.getClassHierarchy());
-
-					// add them as well.
-					addImplicitEntryPoints(entryPoints, benchmarkEntryPoints);
-				}
-
-				if (this.shouldFindImplicitJavaFXEntryPoints()) {
-					// try to find benchmark entry points.
-					Set<Entrypoint> benchmarkEntryPoints = Util.findJavaFXEntryPoints(engine.getClassHierarchy());
-
-					// add them as well.
-					addImplicitEntryPoints(entryPoints, benchmarkEntryPoints);
-				}
-			}
+			Set<Entrypoint> entryPoints = discoverEntryPoints(engine);
+			collector.ifPresent(TimeCollector::stop);
 
 			if (entryPoints.isEmpty()) {
 				LOGGER.warning(() -> "Project: " + engine.getProject().getElementName() + " has no entry points.");
 				return entryPoints;
 			}
 
-			collector.ifPresent(TimeCollector::stop);
-
-			// set options.
-			AnalysisOptions options = engine.getDefaultOptions(entryPoints);
-			// Turn off reflection analysis.
-			options.setReflectionOptions(ReflectionOptions.NONE);
-			options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
-
-			try {
-				engine.buildSafeCallGraph(options);
-			} catch (IllegalStateException e) {
-				LOGGER.log(Level.SEVERE, e, () -> "Exception encountered while building call graph for project: "
-						+ engine.getProject().getElementName());
-				throw e;
-			}
-			// TODO: Can I slice the graph so that only nodes relevant to the
-			// instance in question are present?
-			this.enginesWithBuiltCallGraphsToEntrypointsUsed.put(engine, entryPoints);
+			buildCallGraphFromEntryPoints(engine, entryPoints);
 		}
+		// get the project analysis result
 		return this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine);
+	}
+
+	/**
+	 * Given entry points, builds the call graph that is part of the
+	 * {@link EclipseProjectAnalysisEngine}.
+	 *
+	 * @param engine
+	 *            The EclipseProjectAnalysisEngine for which to build the call
+	 *            graph.
+	 * @param collection
+	 *            The {@link entryPoints} used in building the {@link CallGraph}.
+	 */
+	protected void buildCallGraphFromEntryPoints(EclipseProjectAnalysisEngine<InstanceKey> engine,
+			Collection<Entrypoint> collection) throws CallGraphBuilderCancelException, CancelException {
+
+		// set options.
+		AnalysisOptions options = engine.getDefaultOptions(collection);
+		// Turn off reflection analysis.
+		options.setReflectionOptions(ReflectionOptions.NONE);
+		options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
+
+		try {
+			engine.buildSafeCallGraphOnce(options);
+		} catch (IllegalStateException e) {
+			LOGGER.log(Level.SEVERE, e, () -> "Exception encountered while building call graph for project: "
+					+ engine.getProject().getElementName());
+			throw e;
+		}
+
+		// TODO: Can I slice the graph so that only nodes relevant to the
+		// instance in question are present?
+		this.enginesWithBuiltCallGraphsToEntrypointsUsed.put(engine, collection);
+
+	}
+
+	/**
+	 * Discover dead entry points.
+	 * 
+	 * @param engine
+	 *            An {@link EclipseProjectAnalysisEngine}.
+	 * @return a collection of dead entry points.
+	 */
+	private Collection<CGNode> discoverDeadEntryPoints(EclipseProjectAnalysisEngine<InstanceKey> engine) {
+		CallGraph callGraph = engine.getCallGraph();
+
+		// get a set of entry point nodes
+		Collection<CGNode> entryPointNodes = callGraph.getEntrypointNodes();
+
+		Set<CGNode> streamNodes = getStreamCreationNodes(this.getStreamSet().iterator(), engine);
+
+		Set<CGNode> deadEntryPoints = getDeadEntryPointNodes(entryPointNodes, streamNodes, callGraph);
+
+		deadEntryPoints.forEach(e -> {
+			LOGGER.info(() -> "Discover dead entry point: " + e.getMethod().getSignature());
+		});
+
+		return deadEntryPoints;
+	}
+
+	/**
+	 * Get a set of stream creation method nodes.
+	 * 
+	 * @param streamIterator
+	 *            An iterator of {@link Stream}s.
+	 * @param engine
+	 *            An {@link EclipseProjectAnalysisEngine}.
+	 * @return a set of {@link CGNode}s for stream creation methods.
+	 */
+	private Set<CGNode> getStreamCreationNodes(Iterator<Stream> streamIterator,
+			EclipseProjectAnalysisEngine<InstanceKey> engine) {
+		Set<CGNode> streamNodes = new HashSet<>();
+		while (streamIterator.hasNext()) {
+			Stream stream = streamIterator.next();
+			try {
+				streamNodes.addAll(stream.getEnclosingMethodNodes(engine));
+			} catch (NoEnclosingMethodNodeFoundException e) {
+				LOGGER.log(Level.WARNING, "Exception encountered while get a node for the enclosing method.", e);
+			}
+
+		}
+		return streamNodes;
+	}
+
+	/**
+	 * Get all possible dead entry point nodes.
+	 * 
+	 * @param entryPointNodes
+	 *            collection of entry point {@link CGNode}s.
+	 * @param streamNodes
+	 *            a set of stream creation nodes.
+	 * @param callGraph
+	 *            a {@link CallGraph}.
+	 * @return a set of dead entry points.
+	 */
+	private static Set<CGNode> getDeadEntryPointNodes(Collection<CGNode> entryPointNodes, Set<CGNode> streamNodes,
+			CallGraph callGraph) {
+		Set<CGNode> deadEntryPoints = new HashSet<>();
+		Set<IClass> aliveClass = new HashSet<>();
+		Set<CGNode> ctorsOrStaticInitializerNodes = new HashSet<>();
+		for (CGNode entryPointNode : entryPointNodes) {
+			// We will process ctors and static initializers later
+			if (Util.isCtor(entryPointNode) || Util.isStaticInitializer(entryPointNode)) {
+				ctorsOrStaticInitializerNodes.add(entryPointNode);
+				continue;
+			}
+
+			if (!isReachable(entryPointNode, streamNodes, callGraph))
+				deadEntryPoints.add(entryPointNode);
+			else
+				aliveClass.add(entryPointNode.getMethod().getDeclaringClass());
+		}
+		// the ctors and static initializer nodes should be in the set of alive
+		// nodes if at least one entry point is alive in its class
+		for (CGNode entryPointNode : ctorsOrStaticInitializerNodes)
+			if (!aliveClass.contains(entryPointNode.getMethod().getDeclaringClass()))
+				deadEntryPoints.add(entryPointNode);
+		return deadEntryPoints;
+	}
+
+	/**
+	 * Given an entry point node and a set of steam creation nodes, check whether
+	 * exists an stream creation node which is reachable from the entry point
+	 * 
+	 * @param entryPointNode
+	 *            a {@CGNode}
+	 * @param streamNodes
+	 *            a set of stream creation nodes.
+	 * @param callGraph
+	 * @return true: reachable; false: unreachable
+	 */
+	private static boolean isReachable(CGNode entryPointNode, Collection<CGNode> streamNodes, CallGraph callGraph) {
+		// get a set of start nodes for DFS
+		Set<CGNode> singleEntryPointNode = new HashSet<>();
+		singleEntryPointNode.add(entryPointNode);
+
+		// get all reachable nodes from the entry point node
+		final Set<CGNode> reachableNodes = DFS.getReachableNodes(callGraph, singleEntryPointNode);
+
+		for (CGNode reachableNode : reachableNodes)
+			if (streamNodes.contains(reachableNode))
+				return true;
+		return false;
 	}
 
 	public int getNForStreams() {
