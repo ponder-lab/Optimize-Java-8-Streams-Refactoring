@@ -452,7 +452,7 @@ public class StreamAnalyzer extends ASTVisitor {
 		options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
 
 		try {
-			engine.buildSafeCallGraph(options);
+			engine.buildSafeCallGraphOnce(options);
 		} catch (IllegalStateException e) {
 			LOGGER.log(Level.SEVERE, e, () -> "Exception encountered while building call graph for project: "
 					+ engine.getProject().getElementName());

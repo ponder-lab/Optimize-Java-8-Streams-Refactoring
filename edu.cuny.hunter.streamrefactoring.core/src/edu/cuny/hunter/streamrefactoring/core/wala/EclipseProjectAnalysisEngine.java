@@ -142,13 +142,18 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 		LOGGER.entering(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
 
 		if (this.callGraphBuilder == null) {
-			LOGGER.info("Creating new call graph builder.");
-			this.callGraphBuilder = this.buildCallGraph(this.getClassHierarchy(), options, true, null);
+			buildSafeCallGraphOnce(options);
 		} else
 			LOGGER.info("Reusing call graph builder.");
 
 		LOGGER.exiting(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
 		return this.callGraphBuilder.makeCallGraph(options, null);
+	}
+
+	public void buildSafeCallGraphOnce(AnalysisOptions options)
+			throws CallGraphBuilderCancelException, CancelException {
+		LOGGER.info("Creating new call graph builder.");
+		this.callGraphBuilder = this.buildCallGraph(this.getClassHierarchy(), options, true, null);
 	}
 
 	public CallGraph buildSafeCallGraph(Iterable<Entrypoint> entryPoints)
