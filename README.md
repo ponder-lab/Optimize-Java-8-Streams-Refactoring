@@ -27,9 +27,10 @@ In general, there is [an issue](https://github.com/wala/WALA/issues/281) with th
 
 ## Further Information
 
-See the [wiki][wiki] for further information.
+See the [wiki][wiki] for further information. For information on contributing, see [CONTRIBUTING.md](contrib).
 
 [wiki]: https://github.com/ponder-lab/Java-8-Stream-Refactoring/wiki
 [annotations]: https://github.com/ponder-lab/edu.cuny.hunter.streamrefactoring.annotations
 [wala]: https://github.com/wala/WALA
 [safe]: https://github.com/tech-srl/safe
+[contrib]: https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/blob/master/CONTRIBUTING.md
