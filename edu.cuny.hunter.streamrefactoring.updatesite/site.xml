@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <site>
-   <description name="Migrate Skeletal Implementation to Interface Refactoring Update Site" url="https://raw.githubusercontent.com/khatchad/Migrate-Skeletal-Implementation-to-Interface-Refactoring/tree/master/edu.cuny.hunter.streamrefactoring.updatesite">
-      The skeletal implementation pattern is a software design pattern consisting of defining an abstract class that provides a partial interface implementation. However, since Java allows only single class inheritance, if implementers decide to extend a skeletal implementation, they will not be allowed to extend any other class. Also, discovering the skeletal implementation may require a global analysis. Java 8 enhanced interfaces alleviate these problems by allowing interfaces to contain (default) method implementations, which implementers inherit. Java classes are then free to extend a different class, and a separate abstract class is no longer needed; developers considering implementing an interface need only examine the interface itself. Both of these benefits improve software modularity.
+   <description name="Optimize Streams Refactoring Update Site" url="https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/tree/master/edu.cuny.hunter.streamrefactoring.updatesite">
+      The Java 8 Stream API sets forth a promising new programming model that incorporates functional-like, MapReduce-style features into a mainstream programming language. However, using streams efficiently may involve subtle considerations.
 
-This prototype refactoring plug-in for Eclipse represents ongoing work in developing an automated refactoring tool that would assist developers in taking advantage of the enhanced interface feature for their legacy Java software.
+This tool consists of automated refactoring research prototype plug-ins for Eclipse that assists developers in writing optimal stream client code in a semantics-preserving fashion. Refactoring preconditions and transformations for automatically determining when it is safe and possibly advantageous to convert a sequential stream to parallel and improve upon already parallel streams are included. The approach utilizes both WALA and SAFE.
    </description>
-   <feature url="features/edu.cuny.citytech.migrate.skeletal.implementation.to.interface.refactoring_0.5.0.201608301418.jar" id="edu.cuny.citytech.migrate.skeletal.implementation.to.interface.refactoring" version="0.5.0.201608301418">
-      <category name="edu.cuny.citytech.refactoring"/>
+   <feature url="features/edu.cuny.hunter.optimize.stream.refactoring_0.2.0.201804201824.jar" id="edu.cuny.hunter.optimize.stream.refactoring" version="0.2.0.201804201824">
+      <category name="edu.cuny.hunter.refactoring"/>
    </feature>
-   <category-def name="edu.cuny.citytech.refactoring" label="Java Refactorings"/>
+   <category-def name="edu.cuny.hunter.refactoring" label="Java Refactorings"/>
 </site>
