@@ -14,7 +14,13 @@ This tool consists of automated refactoring research prototype plug-ins for [Ecl
 
 ### Installation
 
-An alpha version of our tool is available via an Eclipse update site at: https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.updatesite. Please choose the latest version.
+An alpha version of our tool is available via an Eclipse update site at: https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.updatesite. Please choose the latest version of the "Optimize Stream Refactoring."
+
+The following dependencies are also required. Their update sites are listed below:
+
+- https://raw.githubusercontent.com/ponder-lab/Common-Eclipse-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite
+- https://raw.githubusercontent.com/ponder-lab/WALA/master/com.ibm.wala.updatesite
+- https://raw.githubusercontent.com/ponder-lab/safe/master/com.ibm.safe.updatesite
 
 ### Marking Entry Points
 
