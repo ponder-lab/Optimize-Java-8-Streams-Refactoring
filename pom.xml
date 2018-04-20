@@ -68,7 +68,7 @@
     <repository>
       <id>common-refactoring</id>
       <layout>p2</layout>
-      <url>https://raw.githubusercontent.com/khatchad/Common-Eclipse-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite</url>
+      <url>https://raw.githubusercontent.com/ponder-lab/Common-Eclipse-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite</url>
     </repository>
     <repository>
       <id>safe</id>
