@@ -222,8 +222,8 @@ any resulting litigation.
    </license>
 
    <url>
-      <update label="Optimize Stream Refactoring Update Site" url="https://raw.githubusercontent.com/ponder-lab/master/Optimize-Java-8-Streams-Refactoring/edu.cuny.hunter.streamrefactoring.updatesite/"/>
-      <discovery label="Common Eclipse Java Refactoring Framework" url="https://raw.githubusercontent.com/ponder-lab/master/Common-Eclipse-Java-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite/"/>
+      <update label="Optimize Stream Refactoring Update Site" url="https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.updatesite"/>
+      <discovery label="Common Eclipse Java Refactoring Framework" url="https://raw.githubusercontent.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite"/>
       <discovery label="WALA" url="https://raw.githubusercontent.com/ponder-lab/WALA/master/com.ibm.wala.updatesite"/>
       <discovery label="SAFE" url="https://raw.githubusercontent.com/ponder-lab/safe/master/com.ibm.safe.updatesite"/>
    </url>
