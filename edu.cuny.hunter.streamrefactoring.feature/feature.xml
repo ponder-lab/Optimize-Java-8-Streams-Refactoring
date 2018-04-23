@@ -2,7 +2,7 @@
 <feature
       id="edu.cuny.hunter.optimize.stream.refactoring"
       label="Optimize Stream Refactoring"
-      version="0.5.0.qualifier"
+      version="0.6.0.qualifier"
       provider-name="Hunter College, City University of New York"
       plugin="edu.cuny.hunter.streamrefactoring.core">
 
