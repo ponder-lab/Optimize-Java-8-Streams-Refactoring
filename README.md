@@ -18,7 +18,7 @@ An alpha version of our tool is available via an Eclipse update site at: https:/
 
 The following dependencies are also required. Their update sites are listed below:
 
-- https://raw.githubusercontent.com/ponder-lab/Common-Eclipse-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite
+- https://raw.githubusercontent.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite
 - https://raw.githubusercontent.com/ponder-lab/WALA/master/com.ibm.wala.updatesite
 - https://raw.githubusercontent.com/ponder-lab/safe/master/com.ibm.safe.updatesite
 
