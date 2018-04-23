@@ -5,8 +5,5 @@
 
 This tool consists of automated refactoring research prototype plug-ins for Eclipse that assists developers in writing optimal stream client code in a semantics-preserving fashion. Refactoring preconditions and transformations for automatically determining when it is safe and possibly advantageous to convert a sequential stream to parallel and improve upon already parallel streams are included. The approach utilizes both WALA and SAFE.
    </description>
-   <feature url="features/edu.cuny.hunter.optimize.stream.refactoring_0.2.0.201804201824.jar" id="edu.cuny.hunter.optimize.stream.refactoring" version="0.2.0.201804201824">
-      <category name="edu.cuny.hunter.refactoring"/>
-   </feature>
-   <category-def name="edu.cuny.hunter.refactoring" label="Java Refactorings"/>
+   <feature url="features/edu.cuny.hunter.optimize.stream.refactoring_0.2.0.201804201824.jar" id="edu.cuny.hunter.optimize.stream.refactoring" version="0.2.0.201804201824" />
 </site>
