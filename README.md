@@ -16,11 +16,15 @@ This tool consists of automated refactoring research prototype plug-ins for [Ecl
 
 An alpha version of our tool is available via an Eclipse update site at: https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.updatesite. Please choose the latest version of the "Optimize Stream Refactoring."
 
-The following dependencies are also required. Their update sites are listed below:
+#### Dependencies
 
-- https://raw.githubusercontent.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite
-- https://raw.githubusercontent.com/ponder-lab/WALA/master/com.ibm.wala.updatesite
-- https://raw.githubusercontent.com/ponder-lab/safe/master/com.ibm.safe.updatesite
+The refactoring has several dependencies whose update sites do not seem to always resolve correctly in Eclipse. If you experience any trouble installing the plug-in using the above update site, you can manually install the dependencies using the list below. The should be installed in the order they are presented:
+
+Dependency | Update Site
+-- | --
+1. [WALA](https://github.com/ponder-lab/WALA) | https://raw.githubusercontent.com/ponder-lab/WALA/master/com.ibm.wala.updatesite
+2. [SAFE](https://github.com/ponder-lab/safe) | https://raw.githubusercontent.com/ponder-lab/safe/master/com.ibm.safe.updatesite
+3. [Common Eclipse Java Refactoring Framework](https://github.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework) | https://raw.githubusercontent.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite
 
 ### Marking Entry Points
 
