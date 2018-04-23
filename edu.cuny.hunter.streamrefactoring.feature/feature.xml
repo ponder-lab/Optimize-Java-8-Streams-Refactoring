@@ -2,8 +2,9 @@
 <feature
       id="edu.cuny.hunter.optimize.stream.refactoring"
       label="Optimize Stream Refactoring"
-      version="0.4.0.qualifier"
-      provider-name="Hunter College, City University of New York">
+      version="0.5.0.qualifier"
+      provider-name="Hunter College, City University of New York"
+      plugin="edu.cuny.hunter.streamrefactoring.core">
 
    <description url="http://cuny.is/streams">
       The Java 8 Stream API sets forth a promising new programming model that incorporates functional-like, MapReduce-style features into a mainstream programming language. However, using streams efficiently may involve subtle considerations.
