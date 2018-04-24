@@ -14,17 +14,23 @@ This tool consists of automated refactoring research prototype plug-ins for [Ecl
 
 ### Installation
 
+#### Update Site
+
 An alpha version of our tool is available via an Eclipse update site at: https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.updatesite. Please choose the latest version of the "Optimize Stream Refactoring."
 
 #### Dependencies
 
-The refactoring has several dependencies whose update sites do not seem to always resolve correctly in Eclipse. If you experience any trouble installing the plug-in using the above update site, you can manually install the dependencies using the list of update sites below. The latest version of each plug-in should be installed in the order they are presented:
+The refactoring has several dependencies as listed below. If you experience any trouble installing the plug-in using the above update site, you can manually install the dependencies. The latest version of each plug-in should be installed in the order they are presented:
 
 Dependency | Update Site
 --- | ---
 [WALA](https://github.com/ponder-lab/WALA) | https://raw.githubusercontent.com/ponder-lab/WALA/master/com.ibm.wala.updatesite
 [SAFE](https://github.com/ponder-lab/safe) | https://raw.githubusercontent.com/ponder-lab/safe/master/com.ibm.safe.updatesite
 [Common Eclipse Java Refactoring Framework](https://github.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework) | https://raw.githubusercontent.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite
+
+##### WALA
+
+Please note that there is a special dependency on WALA. Currently, our refactoring requires **WALA version 1.3.10**. Although this version from the official WALA site would theoretically work, the plug-in has been tested with the WALA version whose update site is listed above. We highly recommend that this version of WALA be used with the plug-in, which may require uninstalling other WALA features from your current Eclipse installation. [Issue #192](https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/issues/192) has been opened to track the future integration.
 
 ### Marking Entry Points
 
