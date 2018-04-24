@@ -10,15 +10,13 @@
 
 This tool consists of automated refactoring research prototype plug-ins for [Eclipse](http://eclipse.org) that assists developers in writing optimal stream client code in a semantics-preserving fashion. Refactoring preconditions and transformations for automatically determining when it is safe and possibly advantageous to convert a sequential stream to parallel and improve upon already parallel streams are included. The approach utilizes both [WALA][wala] and [SAFE][safe].
 
-## Usage
+## Installation
 
-### Installation
-
-#### Update Site
+### Update Site
 
 An alpha version of our tool is available via an Eclipse update site at: https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.updatesite. Please choose the latest version of the "Optimize Stream Refactoring."
 
-#### Dependencies
+### Dependencies
 
 The refactoring has several dependencies as listed below. If you experience any trouble installing the plug-in using the above update site, you can manually install the dependencies. The latest version of each plug-in should be installed in the order they are presented:
 
@@ -28,17 +26,17 @@ Dependency | Update Site
 [SAFE](https://github.com/ponder-lab/safe) | https://raw.githubusercontent.com/ponder-lab/safe/master/com.ibm.safe.updatesite
 [Common Eclipse Java Refactoring Framework](https://github.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework) | https://raw.githubusercontent.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite
 
-##### WALA
+#### WALA
 
 Please note that there is a special dependency on WALA. Currently, our refactoring requires **WALA version 1.3.10**. Although this version from the official WALA site would theoretically work, the plug-in has been tested with the WALA version whose update site is listed above. We highly recommend that this version of WALA be used with the plug-in, which may require uninstalling other WALA features from your current Eclipse installation. [Issue #192](https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/issues/192) has been opened to track the future integration.
 
-### Marking Entry Points
+## Marking Entry Points
 
 Explicit entry points may be marked using the appropriate annotation found in the corresponding [annotation library][annotations]. They can also be marked using a text file named `entry_points.txt`. The processing of this file is recursive; it will search for this file in the same directory as the source code and will traverse up the directory structure until one is found. As such, the file may be placed in, for example, package directories, subproject directories, and project roots. The format of the file is simply a list of method signatures on each line.
 
 <!-- It is also possible to have the tool generate the file from the entry points that are being used (either implicit or explicit entry points). If enabled, the file will appear in the working directory. -->
 
-### Limitations
+## Limitations
 
 There are currently some limitations with embedded streams (i.e., streams declared as part of lambda expressions sent as arguments to intermediate stream operations). This is due to model differences between the Eclipse JDT and WALA. See [#155](https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/155) for details.
 
