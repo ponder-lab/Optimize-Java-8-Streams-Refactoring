@@ -55,9 +55,13 @@ There are currently some limitations with embedded streams (i.e., streams declar
 
 In general, there is [an issue](https://github.com/wala/WALA/issues/281) with the mapping between the Eclipse DOM and WALA DOM, particuarly when using Anonymous Inner Classes (AICs). We are currently working with the WALA developers to resolve [this issue](https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/155).
 
+## Contributing
+
+For information on contributing, see [CONTRIBUTING.md][contrib].
+
 ## Further Information
 
-See the [wiki][wiki] for further information. For information on contributing, see [CONTRIBUTING.md][contrib].
+See the [wiki][wiki] for further information.
 
 [wiki]: https://github.com/ponder-lab/Java-8-Stream-Refactoring/wiki
 [annotations]: https://github.com/ponder-lab/edu.cuny.hunter.streamrefactoring.annotations
