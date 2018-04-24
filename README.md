@@ -18,7 +18,7 @@ An alpha version of our tool is available via an Eclipse update site at: https:/
 
 #### Dependencies
 
-The refactoring has several dependencies whose update sites do not seem to always resolve correctly in Eclipse. If you experience any trouble installing the plug-in using the above update site, you can manually install the dependencies using the list below. The should be installed in the order they are presented:
+The refactoring has several dependencies whose update sites do not seem to always resolve correctly in Eclipse. If you experience any trouble installing the plug-in using the above update site, you can manually install the dependencies using the list of update sites below. The latest version of each plug-in should be installed in the order they are presented:
 
 Dependency | Update Site
 --- | ---
