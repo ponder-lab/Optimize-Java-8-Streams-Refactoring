@@ -2,49 +2,37 @@
 <?eclipse version="3.4"?>
 <plugin>
   <extension point="org.eclipse.ui.commands">
-    <command
-          categoryId="org.eclipse.jdt.ui.category.refactoring"
-          defaultHandler="edu.cuny.hunter.streamrefactoring.ui.handlers.OptimizeStreamHandler"
-          description="%OptimizeStreamDescription"
-          id="edu.cuny.hunter.optimize.stream.command"
-          name="%OptimizeStreamLabel" />
+    <command categoryId="org.eclipse.jdt.ui.category.refactoring" defaultHandler="edu.cuny.hunter.streamrefactoring.ui.handlers.OptimizeStreamHandler" description="%OptimizeStreamDescription" id="edu.cuny.hunter.optimize.stream.command" name="%OptimizeStreamLabel" />
   </extension>
   <extension point="org.eclipse.core.expressions.definitions">
-     <definition id="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet">
-     	<with variable="selection">
-     		<iterate ifEmpty="false" operator="or">
-            	<instanceof value="org.eclipse.jdt.core.IJavaProject"/>
-          	</iterate>
-       </with>
-     </definition>
+    <definition id="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet">
+      <with variable="selection">
+        <iterate ifEmpty="false" operator="or">
+          <instanceof value="org.eclipse.jdt.core.IJavaProject" />
+        </iterate>
+      </with>
+    </definition>
   </extension>
   <extension point="org.eclipse.ui.handlers">
     <handler class="edu.cuny.hunter.streamrefactoring.ui.handlers.OptimizeStreamHandler" commandId="edu.cuny.hunter.optimize.stream.command">
       <activeWhen>
-      	<reference definitionId="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet" />
+        <reference definitionId="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet" />
       </activeWhen>
     </handler>
   </extension>
   <extension point="org.eclipse.ui.menus">
     <menuContribution locationURI="menu:org.eclipse.jdt.ui.refactoring.menu?after=additions">
       <!-- [rk] Doesn't seem to be working -->
-      <command
-            commandId="edu.cuny.hunter.optimize.stream.command"
-            id="edu.cuny.hunter.optimize.stream.menus.command"
-            label="%OptimizeStreamLabel"
-            mnemonic="%command.mnemonic">
+      <command commandId="edu.cuny.hunter.optimize.stream.command" id="edu.cuny.hunter.optimize.stream.menus.command" label="%OptimizeStreamLabel" mnemonic="%command.mnemonic">
         <visibleWhen>
-        	<reference definitionId="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet" />
+          <reference definitionId="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet" />
         </visibleWhen>
       </command>
     </menuContribution>
     <menuContribution locationURI="popup:org.eclipse.jdt.ui.refactoring.menu?after=additions">
-      <command
-            commandId="edu.cuny.hunter.optimize.stream.command"
-            label="%OptimizeStreamLabel"
-            style="push">
+      <command commandId="edu.cuny.hunter.optimize.stream.command" label="%OptimizeStreamLabel" style="push">
         <visibleWhen>
-        	<reference definitionId="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet" />
+          <reference definitionId="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet" />
         </visibleWhen>
       </command>
     </menuContribution>
