@@ -9,14 +9,19 @@
           id="edu.cuny.hunter.optimize.stream.command"
           name="%OptimizeStreamLabel"></command>
   </extension>
+  <extension point="org.eclipse.core.expressions.definitions">
+     <definition id="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet">
+     	<with variable="selection">
+     		<iterate ifEmpty="false" operator="or">
+            	<instanceof value="org.eclipse.jdt.core.IJavaProject"/>
+          	</iterate>
+       </with>
+     </definition>
+  </extension>
   <extension point="org.eclipse.ui.handlers">
     <handler class="edu.cuny.hunter.streamrefactoring.ui.handlers.OptimizeStreamHandler" commandId="edu.cuny.hunter.optimize.stream.command">
       <activeWhen>
-        <with variable="selection">
-          <iterate ifEmpty="false" operator="or">
-            <instanceof value="org.eclipse.jdt.core.IJavaProject"/>
-          </iterate>
-        </with>
+      	<reference definitionId="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet" />
       </activeWhen>
     </handler>
   </extension>
@@ -24,12 +29,16 @@
     <menuContribution locationURI="menu:org.eclipse.jdt.ui.refactoring.menu?after=additions">
       <!-- [rk] Doesn't seem to be working -->
       <command commandId="edu.cuny.hunter.optimize.stream.command" mnemonic="%command.mnemonic" id="edu.cuny.hunter.optimize.stream.menus.command">
-        <visibleWhen checkEnabled="true"></visibleWhen>
+        <visibleWhen>
+        	<reference definitionId="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet" />
+        </visibleWhen>
       </command>
     </menuContribution>
     <menuContribution locationURI="popup:org.eclipse.jdt.ui.refactoring.menu?after=additions">
       <command commandId="edu.cuny.hunter.optimize.stream.command" style="push">
-        <visibleWhen checkEnabled="true"></visibleWhen>
+        <visibleWhen>
+        	<reference definitionId="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet" />
+        </visibleWhen>
       </command>
     </menuContribution>
   </extension>
