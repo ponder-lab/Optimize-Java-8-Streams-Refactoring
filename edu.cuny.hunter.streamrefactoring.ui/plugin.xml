@@ -25,4 +25,17 @@
       </activeWhen>
     </handler>
   </extension>
+  <extension point="org.eclipse.ui.menus">
+    <menuContribution locationURI="menu:org.eclipse.jdt.ui.refactoring.menu?after=additions">
+      <!-- [rk] Doesn't seem to be working -->
+      <command commandId="edu.cuny.hunter.optimize.stream.command" mnemonic="%command.mnemonic" id="edu.cuny.hunter.optimize.stream.menus.command">
+        <visibleWhen checkEnabled="true"></visibleWhen>
+      </command>
+    </menuContribution>
+    <menuContribution locationURI="popup:org.eclipse.jdt.ui.refactoring.menu?after=additions">
+      <command commandId="edu.cuny.hunter.optimize.stream.command" style="push">
+        <visibleWhen checkEnabled="true"></visibleWhen>
+      </command>
+    </menuContribution>
+  </extension>
 </plugin>
