@@ -11,6 +11,8 @@ import org.eclipse.osgi.util.NLS;
  */
 public class Messages extends NLS {
 	private static final String BUNDLE_NAME = "edu.cuny.hunter.streamrefactoring.ui.messages.messages"; //$NON-NLS-1$
+	public static String Name;
+	public static String NoProjects;
 
 	static {
 		// initialize resource bundle

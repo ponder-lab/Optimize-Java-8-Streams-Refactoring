@@ -59,6 +59,9 @@ public final class Util {
 
 	public static ConvertToParallelStreamRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
 			IJavaProject[] projects, Optional<IProgressMonitor> monitor) throws JavaModelException {
+		if (projects.length < 1) 
+			throw new IllegalArgumentException("No projects.");
+		
 		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(projects[0]);
 		ConvertToParallelStreamRefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor(
 				projects, settings, monitor);

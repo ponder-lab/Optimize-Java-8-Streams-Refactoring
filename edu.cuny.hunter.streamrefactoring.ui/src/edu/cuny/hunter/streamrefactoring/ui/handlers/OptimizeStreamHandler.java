@@ -23,11 +23,13 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.internal.ui.JavaPlugin;
 import org.eclipse.jdt.internal.ui.util.SelectionUtil;
 import org.eclipse.jdt.ui.JavaElementLabels;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.osgi.framework.FrameworkUtil;
 
+import edu.cuny.hunter.streamrefactoring.ui.messages.Messages;
 import edu.cuny.hunter.streamrefactoring.ui.wizards.OptimizeStreamRefactoringWizard;
 
 public class OptimizeStreamHandler extends AbstractHandler {
@@ -49,16 +51,6 @@ public class OptimizeStreamHandler extends AbstractHandler {
 					if (obj instanceof IJavaElement) {
 						IJavaElement jElem = (IJavaElement) obj;
 						switch (jElem.getElementType()) {
-						case IJavaElement.METHOD:
-							break;
-						case IJavaElement.TYPE:
-							break;
-						case IJavaElement.COMPILATION_UNIT:
-							break;
-						case IJavaElement.PACKAGE_FRAGMENT:
-							break;
-						case IJavaElement.PACKAGE_FRAGMENT_ROOT:
-							break;
 						case IJavaElement.JAVA_PROJECT:
 							javaProjectSet.add((IJavaProject) jElem);
 							break;
@@ -66,14 +58,16 @@ public class OptimizeStreamHandler extends AbstractHandler {
 					}
 
 				Shell shell = HandlerUtil.getActiveShellChecked(event);
-				OptimizeStreamRefactoringWizard.startRefactoring(
-						javaProjectSet.toArray(new IJavaProject[javaProjectSet.size()]), shell, Optional.empty());
+
+				if (javaProjectSet.isEmpty())
+					MessageDialog.openError(shell, Messages.Name, Messages.NoProjects);
+				else
+					OptimizeStreamRefactoringWizard.startRefactoring(
+							javaProjectSet.toArray(new IJavaProject[javaProjectSet.size()]), shell, Optional.empty());
 			} catch (JavaModelException e) {
 				JavaPlugin.log(e);
 				throw new ExecutionException("Failed to start refactoring", e);
 			}
-		// TODO: What do we do if there was no input? Do we display some
-		// message?
 		return null;
 	}
 
