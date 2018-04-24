@@ -8,7 +8,20 @@
 
 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/01/Created_with_Matplotlib-logo.svg/128px-Created_with_Matplotlib-logo.svg.png" alt="Created with Matplotlib" align="left"/> The Java 8 Stream API sets forth a promising new programming model that incorporates functional-like, MapReduce-style features into a mainstream programming language. However, using streams efficiently may involve subtle considerations. 
 
-This tool consists of automated refactoring research prototype plug-ins for [Eclipse](http://eclipse.org) that assists developers in writing optimal stream client code in a semantics-preserving fashion. Refactoring preconditions and transformations for automatically determining when it is safe and possibly advantageous to convert a sequential stream to parallel and improve upon already parallel streams are included. The approach utilizes both [WALA][wala] and [SAFE][safe].
+This tool consists of automated refactoring research prototype plug-ins for [Eclipse][eclipse] that assists developers in writing optimal stream client code in a semantics-preserving fashion. Refactoring preconditions and transformations for automatically determining when it is safe and possibly advantageous to convert a sequential stream to parallel and improve upon already parallel streams are included. The approach utilizes both [WALA][wala] and [SAFE][safe].
+
+## Usage
+
+The refactoring can be run in two different ways:
+
+1. As a command.
+    1. Select a project.
+    1. Select "Optimize Streams..." from the "Quick Access" dialog (CTRL-3).
+1. As a menu item.
+    1. Right-click on a project.
+    1. Under "Refactor," choose "Optimize Streams..."
+
+Currently, the refactoring works only via the package explorer and the outline views. You can either select a single project to optimize or select multiple projects. In each case, the tool will find streams in the enclosing projects to refactor.
 
 ## Installation
 
@@ -48,6 +61,7 @@ See the [wiki][wiki] for further information. For information on contributing, s
 
 [wiki]: https://github.com/ponder-lab/Java-8-Stream-Refactoring/wiki
 [annotations]: https://github.com/ponder-lab/edu.cuny.hunter.streamrefactoring.annotations
+[eclipse]: http://eclipse.org
 [wala]: https://github.com/wala/WALA
 [safe]: https://github.com/tech-srl/safe
 [contrib]: https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/blob/master/CONTRIBUTING.md
