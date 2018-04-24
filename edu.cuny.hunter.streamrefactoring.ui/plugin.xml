@@ -7,7 +7,7 @@
           defaultHandler="edu.cuny.hunter.streamrefactoring.ui.handlers.OptimizeStreamHandler"
           description="%OptimizeStreamDescription"
           id="edu.cuny.hunter.optimize.stream.command"
-          name="%OptimizeStreamLabel"></command>
+          name="%OptimizeStreamLabel" />
   </extension>
   <extension point="org.eclipse.core.expressions.definitions">
      <definition id="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet">
@@ -28,14 +28,21 @@
   <extension point="org.eclipse.ui.menus">
     <menuContribution locationURI="menu:org.eclipse.jdt.ui.refactoring.menu?after=additions">
       <!-- [rk] Doesn't seem to be working -->
-      <command commandId="edu.cuny.hunter.optimize.stream.command" mnemonic="%command.mnemonic" id="edu.cuny.hunter.optimize.stream.menus.command">
+      <command
+            commandId="edu.cuny.hunter.optimize.stream.command"
+            id="edu.cuny.hunter.optimize.stream.menus.command"
+            label="%OptimizeStreamLabel"
+            mnemonic="%command.mnemonic">
         <visibleWhen>
         	<reference definitionId="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet" />
         </visibleWhen>
       </command>
     </menuContribution>
     <menuContribution locationURI="popup:org.eclipse.jdt.ui.refactoring.menu?after=additions">
-      <command commandId="edu.cuny.hunter.optimize.stream.command" style="push">
+      <command
+            commandId="edu.cuny.hunter.optimize.stream.command"
+            label="%OptimizeStreamLabel"
+            style="push">
         <visibleWhen>
         	<reference definitionId="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet" />
         </visibleWhen>
