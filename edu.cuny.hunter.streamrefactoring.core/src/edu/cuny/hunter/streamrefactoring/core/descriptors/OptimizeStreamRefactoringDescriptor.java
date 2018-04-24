@@ -11,20 +11,20 @@ import org.eclipse.jdt.core.refactoring.descriptors.JavaRefactoringDescriptor;
  * @author raffi
  *
  */
-public class ConvertStreamToParallelRefactoringDescriptor extends JavaRefactoringDescriptor {
+public class OptimizeStreamRefactoringDescriptor extends JavaRefactoringDescriptor {
 
-	public static final String REFACTORING_ID = "edu.cuny.hunter.streamrefactoring.convert.stream.to.parallel"; //$NON-NLS-1$
+	public static final String REFACTORING_ID = "edu.cuny.hunter.streamrefactoring.optimize.stream"; //$NON-NLS-1$
 
-	protected ConvertStreamToParallelRefactoringDescriptor() {
+	protected OptimizeStreamRefactoringDescriptor() {
 		super(REFACTORING_ID);
 	}
 
-	public ConvertStreamToParallelRefactoringDescriptor(String project, String description, String comment,
+	public OptimizeStreamRefactoringDescriptor(String project, String description, String comment,
 			@SuppressWarnings("rawtypes") Map arguments, int flags) {
 		this(REFACTORING_ID, project, description, comment, arguments, flags);
 	}
 
-	public ConvertStreamToParallelRefactoringDescriptor(String id, String project, String description, String comment,
+	public OptimizeStreamRefactoringDescriptor(String id, String project, String description, String comment,
 			@SuppressWarnings("rawtypes") Map arguments, int flags) {
 		super(id, project, description, comment, arguments, flags);
 	}

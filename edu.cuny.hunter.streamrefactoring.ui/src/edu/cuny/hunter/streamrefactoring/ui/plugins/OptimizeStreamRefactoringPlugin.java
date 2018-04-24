@@ -3,7 +3,7 @@ package edu.cuny.hunter.streamrefactoring.ui.plugins;
 import org.osgi.framework.BundleContext;
 
 import edu.cuny.citytech.refactoring.common.ui.RefactoringPlugin;
-import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
+import edu.cuny.hunter.streamrefactoring.core.descriptors.OptimizeStreamRefactoringDescriptor;
 
 public class OptimizeStreamRefactoringPlugin extends RefactoringPlugin {
 
@@ -13,15 +13,9 @@ public class OptimizeStreamRefactoringPlugin extends RefactoringPlugin {
 		return plugin;
 	}
 
-	/*
-	 * (non-Javadoc)
-	 *
-	 * @see
-	 * edu.cuny.citytech.refactoring.common.ui.RefactoringPlugin#getRefactoringId()
-	 */
 	@Override
 	protected String getRefactoringId() {
-		return ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID;
+		return OptimizeStreamRefactoringDescriptor.REFACTORING_ID;
 	}
 
 	@Override

@@ -28,9 +28,9 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.handlers.HandlerUtil;
 import org.osgi.framework.FrameworkUtil;
 
-import edu.cuny.hunter.streamrefactoring.ui.wizards.ConvertStreamToParallelRefactoringWizard;
+import edu.cuny.hunter.streamrefactoring.ui.wizards.OptimizeStreamRefactoringWizard;
 
-public class ConvertStreamToParallelHandler extends AbstractHandler {
+public class OptimizeStreamHandler extends AbstractHandler {
 
 	/**
 	 * Gather all the streams from the user's selection.
@@ -66,7 +66,7 @@ public class ConvertStreamToParallelHandler extends AbstractHandler {
 					}
 
 				Shell shell = HandlerUtil.getActiveShellChecked(event);
-				ConvertStreamToParallelRefactoringWizard.startRefactoring(
+				OptimizeStreamRefactoringWizard.startRefactoring(
 						javaProjectSet.toArray(new IJavaProject[javaProjectSet.size()]), shell, Optional.empty());
 			} catch (JavaModelException e) {
 				JavaPlugin.log(e);

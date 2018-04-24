@@ -23,19 +23,18 @@ import edu.cuny.hunter.streamrefactoring.core.utils.Util;
  *         Khatchadourian</a>
  *
  */
-public class ConvertStreamToParallelRefactoringWizard extends RefactoringWizard {
+public class OptimizeStreamRefactoringWizard extends RefactoringWizard {
 
 	public static void startRefactoring(IJavaProject[] javaProjects, Shell shell, Optional<IProgressMonitor> monitor)
 			throws JavaModelException {
-		// TODO: Will need to set the target type at some point but see #23.
 		Refactoring refactoring = Util.createRefactoring(javaProjects, monitor);
-		RefactoringWizard wizard = new ConvertStreamToParallelRefactoringWizard(refactoring);
+		RefactoringWizard wizard = new OptimizeStreamRefactoringWizard(refactoring);
 
 		new RefactoringStarter().activate(wizard, shell, RefactoringMessages.OpenRefactoringWizardAction_refactoring,
 				RefactoringSaveHelper.SAVE_REFACTORING);
 	}
 
-	public ConvertStreamToParallelRefactoringWizard(Refactoring refactoring) {
+	public OptimizeStreamRefactoringWizard(Refactoring refactoring) {
 		super(refactoring,
 				RefactoringWizard.DIALOG_BASED_USER_INTERFACE & RefactoringWizard.CHECK_INITIAL_CONDITIONS_ON_OPEN);
 		this.setWindowTitle(Messages.Name);

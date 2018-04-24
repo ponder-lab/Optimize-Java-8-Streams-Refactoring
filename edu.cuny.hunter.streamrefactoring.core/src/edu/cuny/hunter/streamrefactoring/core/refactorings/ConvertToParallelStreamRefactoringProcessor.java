@@ -56,7 +56,7 @@ import com.ibm.wala.ipa.callgraph.Entrypoint;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalyzer;
-import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
+import edu.cuny.hunter.streamrefactoring.core.descriptors.OptimizeStreamRefactoringDescriptor;
 import edu.cuny.hunter.streamrefactoring.core.messages.Messages;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
 
@@ -359,7 +359,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 			// TODO: Fill in description.
 
-			ConvertStreamToParallelRefactoringDescriptor descriptor = new ConvertStreamToParallelRefactoringDescriptor(
+			OptimizeStreamRefactoringDescriptor descriptor = new OptimizeStreamRefactoringDescriptor(
 					null, "TODO", null, arguments, flags);
 
 			return new DynamicValidationRefactoringChange(descriptor, this.getProcessorName(), manager.getAllChanges());
@@ -431,7 +431,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	@Override
 	public String getIdentifier() {
-		return ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID;
+		return OptimizeStreamRefactoringDescriptor.REFACTORING_ID;
 	}
 
 	protected IJavaProject[] getJavaProjects() {

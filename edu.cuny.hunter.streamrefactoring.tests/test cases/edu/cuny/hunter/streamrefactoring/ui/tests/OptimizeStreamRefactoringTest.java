@@ -55,9 +55,9 @@ import junit.framework.TestSuite;
  *
  */
 @SuppressWarnings("restriction")
-public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
+public class OptimizeStreamRefactoringTest extends RefactoringTest {
 
-	private static final Class<ConvertStreamToParallelRefactoringTest> CLAZZ = ConvertStreamToParallelRefactoringTest.class;
+	private static final Class<OptimizeStreamRefactoringTest> CLAZZ = OptimizeStreamRefactoringTest.class;
 
 	private static final String ENTRY_POINT_FILENAME = "entry_points.txt";
 
@@ -228,7 +228,7 @@ public class ConvertStreamToParallelRefactoringTest extends RefactoringTest {
 				}
 	}
 
-	public ConvertStreamToParallelRefactoringTest(String name) {
+	public OptimizeStreamRefactoringTest(String name) {
 		super(name);
 	}
 
