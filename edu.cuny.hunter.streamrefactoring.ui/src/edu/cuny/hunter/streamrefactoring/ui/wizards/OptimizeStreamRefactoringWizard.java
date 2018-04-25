@@ -154,7 +154,15 @@ public class OptimizeStreamRefactoringWizard extends RefactoringWizard {
 			processor.setUseImplicitTestEntrypoints(settings.getBoolean(USE_IMPLICIT_TEST_ENTRY_POINTS));
 			processor.setUseImplicitBenchmarkEntrypoints(settings.getBoolean(USE_IMPLICIT_JMH_ENTRY_POINTS));
 			processor.setUseImplicitJavaFXEntrypoints(settings.getBoolean(USE_IMPLICIT_JAVAFX_ENTRY_POINTS));
-			processor.setNForStreams(settings.getInt(K_FOR_STREAMS));
+
+			int value;
+			try {
+				value = settings.getInt(K_FOR_STREAMS);
+			} catch (NumberFormatException e) {
+				settings.put(K_FOR_STREAMS, this.getProcessor().getNForStreams());
+				value = settings.getInt(K_FOR_STREAMS);
+			}
+			processor.setNForStreams(value);
 		}
 
 		private void updateStatus() {
