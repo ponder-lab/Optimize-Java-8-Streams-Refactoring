@@ -26,7 +26,7 @@ import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.participants.ProcessorBasedRefactoring;
 import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
 
-import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
+import edu.cuny.hunter.streamrefactoring.core.refactorings.OptimizeStreamsRefactoringProcessor;
 
 /**
  * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi
@@ -35,47 +35,47 @@ import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStre
  */
 @SuppressWarnings("restriction")
 public final class Util {
-	public static ConvertToParallelStreamRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
+	public static OptimizeStreamsRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
 			IJavaProject[] projects, boolean useImplicitEntrypoints, boolean useImplicitTestEntrypoints,
 			boolean useImplicitBenchmarkEntrypoints, boolean useImplicitJavaFXEntrypoints,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(projects[0]);
-		ConvertToParallelStreamRefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor(
+		OptimizeStreamsRefactoringProcessor processor = new OptimizeStreamsRefactoringProcessor(
 				projects, settings, false, useImplicitEntrypoints, useImplicitTestEntrypoints,
 				useImplicitBenchmarkEntrypoints, useImplicitJavaFXEntrypoints, monitor);
 		return processor;
 	}
 
-	public static ConvertToParallelStreamRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
+	public static OptimizeStreamsRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
 			IJavaProject[] projects, int nForStreams, boolean useImplicitEntrypoints,
 			boolean useImplicitTestEntrypoints, boolean useImplicitBenchmarkEntrypoints,
 			boolean useImplicitJavaFXEntrypoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
-		ConvertToParallelStreamRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(
+		OptimizeStreamsRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(
 				projects, useImplicitEntrypoints, useImplicitTestEntrypoints, useImplicitBenchmarkEntrypoints,
 				useImplicitJavaFXEntrypoints, monitor);
 		processor.setNForStreams(nForStreams);
 		return processor;
 	}
 
-	public static ConvertToParallelStreamRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
+	public static OptimizeStreamsRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
 			IJavaProject[] projects, Optional<IProgressMonitor> monitor) throws JavaModelException {
 		if (projects.length < 1) 
 			throw new IllegalArgumentException("No projects.");
 		
 		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(projects[0]);
-		ConvertToParallelStreamRefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor(
+		OptimizeStreamsRefactoringProcessor processor = new OptimizeStreamsRefactoringProcessor(
 				projects, settings, monitor);
 		return processor;
 	}
 
 	public static ProcessorBasedRefactoring createRefactoring() throws JavaModelException {
-		RefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor();
+		RefactoringProcessor processor = new OptimizeStreamsRefactoringProcessor();
 		return new ProcessorBasedRefactoring(processor);
 	}
 
 	public static ProcessorBasedRefactoring createRefactoring(IJavaProject[] projects,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
-		ConvertToParallelStreamRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(
+		OptimizeStreamsRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(
 				projects, monitor);
 		return new ProcessorBasedRefactoring(processor);
 	}

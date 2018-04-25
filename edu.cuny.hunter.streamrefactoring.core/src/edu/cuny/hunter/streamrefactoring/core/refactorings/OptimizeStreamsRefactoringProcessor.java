@@ -67,10 +67,7 @@ import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
  *         Khatchadourian</a>
  */
 @SuppressWarnings({ "restriction" })
-public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProcessor {
-
-	// private Set<IMethod> unmigratableMethods = new
-	// UnmigratableMethodSet(sourceMethods);
+public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 
 	/**
 	 * The minimum logging level, one of the constants in
@@ -91,7 +88,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	private static void log(int severity, String message) {
 		if (severity >= getLoggingLevel()) {
-			String name = FrameworkUtil.getBundle(ConvertToParallelStreamRefactoringProcessor.class).getSymbolicName();
+			String name = FrameworkUtil.getBundle(OptimizeStreamsRefactoringProcessor.class).getSymbolicName();
 			IStatus status = new Status(severity, name, message);
 			JavaPlugin.log(status);
 		}
@@ -151,16 +148,16 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	private boolean useImplicitTestEntrypoints = false;
 
-	public ConvertToParallelStreamRefactoringProcessor() throws JavaModelException {
+	public OptimizeStreamsRefactoringProcessor() throws JavaModelException {
 		this(null, null, false, true, false, false, false, Optional.empty());
 	}
 
-	public ConvertToParallelStreamRefactoringProcessor(final CodeGenerationSettings settings,
+	public OptimizeStreamsRefactoringProcessor(final CodeGenerationSettings settings,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		this(null, settings, false, true, false, false, false, monitor);
 	}
 
-	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects,
 			final CodeGenerationSettings settings, boolean layer, boolean useImplicitEntrypoints,
 			boolean useImplicitTestEntrypoints, boolean useImplicitBenchmarkEntrypoints,
 			boolean useImplicitJavaFXEntrypoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
@@ -177,7 +174,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		}
 	}
 
-	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects,
 			final CodeGenerationSettings settings, boolean layer, int nForStreams, boolean useImplicitEntrypoints,
 			boolean useImplicitTestEntrypoints, boolean useImplicitBenchmarkEntrypoints,
 			boolean useImplicitJavaFXEntrypoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
@@ -186,24 +183,24 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		this.nForStreams = nForStreams;
 	}
 
-	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects,
 			final CodeGenerationSettings settings, boolean useImplicitJoinpoints, Optional<IProgressMonitor> monitor)
 			throws JavaModelException {
 		this(javaProjects, settings, false, useImplicitJoinpoints, false, false, false, monitor);
 	}
 
-	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects,
 			final CodeGenerationSettings settings, int nForStreams, boolean useImplicitJoinpoints,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		this(javaProjects, settings, false, nForStreams, useImplicitJoinpoints, false, false, false, monitor);
 	}
 
-	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects,
 			final CodeGenerationSettings settings, Optional<IProgressMonitor> monitor) throws JavaModelException {
 		this(javaProjects, settings, false, true, false, false, false, monitor);
 	}
 
-	public ConvertToParallelStreamRefactoringProcessor(Optional<IProgressMonitor> monitor) throws JavaModelException {
+	public OptimizeStreamsRefactoringProcessor(Optional<IProgressMonitor> monitor) throws JavaModelException {
 		this(null, null, false, true, false, false, false, monitor);
 	}
 

@@ -66,7 +66,7 @@ import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionSuccess;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Refactoring;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
-import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
+import edu.cuny.hunter.streamrefactoring.core.refactorings.OptimizeStreamsRefactoringProcessor;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
 import edu.cuny.hunter.streamrefactoring.eval.utils.Util;
 import net.sourceforge.metrics.core.Constants;
@@ -223,7 +223,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	}
 
 	private static Collection<Entrypoint> getProjectEntryPoints(IJavaProject javaProject,
-			ConvertToParallelStreamRefactoringProcessor processor) {
+			OptimizeStreamsRefactoringProcessor processor) {
 		return processor.getEntryPoints(javaProject);
 	}
 
@@ -313,7 +313,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter entryPointsPrinter = null;
 			PrintWriter entryPointsTXTPrinter = null;
 
-			ConvertToParallelStreamRefactoringProcessor processor = null;
+			OptimizeStreamsRefactoringProcessor processor = null;
 
 			try {
 				if (BUILD_WORKSPACE) {
@@ -405,7 +405,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 							shouldFindImplicitBenchmarkEntrypoints, shouldFindImplicitJavaFXEntrypoints,
 							Optional.of(monitor));
 					resultsTimeCollector.stop();
-					ConvertToParallelStreamRefactoringProcessor.setLoggingLevel(LOGGING_LEVEL);
+					OptimizeStreamsRefactoringProcessor.setLoggingLevel(LOGGING_LEVEL);
 
 					// run the precondition checking.
 					RefactoringStatus status = null;
