@@ -97,8 +97,14 @@ public class OptimizeStreamRefactoringWizard extends RefactoringWizard {
 					this.getProcessor()::setUseImplicitBenchmarkEntrypoints, result);
 			addBooleanButton("Automatically discover GUI entry points (JavaFX).", USE_IMPLICIT_JAVAFX_ENTRY_POINTS,
 					this.getProcessor()::setUseImplicitJavaFXEntrypoints, result);
+
+			Composite compositeForIntegerButton = new Composite(result, SWT.NONE);
+			GridLayout layoutForIntegerButton = new GridLayout(2, false);
+
+			compositeForIntegerButton.setLayout(layoutForIntegerButton);
+
 			addIntegerButton("k value to use for streams for kCFA: ", K_FOR_STREAMS,
-					this.getProcessor()::setNForStreams, result);
+					this.getProcessor()::setNForStreams, compositeForIntegerButton);
 
 			updateStatus();
 			Dialog.applyDialogFont(result);
