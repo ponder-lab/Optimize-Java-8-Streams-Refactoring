@@ -466,21 +466,6 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 		return this.streamSet;
 	}
 
-	private ITypeHierarchy getTypeHierarchy(IType type, Optional<IProgressMonitor> monitor) throws JavaModelException {
-		try {
-			ITypeHierarchy ret = this.getTypeToTypeHierarchyMap().get(type);
-
-			if (ret == null) {
-				ret = type.newTypeHierarchy(monitor.orElseGet(NullProgressMonitor::new));
-				this.getTypeToTypeHierarchyMap().put(type, ret);
-			}
-
-			return ret;
-		} finally {
-			monitor.ifPresent(IProgressMonitor::done);
-		}
-	}
-
 	protected Map<ITypeRoot, CompilationUnit> getTypeRootToCompilationUnitMap() {
 		return this.typeRootToCompilationUnitMap;
 	}
@@ -493,19 +478,35 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 		return this.getStreamSet().parallelStream().filter(s -> s.getStatus().hasError()).collect(Collectors.toSet());
 	}
 
-	private boolean getUseImplicitBenchmarkEntrypoints() {
+	public boolean getUseImplicitBenchmarkEntrypoints() {
 		return this.useImplicitBenchmarkEntrypoints;
 	}
 
-	private boolean getUseImplicitEntrypoints() {
+	public boolean getUseImplicitEntrypoints() {
 		return this.useImplicitEntrypoints;
 	}
 
-	private boolean getUseImplicitJavaFXEntrypoints() {
+	public void setUseImplicitBenchmarkEntrypoints(boolean useImplicitBenchmarkEntrypoints) {
+		this.useImplicitBenchmarkEntrypoints = useImplicitBenchmarkEntrypoints;
+	}
+
+	public void setUseImplicitEntrypoints(boolean useImplicitEntrypoints) {
+		this.useImplicitEntrypoints = useImplicitEntrypoints;
+	}
+
+	public void setUseImplicitJavaFXEntrypoints(boolean useImplicitJavaFXEntrypoints) {
+		this.useImplicitJavaFXEntrypoints = useImplicitJavaFXEntrypoints;
+	}
+
+	public void setUseImplicitTestEntrypoints(boolean useImplicitTestEntrypoints) {
+		this.useImplicitTestEntrypoints = useImplicitTestEntrypoints;
+	}
+
+	public boolean getUseImplicitJavaFXEntrypoints() {
 		return this.useImplicitJavaFXEntrypoints;
 	}
 
-	private boolean getUseImplicitTestEntrypoints() {
+	public boolean getUseImplicitTestEntrypoints() {
 		return this.useImplicitTestEntrypoints;
 	}
 
