@@ -31,7 +31,7 @@ An alpha version of our tool is available via an Eclipse update site at: https:/
 
 ### Dependencies
 
-The refactoring has several dependencies as listed below. If you experience any trouble installing the plug-in using the above update site, you can manually install the dependencies. The latest version of each plug-in should be installed in the order they are presented:
+The refactoring has several dependencies as listed below. If you experience any trouble installing the plug-in using the above update site, you can manually install the dependencies. The latest version of the plug-ins should be installed. If installing SAFE, not that WALA must be installed first:
 
 Dependency | Update Site
 --- | ---
