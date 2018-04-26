@@ -772,7 +772,7 @@ public class Stream {
 		return builder.toString();
 	}
 
-	public void convertToParallel(CompilationUnitRewrite rewrite) {
+	protected void convertToParallel(CompilationUnitRewrite rewrite) {
 		LOGGER.info("Converting to parallel.");
 		MethodInvocation creation = this.getCreation();
 		ASTRewrite astRewrite = rewrite.getASTRewrite();
@@ -780,13 +780,30 @@ public class Stream {
 		astRewrite.replace(creation.getName(), newMethodName, null);
 	}
 
-	public void convertToSequential(CompilationUnitRewrite rewrite) {
+	protected void convertToSequential(CompilationUnitRewrite rewrite) {
 		// TODO Auto-generated method stub
 		LOGGER.info("Converting to sequential.");
 	}
 
-	public void unorder(CompilationUnitRewrite rewrite) {
+	protected void unorder(CompilationUnitRewrite rewrite) {
 		// TODO Auto-generated method stub
 		LOGGER.info("Unordering.");
+	}
+
+	public void transform(CompilationUnitRewrite rewrite) {
+		// for each stream transformation.
+		for (TransformationAction action : getActions()) {
+			switch (action) {
+			case CONVERT_TO_PARALLEL:
+				convertToParallel(rewrite);
+				break;
+			case CONVERT_TO_SEQUENTIAL:
+				convertToSequential(rewrite);
+				break;
+			case UNORDER:
+				unorder(rewrite);
+				break;
+			}
+		}
 	}
 }
