@@ -1,7 +1,7 @@
 package edu.cuny.hunter.streamrefactoring.eval.handlers;
 
 import static edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames.LOGGER_NAME;
-import static edu.cuny.hunter.streamrefactoring.core.utils.Util.createConvertToParallelStreamRefactoringProcessor;
+import static edu.cuny.hunter.streamrefactoring.core.utils.Util.createOptimizeStreamsRefactoringProcessor;
 
 import java.io.File;
 import java.io.FileReader;
@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -29,7 +28,6 @@ import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
 import org.eclipse.core.resources.IncrementalProjectBuilder;
 import org.eclipse.core.resources.ResourcesPlugin;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -45,12 +43,6 @@ import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.ITypeHierarchy;
 import org.eclipse.jdt.core.JavaModelException;
-import org.eclipse.jdt.core.search.IJavaSearchConstants;
-import org.eclipse.jdt.core.search.SearchEngine;
-import org.eclipse.jdt.core.search.SearchMatch;
-import org.eclipse.jdt.core.search.SearchParticipant;
-import org.eclipse.jdt.core.search.SearchPattern;
-import org.eclipse.jdt.core.search.SearchRequestor;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.RefactoringStatusEntry;
@@ -61,13 +53,13 @@ import com.google.common.collect.Sets;
 import com.google.common.collect.Sets.SetView;
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 
+import edu.cuny.citytech.refactoring.common.core.TimeCollector;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionSuccess;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Refactoring;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
 import edu.cuny.hunter.streamrefactoring.core.refactorings.OptimizeStreamsRefactoringProcessor;
-import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
 import edu.cuny.hunter.streamrefactoring.eval.utils.Util;
 import net.sourceforge.metrics.core.Constants;
 import net.sourceforge.metrics.core.Metric;
@@ -80,7 +72,8 @@ import net.sourceforge.metrics.core.sources.Dispatcher;
  * @see org.eclipse.core.commands.IHandler
  * @see org.eclipse.core.commands.AbstractHandler
  */
-public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractHandler {
+@SuppressWarnings("deprecation")
+public class EvaluateOptimizeStreamsRefactoringHandler extends AbstractHandler {
 
 	private static final boolean BUILD_WORKSPACE = false;
 
@@ -144,34 +137,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 	private static File findEvaluationPropertiesFile(IJavaProject project) throws JavaModelException {
 		IPath location = project.getCorrespondingResource().getLocation();
 		return findEvaluationPropertiesFile(location.toFile());
-	}
-
-	private static IType[] getAllDeclaringTypeSubtypes(IMethod method) throws JavaModelException {
-		IType declaringType = method.getDeclaringType();
-		ITypeHierarchy typeHierarchy = declaringType.newTypeHierarchy(new NullProgressMonitor());
-		IType[] allSubtypes = typeHierarchy.getAllSubtypes(declaringType);
-		return allSubtypes;
-	}
-
-	private static Set<IMethod> getAllMethods(IJavaProject javaProject) throws JavaModelException {
-		Set<IMethod> methods = new HashSet<>();
-
-		// collect all methods from this project.
-		IPackageFragment[] packageFragments = javaProject.getPackageFragments();
-		for (IPackageFragment iPackageFragment : packageFragments) {
-			ICompilationUnit[] compilationUnits = iPackageFragment.getCompilationUnits();
-			for (ICompilationUnit iCompilationUnit : compilationUnits) {
-				IType[] allTypes = iCompilationUnit.getAllTypes();
-				for (IType type : allTypes)
-					Collections.addAll(methods, type.getMethods());
-			}
-		}
-		return methods;
-	}
-
-	@SuppressWarnings("unused")
-	private static int getMethodLinesOfCode(IMethod method) {
-		return getMetric(method, Constants.MLOC);
 	}
 
 	private static int getMetric(IJavaElement elem, String key) {
@@ -400,7 +365,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					int nToUseForStreams = getNForStreams(javaProject);
 
 					resultsTimeCollector.start();
-					processor = createConvertToParallelStreamRefactoringProcessor(new IJavaProject[] { javaProject },
+					processor = createOptimizeStreamsRefactoringProcessor(new IJavaProject[] { javaProject },
 							nToUseForStreams, shouldFindImplicitEntrypoints, shouldFindImplicitTestEntrypoints,
 							shouldFindImplicitBenchmarkEntrypoints, shouldFindImplicitJavaFXEntrypoints,
 							Optional.of(monitor));
@@ -634,21 +599,5 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 		}).schedule();
 
 		return null;
-	}
-
-	private Set<SearchMatch> findReferences(Set<? extends IJavaElement> elements) throws CoreException {
-		Set<SearchMatch> ret = new HashSet<>();
-		for (IJavaElement elem : elements)
-			new SearchEngine().search(
-					SearchPattern.createPattern(elem, IJavaSearchConstants.REFERENCES, SearchPattern.R_EXACT_MATCH),
-					new SearchParticipant[] { SearchEngine.getDefaultSearchParticipant() },
-					SearchEngine.createWorkspaceScope(), new SearchRequestor() {
-
-						@Override
-						public void acceptSearchMatch(SearchMatch match) throws CoreException {
-							ret.add(match);
-						}
-					}, new NullProgressMonitor());
-		return ret;
 	}
 }

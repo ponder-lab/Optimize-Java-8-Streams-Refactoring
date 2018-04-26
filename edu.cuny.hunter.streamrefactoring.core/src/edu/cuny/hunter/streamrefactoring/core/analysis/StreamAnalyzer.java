@@ -43,9 +43,9 @@ import com.ibm.wala.ssa.SSAOptions;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.scope.JUnitEntryPoints;
 
+import edu.cuny.citytech.refactoring.common.core.TimeCollector;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamStateMachine.Statistics;
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
-import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 
 @SuppressWarnings("restriction")

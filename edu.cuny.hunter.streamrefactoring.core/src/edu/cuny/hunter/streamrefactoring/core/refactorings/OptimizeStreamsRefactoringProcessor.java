@@ -1,9 +1,5 @@
 package edu.cuny.hunter.streamrefactoring.core.refactorings;
 
-import static org.eclipse.jdt.ui.JavaElementLabels.ALL_FULLY_QUALIFIED;
-import static org.eclipse.jdt.ui.JavaElementLabels.getElementLabel;
-
-import java.text.MessageFormat;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -15,7 +11,6 @@ import java.util.stream.Collectors;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
-import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubMonitor;
@@ -26,18 +21,10 @@ import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IMember;
 import org.eclipse.jdt.core.IPackageFragment;
 import org.eclipse.jdt.core.IPackageFragmentRoot;
-import org.eclipse.jdt.core.IType;
-import org.eclipse.jdt.core.ITypeHierarchy;
-import org.eclipse.jdt.core.ITypeRoot;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.dom.CompilationUnit;
-import org.eclipse.jdt.core.refactoring.CompilationUnitChange;
-import org.eclipse.jdt.core.search.SearchEngine;
 import org.eclipse.jdt.internal.corext.codemanipulation.CodeGenerationSettings;
-import org.eclipse.jdt.internal.corext.refactoring.base.JavaStatusContext;
 import org.eclipse.jdt.internal.corext.refactoring.changes.DynamicValidationRefactoringChange;
-import org.eclipse.jdt.internal.corext.refactoring.structure.CompilationUnitRewrite;
-import org.eclipse.jdt.internal.corext.refactoring.util.RefactoringASTParser;
 import org.eclipse.jdt.internal.corext.refactoring.util.TextEditBasedChangeManager;
 import org.eclipse.jdt.internal.ui.JavaPlugin;
 import org.eclipse.ltk.core.refactoring.Change;
@@ -46,19 +33,15 @@ import org.eclipse.ltk.core.refactoring.GroupCategorySet;
 import org.eclipse.ltk.core.refactoring.RefactoringDescriptor;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.participants.CheckConditionsContext;
-import org.eclipse.ltk.core.refactoring.participants.RefactoringParticipant;
-import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
-import org.eclipse.ltk.core.refactoring.participants.SharableParticipants;
 import org.osgi.framework.FrameworkUtil;
 
 import com.ibm.wala.ipa.callgraph.Entrypoint;
 
-import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
+import edu.cuny.citytech.refactoring.common.core.RefactoringProcessor;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalyzer;
 import edu.cuny.hunter.streamrefactoring.core.descriptors.OptimizeStreamRefactoringDescriptor;
 import edu.cuny.hunter.streamrefactoring.core.messages.Messages;
-import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
 
 /**
  * The activator class controls the plug-in life cycle
@@ -66,25 +49,15 @@ import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
  * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi
  *         Khatchadourian</a>
  */
-@SuppressWarnings({ "restriction" })
+@SuppressWarnings({ "restriction", "deprecation" })
 public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
-
-	/**
-	 * The minimum logging level, one of the constants in
-	 * org.eclipse.core.runtime.IStatus.
-	 */
-	private static int loggingLevel = IStatus.WARNING;
 
 	private static final int N_FOR_STREAMS_DEFAULT = 2;
 
 	@SuppressWarnings("unused")
-	private static final GroupCategorySet SET_CONVERT_STREAM_TO_PARALLEL = new GroupCategorySet(
+	private static final GroupCategorySet SET_OPTIMIZE_STREAMS = new GroupCategorySet(
 			new GroupCategory("edu.cuny.hunter.streamrefactoring", //$NON-NLS-1$
 					Messages.CategoryName, Messages.CategoryDescription));
-
-	protected static int getLoggingLevel() {
-		return loggingLevel;
-	}
 
 	private static void log(int severity, String message) {
 		if (severity >= getLoggingLevel()) {
@@ -94,32 +67,12 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 		}
 	}
 
+	@SuppressWarnings("unused")
 	private static void logWarning(String message) {
 		log(IStatus.WARNING, message);
 	}
 
-	/**
-	 * Minimum logging level. One of the constants in
-	 * org.eclipse.core.runtime.IStatus.
-	 *
-	 * @param level The minimum logging level to set.
-	 * @see org.eclipse.core.runtime.IStatus.
-	 */
-	public static void setLoggingLevel(int level) {
-		loggingLevel = level;
-	}
-
-	private Map<ICompilationUnit, CompilationUnitRewrite> compilationUnitToCompilationUnitRewriteMap = new HashMap<>();
-
-	/**
-	 * For excluding AST parse time.
-	 */
-	private TimeCollector excludedTimeCollector = new TimeCollector();
-
 	private IJavaProject[] javaProjects;
-
-	/** Does the refactoring use a working copy layer? */
-	private final boolean layer;
 
 	private int nForStreams = N_FOR_STREAMS_DEFAULT;
 
@@ -129,24 +82,15 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 
 	private Map<IJavaProject, Collection<Entrypoint>> projectToEntryPoints;
 
-	private SearchEngine searchEngine = new SearchEngine();
-
-	/** The code generation settings, or <code>null</code> */
-	private CodeGenerationSettings settings;
-
 	private Set<Stream> streamSet;
 
-	private Map<ITypeRoot, CompilationUnit> typeRootToCompilationUnitMap = new HashMap<>();
-
-	private Map<IType, ITypeHierarchy> typeToTypeHierarchyMap = new HashMap<>();
-
-	private boolean useImplicitBenchmarkEntrypoints = false;
+	private boolean useImplicitBenchmarkEntrypoints;
 
 	private boolean useImplicitEntrypoints = true;
 
-	private boolean useImplicitJavaFXEntrypoints = false;
+	private boolean useImplicitJavaFXEntrypoints;
 
-	private boolean useImplicitTestEntrypoints = false;
+	private boolean useImplicitTestEntrypoints;
 
 	public OptimizeStreamsRefactoringProcessor() throws JavaModelException {
 		this(null, null, false, true, false, false, false, Optional.empty());
@@ -157,10 +101,10 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 		this(null, settings, false, true, false, false, false, monitor);
 	}
 
-	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects,
-			final CodeGenerationSettings settings, boolean layer, boolean useImplicitEntrypoints,
-			boolean useImplicitTestEntrypoints, boolean useImplicitBenchmarkEntrypoints,
-			boolean useImplicitJavaFXEntrypoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects, final CodeGenerationSettings settings,
+			boolean layer, boolean useImplicitEntrypoints, boolean useImplicitTestEntrypoints,
+			boolean useImplicitBenchmarkEntrypoints, boolean useImplicitJavaFXEntrypoints,
+			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		try {
 			this.javaProjects = javaProjects;
 			this.settings = settings;
@@ -174,41 +118,33 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 		}
 	}
 
-	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects,
-			final CodeGenerationSettings settings, boolean layer, int nForStreams, boolean useImplicitEntrypoints,
-			boolean useImplicitTestEntrypoints, boolean useImplicitBenchmarkEntrypoints,
-			boolean useImplicitJavaFXEntrypoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects, final CodeGenerationSettings settings,
+			boolean layer, int nForStreams, boolean useImplicitEntrypoints, boolean useImplicitTestEntrypoints,
+			boolean useImplicitBenchmarkEntrypoints, boolean useImplicitJavaFXEntrypoints,
+			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		this(javaProjects, settings, layer, useImplicitEntrypoints, useImplicitTestEntrypoints,
 				useImplicitBenchmarkEntrypoints, useImplicitJavaFXEntrypoints, monitor);
 		this.nForStreams = nForStreams;
 	}
 
-	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects,
-			final CodeGenerationSettings settings, boolean useImplicitJoinpoints, Optional<IProgressMonitor> monitor)
-			throws JavaModelException {
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects, final CodeGenerationSettings settings,
+			boolean useImplicitJoinpoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
 		this(javaProjects, settings, false, useImplicitJoinpoints, false, false, false, monitor);
 	}
 
-	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects,
-			final CodeGenerationSettings settings, int nForStreams, boolean useImplicitJoinpoints,
-			Optional<IProgressMonitor> monitor) throws JavaModelException {
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects, final CodeGenerationSettings settings,
+			int nForStreams, boolean useImplicitJoinpoints, Optional<IProgressMonitor> monitor)
+			throws JavaModelException {
 		this(javaProjects, settings, false, nForStreams, useImplicitJoinpoints, false, false, false, monitor);
 	}
 
-	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects,
-			final CodeGenerationSettings settings, Optional<IProgressMonitor> monitor) throws JavaModelException {
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects, final CodeGenerationSettings settings,
+			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		this(javaProjects, settings, false, true, false, false, false, monitor);
 	}
 
 	public OptimizeStreamsRefactoringProcessor(Optional<IProgressMonitor> monitor) throws JavaModelException {
 		this(null, null, false, true, false, false, false, monitor);
-	}
-
-	private RefactoringStatus checkExistence(IMember member, PreconditionFailure failure) {
-		// if (member == null || !member.exists()) {
-		// return createError(failure, member);
-		// }
-		return new RefactoringStatus();
 	}
 
 	@Override
@@ -282,17 +218,12 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 	public RefactoringStatus checkInitialConditions(IProgressMonitor pm)
 			throws CoreException, OperationCanceledException {
 		try {
-			this.clearCaches();
-			this.getExcludedTimeCollector().clear();
+			RefactoringStatus status = super.checkInitialConditions(pm);
 
-			// if (this.getSourceMethods().isEmpty())
-			// return
-			// RefactoringStatus.createFatalErrorStatus(Messages.StreamsNotSpecified);
-			// else {
-			RefactoringStatus status = new RefactoringStatus();
-			pm.beginTask(Messages.CheckingPreconditions, 1);
+			if (this.getJavaProjects().length == 0)
+				status.merge(RefactoringStatus.createFatalErrorStatus(Messages.StreamsNotSpecified));
+
 			return status;
-			// }
 		} catch (Exception e) {
 			JavaPlugin.log(e);
 			throw e;
@@ -301,37 +232,9 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 		}
 	}
 
-	private RefactoringStatus checkProjectCompliance(IJavaProject destinationProject) throws JavaModelException {
-		RefactoringStatus status = new RefactoringStatus();
-
-		// if (!JavaModelUtil.is18OrHigher(destinationProject))
-		// addErrorAndMark(status,
-		// PreconditionFailure.DestinationProjectIncompatible, sourceMethod,
-		// targetMethod);
-
-		return status;
-	}
-
-	private RefactoringStatus checkStructure(IMember member) throws JavaModelException {
-		if (!member.isStructureKnown())
-			return RefactoringStatus.createErrorStatus(
-					MessageFormat.format(Messages.CUContainsCompileErrors, getElementLabel(member, ALL_FULLY_QUALIFIED),
-							getElementLabel(member.getCompilationUnit(), ALL_FULLY_QUALIFIED)),
-					JavaStatusContext.create(member.getCompilationUnit()));
-		return new RefactoringStatus();
-	}
-
-	private RefactoringStatus checkWritabilitiy(IMember member, PreconditionFailure failure) {
-		// if (member.isBinary() || member.isReadOnly()) {
-		// return createError(failure, member);
-		// }
-		return new RefactoringStatus();
-	}
-
-	public void clearCaches() {
-		this.getTypeToTypeHierarchyMap().clear();
-		this.getCompilationUnitToCompilationUnitRewriteMap().clear();
-		this.getTypeRootToCompilationUnitMap().clear();
+	@Override
+	protected RefactoringStatus checkStructure(IMember member) throws JavaModelException {
+		return this.checkStructure(member, Messages.CUContainsCompileErrors);
 	}
 
 	@Override
@@ -356,8 +259,8 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 
 			// TODO: Fill in description.
 
-			OptimizeStreamRefactoringDescriptor descriptor = new OptimizeStreamRefactoringDescriptor(
-					null, "TODO", null, arguments, flags);
+			OptimizeStreamRefactoringDescriptor descriptor = new OptimizeStreamRefactoringDescriptor(null, "TODO", null,
+					arguments, flags);
 
 			return new DynamicValidationRefactoringChange(descriptor, this.getProcessorName(), manager.getAllChanges());
 		} finally {
@@ -367,63 +270,15 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 	}
 
 	/**
-	 * Creates a working copy layer if necessary.
-	 *
-	 * @param monitor the progress monitor to use
-	 * @return a status describing the outcome of the operation
-	 */
-	private RefactoringStatus createWorkingCopyLayer(IProgressMonitor monitor) {
-		try {
-			monitor.beginTask(Messages.CheckingPreconditions, 1);
-			// TODO ICompilationUnit unit =
-			// getDeclaringType().getCompilationUnit();
-			// if (fLayer)
-			// unit = unit.findWorkingCopy(fOwner);
-			// resetWorkingCopies(unit);
-			return new RefactoringStatus();
-		} finally {
-			monitor.done();
-		}
-	}
-
-	private CompilationUnit getCompilationUnit(ITypeRoot root, IProgressMonitor pm) {
-		CompilationUnit compilationUnit = this.getTypeRootToCompilationUnitMap().get(root);
-		if (compilationUnit == null) {
-			this.getExcludedTimeCollector().start();
-			compilationUnit = RefactoringASTParser.parseWithASTProvider(root, true, pm);
-			this.getExcludedTimeCollector().stop();
-			this.getTypeRootToCompilationUnitMap().put(root, compilationUnit);
-		}
-		return compilationUnit;
-	}
-
-	private CompilationUnitRewrite getCompilationUnitRewrite(ICompilationUnit unit, CompilationUnit root) {
-		CompilationUnitRewrite rewrite = this.getCompilationUnitToCompilationUnitRewriteMap().get(unit);
-		if (rewrite == null) {
-			rewrite = new CompilationUnitRewrite(unit, root);
-			this.getCompilationUnitToCompilationUnitRewriteMap().put(unit, rewrite);
-		}
-		return rewrite;
-	}
-
-	protected Map<ICompilationUnit, CompilationUnitRewrite> getCompilationUnitToCompilationUnitRewriteMap() {
-		return this.compilationUnitToCompilationUnitRewriteMap;
-	}
-
-	/**
 	 * {@inheritDoc}
 	 */
 	@Override
 	public Object[] getElements() {
-		return null;
+		return this.getOptimizableStreams().stream().map(s -> s.getCreation()).toArray();
 	}
 
 	public Collection<Entrypoint> getEntryPoints(IJavaProject javaProject) {
 		return this.projectToEntryPoints == null ? Collections.emptySet() : this.projectToEntryPoints.get(javaProject);
-	}
-
-	public TimeCollector getExcludedTimeCollector() {
-		return this.excludedTimeCollector;
 	}
 
 	@Override
@@ -458,20 +313,8 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 		return Messages.Name;
 	}
 
-	private SearchEngine getSearchEngine() {
-		return this.searchEngine;
-	}
-
 	public Set<Stream> getStreamSet() {
 		return this.streamSet;
-	}
-
-	protected Map<ITypeRoot, CompilationUnit> getTypeRootToCompilationUnitMap() {
-		return this.typeRootToCompilationUnitMap;
-	}
-
-	protected Map<IType, ITypeHierarchy> getTypeToTypeHierarchyMap() {
-		return this.typeToTypeHierarchyMap;
 	}
 
 	public Set<Stream> getUnoptimizableStreams() {
@@ -486,22 +329,6 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 		return this.useImplicitEntrypoints;
 	}
 
-	public void setUseImplicitBenchmarkEntrypoints(boolean useImplicitBenchmarkEntrypoints) {
-		this.useImplicitBenchmarkEntrypoints = useImplicitBenchmarkEntrypoints;
-	}
-
-	public void setUseImplicitEntrypoints(boolean useImplicitEntrypoints) {
-		this.useImplicitEntrypoints = useImplicitEntrypoints;
-	}
-
-	public void setUseImplicitJavaFXEntrypoints(boolean useImplicitJavaFXEntrypoints) {
-		this.useImplicitJavaFXEntrypoints = useImplicitJavaFXEntrypoints;
-	}
-
-	public void setUseImplicitTestEntrypoints(boolean useImplicitTestEntrypoints) {
-		this.useImplicitTestEntrypoints = useImplicitTestEntrypoints;
-	}
-
 	public boolean getUseImplicitJavaFXEntrypoints() {
 		return this.useImplicitJavaFXEntrypoints;
 	}
@@ -512,33 +339,12 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 
 	@Override
 	public boolean isApplicable() throws CoreException {
-		// return
-		// RefactoringAvailabilityTester.isInterfaceMigrationAvailable(getSourceMethods().parallelStream()
-		// .filter(m ->
-		// !this.getUnmigratableMethods().contains(m)).toArray(IMethod[]::new),
-		// Optional.empty());
 		return true;
 	}
 
-	@Override
-	public RefactoringParticipant[] loadParticipants(RefactoringStatus status, SharableParticipants sharedParticipants)
-			throws CoreException {
-		return new RefactoringParticipant[0];
-	}
-
+	@SuppressWarnings("unused")
 	private void logInfo(String message) {
 		log(IStatus.INFO, message);
-	}
-
-	private void manageCompilationUnit(final TextEditBasedChangeManager manager, CompilationUnitRewrite rewrite,
-			Optional<IProgressMonitor> monitor) throws CoreException {
-		monitor.ifPresent(m -> m.beginTask("Creating change ...", IProgressMonitor.UNKNOWN));
-		CompilationUnitChange change = rewrite.createChange(false, monitor.orElseGet(NullProgressMonitor::new));
-
-		if (change != null)
-			change.setTextType("java");
-
-		manager.manage(rewrite.getCu(), change);
 	}
 
 	public void setNForStreams(int nForStreams) {
@@ -555,5 +361,21 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 
 	protected void setStreamSet(Set<Stream> streamSet) {
 		this.streamSet = streamSet;
+	}
+
+	public void setUseImplicitBenchmarkEntrypoints(boolean useImplicitBenchmarkEntrypoints) {
+		this.useImplicitBenchmarkEntrypoints = useImplicitBenchmarkEntrypoints;
+	}
+
+	public void setUseImplicitEntrypoints(boolean useImplicitEntrypoints) {
+		this.useImplicitEntrypoints = useImplicitEntrypoints;
+	}
+
+	public void setUseImplicitJavaFXEntrypoints(boolean useImplicitJavaFXEntrypoints) {
+		this.useImplicitJavaFXEntrypoints = useImplicitJavaFXEntrypoints;
+	}
+
+	public void setUseImplicitTestEntrypoints(boolean useImplicitTestEntrypoints) {
+		this.useImplicitTestEntrypoints = useImplicitTestEntrypoints;
 	}
 }

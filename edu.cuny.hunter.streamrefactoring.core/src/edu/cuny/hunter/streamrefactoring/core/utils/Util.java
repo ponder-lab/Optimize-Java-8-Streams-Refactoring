@@ -35,7 +35,7 @@ import edu.cuny.hunter.streamrefactoring.core.refactorings.OptimizeStreamsRefact
  */
 @SuppressWarnings("restriction")
 public final class Util {
-	public static OptimizeStreamsRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
+	public static OptimizeStreamsRefactoringProcessor createOptimizeStreamsRefactoringProcessor(
 			IJavaProject[] projects, boolean useImplicitEntrypoints, boolean useImplicitTestEntrypoints,
 			boolean useImplicitBenchmarkEntrypoints, boolean useImplicitJavaFXEntrypoints,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
@@ -46,24 +46,24 @@ public final class Util {
 		return processor;
 	}
 
-	public static OptimizeStreamsRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
+	public static OptimizeStreamsRefactoringProcessor createOptimizeStreamsRefactoringProcessor(
 			IJavaProject[] projects, int nForStreams, boolean useImplicitEntrypoints,
 			boolean useImplicitTestEntrypoints, boolean useImplicitBenchmarkEntrypoints,
 			boolean useImplicitJavaFXEntrypoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
-		OptimizeStreamsRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(
+		OptimizeStreamsRefactoringProcessor processor = createOptimizeStreamsRefactoringProcessor(
 				projects, useImplicitEntrypoints, useImplicitTestEntrypoints, useImplicitBenchmarkEntrypoints,
 				useImplicitJavaFXEntrypoints, monitor);
 		processor.setNForStreams(nForStreams);
 		return processor;
 	}
 
-	public static OptimizeStreamsRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
+	public static RefactoringProcessor createOptimizeStreamsRefactoringProcessor(
 			IJavaProject[] projects, Optional<IProgressMonitor> monitor) throws JavaModelException {
 		if (projects.length < 1) 
 			throw new IllegalArgumentException("No projects.");
 		
 		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(projects[0]);
-		OptimizeStreamsRefactoringProcessor processor = new OptimizeStreamsRefactoringProcessor(
+		RefactoringProcessor processor = new OptimizeStreamsRefactoringProcessor(
 				projects, settings, monitor);
 		return processor;
 	}
@@ -75,12 +75,12 @@ public final class Util {
 
 	public static ProcessorBasedRefactoring createRefactoring(IJavaProject[] projects,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
-		OptimizeStreamsRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(
+		RefactoringProcessor processor = createOptimizeStreamsRefactoringProcessor(
 				projects, monitor);
 		return new ProcessorBasedRefactoring(processor);
 	}
 
-	public static edu.cuny.citytech.refactoring.common.core.Refactoring createRefactoring(
+	public static Refactoring createRefactoring(
 			final Refactoring refactoring) {
 		return new edu.cuny.citytech.refactoring.common.core.Refactoring() {
 

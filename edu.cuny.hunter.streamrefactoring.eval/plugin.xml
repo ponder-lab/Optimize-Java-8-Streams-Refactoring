@@ -3,14 +3,14 @@
 <plugin>
   <extension point="org.eclipse.ui.commands">
     <command
-          defaultHandler="edu.cuny.hunter.streamrefactoring.eval.handlers.EvaluateConvertToParallelStreamRefactoringHandler"
+          defaultHandler="edu.cuny.hunter.streamrefactoring.eval.handlers.EvaluateOptimizeStreamsRefactoringHandler"
           description="Evaluates the Convert Stream to Parallel refactoring"
           id="edu.cuny.hunter.evaluate.convert.stream.to.parallel.refactoring.command"
           name="Evaluate Convert Stream To Parallel Refactoring"/>
   </extension>
   <extension point="org.eclipse.ui.handlers">
     <handler
-          class="edu.cuny.hunter.streamrefactoring.eval.handlers.EvaluateConvertToParallelStreamRefactoringHandler"
+          class="edu.cuny.hunter.streamrefactoring.eval.handlers.EvaluateOptimizeStreamsRefactoringHandler"
           commandId="edu.cuny.hunter.evaluate.convert.stream.to.parallel.refactoring.command">
       <activeWhen>
         <with variable="selection">
