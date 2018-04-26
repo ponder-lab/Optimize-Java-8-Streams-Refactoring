@@ -311,6 +311,19 @@ public class Stream {
 				"Can't find instance key for: " + this.getCreation() + " using tracked instances: " + trackedInstances);
 	}
 
+	protected void convertToParallel(CompilationUnitRewrite rewrite) {
+		LOGGER.info("Converting to parallel.");
+		MethodInvocation creation = this.getCreation();
+		ASTRewrite astRewrite = rewrite.getASTRewrite();
+		SimpleName newMethodName = creation.getAST().newSimpleName("parallelStream");
+		astRewrite.replace(creation.getName(), newMethodName, null);
+	}
+
+	protected void convertToSequential(CompilationUnitRewrite rewrite) {
+		// TODO Auto-generated method stub
+		LOGGER.info("Converting to sequential.");
+	}
+
 	public Set<TransformationAction> getActions() {
 		if (this.actions != null)
 			return Collections.unmodifiableSet(this.actions);
@@ -772,38 +785,24 @@ public class Stream {
 		return builder.toString();
 	}
 
-	protected void convertToParallel(CompilationUnitRewrite rewrite) {
-		LOGGER.info("Converting to parallel.");
-		MethodInvocation creation = this.getCreation();
-		ASTRewrite astRewrite = rewrite.getASTRewrite();
-		SimpleName newMethodName = creation.getAST().newSimpleName("parallelStream");
-		astRewrite.replace(creation.getName(), newMethodName, null);
-	}
-
-	protected void convertToSequential(CompilationUnitRewrite rewrite) {
-		// TODO Auto-generated method stub
-		LOGGER.info("Converting to sequential.");
+	public void transform(CompilationUnitRewrite rewrite) {
+		// for each stream transformation.
+		for (TransformationAction action : this.getActions())
+			switch (action) {
+			case CONVERT_TO_PARALLEL:
+				this.convertToParallel(rewrite);
+				break;
+			case CONVERT_TO_SEQUENTIAL:
+				this.convertToSequential(rewrite);
+				break;
+			case UNORDER:
+				this.unorder(rewrite);
+				break;
+			}
 	}
 
 	protected void unorder(CompilationUnitRewrite rewrite) {
 		// TODO Auto-generated method stub
 		LOGGER.info("Unordering.");
-	}
-
-	public void transform(CompilationUnitRewrite rewrite) {
-		// for each stream transformation.
-		for (TransformationAction action : getActions()) {
-			switch (action) {
-			case CONVERT_TO_PARALLEL:
-				convertToParallel(rewrite);
-				break;
-			case CONVERT_TO_SEQUENTIAL:
-				convertToSequential(rewrite);
-				break;
-			case UNORDER:
-				unorder(rewrite);
-				break;
-			}
-		}
 	}
 }
