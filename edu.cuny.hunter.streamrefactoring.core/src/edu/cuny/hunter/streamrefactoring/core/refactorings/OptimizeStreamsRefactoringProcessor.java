@@ -43,6 +43,7 @@ import org.eclipse.jdt.internal.ui.JavaPlugin;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.GroupCategory;
 import org.eclipse.ltk.core.refactoring.GroupCategorySet;
+import org.eclipse.ltk.core.refactoring.NullChange;
 import org.eclipse.ltk.core.refactoring.RefactoringDescriptor;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.participants.CheckConditionsContext;
@@ -56,6 +57,7 @@ import com.ibm.wala.ipa.callgraph.Entrypoint;
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalyzer;
+import edu.cuny.hunter.streamrefactoring.core.analysis.TransformationAction;
 import edu.cuny.hunter.streamrefactoring.core.descriptors.OptimizeStreamRefactoringDescriptor;
 import edu.cuny.hunter.streamrefactoring.core.messages.Messages;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
@@ -337,9 +339,33 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 	@Override
 	public Change createChange(IProgressMonitor pm) throws CoreException, OperationCanceledException {
 		try {
-			pm.beginTask(Messages.CreatingChange, 1);
-
 			final TextEditBasedChangeManager manager = new TextEditBasedChangeManager();
+			Set<Stream> optimizableStreams = this.getOptimizableStreams();
+
+			if (optimizableStreams.isEmpty())
+				return new NullChange(Messages.NoStreamsToOptimize);
+			
+			pm.beginTask("Transforming streams ...", optimizableStreams.size());
+			for (Stream stream : optimizableStreams) {
+				CompilationUnitRewrite rewrite = getCompilationUnitRewrite(stream.getEnclosingEclipseMethod().getCompilationUnit(),
+						stream.getEnclosingCompilationUnit());
+				
+				// for each stream transformation.
+				for (TransformationAction action : stream.getActions()) {
+					switch (action) {
+					case CONVERT_TO_PARALLEL:
+						stream.convertToParallel(rewrite);
+						break;
+					case CONVERT_TO_SEQUENTIAL:
+						stream.convertToSequential();
+						break;
+					case UNORDER:
+						stream.unorder(rewrite);
+						break;
+					}
+				}
+				pm.worked(1);
+			}
 
 			// save the source changes.
 			ICompilationUnit[] units = this.getCompilationUnitToCompilationUnitRewriteMap().keySet().stream()

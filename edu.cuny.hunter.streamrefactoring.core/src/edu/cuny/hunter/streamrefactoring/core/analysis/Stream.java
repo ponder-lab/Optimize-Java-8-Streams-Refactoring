@@ -35,9 +35,11 @@ import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
 import org.eclipse.jdt.internal.corext.dom.ASTNodes;
 import org.eclipse.jdt.internal.corext.dom.Bindings;
 import org.eclipse.jdt.internal.corext.refactoring.base.JavaStatusContext;
+import org.eclipse.jdt.internal.corext.refactoring.structure.CompilationUnitRewrite;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.RefactoringStatusContext;
@@ -768,5 +770,23 @@ public class Stream {
 		builder.append(this.status.getSeverity());
 		builder.append("]");
 		return builder.toString();
+	}
+
+	public void convertToParallel(CompilationUnitRewrite rewrite) {
+		LOGGER.info("Converting to parallel.");
+		MethodInvocation creation = this.getCreation();
+		ASTRewrite astRewrite = rewrite.getASTRewrite();
+		SimpleName newMethodName = creation.getAST().newSimpleName("parallelStream");
+		astRewrite.replace(creation.getName(), newMethodName, null);
+	}
+
+	public void convertToSequential(CompilationUnitRewrite rewrite) {
+		// TODO Auto-generated method stub
+		LOGGER.info("Converting to sequential.");
+	}
+
+	public void unorder(CompilationUnitRewrite rewrite) {
+		// TODO Auto-generated method stub
+		LOGGER.info("Unordering.");
 	}
 }
