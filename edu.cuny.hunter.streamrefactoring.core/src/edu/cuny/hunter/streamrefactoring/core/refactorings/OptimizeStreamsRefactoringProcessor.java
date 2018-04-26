@@ -104,7 +104,8 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 	 * Minimum logging level. One of the constants in
 	 * org.eclipse.core.runtime.IStatus.
 	 *
-	 * @param level The minimum logging level to set.
+	 * @param level
+	 *            The minimum logging level to set.
 	 * @see org.eclipse.core.runtime.IStatus.
 	 */
 	public static void setLoggingLevel(int level) {
@@ -159,10 +160,10 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 		this(null, settings, false, true, false, false, false, monitor);
 	}
 
-	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects,
-			final CodeGenerationSettings settings, boolean layer, boolean useImplicitEntrypoints,
-			boolean useImplicitTestEntrypoints, boolean useImplicitBenchmarkEntrypoints,
-			boolean useImplicitJavaFXEntrypoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects, final CodeGenerationSettings settings,
+			boolean layer, boolean useImplicitEntrypoints, boolean useImplicitTestEntrypoints,
+			boolean useImplicitBenchmarkEntrypoints, boolean useImplicitJavaFXEntrypoints,
+			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		try {
 			this.javaProjects = javaProjects;
 			this.settings = settings;
@@ -176,29 +177,28 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 		}
 	}
 
-	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects,
-			final CodeGenerationSettings settings, boolean layer, int nForStreams, boolean useImplicitEntrypoints,
-			boolean useImplicitTestEntrypoints, boolean useImplicitBenchmarkEntrypoints,
-			boolean useImplicitJavaFXEntrypoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects, final CodeGenerationSettings settings,
+			boolean layer, int nForStreams, boolean useImplicitEntrypoints, boolean useImplicitTestEntrypoints,
+			boolean useImplicitBenchmarkEntrypoints, boolean useImplicitJavaFXEntrypoints,
+			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		this(javaProjects, settings, layer, useImplicitEntrypoints, useImplicitTestEntrypoints,
 				useImplicitBenchmarkEntrypoints, useImplicitJavaFXEntrypoints, monitor);
 		this.nForStreams = nForStreams;
 	}
 
-	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects,
-			final CodeGenerationSettings settings, boolean useImplicitJoinpoints, Optional<IProgressMonitor> monitor)
-			throws JavaModelException {
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects, final CodeGenerationSettings settings,
+			boolean useImplicitJoinpoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
 		this(javaProjects, settings, false, useImplicitJoinpoints, false, false, false, monitor);
 	}
 
-	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects,
-			final CodeGenerationSettings settings, int nForStreams, boolean useImplicitJoinpoints,
-			Optional<IProgressMonitor> monitor) throws JavaModelException {
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects, final CodeGenerationSettings settings,
+			int nForStreams, boolean useImplicitJoinpoints, Optional<IProgressMonitor> monitor)
+			throws JavaModelException {
 		this(javaProjects, settings, false, nForStreams, useImplicitJoinpoints, false, false, false, monitor);
 	}
 
-	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects,
-			final CodeGenerationSettings settings, Optional<IProgressMonitor> monitor) throws JavaModelException {
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects, final CodeGenerationSettings settings,
+			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		this(javaProjects, settings, false, true, false, false, false, monitor);
 	}
 
@@ -357,7 +357,7 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 						stream.convertToParallel(rewrite);
 						break;
 					case CONVERT_TO_SEQUENTIAL:
-						stream.convertToSequential();
+						stream.convertToSequential(rewrite);
 						break;
 					case UNORDER:
 						stream.unorder(rewrite);
@@ -382,8 +382,8 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 
 			// TODO: Fill in description.
 
-			OptimizeStreamRefactoringDescriptor descriptor = new OptimizeStreamRefactoringDescriptor(
-					null, "TODO", null, arguments, flags);
+			OptimizeStreamRefactoringDescriptor descriptor = new OptimizeStreamRefactoringDescriptor(null, "TODO", null,
+					arguments, flags);
 
 			return new DynamicValidationRefactoringChange(descriptor, this.getProcessorName(), manager.getAllChanges());
 		} finally {
@@ -395,7 +395,8 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 	/**
 	 * Creates a working copy layer if necessary.
 	 *
-	 * @param monitor the progress monitor to use
+	 * @param monitor
+	 *            the progress monitor to use
 	 * @return a status describing the outcome of the operation
 	 */
 	private RefactoringStatus createWorkingCopyLayer(IProgressMonitor monitor) {
