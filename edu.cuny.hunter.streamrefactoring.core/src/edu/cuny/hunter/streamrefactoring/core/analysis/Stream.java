@@ -860,10 +860,10 @@ public class Stream {
 		ASTRewrite astRewrite = rewrite.getASTRewrite();
 		MethodInvocation termOp = findTerminalOperation(creation);
 		Expression expression = termOp.getExpression();
-		
+
 		boolean done = false;
 		boolean hasDistinct = false;
-		
+
 		while (expression != null && !done)
 			if (expression.getNodeType() == ASTNode.METHOD_INVOCATION) {
 				MethodInvocation inv = (MethodInvocation) expression;
@@ -879,14 +879,14 @@ public class Stream {
 					astRewrite.replace(inv.getExpression(), newMethodInvocation, null);
 					hasDistinct = true;
 				}
-				
+
 				expression = inv.getExpression();
 			} else
 				done = true;
-		
+
 		if (!hasDistinct) {
 			AST ast = creation.getAST();
-			
+
 			MethodInvocation newMethodInvocation = ast.newMethodInvocation();
 			newMethodInvocation.setName(ast.newSimpleName("unordered"));
 			MethodInvocation exprCopy = (MethodInvocation) ASTNode.copySubtree(ast, termOp.getExpression());
