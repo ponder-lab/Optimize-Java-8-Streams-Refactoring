@@ -97,6 +97,17 @@ public class Stream {
 
 	private static final String PLUGIN_ID = FrameworkUtil.getBundle(Stream.class).getSymbolicName();
 
+	private static MethodInvocation findTerminalOperation(ASTNode astNode) {
+		if (astNode == null)
+			return null;
+		else if (astNode.getNodeType() != ASTNode.METHOD_INVOCATION)
+			throw new IllegalArgumentException(astNode + " must be a method invocation.");
+		if (astNode.getParent().getNodeType() != ASTNode.METHOD_INVOCATION)
+			return (MethodInvocation) astNode;
+		else
+			return findTerminalOperation(astNode.getParent());
+	}
+
 	private Set<TransformationAction> actions;
 
 	private final MethodInvocation creation;
@@ -326,7 +337,7 @@ public class Stream {
 
 		boolean done = false;
 
-		while (expression != null && !done) {
+		while (expression != null && !done)
 			if (expression.getNodeType() == ASTNode.METHOD_INVOCATION) {
 				MethodInvocation inv = (MethodInvocation) expression;
 				AST ast = creation.getAST();
@@ -364,18 +375,6 @@ public class Stream {
 				expression = inv.getExpression();
 			} else
 				done = true;
-		}
-	}
-
-	private static MethodInvocation findTerminalOperation(ASTNode astNode) {
-		if (astNode == null)
-			return null;
-		else if (astNode.getNodeType() != ASTNode.METHOD_INVOCATION)
-			throw new IllegalArgumentException(astNode + " must be a method invocation.");
-		if (astNode.getParent().getNodeType() != ASTNode.METHOD_INVOCATION)
-			return (MethodInvocation) astNode;
-		else
-			return findTerminalOperation(astNode.getParent());
 	}
 
 	protected void convertToSequential(CompilationUnitRewrite rewrite) {
