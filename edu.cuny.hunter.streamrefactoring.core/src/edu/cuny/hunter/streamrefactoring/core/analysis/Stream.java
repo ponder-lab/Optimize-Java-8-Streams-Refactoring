@@ -5,6 +5,7 @@ import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getJDTIdentif
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getLineNumberFromAST;
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getLineNumberFromIR;
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getPossibleTypesInterprocedurally;
+import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.implementsBaseStream;
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.matches;
 import static edu.cuny.hunter.streamrefactoring.core.safe.Util.instanceKeyCorrespondsWithInstantiationInstruction;
 
@@ -27,8 +28,10 @@ import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
@@ -315,8 +318,64 @@ public class Stream {
 		LOGGER.info("Converting to parallel.");
 		MethodInvocation creation = this.getCreation();
 		ASTRewrite astRewrite = rewrite.getASTRewrite();
-		SimpleName newMethodName = creation.getAST().newSimpleName("parallelStream");
-		astRewrite.replace(creation.getName(), newMethodName, null);
+
+		MethodInvocation termOp = findTerminalOperation(creation);
+
+		// get the terminal operation's expression.
+		Expression expression = termOp.getExpression();
+
+		boolean done = false;
+
+		while (expression != null && !done) {
+			if (expression.getNodeType() == ASTNode.METHOD_INVOCATION) {
+				MethodInvocation inv = (MethodInvocation) expression;
+				AST ast = creation.getAST();
+
+				switch (inv.getName().getIdentifier()) {
+				case "sequential":
+					// remove it.
+					astRewrite.replace(inv, inv.getExpression(), null);
+					break;
+				case "parallel":
+					done = true;
+					break;
+				case "stream": {
+					// Replace with parallelStream().
+					SimpleName newMethodName = ast.newSimpleName("parallelStream");
+					astRewrite.replace(creation.getName(), newMethodName, null);
+					break;
+				}
+				case "parallelStream":
+					done = true;
+					break;
+				default: {
+					// if we're at the end.
+					if (inv.getExpression().getNodeType() != ASTNode.METHOD_INVOCATION
+							|| inv.getExpression().getNodeType() == ASTNode.METHOD_INVOCATION
+									&& !implementsBaseStream(inv.getExpression().resolveTypeBinding())) {
+						MethodInvocation newMethodInvocation = ast.newMethodInvocation();
+						newMethodInvocation.setName(ast.newSimpleName("parallel"));
+						MethodInvocation invCopy = (MethodInvocation) ASTNode.copySubtree(ast, inv);
+						newMethodInvocation.setExpression(invCopy);
+						astRewrite.replace(inv, newMethodInvocation, null);
+					}
+				}
+				}
+				expression = inv.getExpression();
+			} else
+				done = true;
+		}
+	}
+
+	private static MethodInvocation findTerminalOperation(ASTNode astNode) {
+		if (astNode == null)
+			return null;
+		else if (astNode.getNodeType() != ASTNode.METHOD_INVOCATION)
+			throw new IllegalArgumentException(astNode + " must be a method invocation.");
+		if (astNode.getParent().getNodeType() != ASTNode.METHOD_INVOCATION)
+			return (MethodInvocation) astNode;
+		else
+			return findTerminalOperation(astNode.getParent());
 	}
 
 	protected void convertToSequential(CompilationUnitRewrite rewrite) {
