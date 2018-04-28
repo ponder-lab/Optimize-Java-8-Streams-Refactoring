@@ -856,6 +856,42 @@ public class Stream {
 	}
 
 	protected void unorder(CompilationUnitRewrite rewrite) {
-		// TODO Auto-generated method stub
+		MethodInvocation creation = this.getCreation();
+		ASTRewrite astRewrite = rewrite.getASTRewrite();
+		MethodInvocation termOp = findTerminalOperation(creation);
+		Expression expression = termOp.getExpression();
+		
+		boolean done = false;
+		boolean hasDistinct = false;
+		
+		while (expression != null && !done)
+			if (expression.getNodeType() == ASTNode.METHOD_INVOCATION) {
+				MethodInvocation inv = (MethodInvocation) expression;
+				AST ast = creation.getAST();
+
+				String identifier = inv.getName().getIdentifier();
+
+				if (identifier.equals("distinct")) {
+					MethodInvocation newMethodInvocation = ast.newMethodInvocation();
+					newMethodInvocation.setName(ast.newSimpleName("unordered"));
+					MethodInvocation exprCopy = (MethodInvocation) ASTNode.copySubtree(ast, inv.getExpression());
+					newMethodInvocation.setExpression(exprCopy);
+					astRewrite.replace(inv.getExpression(), newMethodInvocation, null);
+					hasDistinct = true;
+				}
+				
+				expression = inv.getExpression();
+			} else
+				done = true;
+		
+		if (!hasDistinct) {
+			AST ast = creation.getAST();
+			
+			MethodInvocation newMethodInvocation = ast.newMethodInvocation();
+			newMethodInvocation.setName(ast.newSimpleName("unordered"));
+			MethodInvocation exprCopy = (MethodInvocation) ASTNode.copySubtree(ast, termOp.getExpression());
+			newMethodInvocation.setExpression(exprCopy);
+			astRewrite.replace(termOp.getExpression(), newMethodInvocation, null);
+		}
 	}
 }
