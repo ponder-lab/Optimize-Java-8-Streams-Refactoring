@@ -20,8 +20,6 @@ import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
 import org.eclipse.ltk.ui.refactoring.RefactoringWizard;
 import org.eclipse.ltk.ui.refactoring.UserInputWizardPage;
 import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.ModifyEvent;
-import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -45,40 +43,76 @@ public class OptimizeStreamRefactoringWizard extends RefactoringWizard {
 
 	private static class OptimizeStreamsInputPage extends UserInputWizardPage {
 
-		public static final String PAGE_NAME = "OptimizeStreamsInputPage"; //$NON-NLS-1$
-
 		private static final String DESCRIPTION = Messages.Name;
 
 		private static final String DIALOG_SETTING_SECTION = "OptimizeStreams"; //$NON-NLS-1$
 
+		private static final String K_FOR_STREAMS = "kForStreams"; //$NON-NLS-1$
+
+		public static final String PAGE_NAME = "OptimizeStreamsInputPage"; //$NON-NLS-1$
+
 		private static final String USE_IMPLICIT_ENTRY_POINTS = "useImplicitEntryPoints"; //$NON-NLS-1$
-
-		private static final String USE_IMPLICIT_TEST_ENTRY_POINTS = "useImplicitTestEntryPoints"; //$NON-NLS-1$
-
-		private static final String USE_IMPLICIT_JMH_ENTRY_POINTS = "useImplicitJMHEntryPoints"; //$NON-NLS-1$
 
 		private static final String USE_IMPLICIT_JAVAFX_ENTRY_POINTS = "useImplicitJavaFXEntryPoints"; //$NON-NLS-1$
 
-		private static final String K_FOR_STREAMS = "kForStreams"; //$NON-NLS-1$
+		private static final String USE_IMPLICIT_JMH_ENTRY_POINTS = "useImplicitJMHEntryPoints"; //$NON-NLS-1$
 
-		IDialogSettings settings;
+		private static final String USE_IMPLICIT_TEST_ENTRY_POINTS = "useImplicitTestEntryPoints"; //$NON-NLS-1$
 
 		private OptimizeStreamsRefactoringProcessor processor;
 
+		IDialogSettings settings;
+
 		public OptimizeStreamsInputPage() {
 			super(PAGE_NAME);
-			setDescription(DESCRIPTION);
+			this.setDescription(DESCRIPTION);
+		}
+
+		private void addBooleanButton(String text, String key, Consumer<Boolean> valueConsumer, Composite result) {
+			Button button = new Button(result, SWT.CHECK);
+			button.setText(text);
+			boolean value = this.settings.getBoolean(key);
+			valueConsumer.accept(value);
+			button.setSelection(value);
+			button.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent e) {
+					boolean selection = ((Button) e.widget).getSelection();
+					OptimizeStreamsInputPage.this.settings.put(key, selection);
+					valueConsumer.accept(selection);
+				}
+			});
+		}
+
+		private void addIntegerButton(String text, String key, Consumer<Integer> valueConsumer, Composite result) {
+			Label label = new Label(result, SWT.HORIZONTAL);
+			label.setText(text);
+
+			Text textBox = new Text(result, SWT.SINGLE);
+			int value = this.settings.getInt(key);
+			valueConsumer.accept(value);
+			textBox.setText(String.valueOf(value));
+			textBox.addModifyListener(event -> {
+				int selection;
+				try {
+					selection = Integer.parseInt(((Text) event.widget).getText());
+				} catch (NumberFormatException e) {
+					return;
+				}
+				OptimizeStreamsInputPage.this.settings.put(key, selection);
+				valueConsumer.accept(selection);
+			});
 		}
 
 		@Override
 		public void createControl(Composite parent) {
-			ProcessorBasedRefactoring processorBasedRefactoring = (ProcessorBasedRefactoring) getRefactoring();
+			ProcessorBasedRefactoring processorBasedRefactoring = (ProcessorBasedRefactoring) this.getRefactoring();
 			RefactoringProcessor refactoringProcessor = processorBasedRefactoring.getProcessor();
 			this.setProcessor((OptimizeStreamsRefactoringProcessor) refactoringProcessor);
 			this.loadSettings();
 
 			Composite result = new Composite(parent, SWT.NONE);
-			setControl(result);
+			this.setControl(result);
 			GridLayout layout = new GridLayout();
 			layout.numColumns = 1;
 			result.setLayout(layout);
@@ -91,13 +125,13 @@ public class OptimizeStreamRefactoringWizard extends RefactoringWizard {
 			separator.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, true, false));
 
 			// set up buttons.
-			addBooleanButton("Automatically discover standard entry points (main methods).", USE_IMPLICIT_ENTRY_POINTS,
-					this.getProcessor()::setUseImplicitEntrypoints, result);
-			addBooleanButton("Automatically discover test-based entry points (JUnit).", USE_IMPLICIT_TEST_ENTRY_POINTS,
-					this.getProcessor()::setUseImplicitTestEntrypoints, result);
-			addBooleanButton("Automatically discover benchmark entry points (JMH).", USE_IMPLICIT_JMH_ENTRY_POINTS,
+			this.addBooleanButton("Automatically discover standard entry points (main methods).",
+					USE_IMPLICIT_ENTRY_POINTS, this.getProcessor()::setUseImplicitEntrypoints, result);
+			this.addBooleanButton("Automatically discover test-based entry points (JUnit).",
+					USE_IMPLICIT_TEST_ENTRY_POINTS, this.getProcessor()::setUseImplicitTestEntrypoints, result);
+			this.addBooleanButton("Automatically discover benchmark entry points (JMH).", USE_IMPLICIT_JMH_ENTRY_POINTS,
 					this.getProcessor()::setUseImplicitBenchmarkEntrypoints, result);
-			addBooleanButton("Automatically discover GUI entry points (JavaFX).", USE_IMPLICIT_JAVAFX_ENTRY_POINTS,
+			this.addBooleanButton("Automatically discover GUI entry points (JavaFX).", USE_IMPLICIT_JAVAFX_ENTRY_POINTS,
 					this.getProcessor()::setUseImplicitJavaFXEntrypoints, result);
 
 			Composite compositeForIntegerButton = new Composite(result, SWT.NONE);
@@ -105,90 +139,52 @@ public class OptimizeStreamRefactoringWizard extends RefactoringWizard {
 
 			compositeForIntegerButton.setLayout(layoutForIntegerButton);
 
-			addIntegerButton("k value to use for streams for kCFA: ", K_FOR_STREAMS,
+			this.addIntegerButton("k value to use for streams for kCFA: ", K_FOR_STREAMS,
 					this.getProcessor()::setNForStreams, compositeForIntegerButton);
 
-			updateStatus();
+			this.updateStatus();
 			Dialog.applyDialogFont(result);
-			PlatformUI.getWorkbench().getHelpSystem().setHelp(getControl(), "optimize_streams_wizard_page_context");
-		}
-
-		private void addBooleanButton(String text, String key, Consumer<Boolean> valueConsumer, Composite result) {
-			Button button = new Button(result, SWT.CHECK);
-			button.setText(text);
-			boolean value = settings.getBoolean(key);
-			valueConsumer.accept(value);
-			button.setSelection(value);
-			button.addSelectionListener(new SelectionAdapter() {
-				@Override
-				public void widgetSelected(SelectionEvent e) {
-					boolean selection = ((Button) e.widget).getSelection();
-					settings.put(key, selection);
-					valueConsumer.accept(selection);
-				}
-			});
-		}
-
-		private void addIntegerButton(String text, String key, Consumer<Integer> valueConsumer, Composite result) {
-			Label label = new Label(result, SWT.HORIZONTAL);
-			label.setText(text);
-
-			Text textBox = new Text(result, SWT.SINGLE);
-			int value = settings.getInt(key);
-			valueConsumer.accept(value);
-			textBox.setText(String.valueOf(value));
-			textBox.addModifyListener(new ModifyListener() {
-
-				@Override
-				public void modifyText(ModifyEvent event) {
-					int selection;
-					try {
-						selection = Integer.parseInt(((Text) event.widget).getText());
-					} catch (NumberFormatException e) {
-						return;
-					}
-					settings.put(key, selection);
-					valueConsumer.accept(selection);
-				}
-			});
-		}
-
-		private void loadSettings() {
-			settings = getDialogSettings().getSection(DIALOG_SETTING_SECTION);
-			if (settings == null) {
-				settings = getDialogSettings().addNewSection(DIALOG_SETTING_SECTION);
-				settings.put(USE_IMPLICIT_ENTRY_POINTS, this.getProcessor().getUseImplicitEntrypoints());
-				settings.put(USE_IMPLICIT_TEST_ENTRY_POINTS, this.getProcessor().getUseImplicitTestEntrypoints());
-				settings.put(USE_IMPLICIT_JMH_ENTRY_POINTS, this.getProcessor().getUseImplicitBenchmarkEntrypoints());
-				settings.put(USE_IMPLICIT_JAVAFX_ENTRY_POINTS,
-						this.getProcessor().getUseImplicitBenchmarkEntrypoints());
-				settings.put(K_FOR_STREAMS, this.getProcessor().getNForStreams());
-			}
-			processor.setUseImplicitEntrypoints(settings.getBoolean(USE_IMPLICIT_ENTRY_POINTS));
-			processor.setUseImplicitTestEntrypoints(settings.getBoolean(USE_IMPLICIT_TEST_ENTRY_POINTS));
-			processor.setUseImplicitBenchmarkEntrypoints(settings.getBoolean(USE_IMPLICIT_JMH_ENTRY_POINTS));
-			processor.setUseImplicitJavaFXEntrypoints(settings.getBoolean(USE_IMPLICIT_JAVAFX_ENTRY_POINTS));
-
-			int value;
-			try {
-				value = settings.getInt(K_FOR_STREAMS);
-			} catch (NumberFormatException e) {
-				settings.put(K_FOR_STREAMS, this.getProcessor().getNForStreams());
-				value = settings.getInt(K_FOR_STREAMS);
-			}
-			processor.setNForStreams(value);
-		}
-
-		private void updateStatus() {
-			setPageComplete(true);
+			PlatformUI.getWorkbench().getHelpSystem().setHelp(this.getControl(),
+					"optimize_streams_wizard_page_context");
 		}
 
 		private OptimizeStreamsRefactoringProcessor getProcessor() {
-			return processor;
+			return this.processor;
+		}
+
+		private void loadSettings() {
+			this.settings = this.getDialogSettings().getSection(DIALOG_SETTING_SECTION);
+			if (this.settings == null) {
+				this.settings = this.getDialogSettings().addNewSection(DIALOG_SETTING_SECTION);
+				this.settings.put(USE_IMPLICIT_ENTRY_POINTS, this.getProcessor().getUseImplicitEntrypoints());
+				this.settings.put(USE_IMPLICIT_TEST_ENTRY_POINTS, this.getProcessor().getUseImplicitTestEntrypoints());
+				this.settings.put(USE_IMPLICIT_JMH_ENTRY_POINTS,
+						this.getProcessor().getUseImplicitBenchmarkEntrypoints());
+				this.settings.put(USE_IMPLICIT_JAVAFX_ENTRY_POINTS,
+						this.getProcessor().getUseImplicitBenchmarkEntrypoints());
+				this.settings.put(K_FOR_STREAMS, this.getProcessor().getNForStreams());
+			}
+			this.processor.setUseImplicitEntrypoints(this.settings.getBoolean(USE_IMPLICIT_ENTRY_POINTS));
+			this.processor.setUseImplicitTestEntrypoints(this.settings.getBoolean(USE_IMPLICIT_TEST_ENTRY_POINTS));
+			this.processor.setUseImplicitBenchmarkEntrypoints(this.settings.getBoolean(USE_IMPLICIT_JMH_ENTRY_POINTS));
+			this.processor.setUseImplicitJavaFXEntrypoints(this.settings.getBoolean(USE_IMPLICIT_JAVAFX_ENTRY_POINTS));
+
+			int value;
+			try {
+				value = this.settings.getInt(K_FOR_STREAMS);
+			} catch (NumberFormatException e) {
+				this.settings.put(K_FOR_STREAMS, this.getProcessor().getNForStreams());
+				value = this.settings.getInt(K_FOR_STREAMS);
+			}
+			this.processor.setNForStreams(value);
 		}
 
 		private void setProcessor(OptimizeStreamsRefactoringProcessor processor) {
 			this.processor = processor;
+		}
+
+		private void updateStatus() {
+			this.setPageComplete(true);
 		}
 	}
 
