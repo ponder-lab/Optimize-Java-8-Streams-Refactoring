@@ -30,6 +30,10 @@ Currently, the refactoring works only via the package explorer and the outline v
 
 An alpha version of our tool is available via an Eclipse update site at: https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.updatesite. Please choose the latest version of the "Optimize Stream Refactoring."
 
+### Eclipse Marketplace
+
+You may also install the tool via the [Eclipse Marketplace](https://marketplace.eclipse.org/content/optimize-java-8-streams-refactoring) by dragging this icon to your running Eclipse workspace: [![Drag to your running Eclipse* workspace. *Requires Eclipse Marketplace Client](https://marketplace.eclipse.org/sites/all/themes/solstice/public/images/marketplace/btn-install.png)](http://marketplace.eclipse.org/marketplace-client-intro?mpc_install=4056021 "Drag to your running Eclipse* workspace. *Requires Eclipse Marketplace Client")
+
 ### Dependencies
 
 The refactoring has several dependencies as listed below. If you experience any trouble installing the plug-in using the above update site, you can manually install the dependencies. The latest version of the plug-ins should be installed. If installing SAFE, not that WALA must be installed first:
