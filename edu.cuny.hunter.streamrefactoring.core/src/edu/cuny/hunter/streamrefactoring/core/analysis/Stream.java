@@ -325,10 +325,6 @@ public class Stream {
 				"Can't find instance key for: " + this.getCreation() + " using tracked instances: " + trackedInstances);
 	}
 
-	protected void convertToParallel(CompilationUnitRewrite rewrite) {
-		convert("sequential", "parallel", "stream", "parallelStream", rewrite);
-	}
-
 	private void convert(String source, String target, String sourceGenerator, String targetGenerator,
 			CompilationUnitRewrite rewrite) {
 		MethodInvocation creation = this.getCreation();
@@ -348,36 +344,38 @@ public class Stream {
 
 				String identifier = inv.getName().getIdentifier();
 
-				if (identifier.equals(source)) {
+				if (identifier.equals(source))
 					// remove it.
 					astRewrite.replace(inv, inv.getExpression(), null);
-				} else if (identifier.equals(target)) {
+				else if (identifier.equals(target))
 					done = true;
-				} else if (identifier.equals(sourceGenerator)) {
+				else if (identifier.equals(sourceGenerator)) {
 					// Replace with parallelStream().
 					SimpleName newMethodName = ast.newSimpleName(targetGenerator);
 					astRewrite.replace(creation.getName(), newMethodName, null);
-				} else if (identifier.equals(targetGenerator)) {
+				} else if (identifier.equals(targetGenerator))
 					done = true;
-				} else {
-					// if we're at the end.
-					if (inv.getExpression().getNodeType() != ASTNode.METHOD_INVOCATION
-							|| inv.getExpression().getNodeType() == ASTNode.METHOD_INVOCATION
-									&& !implementsBaseStream(inv.getExpression().resolveTypeBinding())) {
-						MethodInvocation newMethodInvocation = ast.newMethodInvocation();
-						newMethodInvocation.setName(ast.newSimpleName(target));
-						MethodInvocation invCopy = (MethodInvocation) ASTNode.copySubtree(ast, inv);
-						newMethodInvocation.setExpression(invCopy);
-						astRewrite.replace(inv, newMethodInvocation, null);
-					}
+				else // if we're at the end.
+				if (inv.getExpression().getNodeType() != ASTNode.METHOD_INVOCATION
+						|| inv.getExpression().getNodeType() == ASTNode.METHOD_INVOCATION
+								&& !implementsBaseStream(inv.getExpression().resolveTypeBinding())) {
+					MethodInvocation newMethodInvocation = ast.newMethodInvocation();
+					newMethodInvocation.setName(ast.newSimpleName(target));
+					MethodInvocation invCopy = (MethodInvocation) ASTNode.copySubtree(ast, inv);
+					newMethodInvocation.setExpression(invCopy);
+					astRewrite.replace(inv, newMethodInvocation, null);
 				}
 				expression = inv.getExpression();
 			} else
 				done = true;
 	}
 
+	protected void convertToParallel(CompilationUnitRewrite rewrite) {
+		this.convert("sequential", "parallel", "stream", "parallelStream", rewrite);
+	}
+
 	protected void convertToSequential(CompilationUnitRewrite rewrite) {
-		convert("parallel", "sequential", "parallelStream", "stream", rewrite);
+		this.convert("parallel", "sequential", "parallelStream", "stream", rewrite);
 	}
 
 	public Set<TransformationAction> getActions() {
