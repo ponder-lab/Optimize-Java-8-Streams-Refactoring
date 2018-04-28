@@ -1,6 +1,6 @@
 ## Contributing
 
-Please see [the wiki](wiki) for more information regarding development.
+Please see [the wiki][wiki] for more information regarding development.
 
 ### Installation
 
