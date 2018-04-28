@@ -326,7 +326,11 @@ public class Stream {
 	}
 
 	protected void convertToParallel(CompilationUnitRewrite rewrite) {
-		LOGGER.info("Converting to parallel.");
+		convert("sequential", "parallel", "stream", "parallelStream", rewrite);
+	}
+
+	private void convert(String source, String target, String sourceGenerator, String targetGenerator,
+			CompilationUnitRewrite rewrite) {
 		MethodInvocation creation = this.getCreation();
 		ASTRewrite astRewrite = rewrite.getASTRewrite();
 
@@ -342,35 +346,30 @@ public class Stream {
 				MethodInvocation inv = (MethodInvocation) expression;
 				AST ast = creation.getAST();
 
-				switch (inv.getName().getIdentifier()) {
-				case "sequential":
+				String identifier = inv.getName().getIdentifier();
+
+				if (identifier.equals(source)) {
 					// remove it.
 					astRewrite.replace(inv, inv.getExpression(), null);
-					break;
-				case "parallel":
+				} else if (identifier.equals(target)) {
 					done = true;
-					break;
-				case "stream": {
+				} else if (identifier.equals(sourceGenerator)) {
 					// Replace with parallelStream().
-					SimpleName newMethodName = ast.newSimpleName("parallelStream");
+					SimpleName newMethodName = ast.newSimpleName(targetGenerator);
 					astRewrite.replace(creation.getName(), newMethodName, null);
-					break;
-				}
-				case "parallelStream":
+				} else if (identifier.equals(targetGenerator)) {
 					done = true;
-					break;
-				default: {
+				} else {
 					// if we're at the end.
 					if (inv.getExpression().getNodeType() != ASTNode.METHOD_INVOCATION
 							|| inv.getExpression().getNodeType() == ASTNode.METHOD_INVOCATION
 									&& !implementsBaseStream(inv.getExpression().resolveTypeBinding())) {
 						MethodInvocation newMethodInvocation = ast.newMethodInvocation();
-						newMethodInvocation.setName(ast.newSimpleName("parallel"));
+						newMethodInvocation.setName(ast.newSimpleName(target));
 						MethodInvocation invCopy = (MethodInvocation) ASTNode.copySubtree(ast, inv);
 						newMethodInvocation.setExpression(invCopy);
 						astRewrite.replace(inv, newMethodInvocation, null);
 					}
-				}
 				}
 				expression = inv.getExpression();
 			} else
@@ -379,7 +378,6 @@ public class Stream {
 
 	protected void convertToSequential(CompilationUnitRewrite rewrite) {
 		// TODO Auto-generated method stub
-		LOGGER.info("Converting to sequential.");
 	}
 
 	public Set<TransformationAction> getActions() {
@@ -861,6 +859,5 @@ public class Stream {
 
 	protected void unorder(CompilationUnitRewrite rewrite) {
 		// TODO Auto-generated method stub
-		LOGGER.info("Unordering.");
 	}
 }
