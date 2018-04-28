@@ -20,6 +20,8 @@ import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
 import org.eclipse.ltk.ui.refactoring.RefactoringWizard;
 import org.eclipse.ltk.ui.refactoring.UserInputWizardPage;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.ModifyEvent;
+import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -135,10 +137,16 @@ public class OptimizeStreamRefactoringWizard extends RefactoringWizard {
 			int value = settings.getInt(key);
 			valueConsumer.accept(value);
 			textBox.setText(String.valueOf(value));
-			textBox.addSelectionListener(new SelectionAdapter() {
+			textBox.addModifyListener(new ModifyListener() {
+
 				@Override
-				public void widgetSelected(SelectionEvent e) {
-					int selection = Integer.parseInt(((Text) e.widget).getText());
+				public void modifyText(ModifyEvent event) {
+					int selection;
+					try {
+						selection = Integer.parseInt(((Text) event.widget).getText());
+					} catch (NumberFormatException e) {
+						return;
+					}
 					settings.put(key, selection);
 					valueConsumer.accept(selection);
 				}
