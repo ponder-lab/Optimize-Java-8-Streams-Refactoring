@@ -377,7 +377,7 @@ public class Stream {
 	}
 
 	protected void convertToSequential(CompilationUnitRewrite rewrite) {
-		// TODO Auto-generated method stub
+		convert("parallel", "sequential", "parallelStream", "stream", rewrite);
 	}
 
 	public Set<TransformationAction> getActions() {
