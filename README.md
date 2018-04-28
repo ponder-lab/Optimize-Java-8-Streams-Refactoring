@@ -6,7 +6,7 @@
 
 ## Introduction
 
-The Java 8 Stream API sets forth a promising new programming model that incorporates functional-like, MapReduce-style features into a mainstream programming language. However, using streams efficiently may involve subtle considerations. 
+<img src="https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.ui/icons/icon.png" alt="Icon" align="left" height=150px width=150px/> The Java 8 Stream API sets forth a promising new programming model that incorporates functional-like, MapReduce-style features into a mainstream programming language. However, using streams efficiently may involve subtle considerations. 
 
 This tool consists of automated refactoring research prototype plug-ins for [Eclipse][eclipse] that assists developers in writing optimal stream client code in a semantics-preserving fashion. Refactoring preconditions and transformations for automatically determining when it is safe and possibly advantageous to convert a sequential stream to parallel and improve upon already parallel streams are included. The approach utilizes both [WALA][wala] and [SAFE][safe].
 
