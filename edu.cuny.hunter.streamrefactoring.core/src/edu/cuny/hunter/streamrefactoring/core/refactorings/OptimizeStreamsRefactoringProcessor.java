@@ -216,15 +216,21 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 	public RefactoringStatus checkFinalConditions(final IProgressMonitor monitor, final CheckConditionsContext context)
 			throws CoreException, OperationCanceledException {
 		try {
-			SubMonitor subMonitor = SubMonitor.convert(monitor, Messages.CheckingPreconditions,
-					this.getJavaProjects().length * 1000);
+			SubMonitor subMonitor = SubMonitor.convert(monitor, Messages.CheckingPreconditions, 3);
+
 			final RefactoringStatus status = new RefactoringStatus();
+
 			StreamAnalyzer analyzer = new StreamAnalyzer(false, this.getNForStreams(), this.getUseImplicitEntrypoints(),
 					this.getUseImplicitTestEntrypoints(), this.getUseImplicitBenchmarkEntrypoints(),
 					this.getUseImplicitJavaFXEntrypoints());
+
 			this.setStreamSet(analyzer.getStreamSet());
 
-			for (IJavaProject jproj : this.getJavaProjects()) {
+			IJavaProject[] projects = this.getJavaProjects();
+
+			subMonitor.beginTask("Collecting streams...", projects.length);
+
+			for (IJavaProject jproj : projects) {
 				IPackageFragmentRoot[] roots = jproj.getPackageFragmentRoots();
 				for (IPackageFragmentRoot root : roots) {
 					IJavaElement[] children = root.getChildren();
@@ -233,28 +239,34 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 							IPackageFragment fragment = (IPackageFragment) child;
 							ICompilationUnit[] units = fragment.getCompilationUnits();
 							for (ICompilationUnit unit : units) {
-								CompilationUnit compilationUnit = this.getCompilationUnit(unit, subMonitor.split(1));
+								CompilationUnit compilationUnit = this.getCompilationUnit(unit,
+										subMonitor.split(1, SubMonitor.SUPPRESS_NONE));
 								compilationUnit.accept(analyzer);
 							}
 						}
 				}
 			}
 
+			subMonitor.worked(1);
+
 			// analyze and set entry points.
-			this.projectToEntryPoints = analyzer.analyze(Optional.of(this.getExcludedTimeCollector()));
+			this.projectToEntryPoints = analyzer.analyze(Optional.of(this.getExcludedTimeCollector()),
+					subMonitor.split(IProgressMonitor.UNKNOWN, SubMonitor.SUPPRESS_NONE));
+			subMonitor.worked(1);
 
 			// set statistics for stream instances.
 			this.setNumberOfProcessedStreamInstances(analyzer.getNumberOfProcessedStreamInstances());
 			this.setNumberOfSkippedStreamInstances(analyzer.getNumberOfSkippedStreamInstances());
 
 			// map empty set to unprocessed projects.
-			for (IJavaProject project : this.getJavaProjects())
+			for (IJavaProject project : projects)
 				this.projectToEntryPoints.computeIfAbsent(project, p -> Collections.emptySet());
 
 			// get the status of each stream.
 			RefactoringStatus collectedStatus = this.getStreamSet().stream().map(Stream::getStatus)
 					.collect(() -> new RefactoringStatus(), (a, b) -> a.merge(b), (a, b) -> a.merge(b));
 			status.merge(collectedStatus);
+			subMonitor.worked(1);
 
 			// if there are no fatal errors.
 			if (!status.hasFatalError()) {
@@ -343,11 +355,11 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 
 			if (optimizableStreams.isEmpty())
 				return new NullChange(Messages.NoStreamsToOptimize);
-			
+
 			pm.beginTask("Transforming streams ...", optimizableStreams.size());
 			for (Stream stream : optimizableStreams) {
-				CompilationUnitRewrite rewrite = getCompilationUnitRewrite(stream.getEnclosingEclipseMethod().getCompilationUnit(),
-						stream.getEnclosingCompilationUnit());
+				CompilationUnitRewrite rewrite = getCompilationUnitRewrite(
+						stream.getEnclosingEclipseMethod().getCompilationUnit(), stream.getEnclosingCompilationUnit());
 				stream.transform(rewrite);
 				pm.worked(1);
 			}

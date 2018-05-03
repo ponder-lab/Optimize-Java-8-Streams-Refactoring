@@ -22,7 +22,8 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.CoreException;
-import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jdt.core.JavaModelException;
 
 import com.google.common.collect.HashBasedTable;
@@ -567,8 +568,11 @@ public class StreamStateMachine {
 	}
 
 	private void discoverIfReduceOrderingPossiblyMatters(EclipseProjectAnalysisEngine<InstanceKey> engine,
-			OrderingInference orderingInference) throws UTFDataFormatException, JavaModelException,
-			NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
+			OrderingInference orderingInference, IProgressMonitor monitor) throws UTFDataFormatException,
+			JavaModelException, NoniterableException, NoninstantiableException, CannotExtractSpliteratorException {
+		monitor.beginTask("Discovering if reduce order matters...",
+				this.terminalBlockToPossibleReceivers.keySet().size());
+
 		// for each terminal operation call, I think?
 		for (BasicBlockInContext<IExplodedBasicBlock> block : this.terminalBlockToPossibleReceivers.keySet()) {
 			int processedInstructions = 0;
@@ -648,6 +652,7 @@ public class StreamStateMachine {
 				++processedInstructions;
 			}
 			assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
+			monitor.worked(1);
 		}
 	}
 
@@ -721,8 +726,10 @@ public class StreamStateMachine {
 				LOGGER.warning("Def was an instance of a: " + def.getClass());
 	}
 
-	private void discoverPossibleSideEffects(EclipseProjectAnalysisEngine<InstanceKey> engine)
+	private void discoverPossibleSideEffects(EclipseProjectAnalysisEngine<InstanceKey> engine, IProgressMonitor monitor)
 			throws IOException, CoreException {
+		SubMonitor subMonitor = SubMonitor.convert(monitor, "Discovering side-effects...", 100);
+
 		// create the ModRef analysis.
 		ModRef<InstanceKey> modRef = ModRef.make();
 
@@ -732,6 +739,9 @@ public class StreamStateMachine {
 		Map<CGNode, OrdinalSet<PointerKey>> mod = modRef.computeMod(engine.getCallGraph(), engine.getPointerAnalysis());
 
 		// for each terminal operation call, I think?
+		SubMonitor loopMonitor = subMonitor.split(50, SubMonitor.SUPPRESS_NONE)
+				.setWorkRemaining(this.terminalBlockToPossibleReceivers.keySet().size());
+
 		for (BasicBlockInContext<IExplodedBasicBlock> block : this.terminalBlockToPossibleReceivers.keySet()) {
 			int processedInstructions = 0;
 			for (SSAInstruction instruction : block) {
@@ -760,10 +770,13 @@ public class StreamStateMachine {
 			}
 
 			assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
+			loopMonitor.worked(1);
 		}
 
 		// for each instance in the analysis result (these should be the
 		// "intermediate" streams).
+		loopMonitor = subMonitor.split(50, SubMonitor.SUPPRESS_NONE).setWorkRemaining(this.trackedInstances.size());
+
 		for (InstanceKey instance : this.trackedInstances) {
 			// make sure that the stream is the result of an intermediate
 			// operation.
@@ -792,14 +805,18 @@ public class StreamStateMachine {
 				this.discoverLambdaSideEffects(engine, mod, Collections.singleton(instance),
 						callString.getMethods()[0].getReference(), ir, use);
 			}
+
+			loopMonitor.worked(1);
 		}
 	}
 
-	private void discoverPossibleStatefulIntermediateOperations(IClassHierarchy hierarchy, CallGraph callGraph)
-			throws IOException, CoreException {
+	private void discoverPossibleStatefulIntermediateOperations(IClassHierarchy hierarchy, CallGraph callGraph,
+			IProgressMonitor monitor) throws IOException, CoreException {
+		monitor.beginTask("Discovering stateful intermediate operations...", this.trackedInstances.size());
+
 		// for each instance in the analysis result (these should be the
 		// "intermediate" streams).
-		for (InstanceKey instance : this.trackedInstances)
+		for (InstanceKey instance : this.trackedInstances) {
 			if (!this.instanceToStatefulIntermediateOperationContainment.containsKey(instance)) {
 				// make sure that the stream is the result of an intermediate
 				// operation.
@@ -816,9 +833,11 @@ public class StreamStateMachine {
 					}
 				this.instanceToStatefulIntermediateOperationContainment.put(instance, found);
 			}
+			monitor.worked(1);
+		}
 	}
 
-	private void discoverTerminalOperations() {
+	private void discoverTerminalOperations(IProgressMonitor monitor) {
 		Collection<OrdinalSet<InstanceKey>> receiverSetsThatHaveTerminalOperations = this.terminalBlockToPossibleReceivers
 				.values();
 
@@ -826,11 +845,14 @@ public class StreamStateMachine {
 		Collection<InstanceKey> validStreams = new HashSet<>();
 
 		// Now, we need to flatten the receiver sets.
-		for (OrdinalSet<InstanceKey> receiverSet : receiverSetsThatHaveTerminalOperations)
+		monitor.beginTask("Flattening...", receiverSetsThatHaveTerminalOperations.size());
+		for (OrdinalSet<InstanceKey> receiverSet : receiverSetsThatHaveTerminalOperations) {
 			// for each receiver set
 			for (InstanceKey instance : receiverSet)
 				// add it to the OK set.
 				validStreams.add(instance);
+			monitor.worked(1);
+		}
 
 		// Now, we have the OK set. Let's propagate it.
 		this.propagateStreamInstanceProperty(validStreams);
@@ -864,8 +886,9 @@ public class StreamStateMachine {
 		}
 	}
 
-	private void fillInstanceToStreamMap(Set<Stream> streamSet, EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws InvalidClassFileException, IOException, CoreException {
+	private void fillInstanceToStreamMap(Set<Stream> streamSet, EclipseProjectAnalysisEngine<InstanceKey> engine,
+			IProgressMonitor monitor) throws InvalidClassFileException, IOException, CoreException {
+		monitor.beginTask("Propagating...", streamSet.size());
 		int skippedStreams = 0;
 		for (Stream stream : streamSet) {
 			InstanceKey instanceKey = null;
@@ -904,6 +927,7 @@ public class StreamStateMachine {
 				LOGGER.warning("Reassociating stream: " + stream.getCreation() + " with: " + instanceKey
 						+ ". Old stream was: " + oldValue.getCreation() + ".");
 
+			monitor.worked(1);
 		} // end each stream.
 
 		// sanity check since it's a bijection.
@@ -952,9 +976,10 @@ public class StreamStateMachine {
 	}
 
 	public Map<TypestateRule, Statistics> start(Set<Stream> streamSet, EclipseProjectAnalysisEngine<InstanceKey> engine,
-			OrderingInference orderingInference)
+			OrderingInference orderingInference, IProgressMonitor monitor)
 			throws PropertiesException, CancelException, IOException, CoreException, NoniterableException,
 			NoninstantiableException, CannotExtractSpliteratorException, InvalidClassFileException {
+		SubMonitor subMonitor = SubMonitor.convert(monitor, "Performing typestate analysis (may take a while)", 100);
 		Map<TypestateRule, Statistics> ret = new HashMap<>();
 
 		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
@@ -973,6 +998,8 @@ public class StreamStateMachine {
 		StreamAttributeTypestateRule[] ruleArray = createStreamAttributeTypestateRules(streamClass);
 
 		// for each rule.
+		SubMonitor ruleMonitor = subMonitor.split(70, SubMonitor.SUPPRESS_NONE).setWorkRemaining(ruleArray.length);
+
 		for (StreamAttributeTypestateRule rule : ruleArray) {
 			// create a DFA based on the rule.
 			TypeStateProperty dfa = new TypeStateProperty(rule, engine.getClassHierarchy());
@@ -984,7 +1011,7 @@ public class StreamStateMachine {
 
 			AggregateSolverResult result;
 			try {
-				result = (AggregateSolverResult) solver.perform(new NullProgressMonitor());
+				result = (AggregateSolverResult) solver.perform(ruleMonitor.split(50, SubMonitor.SUPPRESS_NONE));
 			} catch (SolverTimeoutException | MaxFindingsException | SetUpException | WalaException e) {
 				throw new RuntimeException("Exception caught during typestate analysis.", e);
 			}
@@ -997,6 +1024,9 @@ public class StreamStateMachine {
 			assert lastStatistics == null : "Reassociating statistics.";
 
 			// for each instance in the typestate analysis result.
+			SubMonitor instanceMonitor = ruleMonitor.split(20, SubMonitor.SUPPRESS_NONE)
+					.setWorkRemaining(result.totalInstancesNum());
+
 			for (Iterator<InstanceKey> iterator = result.iterateInstances(); iterator.hasNext();) {
 				// get the instance's key.
 				InstanceKey instanceKey = iterator.next();
@@ -1140,6 +1170,7 @@ public class StreamStateMachine {
 							}
 						}
 					}
+				instanceMonitor.worked(1);
 			} // end for each instance in the typestate analysis result.
 
 			// fill the instance to predecessors map if it's empty.
@@ -1183,23 +1214,26 @@ public class StreamStateMachine {
 					});
 				}
 			}
+			ruleMonitor.worked(1);
 		} // end for each rule.
 
 		// create a mapping between stream instances (from the analysis) and stream
 		// objects (from the refactoring).
-		this.fillInstanceToStreamMap(streamSet, engine);
+		this.fillInstanceToStreamMap(streamSet, engine, subMonitor.split(5, SubMonitor.SUPPRESS_NONE));
 
-		this.discoverTerminalOperations();
+		this.discoverTerminalOperations(subMonitor.split(5, SubMonitor.SUPPRESS_NONE));
 
 		// fill the instance side-effect set.
-		this.discoverPossibleSideEffects(engine);
+		this.discoverPossibleSideEffects(engine, subMonitor.split(5, SubMonitor.SUPPRESS_NONE));
 
 		// discover whether any stateful intermediate operations are
 		// present.
-		this.discoverPossibleStatefulIntermediateOperations(engine.getClassHierarchy(), engine.getCallGraph());
+		this.discoverPossibleStatefulIntermediateOperations(engine.getClassHierarchy(), engine.getCallGraph(),
+				subMonitor.split(5, SubMonitor.SUPPRESS_NONE));
 
 		// does reduction order matter?
-		this.discoverIfReduceOrderingPossiblyMatters(engine, orderingInference);
+		this.discoverIfReduceOrderingPossiblyMatters(engine, orderingInference,
+				subMonitor.split(5, SubMonitor.SUPPRESS_NONE));
 
 		// propagate the instances with side-effects.
 		this.propagateStreamInstanceProperty(this.instancesWithSideEffects);

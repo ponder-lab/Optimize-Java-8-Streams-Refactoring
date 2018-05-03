@@ -16,13 +16,16 @@ import java.util.logging.Logger;
 import java.util.stream.BaseStream;
 
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.launching.IVMInstall;
 import org.eclipse.jdt.launching.JavaRuntime;
 
 import com.ibm.wala.cast.java.client.JDTJavaSourceAnalysisEngine;
 import com.ibm.wala.ide.util.EclipseProjectPath;
+import com.ibm.wala.ide.util.ProgressMonitorDelegate;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.CallGraph;
@@ -35,6 +38,7 @@ import com.ibm.wala.ipa.callgraph.propagation.cfa.nCFABuilder;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.util.CancelException;
+import com.ibm.wala.util.MonitorUtil;
 import com.ibm.wala.util.config.FileOfClasses;
 
 /**
@@ -137,13 +141,15 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 		return classHierarchy;
 	}
 
-	public CallGraph buildSafeCallGraph(AnalysisOptions options)
+	public CallGraph buildSafeCallGraph(AnalysisOptions options, IProgressMonitor monitor)
 			throws CallGraphBuilderCancelException, CancelException {
+		SubMonitor subMonitor = SubMonitor.convert(monitor, "Building call graph...", 1);
 		LOGGER.entering(this.getClass().getName(), "buildSafeCallGraph", this.callGraphBuilder);
 
 		if (this.callGraphBuilder == null) {
 			LOGGER.info("Creating new call graph builder.");
-			this.callGraphBuilder = this.buildCallGraph(this.getClassHierarchy(), options, true, null);
+			this.callGraphBuilder = this.buildCallGraph(this.getClassHierarchy(), options, true,
+					ProgressMonitorDelegate.createProgressMonitorDelegate(subMonitor.split(1)));
 		} else
 			LOGGER.info("Reusing call graph builder.");
 
@@ -151,9 +157,9 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 		return this.callGraphBuilder.makeCallGraph(options, null);
 	}
 
-	public CallGraph buildSafeCallGraph(Iterable<Entrypoint> entryPoints)
+	public CallGraph buildSafeCallGraph(Iterable<Entrypoint> entryPoints, IProgressMonitor monitor)
 			throws IllegalArgumentException, CallGraphBuilderCancelException, CancelException {
-		return this.buildSafeCallGraph(this.getDefaultOptions(entryPoints));
+		return this.buildSafeCallGraph(this.getDefaultOptions(entryPoints), monitor);
 	}
 
 	public void clearCallGraphBuilder() {

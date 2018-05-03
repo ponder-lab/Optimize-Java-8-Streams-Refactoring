@@ -21,6 +21,9 @@ import java.util.stream.Collectors;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.NullProgressMonitor;
+import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.IMethodBinding;
@@ -44,6 +47,7 @@ import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.scope.JUnitEntryPoints;
 
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamStateMachine.Statistics;
+import edu.cuny.hunter.streamrefactoring.core.messages.Messages;
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
@@ -177,12 +181,15 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	/**
 	 * Analyzes this {@link StreamAnalyzer}'s streams.
+	 * 
+	 * @param subMonitor
+	 * @param optional
 	 *
 	 * @return A {@link Map} of project's analyzed along with the entry points used.
 	 * @see #analyze(Optional).
 	 */
 	public Map<IJavaProject, Collection<Entrypoint>> analyze() throws CoreException {
-		return this.analyze(Optional.empty());
+		return this.analyze(Optional.empty(), new NullProgressMonitor());
 	}
 
 	/**
@@ -193,7 +200,10 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * @return A {@link Map} of project's analyzed along with the entry points used.
 	 * @see #analyze().
 	 */
-	public Map<IJavaProject, Collection<Entrypoint>> analyze(Optional<TimeCollector> collector) throws CoreException {
+	public Map<IJavaProject, Collection<Entrypoint>> analyze(Optional<TimeCollector> collector,
+			IProgressMonitor monitor) throws CoreException {
+		SubMonitor subMonitor = SubMonitor.convert(monitor, "Analyzing...", IProgressMonitor.UNKNOWN);
+
 		LOGGER.fine(() -> "Using N = " + this.getNForStreams() + ".");
 
 		Map<IJavaProject, Collection<Entrypoint>> ret = new HashMap<>();
@@ -203,6 +213,8 @@ public class StreamAnalyzer extends ASTVisitor {
 				.collect(Collectors.groupingBy(Stream::getCreationJavaProject, Collectors.toSet()));
 
 		// process each project.
+		subMonitor.beginTask("Processing projects ...", projectToStreams.keySet().size());
+
 		for (IJavaProject project : projectToStreams.keySet()) {
 			// create the analysis engine for the project.
 			// exclude from the analysis because the IR will be built here.
@@ -221,7 +233,8 @@ public class StreamAnalyzer extends ASTVisitor {
 			// build the call graph for the project.
 			Collection<Entrypoint> entryPoints = null;
 			try {
-				entryPoints = this.buildCallGraph(engine, collector);
+				entryPoints = this.buildCallGraph(engine, collector,
+						subMonitor.split(IProgressMonitor.UNKNOWN, SubMonitor.SUPPRESS_NONE));
 			} catch (IOException | CoreException | CancelException e) {
 				LOGGER.log(Level.SEVERE,
 						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
@@ -231,9 +244,11 @@ public class StreamAnalyzer extends ASTVisitor {
 			// save the entry points.
 			ret.put(project, entryPoints);
 
+			Set<Stream> streamSet = projectToStreams.get(project);
+
 			if (entryPoints.isEmpty()) {
 				// add a status entry for each stream in the project
-				for (Stream stream : projectToStreams.get(project))
+				for (Stream stream : streamSet)
 					stream.addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
 							"Project: " + engine.getProject().getElementName() + " has no entry points.");
 				return ret;
@@ -241,7 +256,9 @@ public class StreamAnalyzer extends ASTVisitor {
 
 			OrderingInference orderingInference = new OrderingInference(engine.getClassHierarchy());
 
-			for (Iterator<Stream> iterator = projectToStreams.get(project).iterator(); iterator.hasNext();) {
+			subMonitor.beginTask("Inferring initial stream attributes...", streamSet.size());
+
+			for (Iterator<Stream> iterator = streamSet.iterator(); iterator.hasNext();) {
 				Stream stream = iterator.next();
 				try {
 					stream.inferInitialAttributes(engine, orderingInference);
@@ -261,14 +278,16 @@ public class StreamAnalyzer extends ASTVisitor {
 					iterator.remove();
 					this.getStreamSet().remove(stream);
 				}
+				subMonitor.worked(1);
 			}
 
 			// start the state machine for each valid stream in the project.
 			StreamStateMachine stateMachine = new StreamStateMachine();
 			try {
-				Map<TypestateRule, StreamStateMachine.Statistics> ruleToStats = stateMachine.start(projectToStreams
-						.get(project).parallelStream().filter(s -> s.getStatus().isOK()).collect(Collectors.toSet()),
-						engine, orderingInference);
+				Map<TypestateRule, StreamStateMachine.Statistics> ruleToStats = stateMachine.start(
+						streamSet.parallelStream().filter(s -> s.getStatus().isOK()).collect(Collectors.toSet()),
+						engine, orderingInference,
+						subMonitor.split(IProgressMonitor.UNKNOWN, SubMonitor.SUPPRESS_NONE));
 
 				// use just one the rules.
 				assert !ruleToStats.isEmpty() : "Should have stats available.";
@@ -283,9 +302,16 @@ public class StreamAnalyzer extends ASTVisitor {
 			}
 
 			// check preconditions.
-			for (Stream stream : projectToStreams.get(project).parallelStream().filter(s -> s.getStatus().isOK())
-					.collect(Collectors.toSet()))
+			SubMonitor checkMonitor = subMonitor.split(IProgressMonitor.UNKNOWN, SubMonitor.SUPPRESS_NONE);
+			checkMonitor.beginTask(Messages.CheckingPreconditions, streamSet.size());
+
+			for (Stream stream : streamSet.parallelStream().filter(s -> s.getStatus().isOK())
+					.collect(Collectors.toSet())) {
 				stream.check();
+				checkMonitor.worked(1);
+			}
+
+			subMonitor.worked(1);
 		} // end for each stream.
 		return ret;
 	}
@@ -302,7 +328,7 @@ public class StreamAnalyzer extends ASTVisitor {
 	 * @return The {@link Entrypoint}s used in building the {@link CallGraph}.
 	 */
 	protected Collection<Entrypoint> buildCallGraph(EclipseProjectAnalysisEngine<InstanceKey> engine,
-			Optional<TimeCollector> collector)
+			Optional<TimeCollector> collector, IProgressMonitor monitor)
 			throws IOException, CoreException, CallGraphBuilderCancelException, CancelException {
 		// if we haven't built the call graph yet.
 		if (!this.enginesWithBuiltCallGraphsToEntrypointsUsed.keySet().contains(engine)) {
@@ -373,7 +399,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			options.getSSAOptions().setPiNodePolicy(SSAOptions.getAllBuiltInPiNodes());
 
 			try {
-				engine.buildSafeCallGraph(options);
+				engine.buildSafeCallGraph(options, SubMonitor.convert(monitor, "Building call graph", 1));
 			} catch (IllegalStateException e) {
 				LOGGER.log(Level.SEVERE, e, () -> "Exception encountered while building call graph for project: "
 						+ engine.getProject().getElementName());
