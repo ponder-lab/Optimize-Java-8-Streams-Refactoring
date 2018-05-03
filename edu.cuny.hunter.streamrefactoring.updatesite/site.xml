@@ -5,9 +5,5 @@
 
 This tool consists of automated refactoring research prototype plug-ins for Eclipse that assists developers in writing optimal stream client code in a semantics-preserving fashion. Refactoring preconditions and transformations for automatically determining when it is safe and possibly advantageous to convert a sequential stream to parallel and improve upon already parallel streams are included. The approach utilizes both WALA and SAFE.
    </description>
-   <feature url="features/edu.cuny.hunter.optimize.stream.refactoring_0.13.0.201805030928.jar" id="edu.cuny.hunter.optimize.stream.refactoring" version="0.13.0.201805030928"/>
-   <feature url="features/edu.cuny.citytech.refactoring.common.feature_1.10.0.201805030928.jar" id="edu.cuny.citytech.refactoring.common.feature" version="1.10.0.201805030928"/>
-   <feature url="features/com.ibm.wala-feature_1.3.10.201805030928.jar" id="com.ibm.wala-feature" version="1.3.10.201805030928"/>
-   <feature url="features/com.ibm.wala.ide-feature_1.3.10.201805030928.jar" id="com.ibm.wala.ide-feature" version="1.3.10.201805030928"/>
-   <feature url="features/com.ibm.safe.feature_1.1.0.201805030928.jar" id="com.ibm.safe.feature" version="1.1.0.201805030928"/>
+   <feature url="features/edu.cuny.hunter.optimize.stream.refactoring_0.13.0.201804272238.jar" id="edu.cuny.hunter.optimize.stream.refactoring" version="0.13.0.201804272238"/>
 </site>
