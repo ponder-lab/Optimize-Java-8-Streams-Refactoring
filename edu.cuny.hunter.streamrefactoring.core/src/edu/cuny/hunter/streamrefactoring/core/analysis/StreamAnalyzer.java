@@ -181,7 +181,7 @@ public class StreamAnalyzer extends ASTVisitor {
 
 	/**
 	 * Analyzes this {@link StreamAnalyzer}'s streams.
-	 * 
+	 *
 	 * @param subMonitor
 	 * @param optional
 	 *

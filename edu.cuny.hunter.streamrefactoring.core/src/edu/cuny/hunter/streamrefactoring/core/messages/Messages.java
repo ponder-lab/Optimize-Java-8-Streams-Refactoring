@@ -6,7 +6,8 @@ package edu.cuny.hunter.streamrefactoring.core.messages;
 import org.eclipse.osgi.util.NLS;
 
 /**
- * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi Khatchadourian</a>
+ * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi
+ *         Khatchadourian</a>
  */
 public class Messages extends NLS {
 	private static final String BUNDLE_NAME = "edu.cuny.hunter.streamrefactoring.core.messages.messages"; //$NON-NLS-1$
@@ -19,10 +20,10 @@ public class Messages extends NLS {
 	public static String Name;
 	public static String NoStreamsHavePassedThePreconditions;
 	public static String NoStreamsToConvert;
+	public static String NoStreamsToOptimize;
 	public static String PreconditionFailed;
 	public static String RefactoringNotPossible;
 	public static String StreamsNotSpecified;
-	public static String NoStreamsToOptimize;
 
 	static {
 		// initialize resource bundle

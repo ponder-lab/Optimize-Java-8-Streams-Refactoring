@@ -40,9 +40,9 @@ public final class Util {
 			boolean useImplicitBenchmarkEntrypoints, boolean useImplicitJavaFXEntrypoints,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(projects[0]);
-		OptimizeStreamsRefactoringProcessor processor = new OptimizeStreamsRefactoringProcessor(
-				projects, settings, false, useImplicitEntrypoints, useImplicitTestEntrypoints,
-				useImplicitBenchmarkEntrypoints, useImplicitJavaFXEntrypoints, monitor);
+		OptimizeStreamsRefactoringProcessor processor = new OptimizeStreamsRefactoringProcessor(projects, settings,
+				false, useImplicitEntrypoints, useImplicitTestEntrypoints, useImplicitBenchmarkEntrypoints,
+				useImplicitJavaFXEntrypoints, monitor);
 		return processor;
 	}
 
@@ -50,8 +50,8 @@ public final class Util {
 			IJavaProject[] projects, int nForStreams, boolean useImplicitEntrypoints,
 			boolean useImplicitTestEntrypoints, boolean useImplicitBenchmarkEntrypoints,
 			boolean useImplicitJavaFXEntrypoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
-		OptimizeStreamsRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(
-				projects, useImplicitEntrypoints, useImplicitTestEntrypoints, useImplicitBenchmarkEntrypoints,
+		OptimizeStreamsRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(projects,
+				useImplicitEntrypoints, useImplicitTestEntrypoints, useImplicitBenchmarkEntrypoints,
 				useImplicitJavaFXEntrypoints, monitor);
 		processor.setNForStreams(nForStreams);
 		return processor;
@@ -59,12 +59,12 @@ public final class Util {
 
 	public static OptimizeStreamsRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
 			IJavaProject[] projects, Optional<IProgressMonitor> monitor) throws JavaModelException {
-		if (projects.length < 1) 
+		if (projects.length < 1)
 			throw new IllegalArgumentException("No projects.");
-		
+
 		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(projects[0]);
-		OptimizeStreamsRefactoringProcessor processor = new OptimizeStreamsRefactoringProcessor(
-				projects, settings, monitor);
+		OptimizeStreamsRefactoringProcessor processor = new OptimizeStreamsRefactoringProcessor(projects, settings,
+				monitor);
 		return processor;
 	}
 
@@ -75,8 +75,8 @@ public final class Util {
 
 	public static ProcessorBasedRefactoring createRefactoring(IJavaProject[] projects,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
-		OptimizeStreamsRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(
-				projects, monitor);
+		OptimizeStreamsRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(projects,
+				monitor);
 		return new ProcessorBasedRefactoring(processor);
 	}
 

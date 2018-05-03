@@ -358,7 +358,7 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 
 			pm.beginTask("Transforming streams ...", optimizableStreams.size());
 			for (Stream stream : optimizableStreams) {
-				CompilationUnitRewrite rewrite = getCompilationUnitRewrite(
+				CompilationUnitRewrite rewrite = this.getCompilationUnitRewrite(
 						stream.getEnclosingEclipseMethod().getCompilationUnit(), stream.getEnclosingCompilationUnit());
 				stream.transform(rewrite);
 				pm.worked(1);
@@ -510,22 +510,6 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 		return this.useImplicitEntrypoints;
 	}
 
-	public void setUseImplicitBenchmarkEntrypoints(boolean useImplicitBenchmarkEntrypoints) {
-		this.useImplicitBenchmarkEntrypoints = useImplicitBenchmarkEntrypoints;
-	}
-
-	public void setUseImplicitEntrypoints(boolean useImplicitEntrypoints) {
-		this.useImplicitEntrypoints = useImplicitEntrypoints;
-	}
-
-	public void setUseImplicitJavaFXEntrypoints(boolean useImplicitJavaFXEntrypoints) {
-		this.useImplicitJavaFXEntrypoints = useImplicitJavaFXEntrypoints;
-	}
-
-	public void setUseImplicitTestEntrypoints(boolean useImplicitTestEntrypoints) {
-		this.useImplicitTestEntrypoints = useImplicitTestEntrypoints;
-	}
-
 	public boolean getUseImplicitJavaFXEntrypoints() {
 		return this.useImplicitJavaFXEntrypoints;
 	}
@@ -579,5 +563,21 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 
 	protected void setStreamSet(Set<Stream> streamSet) {
 		this.streamSet = streamSet;
+	}
+
+	public void setUseImplicitBenchmarkEntrypoints(boolean useImplicitBenchmarkEntrypoints) {
+		this.useImplicitBenchmarkEntrypoints = useImplicitBenchmarkEntrypoints;
+	}
+
+	public void setUseImplicitEntrypoints(boolean useImplicitEntrypoints) {
+		this.useImplicitEntrypoints = useImplicitEntrypoints;
+	}
+
+	public void setUseImplicitJavaFXEntrypoints(boolean useImplicitJavaFXEntrypoints) {
+		this.useImplicitJavaFXEntrypoints = useImplicitJavaFXEntrypoints;
+	}
+
+	public void setUseImplicitTestEntrypoints(boolean useImplicitTestEntrypoints) {
+		this.useImplicitTestEntrypoints = useImplicitTestEntrypoints;
 	}
 }
