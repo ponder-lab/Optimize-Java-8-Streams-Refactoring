@@ -2,7 +2,7 @@
 <feature
       id="edu.cuny.hunter.optimize.stream.refactoring"
       label="Optimize Streams Refactoring"
-      version="0.14.0.qualifier"
+      version="0.15.0.qualifier"
       provider-name="Hunter College, City University of New York"
       plugin="edu.cuny.hunter.streamrefactoring.core">
 
@@ -241,10 +241,6 @@ any resulting litigation.
          id="com.ibm.wala.ide-feature"
          version="0.0.0"/>
 
-   <includes
-         id="edu.cuny.citytech.refactoring.common.feature"
-         version="0.0.0"/>
-
    <requires>
       <import plugin="org.eclipse.ltk.core.refactoring"/>
       <import plugin="org.eclipse.equinox.registry"/>
@@ -286,6 +282,20 @@ any resulting litigation.
 
    <plugin
          id="edu.cuny.hunter.streamrefactoring.ui"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="edu.cuny.citytech.refactoring.common.core"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
+   <plugin
+         id="edu.cuny.citytech.refactoring.common.ui"
          download-size="0"
          install-size="0"
          version="0.0.0"
