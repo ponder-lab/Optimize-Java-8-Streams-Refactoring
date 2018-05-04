@@ -2,7 +2,7 @@
 <feature
       id="edu.cuny.hunter.optimize.stream.refactoring"
       label="Optimize Streams Refactoring"
-      version="0.13.0.qualifier"
+      version="0.14.0.qualifier"
       provider-name="Hunter College, City University of New York"
       plugin="edu.cuny.hunter.streamrefactoring.core">
 
@@ -228,6 +228,22 @@ any resulting litigation.
       <discovery label="WALA" url="https://raw.githubusercontent.com/ponder-lab/WALA/master/com.ibm.wala.updatesite"/>
       <discovery label="SAFE" url="https://raw.githubusercontent.com/ponder-lab/safe/master/com.ibm.safe.updatesite"/>
    </url>
+
+   <includes
+         id="com.ibm.safe.feature"
+         version="0.0.0"/>
+
+   <includes
+         id="com.ibm.wala-feature"
+         version="0.0.0"/>
+
+   <includes
+         id="com.ibm.wala.ide-feature"
+         version="0.0.0"/>
+
+   <includes
+         id="edu.cuny.citytech.refactoring.common.feature"
+         version="0.0.0"/>
 
    <requires>
       <import plugin="org.eclipse.ltk.core.refactoring"/>
