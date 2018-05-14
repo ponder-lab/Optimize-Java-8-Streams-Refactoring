@@ -38,19 +38,19 @@
     <dependency>
       <groupId>edu.cuny.hunter.streamrefactoring</groupId>
       <artifactId>edu.cuny.hunter.streamrefactoring.core</artifactId>
-      <version>1.0.0</version>
+      <version>1.6.0</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>edu.cuny.hunter.streamrefactoring</groupId>
       <artifactId>edu.cuny.hunter.streamrefactoring.ui</artifactId>
-      <version>1.0.0</version>
+      <version>1.4.0</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
       <groupId>edu.cuny.hunter.streamrefactoring</groupId>
       <artifactId>edu.cuny.hunter.streamrefactoring.tests</artifactId>
-      <version>1.0.0</version>
+      <version>1.3.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
