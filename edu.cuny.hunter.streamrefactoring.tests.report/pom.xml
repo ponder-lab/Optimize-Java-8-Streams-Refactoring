@@ -50,7 +50,7 @@
     <dependency>
       <groupId>edu.cuny.hunter.streamrefactoring</groupId>
       <artifactId>edu.cuny.hunter.streamrefactoring.tests</artifactId>
-      <version>1.3.0</version>
+      <version>1.0.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
