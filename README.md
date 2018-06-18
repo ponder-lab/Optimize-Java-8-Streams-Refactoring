@@ -28,8 +28,6 @@ Currently, the refactoring works only via the package explorer and the outline v
 
 [This video][install] demonstrates the different ways that this tool can be installed.
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/On4xBzvFk1c" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
-
 ### Update Site
 
 An alpha version of our tool is available via an Eclipse update site at: https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.updatesite. Please choose the latest version of the "Optimize Stream Refactoring."
