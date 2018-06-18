@@ -26,7 +26,7 @@ Currently, the refactoring works only via the package explorer and the outline v
 
 ## Installation
 
-[This video]() demonstrates the different ways that this tool can be installed.
+[This video][install] demonstrates the different ways that this tool can be installed.
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/On4xBzvFk1c" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
 
@@ -56,6 +56,8 @@ Please note that there is a special dependency on WALA. Currently, our refactori
 
 Explicit entry points may be marked using the appropriate annotation found in the corresponding [annotation library][annotations]. They can also be marked using a text file named `entry_points.txt`. The processing of this file is recursive; it will search for this file in the same directory as the source code and will traverse up the directory structure until one is found. As such, the file may be placed in, for example, package directories, subproject directories, and project roots. The format of the file is simply a list of method signatures on each line.
 
+[This video][entrypoints] explains more details on how entry points can be specified.
+
 <!-- It is also possible to have the tool generate the file from the entry points that are being used (either implicit or explicit entry points). If enabled, the file will appear in the working directory. -->
 
 ## Limitations
@@ -78,3 +80,5 @@ See the [wiki][wiki] for further information.
 [wala]: https://github.com/wala/WALA
 [safe]: https://github.com/tech-srl/safe
 [contrib]: https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/blob/master/CONTRIBUTING.md
+[install]: https://youtu.be/On4xBzvFk1c
+[entrypoints]: https://youtu.be/On4xBzvFk1c?t=2m6s
