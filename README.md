@@ -11,6 +11,12 @@ This tool consists of automated refactoring research prototype plug-ins for [Ecl
 ## Screenshot
 ![Screenshot](http://i2.wp.com/khatchad.commons.gc.cuny.edu/files/2018/03/Screenshot-from-2018-04-28-17-34-53.png)
 
+## Demonstration
+
+(click to view)
+
+[![Video demo of refactoring tool](http://img.youtube.com/vi/YaSYH7n6y5s/0.jpg)](http://www.youtube.com/watch?v=YaSYH7n6y5s "Optimize Java 8 Stream Refactoring Tool Demonstration")
+
 ## Usage
 
 The refactoring can be run in two different ways:
