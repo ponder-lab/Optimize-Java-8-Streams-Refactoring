@@ -54,7 +54,7 @@ Dependency | Update Site
 
 #### WALA
 
-Please note that there is a special dependency on WALA. Currently, our refactoring requires **WALA version 1.3.10**. Although this version from the official WALA site would theoretically work, the plug-in has been tested with the WALA version whose update site is listed above. We highly recommend that this version of WALA be used with the plug-in, which may require uninstalling other WALA features from your current Eclipse installation. [Issue #192](https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/issues/192) has been opened to track the future integration.
+Please note that there is a special dependency on WALA. Currently, our refactoring requires **WALA version 1.3.10**. Although the version from the official WALA site would theoretically work, the plug-in has been tested with the WALA version whose update site is listed above. We highly recommend that this version of WALA be used with the plug-in, which may require uninstalling other WALA features from your current Eclipse installation. [Issue #192](https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/issues/192) has been opened to track the future integration.
 
 ## Marking Entry Points
 
