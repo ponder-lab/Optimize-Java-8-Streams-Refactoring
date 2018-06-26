@@ -44,7 +44,7 @@ You may also install the tool via the [Eclipse Marketplace](https://marketplace.
 
 ### Dependencies
 
-The refactoring has several dependencies as listed below. If you experience any trouble installing the plug-in using the above update site, you can manually install the dependencies. The latest version of the plug-ins should be installed. If installing SAFE, not that WALA must be installed first:
+The refactoring has several dependencies as listed below. If you experience any trouble installing the plug-in using the above update site, you can manually install the dependencies. The latest version of the plug-ins should be installed. If installing SAFE, note that WALA *must* be installed first:
 
 Dependency | Update Site
 --- | ---
