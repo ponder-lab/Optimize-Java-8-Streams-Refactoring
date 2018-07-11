@@ -28,6 +28,7 @@ import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.dom.ASTVisitor;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
 
@@ -60,6 +61,10 @@ public class StreamAnalyzer extends ASTVisitor {
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private static final int N_FOR_STREAMS_DEFAULT = 2;
+
+	private int numberOfMethodForStreamReturnType;
+
+	private int numberOfMethodForStreamParameter;
 
 	private static void addImplicitEntryPoints(Collection<Entrypoint> target, Iterable<Entrypoint> source) {
 		for (Entrypoint implicitEntryPoint : source)
@@ -510,5 +515,36 @@ public class StreamAnalyzer extends ASTVisitor {
 		}
 
 		return super.visit(node);
+	}
+
+	@Override
+	public boolean visit(MethodDeclaration methodDeclaration) {
+		IMethodBinding methodBinding = methodDeclaration.resolveBinding();
+		ITypeBinding returnType = methodBinding.getReturnType();
+		boolean returnTypeImplementsBaseStream = Util.implementsBaseStream(returnType);
+		if (returnTypeImplementsBaseStream) {
+			numberOfMethodForStreamReturnType++;
+			super.visit(methodDeclaration);
+		}
+		ITypeBinding returnTypes[] = methodBinding.getParameterTypes();
+		if (returnTypes.length < 1)
+			return false;
+		else {
+			for (ITypeBinding returnTypeBinding : returnTypes) {
+				if (Util.implementsBaseStream(returnTypeBinding)) {
+					numberOfMethodForStreamParameter++;
+					break;
+				}
+			}
+		}
+		return super.visit(methodDeclaration);
+	}
+
+	public int getNumberOfMethodForStreamReturnType() {
+		return this.numberOfMethodForStreamReturnType;
+	}
+
+	public int getNumberMethodForStreamParameter() {
+		return this.numberOfMethodForStreamParameter;
 	}
 }
