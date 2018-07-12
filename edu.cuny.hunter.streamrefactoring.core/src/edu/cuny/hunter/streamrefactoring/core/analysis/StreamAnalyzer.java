@@ -226,95 +226,95 @@ public class StreamAnalyzer extends ASTVisitor {
 
 			collector.ifPresent(TimeCollector::start);
 			EclipseProjectAnalysisEngine<InstanceKey> engine = null;
-			try {
-				engine = new EclipseProjectAnalysisEngine<>(project, this.getNForStreams());
-				engine.buildAnalysisScope();
-			} catch (IOException e) {
-				LOGGER.log(Level.SEVERE, "Could not create analysis engine for: " + project.getElementName(), e);
-				throw new RuntimeException(e);
-			}
-			collector.ifPresent(TimeCollector::stop);
-
-			// build the call graph for the project.
-			Collection<Entrypoint> entryPoints = null;
-			try {
-				entryPoints = this.buildCallGraph(engine, collector,
-						subMonitor.split(IProgressMonitor.UNKNOWN, SubMonitor.SUPPRESS_NONE));
-			} catch (IOException | CoreException | CancelException e) {
-				LOGGER.log(Level.SEVERE,
-						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
-				throw new RuntimeException(e);
-			}
-
-			// save the entry points.
-			ret.put(project, entryPoints);
+//			try {
+//				engine = new EclipseProjectAnalysisEngine<>(project, this.getNForStreams());
+//				engine.buildAnalysisScope();
+//			} catch (IOException e) {
+//				LOGGER.log(Level.SEVERE, "Could not create analysis engine for: " + project.getElementName(), e);
+//				throw new RuntimeException(e);
+//			}
+//			collector.ifPresent(TimeCollector::stop);
+//
+//			// build the call graph for the project.
+//			Collection<Entrypoint> entryPoints = null;
+//			try {
+//				entryPoints = this.buildCallGraph(engine, collector,
+//						subMonitor.split(IProgressMonitor.UNKNOWN, SubMonitor.SUPPRESS_NONE));
+//			} catch (IOException | CoreException | CancelException e) {
+//				LOGGER.log(Level.SEVERE,
+//						"Exception encountered while building call graph for: " + project.getElementName() + ".", e);
+//				throw new RuntimeException(e);
+//			}
+//
+//			// save the entry points.
+//			ret.put(project, entryPoints);
 
 			Set<Stream> streamSet = projectToStreams.get(project);
 
-			if (entryPoints.isEmpty()) {
-				// add a status entry for each stream in the project
-				for (Stream stream : streamSet)
-					stream.addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
-							"Project: " + engine.getProject().getElementName() + " has no entry points.");
-				return ret;
-			}
-
-			OrderingInference orderingInference = new OrderingInference(engine.getClassHierarchy());
+//			if (entryPoints.isEmpty()) {
+//				// add a status entry for each stream in the project
+//				for (Stream stream : streamSet)
+//					stream.addStatusEntry(PreconditionFailure.NO_ENTRY_POINT,
+//							"Project: " + engine.getProject().getElementName() + " has no entry points.");
+//				return ret;
+//			}
+//
+//			OrderingInference orderingInference = new OrderingInference(engine.getClassHierarchy());
 
 			subMonitor.beginTask("Inferring initial stream attributes...", streamSet.size());
 
-			for (Iterator<Stream> iterator = streamSet.iterator(); iterator.hasNext();) {
-				Stream stream = iterator.next();
-				try {
-					stream.inferInitialAttributes(engine, orderingInference);
-				} catch (InvalidClassFileException | IOException e) {
-					LOGGER.log(Level.SEVERE, "Exception encountered while processing: " + stream.getCreation() + ".",
-							e);
-					throw new RuntimeException(e);
-				} catch (UnhandledCaseException e) {
-					LOGGER.log(Level.WARNING, "Unhandled case encountered while processing: " + stream.getCreation(),
-							e);
-					stream.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED,
-							"Stream: " + stream.getCreation() + " has an unhandled case: " + e.getMessage());
-				} catch (StreamCreationNotConsideredException e) {
-					LOGGER.log(Level.WARNING, "Unconsidered case encountered while processing: " + stream.getCreation(),
-							e);
-					// remove it from consideration.
-					iterator.remove();
-					this.getStreamSet().remove(stream);
-				}
-				subMonitor.worked(1);
-			}
+//			for (Iterator<Stream> iterator = streamSet.iterator(); iterator.hasNext();) {
+//				Stream stream = iterator.next();
+//				try {
+//					stream.inferInitialAttributes(engine, orderingInference);
+//				} catch (InvalidClassFileException | IOException e) {
+//					LOGGER.log(Level.SEVERE, "Exception encountered while processing: " + stream.getCreation() + ".",
+//							e);
+//					throw new RuntimeException(e);
+//				} catch (UnhandledCaseException e) {
+//					LOGGER.log(Level.WARNING, "Unhandled case encountered while processing: " + stream.getCreation(),
+//							e);
+//					stream.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED,
+//							"Stream: " + stream.getCreation() + " has an unhandled case: " + e.getMessage());
+//				} catch (StreamCreationNotConsideredException e) {
+//					LOGGER.log(Level.WARNING, "Unconsidered case encountered while processing: " + stream.getCreation(),
+//							e);
+//					// remove it from consideration.
+//					iterator.remove();
+//					this.getStreamSet().remove(stream);
+//				}
+//				subMonitor.worked(1);
+//			}
 
 			// start the state machine for each valid stream in the project.
-			StreamStateMachine stateMachine = new StreamStateMachine();
-			try {
-				Map<TypestateRule, StreamStateMachine.Statistics> ruleToStats = stateMachine.start(
-						streamSet.parallelStream().filter(s -> s.getStatus().isOK()).collect(Collectors.toSet()),
-						engine, orderingInference,
-						subMonitor.split(IProgressMonitor.UNKNOWN, SubMonitor.SUPPRESS_NONE));
-
-				// use just one the rules.
-				assert !ruleToStats.isEmpty() : "Should have stats available.";
-				Statistics statistics = ruleToStats.values().iterator().next();
-
-				this.setNumberOfProcessedStreamInstances(statistics.getNumberOfStreamInstancesProcessed());
-				this.setNumberOfSkippedStreamInstances(statistics.getNumberOfStreamInstancesSkipped());
-			} catch (PropertiesException | CancelException | NoniterableException | NoninstantiableException
-					| CannotExtractSpliteratorException | InvalidClassFileException | IOException e) {
-				LOGGER.log(Level.SEVERE, "Error while starting state machine.", e);
-				throw new RuntimeException(e);
-			}
+//			StreamStateMachine stateMachine = new StreamStateMachine();
+//			try {
+//				Map<TypestateRule, StreamStateMachine.Statistics> ruleToStats = stateMachine.start(
+//						streamSet.parallelStream().filter(s -> s.getStatus().isOK()).collect(Collectors.toSet()),
+//						engine, orderingInference,
+//						subMonitor.split(IProgressMonitor.UNKNOWN, SubMonitor.SUPPRESS_NONE));
+//
+//				// use just one the rules.
+//				assert !ruleToStats.isEmpty() : "Should have stats available.";
+//				Statistics statistics = ruleToStats.values().iterator().next();
+//
+//				this.setNumberOfProcessedStreamInstances(statistics.getNumberOfStreamInstancesProcessed());
+//				this.setNumberOfSkippedStreamInstances(statistics.getNumberOfStreamInstancesSkipped());
+//			} catch (PropertiesException | CancelException | NoniterableException | NoninstantiableException
+//					| CannotExtractSpliteratorException | InvalidClassFileException | IOException e) {
+//				LOGGER.log(Level.SEVERE, "Error while starting state machine.", e);
+//				throw new RuntimeException(e);
+//			}
 
 			// check preconditions.
-			SubMonitor checkMonitor = subMonitor.split(IProgressMonitor.UNKNOWN, SubMonitor.SUPPRESS_NONE);
-			checkMonitor.beginTask(Messages.CheckingPreconditions, streamSet.size());
-
-			for (Stream stream : streamSet.parallelStream().filter(s -> s.getStatus().isOK())
-					.collect(Collectors.toSet())) {
-				stream.check();
-				checkMonitor.worked(1);
-			}
+//			SubMonitor checkMonitor = subMonitor.split(IProgressMonitor.UNKNOWN, SubMonitor.SUPPRESS_NONE);
+//			checkMonitor.beginTask(Messages.CheckingPreconditions, streamSet.size());
+//
+//			for (Stream stream : streamSet.parallelStream().filter(s -> s.getStatus().isOK())
+//					.collect(Collectors.toSet())) {
+//				stream.check();
+//				checkMonitor.worked(1);
+//			}
 
 			subMonitor.worked(1);
 		} // end for each stream.
