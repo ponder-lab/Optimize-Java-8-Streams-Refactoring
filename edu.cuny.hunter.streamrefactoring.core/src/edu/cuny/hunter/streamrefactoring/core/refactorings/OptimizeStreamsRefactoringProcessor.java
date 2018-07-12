@@ -149,6 +149,10 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 	private boolean useImplicitJavaFXEntrypoints = false;
 
 	private boolean useImplicitTestEntrypoints = false;
+	
+	private int numberOfMethodForStreamReturnType;
+	
+	private int numberOfMethodForStreamParameter;
 
 	public OptimizeStreamsRefactoringProcessor() throws JavaModelException {
 		this(null, null, false, true, false, false, false, Optional.empty());
@@ -211,6 +215,11 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 		// }
 		return new RefactoringStatus();
 	}
+	
+	private void setNumberOfMethods(int methodForStreamReturnType, int methodForStreamParameter) {
+		this.numberOfMethodForStreamReturnType = methodForStreamReturnType;
+		this.numberOfMethodForStreamParameter = methodForStreamParameter;
+	}
 
 	@Override
 	public RefactoringStatus checkFinalConditions(final IProgressMonitor monitor, final CheckConditionsContext context)
@@ -253,6 +262,9 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 			this.projectToEntryPoints = analyzer.analyze(Optional.of(this.getExcludedTimeCollector()),
 					subMonitor.split(IProgressMonitor.UNKNOWN, SubMonitor.SUPPRESS_NONE));
 			subMonitor.worked(1);
+			
+			this.setNumberOfMethods(analyzer.getNumberOfMethodForStreamReturnType(),
+					analyzer.getNumberMethodForStreamParameter());
 
 			// set statistics for stream instances.
 			this.setNumberOfProcessedStreamInstances(analyzer.getNumberOfProcessedStreamInstances());
@@ -579,5 +591,13 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 
 	public void setUseImplicitTestEntrypoints(boolean useImplicitTestEntrypoints) {
 		this.useImplicitTestEntrypoints = useImplicitTestEntrypoints;
+	}
+	
+	public int getNumberOfMethodForStreamReturnType() {
+		return this.numberOfMethodForStreamReturnType;
+	}
+
+	public int getNumberMethodForStreamParameter() {
+		return this.numberOfMethodForStreamParameter;
 	}
 }

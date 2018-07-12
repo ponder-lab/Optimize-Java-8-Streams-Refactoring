@@ -311,6 +311,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter streamExecutionModePrinter = null;
 			CSVPrinter streamOrderingPrinter = null;
 			CSVPrinter entryPointsPrinter = null;
+			CSVPrinter streamStaticsPrinter = null;
 			PrintWriter entryPointsTXTPrinter = null;
 
 			OptimizeStreamsRefactoringProcessor processor = null;
@@ -369,6 +370,9 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 				entryPointsPrinter = createCSVPrinter("entry_points.csv",
 						new String[] { "subject", "method", "type FQN" });
+				
+				streamStaticsPrinter = createCSVPrinter("stream_statics.csv", 
+						new String[] {"subject", "number of methods for stream return type", "number of method for stream parameter"});
 
 				entryPointsTXTPrinter = new PrintWriter("entry_points.txt");
 
@@ -453,6 +457,10 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 							}).collect(Collectors.toSet());
 
 					resultsPrinter.print(candidates.size()); // number.
+
+					streamStaticsPrinter.printRecord(javaProject.getElementName(),
+							processor.getNumberOfMethodForStreamReturnType(),
+							processor.getNumberMethodForStreamParameter());
 
 					// candidate streams.
 					for (Stream stream : candidates)
@@ -619,6 +627,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						entryPointsPrinter.close();
 					if (entryPointsTXTPrinter != null)
 						entryPointsTXTPrinter.close();
+					if (streamStaticsPrinter != null)
+						streamStaticsPrinter.close();
 
 					// clear cache.
 					if (processor != null)
