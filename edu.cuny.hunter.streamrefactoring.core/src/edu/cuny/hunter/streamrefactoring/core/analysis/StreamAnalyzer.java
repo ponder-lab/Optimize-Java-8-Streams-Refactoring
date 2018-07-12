@@ -526,12 +526,12 @@ public class StreamAnalyzer extends ASTVisitor {
 			numberOfMethodForStreamReturnType++;
 			super.visit(methodDeclaration);
 		}
-		ITypeBinding returnTypes[] = methodBinding.getParameterTypes();
-		if (returnTypes.length < 1)
+		ITypeBinding parameterTypes[] = methodBinding.getParameterTypes();
+		if (parameterTypes.length < 1)
 			return false;
 		else {
-			for (ITypeBinding returnTypeBinding : returnTypes) {
-				if (Util.implementsBaseStream(returnTypeBinding)) {
+			for (ITypeBinding parameterBinding : parameterTypes) {
+				if (Util.implementsBaseStream(parameterBinding)) {
 					numberOfMethodForStreamParameter++;
 					break;
 				}
