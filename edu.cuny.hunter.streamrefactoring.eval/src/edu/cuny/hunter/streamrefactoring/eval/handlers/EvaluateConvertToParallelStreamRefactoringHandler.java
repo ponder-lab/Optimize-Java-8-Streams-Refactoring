@@ -311,7 +311,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 			CSVPrinter streamExecutionModePrinter = null;
 			CSVPrinter streamOrderingPrinter = null;
 			CSVPrinter entryPointsPrinter = null;
-			CSVPrinter streamStatisticsPrinter = null;
 			PrintWriter entryPointsTXTPrinter = null;
 
 			OptimizeStreamsRefactoringProcessor processor = null;
@@ -340,6 +339,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					resultsHeader.add(action.toString());
 
 				resultsHeader.add("time (s)");
+				resultsHeader.addAll(Arrays.asList("#methods for stream return type", "#methods for stream parameter",
+						"#number of fields for stream"));
 
 				resultsPrinter = createCSVPrinter("results.csv",
 						resultsHeader.toArray(new String[resultsHeader.size()]));
@@ -370,9 +371,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 
 				entryPointsPrinter = createCSVPrinter("entry_points.csv",
 						new String[] { "subject", "method", "type FQN" });
-				
-				streamStatisticsPrinter = createCSVPrinter("stream_statistics.csv", 
-						new String[] {"subject", "number of methods for stream return type", "number of method for stream parameter"});
 
 				entryPointsTXTPrinter = new PrintWriter("entry_points.txt");
 
@@ -457,10 +455,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 							}).collect(Collectors.toSet());
 
 					resultsPrinter.print(candidates.size()); // number.
-
-					streamStatisticsPrinter.printRecord(javaProject.getElementName(),
-							processor.getNumberOfMethodForStreamReturnType(),
-							processor.getNumberMethodForStreamParameter());
 
 					// candidate streams.
 					for (Stream stream : candidates)
@@ -593,6 +587,10 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					resultsPrinter.print((resultsTimeCollector.getCollectedTime()
 							- processor.getExcludedTimeCollector().getCollectedTime()) / 1000.0);
 
+					resultsPrinter.print(processor.getNumberOfMethodForStreamReturnType());
+					resultsPrinter.print(processor.getNumberOfMethodForStreamParameter());
+					resultsPrinter.print(processor.getNumberOfFieldForStream());
+
 					// end the record.
 					resultsPrinter.println();
 
@@ -627,8 +625,6 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						entryPointsPrinter.close();
 					if (entryPointsTXTPrinter != null)
 						entryPointsTXTPrinter.close();
-					if (streamStatisticsPrinter != null)
-						streamStatisticsPrinter.close();
 
 					// clear cache.
 					if (processor != null)

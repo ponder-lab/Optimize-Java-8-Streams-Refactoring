@@ -26,6 +26,7 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
@@ -65,6 +66,8 @@ public class StreamAnalyzer extends ASTVisitor {
 	private int numberOfMethodForStreamReturnType;
 
 	private int numberOfMethodForStreamParameter;
+
+	private int numberOfFieldForStream;
 
 	private static void addImplicitEntryPoints(Collection<Entrypoint> target, Iterable<Entrypoint> source) {
 		for (Entrypoint implicitEntryPoint : source)
@@ -540,11 +543,25 @@ public class StreamAnalyzer extends ASTVisitor {
 		return super.visit(methodDeclaration);
 	}
 
+	@Override
+	public boolean visit(FieldDeclaration fieldDeclaration) {
+		ITypeBinding fieldBinding = fieldDeclaration.getType().resolveBinding();
+		if (Util.implementsBaseStream(fieldBinding)) {
+			numberOfFieldForStream++;
+		}
+		return super.visit(fieldDeclaration);
+	}
+
 	public int getNumberOfMethodForStreamReturnType() {
 		return this.numberOfMethodForStreamReturnType;
 	}
 
-	public int getNumberMethodForStreamParameter() {
+	public int getNumberOfMethodForStreamParameter() {
 		return this.numberOfMethodForStreamParameter;
 	}
+
+	public int getNumberOfFieldForStream() {
+		return this.numberOfFieldForStream;
+	}
+
 }

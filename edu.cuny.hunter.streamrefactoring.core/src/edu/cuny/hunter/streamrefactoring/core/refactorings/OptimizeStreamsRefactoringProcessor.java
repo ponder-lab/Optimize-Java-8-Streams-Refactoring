@@ -149,10 +149,12 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 	private boolean useImplicitJavaFXEntrypoints = false;
 
 	private boolean useImplicitTestEntrypoints = false;
-	
+
 	private int numberOfMethodForStreamReturnType;
-	
+
 	private int numberOfMethodForStreamParameter;
+
+	private int numberOfFieldForStream;
 
 	public OptimizeStreamsRefactoringProcessor() throws JavaModelException {
 		this(null, null, false, true, false, false, false, Optional.empty());
@@ -215,10 +217,11 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 		// }
 		return new RefactoringStatus();
 	}
-	
-	private void setNumberOfMethods(int methodForStreamReturnType, int methodForStreamParameter) {
+
+	private void setStatistics(int methodForStreamReturnType, int methodForStreamParameter, int fieldForStream) {
 		this.numberOfMethodForStreamReturnType = methodForStreamReturnType;
 		this.numberOfMethodForStreamParameter = methodForStreamParameter;
+		this.numberOfFieldForStream = fieldForStream;
 	}
 
 	@Override
@@ -262,9 +265,9 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 			this.projectToEntryPoints = analyzer.analyze(Optional.of(this.getExcludedTimeCollector()),
 					subMonitor.split(IProgressMonitor.UNKNOWN, SubMonitor.SUPPRESS_NONE));
 			subMonitor.worked(1);
-			
-			this.setNumberOfMethods(analyzer.getNumberOfMethodForStreamReturnType(),
-					analyzer.getNumberMethodForStreamParameter());
+
+			this.setStatistics(analyzer.getNumberOfMethodForStreamReturnType(),
+					analyzer.getNumberOfMethodForStreamParameter(), analyzer.getNumberOfFieldForStream());
 
 			// set statistics for stream instances.
 			this.setNumberOfProcessedStreamInstances(analyzer.getNumberOfProcessedStreamInstances());
@@ -592,12 +595,16 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 	public void setUseImplicitTestEntrypoints(boolean useImplicitTestEntrypoints) {
 		this.useImplicitTestEntrypoints = useImplicitTestEntrypoints;
 	}
-	
+
 	public int getNumberOfMethodForStreamReturnType() {
 		return this.numberOfMethodForStreamReturnType;
 	}
 
-	public int getNumberMethodForStreamParameter() {
+	public int getNumberOfMethodForStreamParameter() {
 		return this.numberOfMethodForStreamParameter;
+	}
+	
+	public int getNumberOfFieldForStream() {
+		return this.numberOfFieldForStream;
 	}
 }
