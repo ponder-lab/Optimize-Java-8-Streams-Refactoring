@@ -75,8 +75,11 @@ import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
+import com.ibm.wala.util.Predicate;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.Pair;
+import com.ibm.wala.util.graph.Graph;
+import com.ibm.wala.util.graph.GraphSlicer;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.OrdinalSet;
@@ -490,6 +493,8 @@ public class StreamStateMachine {
 	private Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers = new HashMap<>();
 
 	private Set<InstanceKey> trackedInstances = new HashSet<>();
+
+	private static HashMap<CGNode, HashSet<CallSiteReference>> callSiteReferenceMap = new HashMap<>();
 
 	private Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
 			BasicBlockInContext<IExplodedBasicBlock> block, StreamAttributeTypestateRule rule) {
@@ -1000,6 +1005,9 @@ public class StreamStateMachine {
 		// for each rule.
 		SubMonitor ruleMonitor = subMonitor.split(70, SubMonitor.SUPPRESS_NONE).setWorkRemaining(ruleArray.length);
 
+		// slicing
+		Graph<CGNode> prunedCallGraph = pruneCallGraph(engine.getCallGraph());
+
 		for (StreamAttributeTypestateRule rule : ruleArray) {
 			// create a DFA based on the rule.
 			TypeStateProperty dfa = new TypeStateProperty(rule, engine.getClassHierarchy());
@@ -1043,133 +1051,118 @@ public class StreamStateMachine {
 				// TODO: Can this be somehow rewritten to get blocks corresponding to terminal
 				// operations?
 				// for each call graph node in the call graph.
-				for (CGNode cgNode : engine.getCallGraph())
-					// separating client from library code, improving performance #103.
-					if (cgNode.getMethod().getDeclaringClass().getClassLoader().getReference()
-							.equals(ClassLoaderReference.Application)) {
+				for (CGNode cgNode : prunedCallGraph) {
+					// we can verify that only client nodes are being considered
+					LOGGER.fine(() -> "Examining client call graph node: " + cgNode);
 
-						// we can verify that only client nodes are being considered
-						LOGGER.fine(() -> "Examining client call graph node: " + cgNode);
+					HashSet<CallSiteReference> callSiteReferenceSet = callSiteReferenceMap.get(cgNode);
 
-						// for each call site in the call graph node.
-						for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
-							// get the call site reference.
-							CallSiteReference callSiteReference = callSites.next();
+					// get the basic block for the call.
+					IR ir = cgNode.getIR();
 
-							// get the (declared) called method at the call site.
-							MethodReference calledMethod = callSiteReference.getDeclaredTarget();
+					for (CallSiteReference callSiteReference : callSiteReferenceSet) {
+						ISSABasicBlock[] blocksForCall = ir.getBasicBlocksForCall(callSiteReference);
 
-							// is it a terminal operation? TODO: Should this be
-							// cached somehow? Collection of all terminal operation
-							// invocations?
-							if (isTerminalOperation(calledMethod)) {
-								// get the basic block for the call.
-								IR ir = cgNode.getIR();
+						assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
+								+ callSiteReference;
 
-								ISSABasicBlock[] blocksForCall = ir.getBasicBlocksForCall(callSiteReference);
+						for (ISSABasicBlock block : blocksForCall) {
+							BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
+									block, cgNode, supergraph)
+											.orElseThrow(() -> new IllegalStateException(
+													"No basic block in context for block: " + block));
 
-								assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
-										+ callSiteReference;
+							if (!this.terminalBlockToPossibleReceivers.containsKey(blockInContext)) {
+								// associate possible receivers with the
+								// blockInContext.
+								// search through each instruction in the
+								// block.
+								int processedInstructions = 0;
 
-								for (ISSABasicBlock block : blocksForCall) {
-									BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
-											block, cgNode, supergraph)
-													.orElseThrow(() -> new IllegalStateException(
-															"No basic block in context for block: " + block));
+								for (SSAInstruction instruction : block) {
+									// if it's not an invoke instruction.
+									if (!(instruction instanceof SSAAbstractInvokeInstruction))
+										// skip it. Phi instructions will be handled by the pointer analysis
+										// below.
+										continue;
 
-									if (!this.terminalBlockToPossibleReceivers.containsKey(blockInContext)) {
-										// associate possible receivers with the
-										// blockInContext.
-										// search through each instruction in the
-										// block.
-										int processedInstructions = 0;
+									// Get the possible receivers. This
+									// number corresponds to the value
+									// number of the receiver of the method.
+									int valueNumberForReceiver = instruction.getUse(0);
 
-										for (SSAInstruction instruction : block) {
-											// if it's not an invoke instruction.
-											if (!(instruction instanceof SSAAbstractInvokeInstruction))
-												// skip it. Phi instructions will be handled by the pointer analysis
-												// below.
-												continue;
+									// it should be represented by a pointer
+									// key.
+									PointerKey pointerKey = engine.getHeapGraph().getHeapModel()
+											.getPointerKeyForLocal(cgNode, valueNumberForReceiver);
 
-											// Get the possible receivers. This
-											// number corresponds to the value
-											// number of the receiver of the method.
-											int valueNumberForReceiver = instruction.getUse(0);
+									// get the points to set for the
+									// receiver. This will give us all
+									// object instances that the receiver
+									// reference points to.
+									OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis()
+											.getPointsToSet(pointerKey);
+									assert pointsToSet != null : "The points-to set (I think) should not be null for pointer: "
+											+ pointerKey;
 
-											// it should be represented by a pointer
-											// key.
-											PointerKey pointerKey = engine.getHeapGraph().getHeapModel()
-													.getPointerKeyForLocal(cgNode, valueNumberForReceiver);
+									OrdinalSet<InstanceKey> previousReceivers = this.terminalBlockToPossibleReceivers
+											.put(blockInContext, pointsToSet);
+									assert previousReceivers == null : "Reassociating a blockInContext: "
+											+ blockInContext + " with a new points-to set: " + pointsToSet
+											+ " that was originally: " + previousReceivers;
 
-											// get the points to set for the
-											// receiver. This will give us all
-											// object instances that the receiver
-											// reference points to.
-											OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis()
-													.getPointsToSet(pointerKey);
-											assert pointsToSet != null : "The points-to set (I think) should not be null for pointer: "
-													+ pointerKey;
+									++processedInstructions;
+								}
 
-											OrdinalSet<InstanceKey> previousReceivers = this.terminalBlockToPossibleReceivers
-													.put(blockInContext, pointsToSet);
-											assert previousReceivers == null : "Reassociating a blockInContext: "
-													+ blockInContext + " with a new points-to set: " + pointsToSet
-													+ " that was originally: " + previousReceivers;
+								assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
+							}
 
-											++processedInstructions;
-										}
+							IntSet resultingFacts = instanceResult.getResult().getResult(blockInContext);
+							for (IntIterator factIterator = resultingFacts.intIterator(); factIterator.hasNext();) {
+								int fact = factIterator.next();
 
-										assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
-									}
+								// retrieve the state set for this instance
+								// and block.
+								Map<TypestateRule, Set<IDFAState>> ruleToStates = this.instanceBlockStateTable
+										.get(instanceKey, blockInContext);
 
-									IntSet resultingFacts = instanceResult.getResult().getResult(blockInContext);
-									for (IntIterator factIterator = resultingFacts.intIterator(); factIterator
-											.hasNext();) {
-										int fact = factIterator.next();
+								// if it doesn't yet exist.
+								if (ruleToStates == null) {
+									// allocate a new rule map.
+									ruleToStates = new HashMap<>();
 
-										// retrieve the state set for this instance
-										// and block.
-										Map<TypestateRule, Set<IDFAState>> ruleToStates = this.instanceBlockStateTable
-												.get(instanceKey, blockInContext);
+									// place it in the table.
+									this.instanceBlockStateTable.put(instanceKey, blockInContext, ruleToStates);
+								}
 
-										// if it doesn't yet exist.
-										if (ruleToStates == null) {
-											// allocate a new rule map.
-											ruleToStates = new HashMap<>();
+								Set<IDFAState> stateSet = ruleToStates.get(rule);
 
-											// place it in the table.
-											this.instanceBlockStateTable.put(instanceKey, blockInContext, ruleToStates);
-										}
+								// if it does not yet exist.
+								if (stateSet == null) {
+									// allocate a new set.
+									stateSet = new HashSet<>();
 
-										Set<IDFAState> stateSet = ruleToStates.get(rule);
+									// place it in the map.
+									ruleToStates.put(rule, stateSet);
+								}
 
-										// if it does not yet exist.
-										if (stateSet == null) {
-											// allocate a new set.
-											stateSet = new HashSet<>();
+								// get the facts.
+								Factoid factoid = instanceResult.getDomain().getMappedObject(fact);
+								if (factoid != DUMMY_ZERO) {
+									BaseFactoid baseFactoid = (BaseFactoid) factoid;
+									assert baseFactoid.instance.equals(
+											instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
 
-											// place it in the map.
-											ruleToStates.put(rule, stateSet);
-										}
-
-										// get the facts.
-										Factoid factoid = instanceResult.getDomain().getMappedObject(fact);
-										if (factoid != DUMMY_ZERO) {
-											BaseFactoid baseFactoid = (BaseFactoid) factoid;
-											assert baseFactoid.instance.equals(
-													instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
-
-											// add the encountered state to the set.
-											LOGGER.fine(() -> "Adding state: " + baseFactoid.state + " for instance: "
-													+ baseFactoid.instance + " for block: " + block + " for rule: "
-													+ rule.getName());
-											stateSet.add(baseFactoid.state);
-										}
-									}
+									// add the encountered state to the set.
+									LOGGER.fine(() -> "Adding state: " + baseFactoid.state + " for instance: "
+											+ baseFactoid.instance + " for block: " + block + " for rule: "
+											+ rule.getName());
+									stateSet.add(baseFactoid.state);
 								}
 							}
 						}
 					}
+				}
 				instanceMonitor.worked(1);
 			} // end for each instance in the typestate analysis result.
 
@@ -1291,4 +1284,63 @@ public class StreamStateMachine {
 		}
 		return ret;
 	}
+
+	/**
+	 * Prune call graph
+	 * 
+	 * @param cg:
+	 *            call graph
+	 * @return a pruned call graph
+	 */
+	public static Graph<CGNode> pruneCallGraph(final CallGraph cg) {
+		Graph<CGNode> partialGraph = GraphSlicer.prune(cg, new Predicate<CGNode>() {
+			@Override
+			public boolean test(CGNode node) {
+				return isStreamNode(node);
+			}
+		});
+		return partialGraph;
+	}
+
+	/**
+	 * Check whether a CGNode is reached by stream object
+	 * 
+	 * @param node:
+	 *            CGNode
+	 * @return true/false
+	 */
+	public static boolean isStreamNode(CGNode node) {
+
+		boolean isStreamNode = false;
+
+		if (node.getMethod().getDeclaringClass().getClassLoader().getReference()
+				.equals(ClassLoaderReference.Application)) {
+			// for each call site in the call graph node.
+			for (Iterator<CallSiteReference> callSites = node.iterateCallSites(); callSites.hasNext();) {
+				// get the call site reference.
+				CallSiteReference callSiteReference = callSites.next();
+
+				// get the (declared) called method at the call site.
+				MethodReference calledMethod = callSiteReference.getDeclaredTarget();
+
+				// is it a terminal operation? TODO: Should this be
+				// cached somehow? Collection of all terminal operation
+				// invocations?
+				if (isTerminalOperation(calledMethod)) {
+					HashSet<CallSiteReference> callSiteReferencesSet;
+					if (callSiteReferenceMap.containsKey(node))
+						callSiteReferencesSet = callSiteReferenceMap.get(node);
+					else
+						callSiteReferencesSet = new HashSet<>();
+
+					callSiteReferencesSet.add(callSiteReference);
+					callSiteReferenceMap.put(node, callSiteReferencesSet);
+
+					isStreamNode = true;
+				}
+			}
+		}
+		return isStreamNode;
+	}
+
 }
