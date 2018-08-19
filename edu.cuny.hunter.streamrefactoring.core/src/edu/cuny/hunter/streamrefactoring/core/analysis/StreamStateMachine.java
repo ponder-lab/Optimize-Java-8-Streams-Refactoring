@@ -501,6 +501,9 @@ public class StreamStateMachine {
 	 * doesn't need to find them again.
 	 */
 	private static HashMap<CGNode, HashSet<CallSiteReference>> callSiteReferenceMap = new HashMap<>();
+	
+	// number of graph edges
+	private static int sumOfEdges;
 
 	private Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
 			BasicBlockInContext<IExplodedBasicBlock> block, StreamAttributeTypestateRule rule) {
@@ -1300,6 +1303,7 @@ public class StreamStateMachine {
 	 */
 	public static Graph<CGNode> pruneCallGraph(final CallGraph cg) {
 		LOGGER.info("The number of nodes in call graph: " + cg.getNumberOfNodes());
+		LOGGER.info("The number of edges in call graph: " + getNumberOfEdges(cg));
 		Graph<CGNode> partialGraph = GraphSlicer.prune(cg, new Predicate<CGNode>() {
 			@Override
 			public boolean test(CGNode node) {
@@ -1307,7 +1311,24 @@ public class StreamStateMachine {
 			}
 		});
 		LOGGER.info("The number of nodes in partial graph: " + partialGraph.getNumberOfNodes());
+		LOGGER.info("The number of edges in partial graph: " + getNumberOfEdges(partialGraph));
 		return partialGraph;
+	}
+	
+	public static int getNumberOfEdges(Graph<CGNode> graph) {
+		// clear number of edges
+		sumOfEdges = 0;
+		graph.forEach(node -> {
+			graph.forEach(otherNode -> {
+				// if two nodes are not same
+				if (!(node.equals(otherNode))) {
+					if (graph.hasEdge(node, otherNode))
+						sumOfEdges++;
+				}
+			});
+		});
+		// one edge is counted twice
+		return sumOfEdges / 2;
 	}
 
 	/**
