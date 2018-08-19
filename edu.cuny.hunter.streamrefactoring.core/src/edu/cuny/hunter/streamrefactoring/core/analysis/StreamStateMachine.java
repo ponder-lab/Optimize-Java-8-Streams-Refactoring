@@ -494,6 +494,12 @@ public class StreamStateMachine {
 
 	private Set<InstanceKey> trackedInstances = new HashSet<>();
 
+	/**
+	 * A map. Key is a cgNode, values are a set of called methods which are stream
+	 * terminal operations. When the call graph is pruned, the program builds map.
+	 * After that, the start method can directly use the callSiteReferences and
+	 * doesn't need to find them again.
+	 */
 	private static HashMap<CGNode, HashSet<CallSiteReference>> callSiteReferenceMap = new HashMap<>();
 
 	private Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
@@ -1293,12 +1299,14 @@ public class StreamStateMachine {
 	 * @return a pruned call graph
 	 */
 	public static Graph<CGNode> pruneCallGraph(final CallGraph cg) {
+		LOGGER.info("The number of nodes in call graph: " + cg.getNumberOfNodes());
 		Graph<CGNode> partialGraph = GraphSlicer.prune(cg, new Predicate<CGNode>() {
 			@Override
 			public boolean test(CGNode node) {
 				return isStreamNode(node);
 			}
 		});
+		LOGGER.info("The number of nodes in partial graph: " + partialGraph.getNumberOfNodes());
 		return partialGraph;
 	}
 
