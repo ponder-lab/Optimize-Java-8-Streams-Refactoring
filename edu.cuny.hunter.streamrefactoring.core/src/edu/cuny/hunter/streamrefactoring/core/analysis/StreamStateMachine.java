@@ -25,7 +25,6 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jdt.core.JavaModelException;
-
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import com.ibm.safe.Factoid;
@@ -66,9 +65,31 @@ import com.ibm.wala.ssa.DefUse;
 import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
+import com.ibm.wala.ssa.SSAArrayLengthInstruction;
+import com.ibm.wala.ssa.SSAArrayLoadInstruction;
+import com.ibm.wala.ssa.SSAArrayStoreInstruction;
+import com.ibm.wala.ssa.SSABinaryOpInstruction;
+import com.ibm.wala.ssa.SSACheckCastInstruction;
+import com.ibm.wala.ssa.SSAComparisonInstruction;
+import com.ibm.wala.ssa.SSAConditionalBranchInstruction;
+import com.ibm.wala.ssa.SSAConversionInstruction;
+import com.ibm.wala.ssa.SSAGetCaughtExceptionInstruction;
+import com.ibm.wala.ssa.SSAGetInstruction;
+import com.ibm.wala.ssa.SSAGotoInstruction;
+import com.ibm.wala.ssa.SSAInstanceofInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.ssa.SSAInstruction.IVisitor;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
+import com.ibm.wala.ssa.SSALoadMetadataInstruction;
+import com.ibm.wala.ssa.SSAMonitorInstruction;
+import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.ssa.SSAPhiInstruction;
+import com.ibm.wala.ssa.SSAPiInstruction;
+import com.ibm.wala.ssa.SSAPutInstruction;
+import com.ibm.wala.ssa.SSAReturnInstruction;
+import com.ibm.wala.ssa.SSASwitchInstruction;
+import com.ibm.wala.ssa.SSAThrowInstruction;
+import com.ibm.wala.ssa.SSAUnaryOpInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.MethodReference;
@@ -494,14 +515,6 @@ public class StreamStateMachine {
 
 	private Set<InstanceKey> trackedInstances = new HashSet<>();
 
-	/**
-	 * A map. Key is a cgNode, values are a set of called methods which are stream
-	 * terminal operations. When the call graph is pruned, the program builds map.
-	 * After that, the start method can directly use the callSiteReferences and
-	 * doesn't need to find them again.
-	 */
-	private static HashMap<CGNode, HashSet<CallSiteReference>> callSiteReferenceMap = new HashMap<>();
-	
 	// number of graph edges
 	private static int sumOfEdges;
 
@@ -993,6 +1006,9 @@ public class StreamStateMachine {
 			OrderingInference orderingInference, IProgressMonitor monitor)
 			throws PropertiesException, CancelException, IOException, CoreException, NoniterableException,
 			NoninstantiableException, CannotExtractSpliteratorException, InvalidClassFileException {
+
+		Graph<CGNode> partialCallGraph = pruneCallGraph(engine);
+
 		SubMonitor subMonitor = SubMonitor.convert(monitor, "Performing typestate analysis (may take a while)", 100);
 		Map<TypestateRule, Statistics> ret = new HashMap<>();
 
@@ -1013,9 +1029,6 @@ public class StreamStateMachine {
 
 		// for each rule.
 		SubMonitor ruleMonitor = subMonitor.split(70, SubMonitor.SUPPRESS_NONE).setWorkRemaining(ruleArray.length);
-
-		// slicing
-		Graph<CGNode> prunedCallGraph = pruneCallGraph(engine.getCallGraph());
 
 		for (StreamAttributeTypestateRule rule : ruleArray) {
 			// create a DFA based on the rule.
@@ -1047,7 +1060,6 @@ public class StreamStateMachine {
 			for (Iterator<InstanceKey> iterator = result.iterateInstances(); iterator.hasNext();) {
 				// get the instance's key.
 				InstanceKey instanceKey = iterator.next();
-
 				// add to tracked instances.
 				this.trackedInstances.add(instanceKey);
 
@@ -1060,118 +1072,134 @@ public class StreamStateMachine {
 				// TODO: Can this be somehow rewritten to get blocks corresponding to terminal
 				// operations?
 				// for each call graph node in the call graph.
-				for (CGNode cgNode : prunedCallGraph) {
-					// we can verify that only client nodes are being considered
-					LOGGER.fine(() -> "Examining client call graph node: " + cgNode);
+				for (CGNode cgNode : partialCallGraph)
+					// separating client from library code, improving performance #103.
+					if (cgNode.getMethod().getDeclaringClass().getClassLoader().getReference()
+							.equals(ClassLoaderReference.Application)) {
 
-					HashSet<CallSiteReference> callSiteReferenceSet = callSiteReferenceMap.get(cgNode);
+						// we can verify that only client nodes are being considered
+						LOGGER.fine(() -> "Examining client call graph node: " + cgNode);
 
-					// get the basic block for the call.
-					IR ir = cgNode.getIR();
+						// for each call site in the call graph node.
+						for (Iterator<CallSiteReference> callSites = cgNode.iterateCallSites(); callSites.hasNext();) {
+							// get the call site reference.
+							CallSiteReference callSiteReference = callSites.next();
 
-					for (CallSiteReference callSiteReference : callSiteReferenceSet) {
-						ISSABasicBlock[] blocksForCall = ir.getBasicBlocksForCall(callSiteReference);
+							// get the (declared) called method at the call site.
+							MethodReference calledMethod = callSiteReference.getDeclaredTarget();
 
-						assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
-								+ callSiteReference;
+							// is it a terminal operation? TODO: Should this be
+							// cached somehow? Collection of all terminal operation
+							// invocations?
+							if (isTerminalOperation(calledMethod)) {
+								// get the basic block for the call.
+								IR ir = cgNode.getIR();
 
-						for (ISSABasicBlock block : blocksForCall) {
-							BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
-									block, cgNode, supergraph)
-											.orElseThrow(() -> new IllegalStateException(
-													"No basic block in context for block: " + block));
+								ISSABasicBlock[] blocksForCall = ir.getBasicBlocksForCall(callSiteReference);
 
-							if (!this.terminalBlockToPossibleReceivers.containsKey(blockInContext)) {
-								// associate possible receivers with the
-								// blockInContext.
-								// search through each instruction in the
-								// block.
-								int processedInstructions = 0;
+								assert blocksForCall.length == 1 : "Expecting only a single basic block for the call: "
+										+ callSiteReference;
 
-								for (SSAInstruction instruction : block) {
-									// if it's not an invoke instruction.
-									if (!(instruction instanceof SSAAbstractInvokeInstruction))
-										// skip it. Phi instructions will be handled by the pointer analysis
-										// below.
-										continue;
+								for (ISSABasicBlock block : blocksForCall) {
+									BasicBlockInContext<IExplodedBasicBlock> blockInContext = getBasicBlockInContextForBlock(
+											block, cgNode, supergraph)
+													.orElseThrow(() -> new IllegalStateException(
+															"No basic block in context for block: " + block));
 
-									// Get the possible receivers. This
-									// number corresponds to the value
-									// number of the receiver of the method.
-									int valueNumberForReceiver = instruction.getUse(0);
+									if (!this.terminalBlockToPossibleReceivers.containsKey(blockInContext)) {
+										// associate possible receivers with the
+										// blockInContext.
+										// search through each instruction in the
+										// block.
+										int processedInstructions = 0;
 
-									// it should be represented by a pointer
-									// key.
-									PointerKey pointerKey = engine.getHeapGraph().getHeapModel()
-											.getPointerKeyForLocal(cgNode, valueNumberForReceiver);
+										for (SSAInstruction instruction : block) {
+											// if it's not an invoke instruction.
+											if (!(instruction instanceof SSAAbstractInvokeInstruction))
+												// skip it. Phi instructions will be handled by the pointer analysis
+												// below.
+												continue;
 
-									// get the points to set for the
-									// receiver. This will give us all
-									// object instances that the receiver
-									// reference points to.
-									OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis()
-											.getPointsToSet(pointerKey);
-									assert pointsToSet != null : "The points-to set (I think) should not be null for pointer: "
-											+ pointerKey;
+											// Get the possible receivers. This
+											// number corresponds to the value
+											// number of the receiver of the method.
+											int valueNumberForReceiver = instruction.getUse(0);
 
-									OrdinalSet<InstanceKey> previousReceivers = this.terminalBlockToPossibleReceivers
-											.put(blockInContext, pointsToSet);
-									assert previousReceivers == null : "Reassociating a blockInContext: "
-											+ blockInContext + " with a new points-to set: " + pointsToSet
-											+ " that was originally: " + previousReceivers;
+											// it should be represented by a pointer
+											// key.
+											PointerKey pointerKey = engine.getHeapGraph().getHeapModel()
+													.getPointerKeyForLocal(cgNode, valueNumberForReceiver);
 
-									++processedInstructions;
-								}
+											// get the points to set for the
+											// receiver. This will give us all
+											// object instances that the receiver
+											// reference points to.
+											OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis()
+													.getPointsToSet(pointerKey);
+											assert pointsToSet != null : "The points-to set (I think) should not be null for pointer: "
+													+ pointerKey;
 
-								assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
-							}
+											OrdinalSet<InstanceKey> previousReceivers = this.terminalBlockToPossibleReceivers
+													.put(blockInContext, pointsToSet);
+											assert previousReceivers == null : "Reassociating a blockInContext: "
+													+ blockInContext + " with a new points-to set: " + pointsToSet
+													+ " that was originally: " + previousReceivers;
 
-							IntSet resultingFacts = instanceResult.getResult().getResult(blockInContext);
-							for (IntIterator factIterator = resultingFacts.intIterator(); factIterator.hasNext();) {
-								int fact = factIterator.next();
+											++processedInstructions;
+										}
 
-								// retrieve the state set for this instance
-								// and block.
-								Map<TypestateRule, Set<IDFAState>> ruleToStates = this.instanceBlockStateTable
-										.get(instanceKey, blockInContext);
+										assert processedInstructions == 1 : "Expecting to process one and only one instruction here.";
+									}
 
-								// if it doesn't yet exist.
-								if (ruleToStates == null) {
-									// allocate a new rule map.
-									ruleToStates = new HashMap<>();
+									IntSet resultingFacts = instanceResult.getResult().getResult(blockInContext);
+									for (IntIterator factIterator = resultingFacts.intIterator(); factIterator
+											.hasNext();) {
+										int fact = factIterator.next();
 
-									// place it in the table.
-									this.instanceBlockStateTable.put(instanceKey, blockInContext, ruleToStates);
-								}
+										// retrieve the state set for this instance
+										// and block.
+										Map<TypestateRule, Set<IDFAState>> ruleToStates = this.instanceBlockStateTable
+												.get(instanceKey, blockInContext);
 
-								Set<IDFAState> stateSet = ruleToStates.get(rule);
+										// if it doesn't yet exist.
+										if (ruleToStates == null) {
+											// allocate a new rule map.
+											ruleToStates = new HashMap<>();
 
-								// if it does not yet exist.
-								if (stateSet == null) {
-									// allocate a new set.
-									stateSet = new HashSet<>();
+											// place it in the table.
+											this.instanceBlockStateTable.put(instanceKey, blockInContext, ruleToStates);
+										}
 
-									// place it in the map.
-									ruleToStates.put(rule, stateSet);
-								}
+										Set<IDFAState> stateSet = ruleToStates.get(rule);
 
-								// get the facts.
-								Factoid factoid = instanceResult.getDomain().getMappedObject(fact);
-								if (factoid != DUMMY_ZERO) {
-									BaseFactoid baseFactoid = (BaseFactoid) factoid;
-									assert baseFactoid.instance.equals(
-											instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
+										// if it does not yet exist.
+										if (stateSet == null) {
+											// allocate a new set.
+											stateSet = new HashSet<>();
 
-									// add the encountered state to the set.
-									LOGGER.fine(() -> "Adding state: " + baseFactoid.state + " for instance: "
-											+ baseFactoid.instance + " for block: " + block + " for rule: "
-											+ rule.getName());
-									stateSet.add(baseFactoid.state);
+											// place it in the map.
+											ruleToStates.put(rule, stateSet);
+										}
+
+										// get the facts.
+										Factoid factoid = instanceResult.getDomain().getMappedObject(fact);
+										if (factoid != DUMMY_ZERO) {
+											BaseFactoid baseFactoid = (BaseFactoid) factoid;
+											assert baseFactoid.instance.equals(
+													instanceKey) : "Sanity check that the fact instance should be the same as the instance being examined.";
+
+											// add the encountered state to the set.
+											LOGGER.fine(() -> "Adding state: " + baseFactoid.state + " for instance: "
+													+ baseFactoid.instance + " for block: " + block + " for rule: "
+													+ rule.getName());
+											stateSet.add(baseFactoid.state);
+										}
+									}
 								}
 							}
 						}
 					}
-				}
+
 				instanceMonitor.worked(1);
 			} // end for each instance in the typestate analysis result.
 
@@ -1301,21 +1329,207 @@ public class StreamStateMachine {
 	 *            call graph
 	 * @return a pruned call graph
 	 */
-	public static Graph<CGNode> pruneCallGraph(final CallGraph cg) {
+	private Graph<CGNode> pruneCallGraph(final EclipseProjectAnalysisEngine<InstanceKey> engine) {
+		CallGraph cg = engine.getCallGraph();
+		IClassHierarchy classHierarchy = engine.getClassHierarchy();
 		LOGGER.info("The number of nodes in call graph: " + cg.getNumberOfNodes());
 		LOGGER.info("The number of edges in call graph: " + getNumberOfEdges(cg));
+
 		Graph<CGNode> partialGraph = GraphSlicer.prune(cg, new Predicate<CGNode>() {
 			@Override
 			public boolean test(CGNode node) {
-				return isStreamNode(node);
+				return isStreamNode(node, classHierarchy);
 			}
 		});
 		LOGGER.info("The number of nodes in partial graph: " + partialGraph.getNumberOfNodes());
 		LOGGER.info("The number of edges in partial graph: " + getNumberOfEdges(partialGraph));
 		return partialGraph;
 	}
-	
-	public static int getNumberOfEdges(Graph<CGNode> graph) {
+
+	static boolean isStreamNode;
+
+	private static boolean isStreamType(TypeReference typeReference, IClassHierarchy classHierarchy) {
+		return Util.implementsBaseStream(typeReference, classHierarchy);
+	}
+
+	/**
+	 * Check whether a CGNode is reached by stream object
+	 * 
+	 * @param node:
+	 *            CGNode
+	 * @return true/false
+	 */
+	public boolean isStreamNode(CGNode node, IClassHierarchy classHierarchy) {
+
+		isStreamNode = false;
+
+		IR ir = node.getIR();
+
+		// no IR or IR is empty
+		if (ir == null || ir.isEmptyIR())
+			return false;
+
+		// check parameters
+		int numberOfParameters = ir.getNumberOfParameters();
+		for (int i = 0; i < numberOfParameters; ++i) {
+			TypeReference typeReference = ir.getParameterType(i);
+			if (isStreamType(typeReference, classHierarchy))
+				return true;
+		}
+
+		for (SSAInstruction instruction : ir.getInstructions()) {
+
+			if (isStreamNode)
+				return true;
+
+			if (instruction == null)
+				continue;
+
+			System.out.println(instruction);
+
+			instruction.visit(new IVisitor() {
+
+				@Override
+				public void visitPut(SSAPutInstruction instruction) {
+					if (isStreamType(instruction.getDeclaredFieldType(), classHierarchy))
+						isStreamNode = true;
+				}
+
+				@Override
+				public void visitNew(SSANewInstruction instruction) {
+					if (isStreamType(instruction.getConcreteType(), classHierarchy))
+						isStreamNode = true;
+
+				}
+
+				@Override
+				public void visitLoadMetadata(SSALoadMetadataInstruction instruction) {
+					if (isStreamType(instruction.getType(), classHierarchy))
+						isStreamNode = true;
+				}
+
+				@Override
+				public void visitInvoke(SSAInvokeInstruction instruction) {
+					if (isStreamType(instruction.getDeclaredResultType(), classHierarchy))
+						isStreamNode = true;
+
+					MethodReference methodReference = instruction.getDeclaredTarget();
+					// check parameters
+					// TODO: the code below cannot work well.
+					// int numberOfParameters = methodReference.getNumberOfParameters();
+					// for(int i = 0; i< numberOfParameters; ++ i) {
+					// TypeReference typeReference = methodReference.getParameterType(i);
+					// if (isStreamType(typeReference, classHierarchy)) {
+					// isStreamNode = true;
+					// return;
+					// }
+					//
+					// }
+				}
+
+				@Override
+				public void visitInstanceof(SSAInstanceofInstruction instruction) {
+					if (isStreamType(instruction.getCheckedType(), classHierarchy))
+						isStreamNode = true;
+				}
+
+				@Override
+				public void visitGet(SSAGetInstruction instruction) {
+					if (isStreamType(instruction.getDeclaredFieldType(), classHierarchy))
+						isStreamNode = true;
+				}
+
+				@Override
+				public void visitCheckCast(SSACheckCastInstruction instruction) {
+					if (isStreamType(instruction.getDeclaredResultType(), classHierarchy))
+						isStreamNode = true;
+				}
+
+				@Override
+				public void visitArrayStore(SSAArrayStoreInstruction instruction) {
+					if (isStreamType(instruction.getElementType(), classHierarchy))
+						isStreamNode = true;
+				}
+
+				@Override
+				public void visitArrayLoad(SSAArrayLoadInstruction instruction) {
+					if (isStreamType(instruction.getElementType(), classHierarchy))
+						isStreamNode = true;
+				}
+
+				@Override
+				public void visitGoto(SSAGotoInstruction instruction) {
+				}
+
+				@Override
+				public void visitBinaryOp(SSABinaryOpInstruction instruction) {
+				}
+
+				@Override
+				public void visitUnaryOp(SSAUnaryOpInstruction instruction) {
+				}
+
+				@Override
+				public void visitConversion(SSAConversionInstruction instruction) {
+				}
+
+				@Override
+				public void visitComparison(SSAComparisonInstruction instruction) {
+				}
+
+				@Override
+				public void visitConditionalBranch(SSAConditionalBranchInstruction instruction) {
+				}
+
+				@Override
+				public void visitSwitch(SSASwitchInstruction instruction) {
+				}
+
+				@Override
+				public void visitReturn(SSAReturnInstruction instruction) {
+					int numberOfUses = instruction.getNumberOfUses();
+					for (int i = 0; i < numberOfUses; ++i) {
+						int uses = instruction.getUse(i);
+						SSAInstruction def = node.getDU().getDef(i);
+						// TODO: Util.getPossibleTypesInterprocedurally
+					}
+				}
+
+				@Override
+				public void visitArrayLength(SSAArrayLengthInstruction instruction) {
+				}
+
+				@Override
+				public void visitThrow(SSAThrowInstruction instruction) {
+				}
+
+				@Override
+				public void visitMonitor(SSAMonitorInstruction instruction) {
+				}
+
+				@Override
+				public void visitPhi(SSAPhiInstruction instruction) {
+				}
+
+				@Override
+				public void visitPi(SSAPiInstruction instruction) {
+				}
+
+				@Override
+				public void visitGetCaughtException(SSAGetCaughtExceptionInstruction instruction) {
+				}
+
+			});
+
+		}
+
+		return false;
+	}
+
+	/**
+	 * Get number of edges in the call graph
+	 */
+	private static int getNumberOfEdges(Graph<CGNode> graph) {
 		// clear number of edges
 		sumOfEdges = 0;
 		graph.forEach(node -> {
@@ -1329,47 +1543,6 @@ public class StreamStateMachine {
 		});
 		// one edge is counted twice
 		return sumOfEdges / 2;
-	}
-
-	/**
-	 * Check whether a CGNode is reached by stream object
-	 * 
-	 * @param node:
-	 *            CGNode
-	 * @return true/false
-	 */
-	public static boolean isStreamNode(CGNode node) {
-
-		boolean isStreamNode = false;
-
-		if (node.getMethod().getDeclaringClass().getClassLoader().getReference()
-				.equals(ClassLoaderReference.Application)) {
-			// for each call site in the call graph node.
-			for (Iterator<CallSiteReference> callSites = node.iterateCallSites(); callSites.hasNext();) {
-				// get the call site reference.
-				CallSiteReference callSiteReference = callSites.next();
-
-				// get the (declared) called method at the call site.
-				MethodReference calledMethod = callSiteReference.getDeclaredTarget();
-
-				// is it a terminal operation? TODO: Should this be
-				// cached somehow? Collection of all terminal operation
-				// invocations?
-				if (isTerminalOperation(calledMethod)) {
-					HashSet<CallSiteReference> callSiteReferencesSet;
-					if (callSiteReferenceMap.containsKey(node))
-						callSiteReferencesSet = callSiteReferenceMap.get(node);
-					else
-						callSiteReferencesSet = new HashSet<>();
-
-					callSiteReferencesSet.add(callSiteReference);
-					callSiteReferenceMap.put(node, callSiteReferencesSet);
-
-					isStreamNode = true;
-				}
-			}
-		}
-		return isStreamNode;
 	}
 
 }
