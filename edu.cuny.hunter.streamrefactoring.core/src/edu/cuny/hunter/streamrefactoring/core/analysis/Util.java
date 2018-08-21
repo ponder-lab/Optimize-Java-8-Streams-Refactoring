@@ -11,6 +11,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -409,9 +410,23 @@ public final class Util {
 		return lineNumberFromIR;
 	}
 
+	static private LinkedList<Value> checkInstructions = new LinkedList<>();
+	
+	static private void clearCheckedInstructions() {
+		checkInstructions = new LinkedList<>();
+	}
+	
+	static Collection<TypeAbstraction> getPossibleStreamTypes(int valueNumber, TypeInference inference) {
+		clearCheckedInstructions();
+		return getPossibleTypes(valueNumber, inference);
+	}
+	
 	static Collection<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
 		Set<TypeAbstraction> ret = new HashSet<>();
 		Value value = inference.getIR().getSymbolTable().getValue(valueNumber);
+		
+		if (checkInstructions.contains(value)) return ret;
+		else checkInstructions.add(value);
 
 		// TODO: Should really be using a pointer analysis here rather than
 		// re-implementing one using PhiValue.
@@ -796,10 +811,10 @@ public final class Util {
 			TypeInference inference = TypeInference.make(ir, false);
 
 			Stream<TypeAbstraction> defs = IntStream.range(0, instruction.getNumberOfDefs())
-					.mapToObj(i -> instruction.getDef(i)).flatMap(d -> getPossibleTypes(d, inference).stream());
+					.mapToObj(i -> instruction.getDef(i)).flatMap(d -> getPossibleStreamTypes(d, inference).stream());
 	
 			Stream<TypeAbstraction> uses = IntStream.range(0, instruction.getNumberOfUses())
-					.mapToObj(i -> instruction.getUse(i)).flatMap(u -> getPossibleTypes(u, inference).stream());
+					.mapToObj(i -> instruction.getUse(i)).flatMap(u -> getPossibleStreamTypes(u, inference).stream());
 
 			if (Stream.concat(defs, uses).anyMatch(t -> implementsBaseStream(t.getTypeReference(), classHierarchy)))
 				return true;
