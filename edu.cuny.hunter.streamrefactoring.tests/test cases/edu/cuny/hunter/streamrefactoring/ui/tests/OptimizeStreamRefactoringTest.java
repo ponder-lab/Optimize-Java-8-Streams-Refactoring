@@ -694,21 +694,6 @@ public class OptimizeStreamRefactoringTest extends RefactoringTest {
 
 	}
 
-	public void testMotivatingExample() throws Exception {
-		this.helper(new StreamAnalysisExpectedResult("unorderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
-				EnumSet.of(Ordering.ORDERED), false, false, true, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL),
-				PreconditionSuccess.P2, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
-				Collections.emptySet()),
-
-				new StreamAnalysisExpectedResult("orderedWidgets.parallelStream()", EnumSet.of(ExecutionMode.PARALLEL),
-						EnumSet.of(Ordering.ORDERED), false, false, false, null, null, null, RefactoringStatus.ERROR,
-						EnumSet.of(PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS)),
-
-				new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
-						EnumSet.of(Ordering.ORDERED), false, true, true, null, null, null, RefactoringStatus.ERROR,
-						EnumSet.of(PreconditionFailure.REDUCE_ORDERING_MATTERS)));
-	}
-
 	public void testMultipleCallsToEnclosingMethod() throws Exception {
 		this.helper(new StreamAnalysisExpectedResult("DoubleStream.of(1.111)",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
@@ -851,14 +836,6 @@ public class OptimizeStreamRefactoringTest extends RefactoringTest {
 				EnumSet.of(PreconditionFailure.CURRENTLY_NOT_HANDLED)));
 	}
 
-<<<<<<< HEAD:edu.cuny.hunter.streamrefactoring.tests/test cases/edu/cuny/hunter/streamrefactoring/ui/tests/ConvertStreamToParallelRefactoringTest.java
-	public void testTypeResolution2() throws Exception {
-		helper(new StreamAnalysisExpectedResult("anotherSet.parallelStream()",
-				Collections.singleton(ExecutionMode.PARALLEL), Collections.singleton(Ordering.UNORDERED), false, false,
-				false, null, null, null, RefactoringStatus.ERROR,
-				Collections.singleton(PreconditionFailure.UNORDERED)));
-	}
-
 	public void testMotivatingExample() throws Exception {
 		helper(new StreamAnalysisExpectedResult("unorderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
 				EnumSet.of(Ordering.ORDERED), false, false, true, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL),
@@ -892,14 +869,13 @@ public class OptimizeStreamRefactoringTest extends RefactoringTest {
 				new StreamAnalysisExpectedResult("orderedWidgets4.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
 						EnumSet.of(Ordering.ORDERED), true, false, false, null, null, null, RefactoringStatus.ERROR,
 						EnumSet.of(PreconditionFailure.HAS_SIDE_EFFECTS2)));
-=======
+	}
+
 	public void testStreamOf() throws Exception {
 		this.helper(new StreamAnalysisExpectedResult("Stream.of(\"a\")",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
 				false, Collections.singleton(TransformationAction.CONVERT_TO_PARALLEL), PreconditionSuccess.P2,
 				Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK, Collections.emptySet()));
-
->>>>>>> slicing:edu.cuny.hunter.streamrefactoring.tests/test cases/edu/cuny/hunter/streamrefactoring/ui/tests/OptimizeStreamRefactoringTest.java
 	}
 
 	public void testTerminalOp1() throws Exception {
