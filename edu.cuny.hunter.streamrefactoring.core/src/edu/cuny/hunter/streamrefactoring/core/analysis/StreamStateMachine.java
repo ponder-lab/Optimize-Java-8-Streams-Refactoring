@@ -1296,13 +1296,6 @@ public class StreamStateMachine {
 		return ret;
 	}
 
-	/**
-	 * Prune call graph
-	 * 
-	 * @param cg:
-	 *            call graph
-	 * @return a pruned call graph
-	 */
 	private static CallGraph pruneCallGraph(CallGraph callGraph, IClassHierarchy classHierarchy) {
 		LOGGER.info("The number of nodes in call graph: " + callGraph.getNumberOfNodes());
 

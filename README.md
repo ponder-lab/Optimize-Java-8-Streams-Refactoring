@@ -74,11 +74,16 @@ In general, there is [an issue](https://github.com/wala/WALA/issues/281) with th
 
 For information on contributing, see [CONTRIBUTING.md][contrib].
 
+## Engineering Challenges and Solutions
+
+[This wiki page][challenges] highlights the locations in our code that solve several engineerinng challenges outlined in our [SCAM 2018] [paper].
+
 ## Further Information
 
 See the [wiki][wiki] for further information.
 
 [wiki]: https://github.com/ponder-lab/Java-8-Stream-Refactoring/wiki
+[challenges]: https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/wiki/Solutions-to-Engineering-Challenges
 [annotations]: https://github.com/ponder-lab/edu.cuny.hunter.streamrefactoring.annotations
 [eclipse]: http://eclipse.org
 [wala]: https://github.com/wala/WALA
@@ -86,3 +91,5 @@ See the [wiki][wiki] for further information.
 [contrib]: https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/blob/master/CONTRIBUTING.md
 [install]: https://youtu.be/On4xBzvFk1c
 [entrypoints]: https://youtu.be/On4xBzvFk1c?t=2m6s
+[SCAM 2018]: http://www.ieee-scam.org/2018
+[paper]: https://khatchad.commons.gc.cuny.edu/research/publications/#Khatchadourian2018a

@@ -1,16 +1,16 @@
-## Contributing
+# Contributing
 
 Please see [the wiki][wiki] for more information regarding development.
 
-### Installation
+## Building
 
-The project includes a maven configuration file using the tycho plug-in, which is part of the [maven eclipse plugin](http://www.eclipse.org/m2e/). Running `mvn install` will install *most* dependencies. Note that if you are not using maven, this plugin depends on https://github.com/khatchad/edu.cuny.citytech.refactoring.common, the **Eclipse SDK**, **Eclipse SDK tests**, and the **Eclipse testing framework**. The latter three can be installed from the "Install New Software..." menu option under "Help" in Eclipse.
+The project includes a maven configuration file using the tycho plug-in, which is part of the [maven eclipse plugin](http://www.eclipse.org/m2e/). Running `mvn install` will install *most* dependencies. Note that if you are not using maven, this plugin depends on https://github.com/khatchad/edu.cuny.citytech.refactoring.common, the **Eclipse SDK**, **Eclipse SDK tests**, and the **Eclipse testing framework** (may also be called the **Eclipse Test Framework**). The latter three can be installed from the "Install New Software..." menu option under "Help" in Eclipse.
 
-### Generating Entry Points Files
+## Generating Entry Points Files
 
 Each time we run the evaluation, a text file is generated in the working directory. Then, before the next time you run the evaluation on the same project, move or copy `entry_points.txt` into project directory or workspace directory of the project. While evaluating the project, if the file exists, the tool will ignore the explicit entry points that are added manually and recognize the explicit entry points through the file only.
 
-### Dependencies
+## Dependencies
 
 You should have the following projects in your workspace:
 
@@ -20,9 +20,9 @@ You should have the following projects in your workspace:
 
 It's also possible just to use `mvn install` if you do not intend on changing any of the dependencies.
 
-### Running the Evaluator
+## Running the Evaluator
 
-#### Configuring the Evaluation
+### Configuring the Evaluation
 
 A file named `eval.properties` can be placed at the project root. The following keys are available:
 
