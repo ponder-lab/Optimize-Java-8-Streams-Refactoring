@@ -600,6 +600,12 @@ public final class Util {
 	public static boolean implementsBaseStream(TypeReference typeReference, IClassHierarchy classHierarchy) {
 		return implementsType(typeReference, classHierarchy, Util::isBaseStream);
 	}
+	
+	// base stream is not enough
+	// only using base stream causes missing CGNodes
+	public static boolean implementsBaseStreamOp(TypeReference typeReference, IClassHierarchy classHierarchy) {
+		return implementsType(typeReference, classHierarchy, Util::isBaseStreamOp);
+	}
 
 	public static boolean implementsCollector(TypeReference reference, IClassHierarchy classHierarchy) {
 		return implementsType(reference, classHierarchy, Util::isCollector);
@@ -641,6 +647,10 @@ public final class Util {
 
 	public static boolean isBaseStream(IClass clazz) {
 		return Util.isType(clazz, "java/util/stream", "BaseStream");
+	}
+	
+	public static boolean isBaseStreamOp(IClass clazz) {
+		return Util.isType(clazz, "java/util/stream/StreamOpFlag", "StreamOp");
 	}
 
 	private static boolean isBenchmark(TypeName typeName) {
