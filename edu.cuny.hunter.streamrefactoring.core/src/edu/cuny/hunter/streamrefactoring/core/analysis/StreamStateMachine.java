@@ -1385,8 +1385,6 @@ public class StreamStateMachine {
 			if (instruction == null)
 				continue;
 
-			System.out.println(instruction);
-
 			instruction.visit(new IVisitor() {
 
 				@Override
