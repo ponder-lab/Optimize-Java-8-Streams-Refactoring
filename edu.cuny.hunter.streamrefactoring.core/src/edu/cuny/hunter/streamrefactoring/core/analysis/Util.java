@@ -800,6 +800,9 @@ public final class Util {
 	}
 
 	public static boolean isStreamNode(CGNode node, IClassHierarchy classHierarchy) {
+		if (checkDeclaredClass(node))
+			return true;
+		
 		IR ir = node.getIR();
 
 		if (ir == null || ir.isEmptyIR())
@@ -829,5 +832,14 @@ public final class Util {
 		}
 
 		return false;
+	}
+
+	// check declared class for CGNode
+	private static boolean checkDeclaredClass(CGNode node) {
+		IMethod method = node.getMethod();
+		if (isBaseStream(method.getDeclaringClass()))
+			return true;
+		else
+			return false;
 	}
 }
