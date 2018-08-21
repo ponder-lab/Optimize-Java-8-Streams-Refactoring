@@ -249,7 +249,8 @@ public class StreamStateMachine {
 	 *          whose instance is being assigned with the stream package. Basically,
 	 *          we are looking for modifications to the client code.
 	 */
-	private static boolean filterPointerKey(PointerKey pointerKey, EclipseProjectAnalysisEngine<InstanceKey> engine) {
+	private static boolean filterPointerKey(PointerKey pointerKey, EclipseProjectAnalysisEngine<InstanceKey> engine,
+			CallGraph callGraph) {
 		Boolean ret = null;
 
 		if (pointerKey instanceof InstanceFieldPointerKey) {
@@ -257,7 +258,7 @@ public class StreamStateMachine {
 			InstanceKey instanceKey = fieldPointerKey.getInstanceKey();
 
 			for (Iterator<Pair<CGNode, NewSiteReference>> creationSiteIterator = instanceKey
-					.getCreationSites(engine.getCallGraph()); creationSiteIterator.hasNext();) {
+					.getCreationSites(callGraph); creationSiteIterator.hasNext();) {
 				Pair<CGNode, NewSiteReference> creationSite = creationSiteIterator.next();
 				TypeReference declaredType = creationSite.snd.getDeclaredType();
 				TypeName name = declaredType.getName();
@@ -659,7 +660,7 @@ public class StreamStateMachine {
 
 	private void discoverLambdaSideEffects(EclipseProjectAnalysisEngine<InstanceKey> engine,
 			Map<CGNode, OrdinalSet<PointerKey>> mod, Iterable<InstanceKey> instances,
-			MethodReference declaredTargetOfCaller, IR ir, int use) {
+			MethodReference declaredTargetOfCaller, IR ir, int use, CallGraph callGraph) {
 		// look up it's definition.
 		DefUse defUse = engine.getCache().getDefUse(ir);
 		// it should be a call.
@@ -671,7 +672,7 @@ public class StreamStateMachine {
 				SSAAbstractInvokeInstruction instruction = (SSAAbstractInvokeInstruction) def;
 
 				// take a look at the nodes in the caller.
-				Set<CGNode> nodes = engine.getCallGraph().getNodes(declaredTargetOfCaller);
+				Set<CGNode> nodes = callGraph.getNodes(declaredTargetOfCaller);
 
 				// for each caller node.
 				for (CGNode cgNode : nodes)
@@ -684,8 +685,7 @@ public class StreamStateMachine {
 						if (callSiteReference.equals(instruction.getCallSite())) {
 							// look up the possible target nodes of the call
 							// site from the caller.
-							Set<CGNode> possibleTargets = engine.getCallGraph().getPossibleTargets(cgNode,
-									callSiteReference);
+							Set<CGNode> possibleTargets = callGraph.getPossibleTargets(cgNode, callSiteReference);
 							LOGGER.fine(() -> "#possible targets: " + possibleTargets.size());
 
 							if (!possibleTargets.isEmpty())
@@ -702,7 +702,7 @@ public class StreamStateMachine {
 								Collection<PointerKey> filteredModSet = new HashSet<>();
 
 								for (PointerKey pointerKey : modSet)
-									if (!filterPointerKey(pointerKey, engine))
+									if (!filterPointerKey(pointerKey, engine, callGraph))
 										filteredModSet.add(pointerKey);
 
 								LOGGER.fine(() -> "#filtered modified locations: " + filteredModSet.size());
@@ -727,8 +727,8 @@ public class StreamStateMachine {
 				LOGGER.warning("Def was an instance of a: " + def.getClass());
 	}
 
-	private void discoverPossibleSideEffects(EclipseProjectAnalysisEngine<InstanceKey> engine, IProgressMonitor monitor)
-			throws IOException, CoreException {
+	private void discoverPossibleSideEffects(EclipseProjectAnalysisEngine<InstanceKey> engine, IProgressMonitor monitor,
+			CallGraph callGraph) throws IOException, CoreException {
 		SubMonitor subMonitor = SubMonitor.convert(monitor, "Discovering side-effects...", 100);
 
 		// create the ModRef analysis.
@@ -737,7 +737,7 @@ public class StreamStateMachine {
 		// compute modifications over the call graph.
 		// TODO: Should this be cached? Didn't have luck caching the call graph.
 		// Perhaps this will be similar.
-		Map<CGNode, OrdinalSet<PointerKey>> mod = modRef.computeMod(engine.getCallGraph(), engine.getPointerAnalysis());
+		Map<CGNode, OrdinalSet<PointerKey>> mod = modRef.computeMod(callGraph, engine.getPointerAnalysis());
 
 		// for each terminal operation call, I think?
 		SubMonitor loopMonitor = subMonitor.split(50, SubMonitor.SUPPRESS_NONE)
@@ -765,7 +765,7 @@ public class StreamStateMachine {
 					MethodReference declaredTarget = block.getMethod().getReference();
 
 					this.discoverLambdaSideEffects(engine, mod, this.terminalBlockToPossibleReceivers.get(block),
-							declaredTarget, ir, paramUse);
+							declaredTarget, ir, paramUse, callGraph);
 				}
 				++processedInstructions;
 			}
@@ -781,7 +781,7 @@ public class StreamStateMachine {
 		for (InstanceKey instance : this.trackedInstances) {
 			// make sure that the stream is the result of an intermediate
 			// operation.
-			if (!isStreamCreatedFromIntermediateOperation(instance, engine.getClassHierarchy(), engine.getCallGraph()))
+			if (!isStreamCreatedFromIntermediateOperation(instance, engine.getClassHierarchy(), callGraph))
 				continue;
 
 			CallStringWithReceivers callString = Util.getCallString(instance);
@@ -804,7 +804,7 @@ public class StreamStateMachine {
 				// get the use of the first parameter.
 				int use = calls[0].getUse(1);
 				this.discoverLambdaSideEffects(engine, mod, Collections.singleton(instance),
-						callString.getMethods()[0].getReference(), ir, use);
+						callString.getMethods()[0].getReference(), ir, use, callGraph);
 			}
 
 			loopMonitor.worked(1);
@@ -868,7 +868,7 @@ public class StreamStateMachine {
 		this.instancesWithoutTerminalOperations.addAll(badStreamInstances);
 	}
 
-	private void fillInstanceToPredecessorMap(EclipseProjectAnalysisEngine<InstanceKey> engine)
+	private void fillInstanceToPredecessorMap(EclipseProjectAnalysisEngine<InstanceKey> engine, CallGraph callGraph)
 			throws IOException, CoreException {
 		for (InstanceKey instance : this.trackedInstances) {
 			CallStringWithReceivers callString = Util.getCallString(instance);
@@ -876,7 +876,7 @@ public class StreamStateMachine {
 
 			// get any additional receivers if necessary #36.
 			Collection<? extends InstanceKey> additionalNecessaryReceiversFromPredecessors = getAdditionalNecessaryReceiversFromPredecessors(
-					instance, engine.getClassHierarchy(), engine.getCallGraph());
+					instance, engine.getClassHierarchy(), callGraph);
 			LOGGER.fine(() -> "Adding additional receivers: " + additionalNecessaryReceiversFromPredecessors);
 			possibleReceivers.addAll(additionalNecessaryReceiversFromPredecessors);
 
@@ -1178,7 +1178,7 @@ public class StreamStateMachine {
 
 			// fill the instance to predecessors map if it's empty.
 			if (this.instanceToPredecessorsMap.isEmpty())
-				this.fillInstanceToPredecessorMap(engine);
+				this.fillInstanceToPredecessorMap(engine, prunedCallGraph);
 
 			// for each terminal operation call.
 			for (BasicBlockInContext<IExplodedBasicBlock> block : this.terminalBlockToPossibleReceivers.keySet()) {
@@ -1227,7 +1227,7 @@ public class StreamStateMachine {
 		this.discoverTerminalOperations(subMonitor.split(5, SubMonitor.SUPPRESS_NONE));
 
 		// fill the instance side-effect set.
-		this.discoverPossibleSideEffects(engine, subMonitor.split(5, SubMonitor.SUPPRESS_NONE));
+		this.discoverPossibleSideEffects(engine, subMonitor.split(5, SubMonitor.SUPPRESS_NONE), prunedCallGraph);
 
 		// discover whether any stateful intermediate operations are
 		// present.
@@ -1298,14 +1298,14 @@ public class StreamStateMachine {
 	private static CallGraph pruneCallGraph(CallGraph callGraph, IClassHierarchy classHierarchy) {
 		LOGGER.info("The number of nodes in call graph: " + callGraph.getNumberOfNodes());
 		HashSet<CGNode> keep = new HashSet<>();
-		for (CGNode node: callGraph) {
-			if(Util.isStreamNode(node, classHierarchy))
+		for (CGNode node : callGraph) {
+			if (Util.isStreamNode(node, classHierarchy))
 				keep.add(node);
 		}
-		
+
 		PrunedCallGraph prunedCallGraph = new PrunedCallGraph(callGraph, keep);
 		LOGGER.info("The number of nodes in partial graph: " + prunedCallGraph.getNumberOfNodes());
-		
+
 		return prunedCallGraph;
 	}
 
