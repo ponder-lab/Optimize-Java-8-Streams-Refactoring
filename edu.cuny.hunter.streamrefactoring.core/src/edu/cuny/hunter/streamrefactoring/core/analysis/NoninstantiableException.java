@@ -16,7 +16,7 @@ public class NoninstantiableException extends Exception {
 	}
 
 	public Object getSourceType() {
-		return sourceType;
+		return this.sourceType;
 	}
 
 	@Override
@@ -24,7 +24,7 @@ public class NoninstantiableException extends Exception {
 		StringBuilder builder = new StringBuilder();
 		builder.append(super.toString() + ", ");
 		builder.append("NoninstantiablePossibleStreamSourceException [sourceType=");
-		builder.append(sourceType);
+		builder.append(this.sourceType);
 		builder.append("]");
 		return builder.toString();
 	}

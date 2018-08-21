@@ -1,6 +1,6 @@
 package edu.cuny.hunter.streamrefactoring.core.analysis;
 
 public enum ExecutionMode {
-	SEQUENTIAL,
-	PARALLEL
+	PARALLEL,
+	SEQUENTIAL
 }

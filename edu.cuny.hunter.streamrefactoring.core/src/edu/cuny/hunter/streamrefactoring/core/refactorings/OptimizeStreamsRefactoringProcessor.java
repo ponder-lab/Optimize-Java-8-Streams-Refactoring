@@ -4,6 +4,8 @@ import static org.eclipse.jdt.ui.JavaElementLabels.ALL_FULLY_QUALIFIED;
 import static org.eclipse.jdt.ui.JavaElementLabels.getElementLabel;
 
 import java.text.MessageFormat;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -41,6 +43,7 @@ import org.eclipse.jdt.internal.ui.JavaPlugin;
 import org.eclipse.ltk.core.refactoring.Change;
 import org.eclipse.ltk.core.refactoring.GroupCategory;
 import org.eclipse.ltk.core.refactoring.GroupCategorySet;
+import org.eclipse.ltk.core.refactoring.NullChange;
 import org.eclipse.ltk.core.refactoring.RefactoringDescriptor;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.participants.CheckConditionsContext;
@@ -49,30 +52,31 @@ import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
 import org.eclipse.ltk.core.refactoring.participants.SharableParticipants;
 import org.osgi.framework.FrameworkUtil;
 
+import com.ibm.wala.ipa.callgraph.Entrypoint;
+
 import edu.cuny.hunter.streamrefactoring.core.analysis.PreconditionFailure;
 import edu.cuny.hunter.streamrefactoring.core.analysis.Stream;
 import edu.cuny.hunter.streamrefactoring.core.analysis.StreamAnalyzer;
-import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
+import edu.cuny.hunter.streamrefactoring.core.descriptors.OptimizeStreamRefactoringDescriptor;
 import edu.cuny.hunter.streamrefactoring.core.messages.Messages;
 import edu.cuny.hunter.streamrefactoring.core.utils.TimeCollector;
 
 /**
  * The activator class controls the plug-in life cycle
- * 
+ *
  * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi
  *         Khatchadourian</a>
  */
 @SuppressWarnings({ "restriction" })
-public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProcessor {
-
-	// private Set<IMethod> unmigratableMethods = new
-	// UnmigratableMethodSet(sourceMethods);
+public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 
 	/**
 	 * The minimum logging level, one of the constants in
 	 * org.eclipse.core.runtime.IStatus.
 	 */
 	private static int loggingLevel = IStatus.WARNING;
+
+	private static final int N_FOR_STREAMS_DEFAULT = 2;
 
 	@SuppressWarnings("unused")
 	private static final GroupCategorySet SET_CONVERT_STREAM_TO_PARALLEL = new GroupCategorySet(
@@ -85,7 +89,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 	private static void log(int severity, String message) {
 		if (severity >= getLoggingLevel()) {
-			String name = FrameworkUtil.getBundle(ConvertToParallelStreamRefactoringProcessor.class).getSymbolicName();
+			String name = FrameworkUtil.getBundle(OptimizeStreamsRefactoringProcessor.class).getSymbolicName();
 			IStatus status = new Status(severity, name, message);
 			JavaPlugin.log(status);
 		}
@@ -98,7 +102,7 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	/**
 	 * Minimum logging level. One of the constants in
 	 * org.eclipse.core.runtime.IStatus.
-	 * 
+	 *
 	 * @param level
 	 *            The minimum logging level to set.
 	 * @see org.eclipse.core.runtime.IStatus.
@@ -114,51 +118,91 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	 */
 	private TimeCollector excludedTimeCollector = new TimeCollector();
 
+	private IJavaProject[] javaProjects;
+
 	/** Does the refactoring use a working copy layer? */
 	private final boolean layer;
+
+	private int nForStreams = N_FOR_STREAMS_DEFAULT;
+
+	private int numberOfProcessedStreamInstances;
+
+	private int numberOfSkippedStreamInstances;
+
+	private Map<IJavaProject, Collection<Entrypoint>> projectToEntryPoints;
 
 	private SearchEngine searchEngine = new SearchEngine();
 
 	/** The code generation settings, or <code>null</code> */
 	private CodeGenerationSettings settings;
 
+	private Set<Stream> streamSet;
+
 	private Map<ITypeRoot, CompilationUnit> typeRootToCompilationUnitMap = new HashMap<>();
 
 	private Map<IType, ITypeHierarchy> typeToTypeHierarchyMap = new HashMap<>();
 
-	private IJavaProject[] javaProjects;
+	private boolean useImplicitBenchmarkEntrypoints = false;
 
-	private Set<Stream> streamSet;
+	private boolean useImplicitEntrypoints = true;
 
-	public ConvertToParallelStreamRefactoringProcessor() throws JavaModelException {
-		this(null, null, false, Optional.empty());
+	private boolean useImplicitJavaFXEntrypoints = false;
+
+	private boolean useImplicitTestEntrypoints = false;
+
+	public OptimizeStreamsRefactoringProcessor() throws JavaModelException {
+		this(null, null, false, true, false, false, false, Optional.empty());
 	}
 
-	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
-			final CodeGenerationSettings settings, boolean layer, Optional<IProgressMonitor> monitor)
-			throws JavaModelException {
+	public OptimizeStreamsRefactoringProcessor(final CodeGenerationSettings settings,
+			Optional<IProgressMonitor> monitor) throws JavaModelException {
+		this(null, settings, false, true, false, false, false, monitor);
+	}
+
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects, final CodeGenerationSettings settings,
+			boolean layer, boolean useImplicitEntrypoints, boolean useImplicitTestEntrypoints,
+			boolean useImplicitBenchmarkEntrypoints, boolean useImplicitJavaFXEntrypoints,
+			Optional<IProgressMonitor> monitor) throws JavaModelException {
 		try {
 			this.javaProjects = javaProjects;
 			this.settings = settings;
 			this.layer = layer;
-
+			this.useImplicitEntrypoints = useImplicitEntrypoints;
+			this.useImplicitTestEntrypoints = useImplicitTestEntrypoints;
+			this.useImplicitBenchmarkEntrypoints = useImplicitBenchmarkEntrypoints;
+			this.useImplicitJavaFXEntrypoints = useImplicitJavaFXEntrypoints;
 		} finally {
 			monitor.ifPresent(IProgressMonitor::done);
 		}
 	}
 
-	public ConvertToParallelStreamRefactoringProcessor(final CodeGenerationSettings settings,
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects, final CodeGenerationSettings settings,
+			boolean layer, int nForStreams, boolean useImplicitEntrypoints, boolean useImplicitTestEntrypoints,
+			boolean useImplicitBenchmarkEntrypoints, boolean useImplicitJavaFXEntrypoints,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
-		this(null, settings, false, monitor);
+		this(javaProjects, settings, layer, useImplicitEntrypoints, useImplicitTestEntrypoints,
+				useImplicitBenchmarkEntrypoints, useImplicitJavaFXEntrypoints, monitor);
+		this.nForStreams = nForStreams;
 	}
 
-	public ConvertToParallelStreamRefactoringProcessor(IJavaProject[] javaProjects,
-			final CodeGenerationSettings settings, Optional<IProgressMonitor> monitor) throws JavaModelException {
-		this(javaProjects, settings, false, monitor);
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects, final CodeGenerationSettings settings,
+			boolean useImplicitJoinpoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
+		this(javaProjects, settings, false, useImplicitJoinpoints, false, false, false, monitor);
 	}
 
-	public ConvertToParallelStreamRefactoringProcessor(Optional<IProgressMonitor> monitor) throws JavaModelException {
-		this(null, null, false, monitor);
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects, final CodeGenerationSettings settings,
+			int nForStreams, boolean useImplicitJoinpoints, Optional<IProgressMonitor> monitor)
+			throws JavaModelException {
+		this(javaProjects, settings, false, nForStreams, useImplicitJoinpoints, false, false, false, monitor);
+	}
+
+	public OptimizeStreamsRefactoringProcessor(IJavaProject[] javaProjects, final CodeGenerationSettings settings,
+			Optional<IProgressMonitor> monitor) throws JavaModelException {
+		this(javaProjects, settings, false, true, false, false, false, monitor);
+	}
+
+	public OptimizeStreamsRefactoringProcessor(Optional<IProgressMonitor> monitor) throws JavaModelException {
+		this(null, null, false, true, false, false, false, monitor);
 	}
 
 	private RefactoringStatus checkExistence(IMember member, PreconditionFailure failure) {
@@ -172,34 +216,57 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	public RefactoringStatus checkFinalConditions(final IProgressMonitor monitor, final CheckConditionsContext context)
 			throws CoreException, OperationCanceledException {
 		try {
-			SubMonitor subMonitor = SubMonitor.convert(monitor, Messages.CheckingPreconditions,
-					this.getJavaProjects().length * 1000);
-			final RefactoringStatus status = new RefactoringStatus();
-			StreamAnalyzer analyzer = new StreamAnalyzer();
-			setStreamSet(analyzer.getStreamSet());
+			SubMonitor subMonitor = SubMonitor.convert(monitor, Messages.CheckingPreconditions, 3);
 
-			for (IJavaProject jproj : this.getJavaProjects()) {
+			final RefactoringStatus status = new RefactoringStatus();
+
+			StreamAnalyzer analyzer = new StreamAnalyzer(false, this.getNForStreams(), this.getUseImplicitEntrypoints(),
+					this.getUseImplicitTestEntrypoints(), this.getUseImplicitBenchmarkEntrypoints(),
+					this.getUseImplicitJavaFXEntrypoints());
+
+			this.setStreamSet(analyzer.getStreamSet());
+
+			IJavaProject[] projects = this.getJavaProjects();
+
+			subMonitor.beginTask("Collecting streams...", projects.length);
+
+			for (IJavaProject jproj : projects) {
 				IPackageFragmentRoot[] roots = jproj.getPackageFragmentRoots();
 				for (IPackageFragmentRoot root : roots) {
 					IJavaElement[] children = root.getChildren();
-					for (IJavaElement child : children) {
+					for (IJavaElement child : children)
 						if (child.getElementType() == IJavaElement.PACKAGE_FRAGMENT) {
 							IPackageFragment fragment = (IPackageFragment) child;
 							ICompilationUnit[] units = fragment.getCompilationUnits();
 							for (ICompilationUnit unit : units) {
-								CompilationUnit compilationUnit = getCompilationUnit(unit, subMonitor.split(1));
+								CompilationUnit compilationUnit = this.getCompilationUnit(unit,
+										subMonitor.split(1, SubMonitor.SUPPRESS_NONE));
 								compilationUnit.accept(analyzer);
 							}
 						}
-					}
 				}
 			}
-			
-			analyzer.analyze();
 
-			RefactoringStatus collectedStatus = getStreamSet().stream().map(Stream::getStatus)
+			subMonitor.worked(1);
+
+			// analyze and set entry points.
+			this.projectToEntryPoints = analyzer.analyze(Optional.of(this.getExcludedTimeCollector()),
+					subMonitor.split(IProgressMonitor.UNKNOWN, SubMonitor.SUPPRESS_NONE));
+			subMonitor.worked(1);
+
+			// set statistics for stream instances.
+			this.setNumberOfProcessedStreamInstances(analyzer.getNumberOfProcessedStreamInstances());
+			this.setNumberOfSkippedStreamInstances(analyzer.getNumberOfSkippedStreamInstances());
+
+			// map empty set to unprocessed projects.
+			for (IJavaProject project : projects)
+				this.projectToEntryPoints.computeIfAbsent(project, p -> Collections.emptySet());
+
+			// get the status of each stream.
+			RefactoringStatus collectedStatus = this.getStreamSet().stream().map(Stream::getStatus)
 					.collect(() -> new RefactoringStatus(), (a, b) -> a.merge(b), (a, b) -> a.merge(b));
 			status.merge(collectedStatus);
+			subMonitor.worked(1);
 
 			// if there are no fatal errors.
 			if (!status.hasFatalError()) {
@@ -259,12 +326,11 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	}
 
 	private RefactoringStatus checkStructure(IMember member) throws JavaModelException {
-		if (!member.isStructureKnown()) {
+		if (!member.isStructureKnown())
 			return RefactoringStatus.createErrorStatus(
 					MessageFormat.format(Messages.CUContainsCompileErrors, getElementLabel(member, ALL_FULLY_QUALIFIED),
 							getElementLabel(member.getCompilationUnit(), ALL_FULLY_QUALIFIED)),
 					JavaStatusContext.create(member.getCompilationUnit()));
-		}
 		return new RefactoringStatus();
 	}
 
@@ -276,25 +342,35 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	}
 
 	public void clearCaches() {
-		getTypeToTypeHierarchyMap().clear();
-		getCompilationUnitToCompilationUnitRewriteMap().clear();
-		getTypeRootToCompilationUnitMap().clear();
+		this.getTypeToTypeHierarchyMap().clear();
+		this.getCompilationUnitToCompilationUnitRewriteMap().clear();
+		this.getTypeRootToCompilationUnitMap().clear();
 	}
 
 	@Override
 	public Change createChange(IProgressMonitor pm) throws CoreException, OperationCanceledException {
 		try {
-			pm.beginTask(Messages.CreatingChange, 1);
-
 			final TextEditBasedChangeManager manager = new TextEditBasedChangeManager();
+			Set<Stream> optimizableStreams = this.getOptimizableStreams();
+
+			if (optimizableStreams.isEmpty())
+				return new NullChange(Messages.NoStreamsToOptimize);
+
+			pm.beginTask("Transforming streams ...", optimizableStreams.size());
+			for (Stream stream : optimizableStreams) {
+				CompilationUnitRewrite rewrite = this.getCompilationUnitRewrite(
+						stream.getEnclosingEclipseMethod().getCompilationUnit(), stream.getEnclosingCompilationUnit());
+				stream.transform(rewrite);
+				pm.worked(1);
+			}
 
 			// save the source changes.
 			ICompilationUnit[] units = this.getCompilationUnitToCompilationUnitRewriteMap().keySet().stream()
 					.filter(cu -> !manager.containsChangesIn(cu)).toArray(ICompilationUnit[]::new);
 
 			for (ICompilationUnit cu : units) {
-				CompilationUnit compilationUnit = getCompilationUnit(cu, pm);
-				manageCompilationUnit(manager, getCompilationUnitRewrite(cu, compilationUnit),
+				CompilationUnit compilationUnit = this.getCompilationUnit(cu, pm);
+				this.manageCompilationUnit(manager, this.getCompilationUnitRewrite(cu, compilationUnit),
 						Optional.of(new SubProgressMonitor(pm, IProgressMonitor.UNKNOWN)));
 			}
 
@@ -303,10 +379,10 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 
 			// TODO: Fill in description.
 
-			ConvertStreamToParallelRefactoringDescriptor descriptor = new ConvertStreamToParallelRefactoringDescriptor(
-					null, "TODO", null, arguments, flags);
+			OptimizeStreamRefactoringDescriptor descriptor = new OptimizeStreamRefactoringDescriptor(null, "TODO", null,
+					arguments, flags);
 
-			return new DynamicValidationRefactoringChange(descriptor, getProcessorName(), manager.getAllChanges());
+			return new DynamicValidationRefactoringChange(descriptor, this.getProcessorName(), manager.getAllChanges());
 		} finally {
 			pm.done();
 			this.clearCaches();
@@ -366,13 +442,39 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		return null;
 	}
 
+	public Collection<Entrypoint> getEntryPoints(IJavaProject javaProject) {
+		return this.projectToEntryPoints == null ? Collections.emptySet() : this.projectToEntryPoints.get(javaProject);
+	}
+
 	public TimeCollector getExcludedTimeCollector() {
-		return excludedTimeCollector;
+		return this.excludedTimeCollector;
 	}
 
 	@Override
 	public String getIdentifier() {
-		return ConvertStreamToParallelRefactoringDescriptor.REFACTORING_ID;
+		return OptimizeStreamRefactoringDescriptor.REFACTORING_ID;
+	}
+
+	protected IJavaProject[] getJavaProjects() {
+		return this.javaProjects;
+	}
+
+	public int getNForStreams() {
+		return this.nForStreams;
+	}
+
+	public int getNumberOfProcessedStreamInstances() {
+		return this.numberOfProcessedStreamInstances;
+	}
+
+	public int getNumberOfSkippedStreamInstances() {
+		return this.numberOfSkippedStreamInstances;
+	}
+
+	public Set<Stream> getOptimizableStreams() {
+		Set<Stream> streamSet = this.getStreamSet();
+		return streamSet == null ? Collections.emptySet()
+				: streamSet.parallelStream().filter(s -> !s.getStatus().hasError()).collect(Collectors.toSet());
 	}
 
 	@Override
@@ -381,30 +483,39 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 	}
 
 	private SearchEngine getSearchEngine() {
-		return searchEngine;
+		return this.searchEngine;
 	}
 
-	private ITypeHierarchy getTypeHierarchy(IType type, Optional<IProgressMonitor> monitor) throws JavaModelException {
-		try {
-			ITypeHierarchy ret = this.getTypeToTypeHierarchyMap().get(type);
-
-			if (ret == null) {
-				ret = type.newTypeHierarchy(monitor.orElseGet(NullProgressMonitor::new));
-				this.getTypeToTypeHierarchyMap().put(type, ret);
-			}
-
-			return ret;
-		} finally {
-			monitor.ifPresent(IProgressMonitor::done);
-		}
-	}
-
-	protected Map<IType, ITypeHierarchy> getTypeToTypeHierarchyMap() {
-		return typeToTypeHierarchyMap;
+	public Set<Stream> getStreamSet() {
+		return this.streamSet;
 	}
 
 	protected Map<ITypeRoot, CompilationUnit> getTypeRootToCompilationUnitMap() {
-		return typeRootToCompilationUnitMap;
+		return this.typeRootToCompilationUnitMap;
+	}
+
+	protected Map<IType, ITypeHierarchy> getTypeToTypeHierarchyMap() {
+		return this.typeToTypeHierarchyMap;
+	}
+
+	public Set<Stream> getUnoptimizableStreams() {
+		return this.getStreamSet().parallelStream().filter(s -> s.getStatus().hasError()).collect(Collectors.toSet());
+	}
+
+	public boolean getUseImplicitBenchmarkEntrypoints() {
+		return this.useImplicitBenchmarkEntrypoints;
+	}
+
+	public boolean getUseImplicitEntrypoints() {
+		return this.useImplicitEntrypoints;
+	}
+
+	public boolean getUseImplicitJavaFXEntrypoints() {
+		return this.useImplicitJavaFXEntrypoints;
+	}
+
+	public boolean getUseImplicitTestEntrypoints() {
+		return this.useImplicitTestEntrypoints;
 	}
 
 	@Override
@@ -438,23 +549,35 @@ public class ConvertToParallelStreamRefactoringProcessor extends RefactoringProc
 		manager.manage(rewrite.getCu(), change);
 	}
 
-	protected IJavaProject[] getJavaProjects() {
-		return javaProjects;
+	public void setNForStreams(int nForStreams) {
+		this.nForStreams = nForStreams;
 	}
 
-	public Set<Stream> getStreamSet() {
-		return streamSet;
+	protected void setNumberOfProcessedStreamInstances(int numberOfProcessedStreamInstances) {
+		this.numberOfProcessedStreamInstances = numberOfProcessedStreamInstances;
+	}
+
+	protected void setNumberOfSkippedStreamInstances(int numberOfSkippedStreamInstances) {
+		this.numberOfSkippedStreamInstances = numberOfSkippedStreamInstances;
 	}
 
 	protected void setStreamSet(Set<Stream> streamSet) {
 		this.streamSet = streamSet;
 	}
 
-	public Set<Stream> getOptimizableStreams() {
-		return this.getStreamSet().parallelStream().filter(s -> !s.getStatus().hasError()).collect(Collectors.toSet());
+	public void setUseImplicitBenchmarkEntrypoints(boolean useImplicitBenchmarkEntrypoints) {
+		this.useImplicitBenchmarkEntrypoints = useImplicitBenchmarkEntrypoints;
 	}
 
-	public Set<Stream> getUnoptimizableStreams() {
-		return this.getStreamSet().parallelStream().filter(s -> s.getStatus().hasError()).collect(Collectors.toSet());
+	public void setUseImplicitEntrypoints(boolean useImplicitEntrypoints) {
+		this.useImplicitEntrypoints = useImplicitEntrypoints;
+	}
+
+	public void setUseImplicitJavaFXEntrypoints(boolean useImplicitJavaFXEntrypoints) {
+		this.useImplicitJavaFXEntrypoints = useImplicitJavaFXEntrypoints;
+	}
+
+	public void setUseImplicitTestEntrypoints(boolean useImplicitTestEntrypoints) {
+		this.useImplicitTestEntrypoints = useImplicitTestEntrypoints;
 	}
 }

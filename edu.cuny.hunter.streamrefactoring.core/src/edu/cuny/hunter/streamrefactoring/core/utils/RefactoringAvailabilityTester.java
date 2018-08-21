@@ -15,7 +15,7 @@ import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.internal.corext.refactoring.Checks;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
 
-import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
+import edu.cuny.hunter.streamrefactoring.core.refactorings.OptimizeStreamsRefactoringProcessor;
 
 /**
  * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi
@@ -64,7 +64,7 @@ public final class RefactoringAvailabilityTester {
 //		}
 //
 //		// ensure that there is a target method.
-//		IMethod targetMethod = ConvertToParallelStreamRefactoringProcessor.getTargetMethod(method,
+//		IMethod targetMethod = OptimizeStreamsRefactoringProcessor.getTargetMethod(method,
 //				monitor);
 //		if (targetMethod == null) // no possible target.
 //			return false;

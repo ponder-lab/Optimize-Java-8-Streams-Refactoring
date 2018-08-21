@@ -13,7 +13,21 @@ import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.ui.handlers.HandlerUtil;
 
 public class Util {
-	private Util() {
+	public static String getMethodIdentifier(IMethod method) throws JavaModelException {
+		if (method == null)
+			return null;
+
+		StringBuilder sb = new StringBuilder();
+		sb.append(method.getElementName() + "(");
+		ILocalVariable[] parameters = method.getParameters();
+		for (int i = 0; i < parameters.length; i++) {
+			sb.append(edu.cuny.hunter.streamrefactoring.core.utils.Util
+					.getQualifiedNameFromTypeSignature(parameters[i].getTypeSignature(), method.getDeclaringType()));
+			if (i != parameters.length - 1)
+				sb.append(",");
+		}
+		sb.append(")");
+		return sb.toString();
 	}
 
 	public static IJavaProject[] getSelectedJavaProjectsFromEvent(ExecutionEvent event) throws ExecutionException {
@@ -25,18 +39,6 @@ public class Util {
 		return javaProjects;
 	}
 
-	public static String getMethodIdentifier(IMethod method) throws JavaModelException {
-		StringBuilder sb = new StringBuilder();
-		sb.append((method.getElementName()) + "(");
-		ILocalVariable[] parameters = method.getParameters();
-		for (int i = 0; i < parameters.length; i++) {
-			sb.append(edu.cuny.hunter.streamrefactoring.core.utils.Util
-					.getQualifiedNameFromTypeSignature(parameters[i].getTypeSignature(), method.getDeclaringType()));
-			if (i != (parameters.length - 1)) {
-				sb.append(",");
-			}
-		}
-		sb.append(")");
-		return sb.toString();
+	private Util() {
 	}
 }

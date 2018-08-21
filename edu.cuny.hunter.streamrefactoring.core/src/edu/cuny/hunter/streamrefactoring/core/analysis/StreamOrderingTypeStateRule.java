@@ -22,26 +22,26 @@ public class StreamOrderingTypeStateRule extends StreamAttributeTypestateRule {
 	protected void addAutomaton() {
 		super.addAutomaton();
 
-		IDFAState orderedState = addState(Ordering.ORDERED);
-		
+		IDFAState orderedState = this.addState(Ordering.ORDERED);
+
 		if (this.getDFAStateToOrderingMap() == null)
 			this.setDFAStateToOrderingMap(new HashMap<>(2));
-		
+
 		this.getDFAStateToOrderingMap().put(orderedState, Ordering.ORDERED);
-		
-		IDFAState unorderedState = addState(Ordering.UNORDERED);
+
+		IDFAState unorderedState = this.addState(Ordering.UNORDERED);
 		this.getDFAStateToOrderingMap().put(unorderedState, Ordering.UNORDERED);
 
-		IDispatchEvent sortedEvent = addEvent("sorted", ".*sorted\\(.*\\).*");
-		IDispatchEvent unorderedEvent = addEvent("unordered", ".*unordered\\(\\).*");
+		IDispatchEvent sortedEvent = this.addEvent("sorted", ".*sorted\\(.*\\).*");
+		IDispatchEvent unorderedEvent = this.addEvent("unordered", ".*unordered\\(\\).*");
 
 		// TODO: Need to add concat().
-		addTransition(bottomState, orderedState, sortedEvent);
-		addTransition(bottomState, unorderedState, unorderedEvent);
-		addTransition(unorderedState, orderedState, sortedEvent);
-		addTransition(unorderedState, unorderedState, unorderedEvent);
-		addTransition(orderedState, orderedState, sortedEvent);
-		addTransition(orderedState, unorderedState, unorderedEvent);
+		this.addTransition(this.bottomState, orderedState, sortedEvent);
+		this.addTransition(this.bottomState, unorderedState, unorderedEvent);
+		this.addTransition(unorderedState, orderedState, sortedEvent);
+		this.addTransition(unorderedState, unorderedState, unorderedEvent);
+		this.addTransition(orderedState, orderedState, sortedEvent);
+		this.addTransition(orderedState, unorderedState, unorderedEvent);
 	}
 
 	@Override
@@ -52,12 +52,12 @@ public class StreamOrderingTypeStateRule extends StreamAttributeTypestateRule {
 		stream.addPossibleOrderingCollection(set);
 	}
 
-	public Ordering getOrdering(IDFAState state) {
-		return this.getDFAStateToOrderingMap().get(state);
+	protected Map<IDFAState, Ordering> getDFAStateToOrderingMap() {
+		return this.dfaStateToOrderingMap;
 	}
 
-	protected Map<IDFAState, Ordering> getDFAStateToOrderingMap() {
-		return dfaStateToOrderingMap;
+	public Ordering getOrdering(IDFAState state) {
+		return this.getDFAStateToOrderingMap().get(state);
 	}
 
 	protected void setDFAStateToOrderingMap(Map<IDFAState, Ordering> dfaStateToOrderingMap) {
