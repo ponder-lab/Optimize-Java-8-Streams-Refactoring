@@ -414,6 +414,7 @@ public final class Util {
 
 	static private void clearCheckedInstructions() {
 		checkInstructions = new LinkedList<>();
+		checkInstructions.clear();
 	}
 
 	static Collection<TypeAbstraction> getPossibleStreamTypes(int valueNumber, TypeInference inference) {

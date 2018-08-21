@@ -22,7 +22,7 @@ public class StreamFindingVisitor extends Visitor {
 
 	private IClassHierarchy classHierarchy;
 
-	private boolean foundStream;
+	private boolean foundStream = false;
 
 	public StreamFindingVisitor(IClassHierarchy classHierarchy) {
 		this.classHierarchy = classHierarchy;
