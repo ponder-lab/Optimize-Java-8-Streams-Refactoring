@@ -422,18 +422,19 @@ public final class Util {
 		Value value;
 		try {
 			value = inference.getIR().getSymbolTable().getValue(valueNumber);
-		}catch (IllegalArgumentException exception) {
+		} catch (IllegalArgumentException exception) {
 			return ret;
 		}
-
-		if (checkInstructions.contains(value))
-			return ret;
-		else
-			checkInstructions.add(value);
 
 		// TODO: Should really be using a pointer analysis here rather than
 		// re-implementing one using PhiValue.
 		if (value instanceof PhiValue) {
+
+			if (checkInstructions.contains(value))
+				return ret;
+			else
+				checkInstructions.add(value);
+
 			// multiple possible types.
 			PhiValue phiValue = (PhiValue) value;
 			SSAPhiInstruction phiInstruction = phiValue.getPhiInstruction();
@@ -798,7 +799,7 @@ public final class Util {
 	public static boolean isStreamNode(CGNode node, IClassHierarchy classHierarchy) {
 		if (checkDeclaredClass(node))
 			return true;
-		
+
 		IR ir = node.getIR();
 
 		if (ir == null || ir.isEmptyIR())
