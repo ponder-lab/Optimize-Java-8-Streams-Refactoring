@@ -17,6 +17,8 @@ import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.BaseStream;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
@@ -787,19 +789,20 @@ public final class Util {
 			
 			if (visitor.hasFoundStream())
 				return true;
-			
-			TypeInference inference = TypeInference.make(ir, false);
-	
+
 			// otherwise, let's check the defs and uses.
-			for (int i = 0; i < instruction.getNumberOfDefs(); i++) {
-				int def = instruction.getDef(i);
-				Collection<TypeAbstraction> types = getPossibleTypes(def, inference);
-				
-				if (types.stream().anyMatch(t -> implementsBaseStream(t.getTypeReference(), classHierarchy)))
-					return true;
-			}
-		}
+			TypeInference inference = TypeInference.make(ir, false);
+
+			Stream<TypeAbstraction> defs = IntStream.range(0, instruction.getNumberOfDefs())
+					.mapToObj(i -> instruction.getDef(i)).flatMap(d -> getPossibleTypes(d, inference).stream());
 	
+			Stream<TypeAbstraction> uses = IntStream.range(0, instruction.getNumberOfUses())
+					.mapToObj(i -> instruction.getUse(i)).flatMap(u -> getPossibleTypes(u, inference).stream());
+
+			if (Stream.concat(defs, uses).anyMatch(t -> implementsBaseStream(t.getTypeReference(), classHierarchy)))
+				return true;
+		}
+
 		return false;
 	}
 }
