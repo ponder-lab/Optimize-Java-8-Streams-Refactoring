@@ -25,6 +25,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jdt.core.JavaModelException;
+
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import com.ibm.safe.Factoid;
@@ -77,7 +78,6 @@ import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.Predicate;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.Pair;
-import com.ibm.wala.util.graph.Graph;
 import com.ibm.wala.util.graph.GraphSlicer;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
@@ -492,9 +492,6 @@ public class StreamStateMachine {
 	private Map<BasicBlockInContext<IExplodedBasicBlock>, OrdinalSet<InstanceKey>> terminalBlockToPossibleReceivers = new HashMap<>();
 
 	private Set<InstanceKey> trackedInstances = new HashSet<>();
-
-	// number of graph edges
-	private static int sumOfEdges;
 
 	private Set<IDFAState> computeMergedTypeState(InstanceKey instanceKey,
 			BasicBlockInContext<IExplodedBasicBlock> block, StreamAttributeTypestateRule rule) {
@@ -985,12 +982,11 @@ public class StreamStateMachine {
 			throws PropertiesException, CancelException, IOException, CoreException, NoniterableException,
 			NoninstantiableException, CannotExtractSpliteratorException, InvalidClassFileException {
 
-		Graph<CGNode> partialCallGraph = pruneCallGraph(engine);
-
 		SubMonitor subMonitor = SubMonitor.convert(monitor, "Performing typestate analysis (may take a while)", 100);
 		Map<TypestateRule, Statistics> ret = new HashMap<>();
 
-		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
+		CallGraph prunedCallGraph = pruneCallGraph(engine.getCallGraph(), engine.getClassHierarchy());
+		BenignOracle ora = new ModifiedBenignOracle(prunedCallGraph, engine.getPointerAnalysis());
 
 		PropertiesManager manager = PropertiesManager.initFromMap(Collections.emptyMap());
 		PropertiesManager.registerProperties(
@@ -1014,7 +1010,7 @@ public class StreamStateMachine {
 
 			// this gets a solver that tracks all streams.
 			LOGGER.info(() -> "Starting " + rule.getName() + " solver for: " + engine.getProject().getElementName());
-			ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getOptions(), engine.getCallGraph(),
+			ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getOptions(), prunedCallGraph,
 					engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null);
 
 			AggregateSolverResult result;
@@ -1050,7 +1046,7 @@ public class StreamStateMachine {
 				// TODO: Can this be somehow rewritten to get blocks corresponding to terminal
 				// operations?
 				// for each call graph node in the call graph.
-				for (CGNode cgNode : partialCallGraph)
+				for (CGNode cgNode : prunedCallGraph)
 					// separating client from library code, improving performance #103.
 					if (cgNode.getMethod().getDeclaringClass().getClassLoader().getReference()
 							.equals(ClassLoaderReference.Application)) {
@@ -1236,7 +1232,7 @@ public class StreamStateMachine {
 
 		// discover whether any stateful intermediate operations are
 		// present.
-		this.discoverPossibleStatefulIntermediateOperations(engine.getClassHierarchy(), engine.getCallGraph(),
+		this.discoverPossibleStatefulIntermediateOperations(engine.getClassHierarchy(), prunedCallGraph,
 				subMonitor.split(5, SubMonitor.SUPPRESS_NONE));
 
 		// does reduction order matter?
@@ -1307,48 +1303,18 @@ public class StreamStateMachine {
 	 *            call graph
 	 * @return a pruned call graph
 	 */
-	private Graph<CGNode> pruneCallGraph(final EclipseProjectAnalysisEngine<InstanceKey> engine) {
-		CallGraph cg = engine.getCallGraph();
-		LOGGER.info("The number of nodes in call graph: " + cg.getNumberOfNodes());
+	private static CallGraph pruneCallGraph(CallGraph callGraph, IClassHierarchy classHierarchy) {
+		LOGGER.info("The number of nodes in call graph: " + callGraph.getNumberOfNodes());
 
-		Graph<CGNode> partialGraph = GraphSlicer.prune(cg, new Predicate<CGNode>() {
+		CallGraph partialGraph = (CallGraph) GraphSlicer.prune(callGraph, new Predicate<CGNode>() {
 			@Override
 			public boolean test(CGNode node) {
-				return isStreamNode(node, engine);
+				return Util.isStreamNode(node, classHierarchy);
 			}
 		});
+
 		LOGGER.info("The number of nodes in partial graph: " + partialGraph.getNumberOfNodes());
 		return partialGraph;
-	}
-
-	/**
-	 * Check whether a CGNode is reached by stream object
-	 * 
-	 * @param node:
-	 *            CGNode
-	 * @return true/false
-	 */
-	public boolean isStreamNode(CGNode node, EclipseProjectAnalysisEngine<InstanceKey> engine) {
-
-		IR ir = node.getIR();
-
-		// no IR or IR is empty
-		if (ir == null || ir.isEmptyIR())
-			return true;
-
-		for (SSAInstruction instruction : ir.getInstructions()) {
-
-			if (instruction == null)
-				continue;
-
-			StreamVisitor visitor = new StreamVisitor(node, engine);
-			instruction.visit(visitor);
-
-			if (visitor.getIsStreamNode()) {
-				return true;
-			}
-		}
-		return false;
 	}
 
 }

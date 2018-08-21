@@ -771,4 +771,35 @@ public final class Util {
 
 	private Util() {
 	}
+
+	public static boolean isStreamNode(CGNode node, IClassHierarchy classHierarchy) {
+		IR ir = node.getIR();
+	
+		if (ir == null || ir.isEmptyIR())
+			return true;
+		
+		for (SSAInstruction instruction : ir.getInstructions()) {
+			if (instruction == null)
+				continue;
+			
+			StreamFindingVisitor visitor = new StreamFindingVisitor(classHierarchy);
+			instruction.visit(visitor);
+			
+			if (visitor.hasFoundStream())
+				return true;
+			
+			TypeInference inference = TypeInference.make(ir, false);
+	
+			// otherwise, let's check the defs and uses.
+			for (int i = 0; i < instruction.getNumberOfDefs(); i++) {
+				int def = instruction.getDef(i);
+				Collection<TypeAbstraction> types = getPossibleTypes(def, inference);
+				
+				if (types.stream().anyMatch(t -> implementsBaseStream(t.getTypeReference(), classHierarchy)))
+					return true;
+			}
+		}
+	
+		return false;
+	}
 }
