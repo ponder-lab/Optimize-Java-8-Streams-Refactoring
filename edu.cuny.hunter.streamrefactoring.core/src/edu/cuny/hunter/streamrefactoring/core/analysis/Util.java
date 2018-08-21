@@ -423,7 +423,12 @@ public final class Util {
 
 	static Collection<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
 		Set<TypeAbstraction> ret = new HashSet<>();
-		Value value = inference.getIR().getSymbolTable().getValue(valueNumber);
+		Value value;
+		try {
+			value = inference.getIR().getSymbolTable().getValue(valueNumber);
+		}catch (IllegalArgumentException exception) {
+			return ret;
+		}
 
 		if (checkInstructions.contains(value))
 			return ret;
