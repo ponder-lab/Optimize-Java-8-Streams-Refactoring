@@ -1333,7 +1333,6 @@ public class StreamStateMachine {
 		CallGraph cg = engine.getCallGraph();
 		IClassHierarchy classHierarchy = engine.getClassHierarchy();
 		LOGGER.info("The number of nodes in call graph: " + cg.getNumberOfNodes());
-		LOGGER.info("The number of edges in call graph: " + getNumberOfEdges(cg));
 
 		Graph<CGNode> partialGraph = GraphSlicer.prune(cg, new Predicate<CGNode>() {
 			@Override
@@ -1342,15 +1341,10 @@ public class StreamStateMachine {
 			}
 		});
 		LOGGER.info("The number of nodes in partial graph: " + partialGraph.getNumberOfNodes());
-		LOGGER.info("The number of edges in partial graph: " + getNumberOfEdges(partialGraph));
 		return partialGraph;
 	}
 
 	static boolean isStreamNode;
-
-	private static boolean isStreamType(TypeReference typeReference, IClassHierarchy classHierarchy) {
-		return Util.implementsBaseStream(typeReference, classHierarchy);
-	}
 
 	/**
 	 * Check whether a CGNode is reached by stream object
@@ -1367,15 +1361,7 @@ public class StreamStateMachine {
 
 		// no IR or IR is empty
 		if (ir == null || ir.isEmptyIR())
-			return false;
-
-		// check parameters
-		int numberOfParameters = ir.getNumberOfParameters();
-		for (int i = 0; i < numberOfParameters; ++i) {
-			TypeReference typeReference = ir.getParameterType(i);
-			if (isStreamType(typeReference, classHierarchy))
-				return true;
-		}
+			return true;
 
 		for (SSAInstruction instruction : ir.getInstructions()) {
 
@@ -1389,26 +1375,26 @@ public class StreamStateMachine {
 
 				@Override
 				public void visitPut(SSAPutInstruction instruction) {
-					if (isStreamType(instruction.getDeclaredFieldType(), classHierarchy))
+					if (Util.implementsBaseStream(instruction.getDeclaredFieldType(), classHierarchy))
 						isStreamNode = true;
 				}
 
 				@Override
 				public void visitNew(SSANewInstruction instruction) {
-					if (isStreamType(instruction.getConcreteType(), classHierarchy))
+					if (Util.implementsBaseStream(instruction.getConcreteType(), classHierarchy))
 						isStreamNode = true;
 
 				}
 
 				@Override
 				public void visitLoadMetadata(SSALoadMetadataInstruction instruction) {
-					if (isStreamType(instruction.getType(), classHierarchy))
+					if (Util.implementsBaseStream(instruction.getType(), classHierarchy))
 						isStreamNode = true;
 				}
 
 				@Override
 				public void visitInvoke(SSAInvokeInstruction instruction) {
-					if (isStreamType(instruction.getDeclaredResultType(), classHierarchy))
+					if (Util.implementsBaseStream(instruction.getDeclaredResultType(), classHierarchy))
 						isStreamNode = true;
 
 					MethodReference methodReference = instruction.getDeclaredTarget();
@@ -1427,31 +1413,31 @@ public class StreamStateMachine {
 
 				@Override
 				public void visitInstanceof(SSAInstanceofInstruction instruction) {
-					if (isStreamType(instruction.getCheckedType(), classHierarchy))
+					if (Util.implementsBaseStream(instruction.getCheckedType(), classHierarchy))
 						isStreamNode = true;
 				}
 
 				@Override
 				public void visitGet(SSAGetInstruction instruction) {
-					if (isStreamType(instruction.getDeclaredFieldType(), classHierarchy))
+					if (Util.implementsBaseStream(instruction.getDeclaredFieldType(), classHierarchy))
 						isStreamNode = true;
 				}
 
 				@Override
 				public void visitCheckCast(SSACheckCastInstruction instruction) {
-					if (isStreamType(instruction.getDeclaredResultType(), classHierarchy))
+					if (Util.implementsBaseStream(instruction.getDeclaredResultType(), classHierarchy))
 						isStreamNode = true;
 				}
 
 				@Override
 				public void visitArrayStore(SSAArrayStoreInstruction instruction) {
-					if (isStreamType(instruction.getElementType(), classHierarchy))
+					if (Util.implementsBaseStream(instruction.getElementType(), classHierarchy))
 						isStreamNode = true;
 				}
 
 				@Override
 				public void visitArrayLoad(SSAArrayLoadInstruction instruction) {
-					if (isStreamType(instruction.getElementType(), classHierarchy))
+					if (Util.implementsBaseStream(instruction.getElementType(), classHierarchy))
 						isStreamNode = true;
 				}
 
@@ -1522,25 +1508,6 @@ public class StreamStateMachine {
 		}
 
 		return false;
-	}
-
-	/**
-	 * Get number of edges in the call graph
-	 */
-	private static int getNumberOfEdges(Graph<CGNode> graph) {
-		// clear number of edges
-		sumOfEdges = 0;
-		graph.forEach(node -> {
-			graph.forEach(otherNode -> {
-				// if two nodes are not same
-				if (!(node.equals(otherNode))) {
-					if (graph.hasEdge(node, otherNode))
-						sumOfEdges++;
-				}
-			});
-		});
-		// one edge is counted twice
-		return sumOfEdges / 2;
 	}
 
 }
