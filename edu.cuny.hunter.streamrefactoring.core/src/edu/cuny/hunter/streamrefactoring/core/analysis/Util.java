@@ -619,6 +619,8 @@ public final class Util {
 
 	public static boolean implementsType(TypeReference typeReference, IClassHierarchy classHierarchy,
 			Predicate<IClass> predicate) {
+		if (typeReference == null) return false;
+		
 		IClass clazz = classHierarchy.lookupClass(typeReference);
 
 		if (clazz == null)
