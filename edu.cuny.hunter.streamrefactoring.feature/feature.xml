@@ -1,18 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
-      id="edu.cuny.citytech.migrate.skeletal.implementation.to.interface.refactoring"
-      label="Migrate Skeletal Implementation to Interface Refactoring"
-      version="0.5.0.qualifier"
-      provider-name="New York City College of Technology, City University of New York">
+      id="edu.cuny.hunter.optimize.stream.refactoring"
+      label="Optimize Streams Refactoring"
+      version="0.15.0.qualifier"
+      provider-name="Hunter College, City University of New York"
+      plugin="edu.cuny.hunter.streamrefactoring.core">
 
-   <description url="http://openlab.citytech.cuny.edu/interfacerefactoring">
-      The skeletal implementation pattern is a software design pattern consisting of defining an abstract class that provides a partial interface implementation. However, since Java allows only single class inheritance, if implementers decide to extend a skeletal implementation, they will not be allowed to extend any other class. Also, discovering the skeletal implementation may require a global analysis. Java 8 enhanced interfaces alleviate these problems by allowing interfaces to contain (default) method implementations, which implementers inherit. Java classes are then free to extend a different class, and a separate abstract class is no longer needed; developers considering implementing an interface need only examine the interface itself. Both of these benefits improve software modularity.
+   <description url="http://cuny.is/streams">
+      The Java 8 Stream API sets forth a promising new programming model that incorporates functional-like, MapReduce-style features into a mainstream programming language. However, using streams efficiently may involve subtle considerations.
 
-This prototype refactoring plug-in for Eclipse represents ongoing work in developing an automated refactoring tool that would assist developers in taking advantage of the enhanced interface feature for their legacy Java software.
+This tool consists of automated refactoring research prototype plug-ins for Eclipse that assists developers in writing optimal stream client code in a semantics-preserving fashion. Refactoring preconditions and transformations for automatically determining when it is safe and possibly advantageous to convert a sequential stream to parallel and improve upon already parallel streams are included. The approach utilizes both WALA and SAFE.
    </description>
 
    <copyright>
-      2016 Raffi Khatchadourian. All rights reserved.
+      2018 Raffi Khatchadourian. All rights reserved.
    </copyright>
 
    <license>
@@ -222,9 +223,23 @@ any resulting litigation.
    </license>
 
    <url>
-      <update label="Migrate Skeletal Implementation to Interface Refactoring Update Site" url="https://raw.githubusercontent.com/khatchad/master/Migrate-Skeletal-Implementation-to-Interface-Refactoring/edu.cuny.hunter.streamrefactoring.updatesite/"/>
-      <discovery label="Common Eclipse Java Refactoring Framework" url="https://raw.githubusercontent.com/khatchad/master/Common-Eclipse-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite/"/>
+      <update label="Optimize Streams Refactoring Update Site" url="https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.updatesite"/>
+      <discovery label="Common Eclipse Java Refactoring Framework" url="https://raw.githubusercontent.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite"/>
+      <discovery label="WALA" url="https://raw.githubusercontent.com/ponder-lab/WALA/master/com.ibm.wala.updatesite"/>
+      <discovery label="SAFE" url="https://raw.githubusercontent.com/ponder-lab/safe/master/com.ibm.safe.updatesite"/>
    </url>
+
+   <includes
+         id="com.ibm.safe.feature"
+         version="0.0.0"/>
+
+   <includes
+         id="com.ibm.wala-feature"
+         version="0.0.0"/>
+
+   <includes
+         id="com.ibm.wala.ide-feature"
+         version="0.0.0"/>
 
    <requires>
       <import plugin="org.eclipse.ltk.core.refactoring"/>
@@ -235,10 +250,16 @@ any resulting litigation.
       <import plugin="org.eclipse.jdt.ui"/>
       <import plugin="org.eclipse.jface" version="3.11.0" match="greaterOrEqual"/>
       <import plugin="com.google.guava"/>
+      <import plugin="com.ibm.safe.core" version="1.0.0" match="greaterOrEqual"/>
+      <import plugin="com.ibm.safe.typestate" version="1.0.0" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.jdt.launching"/>
+      <import plugin="com.ibm.safe"/>
       <import plugin="org.eclipse.core.resources"/>
       <import plugin="org.eclipse.core.runtime"/>
       <import plugin="org.eclipse.core.jobs"/>
       <import plugin="org.eclipse.jdt.core.manipulation"/>
+      <import plugin="org.eclipse.jface.text"/>
+      <import plugin="org.eclipse.pde.core"/>
       <import plugin="org.eclipse.text"/>
       <import plugin="org.eclipse.ui.workbench"/>
       <import plugin="org.eclipse.ui"/>
@@ -250,11 +271,6 @@ any resulting litigation.
       <import plugin="com.ibm.wala.core" version="1.3.10" match="greaterOrEqual"/>
       <import plugin="com.ibm.wala.cast.java" version="1.3.10" match="greaterOrEqual"/>
       <import plugin="com.ibm.wala.shrike" version="1.3.10" match="greaterOrEqual"/>
-      <import plugin="com.ibm.safe.core" version="1.0.0" match="greaterOrEqual"/>
-      <import plugin="com.ibm.safe.typestate" version="1.0.0" match="greaterOrEqual"/>
-      <import plugin="com.ibm.safe"/>
-      <import plugin="org.eclipse.jface.text"/>
-      <import plugin="org.eclipse.pde.core"/>
    </requires>
 
    <plugin

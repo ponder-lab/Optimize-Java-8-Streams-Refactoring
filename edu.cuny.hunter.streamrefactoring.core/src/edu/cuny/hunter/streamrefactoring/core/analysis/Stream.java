@@ -5,6 +5,7 @@ import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getJDTIdentif
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getLineNumberFromAST;
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getLineNumberFromIR;
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.getPossibleTypesInterprocedurally;
+import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.implementsBaseStream;
 import static edu.cuny.hunter.streamrefactoring.core.analysis.Util.matches;
 import static edu.cuny.hunter.streamrefactoring.core.safe.Util.instanceKeyCorrespondsWithInstantiationInstruction;
 
@@ -27,17 +28,21 @@ import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IMethod;
 import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaModelException;
+import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.CompilationUnit;
+import org.eclipse.jdt.core.dom.Expression;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SimpleName;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
+import org.eclipse.jdt.core.dom.rewrite.ASTRewrite;
 import org.eclipse.jdt.internal.corext.dom.ASTNodes;
 import org.eclipse.jdt.internal.corext.dom.Bindings;
 import org.eclipse.jdt.internal.corext.refactoring.base.JavaStatusContext;
+import org.eclipse.jdt.internal.corext.refactoring.structure.CompilationUnitRewrite;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.RefactoringStatusContext;
@@ -59,6 +64,7 @@ import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
 
+import edu.cuny.hunter.streamrefactoring.core.safe.NoApplicationCodeExistsInCallStringsException;
 import edu.cuny.hunter.streamrefactoring.core.utils.LoggerNames;
 import edu.cuny.hunter.streamrefactoring.core.utils.Util;
 import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
@@ -73,23 +79,34 @@ import edu.cuny.hunter.streamrefactoring.core.wala.EclipseProjectAnalysisEngine;
 @SuppressWarnings("restriction")
 public class Stream {
 
+	private static final String BASE_STREAM_TYPE_NAME = "BaseStream";
+
 	private static final String GENERATE_METHOD_ID = "generate(java.util.function.Supplier)";
 
 	private static final String JAVA_UTIL_STREAM_DOUBLE_STREAM = "java.util.stream.DoubleStream";
 
-	private static final String JAVA_UTIL_STREAM_LONG_STREAM = "java.util.stream.LongStream";
-
 	private static final String JAVA_UTIL_STREAM_INT_STREAM = "java.util.stream.IntStream";
+
+	private static final String JAVA_UTIL_STREAM_LONG_STREAM = "java.util.stream.LongStream";
 
 	private static final String JAVA_UTIL_STREAM_STREAM = "java.util.stream.Stream";
 
-	private static final String PARALLEL_STREAM_CREATION_METHOD_ID = "parallelStream()";
-
-	private static final String BASE_STREAM_TYPE_NAME = "BaseStream";
-
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
+	private static final String PARALLEL_STREAM_CREATION_METHOD_ID = "parallelStream()";
+
 	private static final String PLUGIN_ID = FrameworkUtil.getBundle(Stream.class).getSymbolicName();
+
+	private static MethodInvocation findTerminalOperation(ASTNode astNode) {
+		if (astNode == null)
+			return null;
+		else if (astNode.getNodeType() != ASTNode.METHOD_INVOCATION)
+			throw new IllegalArgumentException(astNode + " must be a method invocation.");
+		if (astNode.getParent().getNodeType() != ASTNode.METHOD_INVOCATION)
+			return (MethodInvocation) astNode;
+		else
+			return findTerminalOperation(astNode.getParent());
+	}
 
 	private Set<TransformationAction> actions;
 
@@ -101,11 +118,11 @@ public class Stream {
 
 	private final TypeDeclaration enclosingTypeDeclaration;
 
+	private boolean hasNoTerminalOperation;
+
 	private boolean hasPossibleSideEffects;
 
 	private boolean hasPossibleStatefulIntermediateOperations;
-
-	private boolean hasNoTerminalOperation;
 
 	/**
 	 * The execution mode derived from the declaration of the stream.
@@ -118,6 +135,8 @@ public class Stream {
 	private Ordering initialOrdering;
 
 	private InstanceKey instanceKey;
+
+	private Optional<SSAInvokeInstruction> instructionForCreation;
 
 	private PreconditionSuccess passingPrecondition;
 
@@ -153,17 +172,10 @@ public class Stream {
 
 		// Work around #97.
 		if (this.enclosingMethodDeclaration == null) {
-			LOGGER.warning("Stream: " + creation + " not handled.");
-			this.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, "Stream: " + creation
+			LOGGER.warning("Stream: " + this.creation + " not handled.");
+			this.addStatusEntry(PreconditionFailure.CURRENTLY_NOT_HANDLED, "Stream: " + this.creation
 					+ " is most likely used in a context that is currently not handled by this plug-in.");
 		}
-	}
-
-	public void inferInitialAttributes(EclipseProjectAnalysisEngine<InstanceKey> engine,
-			OrderingInference orderingInference) throws InvalidClassFileException, IOException, CoreException,
-			UnhandledCaseException, StreamCreationNotConsideredException {
-		this.inferInitialExecution();
-		this.inferInitialOrdering(engine, orderingInference);
 	}
 
 	protected void addPossibleExecutionMode(ExecutionMode executionMode) {
@@ -216,10 +228,10 @@ public class Stream {
 		}
 
 		// let's check that execution modes are consistent.
-		if (isConsistent(possibleExecutionModes, PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES,
-				"Stream: " + creation + " has inconsitent possible execution modes.", creation)) {
+		if (this.isConsistent(possibleExecutionModes, PreconditionFailure.INCONSISTENT_POSSIBLE_EXECUTION_MODES,
+				"Stream: " + creation + " has inconsitent possible execution modes.", creation))
 			// do we have consistent ordering?
-			if (isConsistent(possibleOrderings, PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS,
+			if (this.isConsistent(possibleOrderings, PreconditionFailure.INCONSISTENT_POSSIBLE_ORDERINGS,
 					"Stream: " + creation + " has inconsitent possible orderings.", creation)) {
 				ExecutionMode executionMode = possibleExecutionModes.iterator().next();
 				assert executionMode != null : "Execution mode is null";
@@ -233,7 +245,7 @@ public class Stream {
 					switch (ordering) {
 					case UNORDERED:
 						if (hasPossibleSideEffects)
-							addStatusEntry(PreconditionFailure.HAS_SIDE_EFFECTS, "Stream: " + creation
+							this.addStatusEntry(PreconditionFailure.HAS_SIDE_EFFECTS, "Stream: " + creation
 									+ " is associated with a behavioral parameter containing possible side-effects");
 						else {
 							// it passed P1.
@@ -244,28 +256,24 @@ public class Stream {
 						break;
 					case ORDERED:
 						if (hasPossibleSideEffects)
-							addStatusEntry(PreconditionFailure.HAS_SIDE_EFFECTS2, "Stream: " + creation
+							this.addStatusEntry(PreconditionFailure.HAS_SIDE_EFFECTS2, "Stream: " + creation
 									+ " is associated with a behavioral parameter containing possible side-effects");
-						else {
-							// check SIO.
-							if (!hasPossibleStatefulIntermediateOperations) {
-								// it passed P2.
-								this.setRefactoring(Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL);
-								this.setTransformationAction(TransformationAction.CONVERT_TO_PARALLEL);
-								this.setPassingPrecondition(PreconditionSuccess.P2);
-							} else {
-								// check ROM.
-								if (!reduceOrderingPossiblyMatters) {
-									// it passes P3.
-									this.setRefactoring(Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL);
-									this.setTransformationAction(TransformationAction.UNORDER,
-											TransformationAction.CONVERT_TO_PARALLEL);
-									this.setPassingPrecondition(PreconditionSuccess.P3);
-								} else
-									addStatusEntry(PreconditionFailure.REDUCE_ORDERING_MATTERS,
-											"Ordering of the result produced by a terminal operation must be preserved");
-							}
-						}
+						else // check SIO.
+						if (!hasPossibleStatefulIntermediateOperations) {
+							// it passed P2.
+							this.setRefactoring(Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL);
+							this.setTransformationAction(TransformationAction.CONVERT_TO_PARALLEL);
+							this.setPassingPrecondition(PreconditionSuccess.P2);
+						} else // check ROM.
+						if (!reduceOrderingPossiblyMatters) {
+							// it passes P3.
+							this.setRefactoring(Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL);
+							this.setTransformationAction(TransformationAction.UNORDER,
+									TransformationAction.CONVERT_TO_PARALLEL);
+							this.setPassingPrecondition(PreconditionSuccess.P3);
+						} else
+							this.addStatusEntry(PreconditionFailure.REDUCE_ORDERING_MATTERS,
+									"Ordering of the result produced by a terminal operation must be preserved");
 						break;
 					}
 					break;
@@ -286,17 +294,88 @@ public class Stream {
 								this.setPassingPrecondition(PreconditionSuccess.P5);
 							}
 						} else
-							addStatusEntry(PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS,
+							this.addStatusEntry(PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS,
 									"No stateful intermediate operation exists within the stream's pipeline.");
 
 						break;
 					case UNORDERED:
-						addStatusEntry(PreconditionFailure.UNORDERED, "Stream is unordered.");
+						this.addStatusEntry(PreconditionFailure.UNORDERED, "Stream is unordered.");
 						break;
 					}
 				}
 			}
+	}
+
+	protected InstanceKey computeInstanceKey(Collection<InstanceKey> trackedInstances,
+			EclipseProjectAnalysisEngine<InstanceKey> engine)
+			throws InvalidClassFileException, IOException, CoreException, UnhandledCaseException,
+			NoApplicationCodeExistsInCallStringsException, InstanceKeyNotFoundException {
+		Optional<SSAInvokeInstruction> instructionForCreation = this.getInstructionForCreation(engine);
+
+		if (instructionForCreation.isPresent()) {
+			SSAInvokeInstruction instruction = instructionForCreation.get();
+
+			for (InstanceKey ik : trackedInstances)
+				if (instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction,
+						this.getEnclosingMethodReference(), engine))
+					return ik;
 		}
+
+		throw new InstanceKeyNotFoundException(
+				"Can't find instance key for: " + this.getCreation() + " using tracked instances: " + trackedInstances);
+	}
+
+	private void convert(String source, String target, String sourceGenerator, String targetGenerator,
+			CompilationUnitRewrite rewrite) {
+		MethodInvocation creation = this.getCreation();
+		ASTRewrite astRewrite = rewrite.getASTRewrite();
+
+		MethodInvocation termOp = findTerminalOperation(creation);
+
+		// get the terminal operation's expression.
+		Expression expression = termOp.getExpression();
+
+		boolean done = false;
+
+		while (expression != null && !done)
+			if (expression.getNodeType() == ASTNode.METHOD_INVOCATION) {
+				MethodInvocation inv = (MethodInvocation) expression;
+				AST ast = creation.getAST();
+
+				String identifier = inv.getName().getIdentifier();
+
+				if (identifier.equals(source))
+					// remove it.
+					astRewrite.replace(inv, inv.getExpression(), null);
+				else if (identifier.equals(target))
+					done = true;
+				else if (identifier.equals(sourceGenerator)) {
+					// Replace with parallelStream().
+					SimpleName newMethodName = ast.newSimpleName(targetGenerator);
+					astRewrite.replace(creation.getName(), newMethodName, null);
+				} else if (identifier.equals(targetGenerator))
+					done = true;
+				else // if we're at the end.
+				if (inv.getExpression().getNodeType() != ASTNode.METHOD_INVOCATION
+						|| inv.getExpression().getNodeType() == ASTNode.METHOD_INVOCATION
+								&& !implementsBaseStream(inv.getExpression().resolveTypeBinding())) {
+					MethodInvocation newMethodInvocation = ast.newMethodInvocation();
+					newMethodInvocation.setName(ast.newSimpleName(target));
+					MethodInvocation invCopy = (MethodInvocation) ASTNode.copySubtree(ast, inv);
+					newMethodInvocation.setExpression(invCopy);
+					astRewrite.replace(inv, newMethodInvocation, null);
+				}
+				expression = inv.getExpression();
+			} else
+				done = true;
+	}
+
+	protected void convertToParallel(CompilationUnitRewrite rewrite) {
+		this.convert("sequential", "parallel", "stream", "parallelStream", rewrite);
+	}
+
+	protected void convertToSequential(CompilationUnitRewrite rewrite) {
+		this.convert("parallel", "sequential", "parallelStream", "stream", rewrite);
 	}
 
 	public Set<TransformationAction> getActions() {
@@ -307,7 +386,7 @@ public class Stream {
 	}
 
 	public MethodInvocation getCreation() {
-		return creation;
+		return this.creation;
 	}
 
 	public IJavaProject getCreationJavaProject() {
@@ -319,35 +398,45 @@ public class Stream {
 	}
 
 	public IMethod getEnclosingEclipseMethod() {
-		return (IMethod) getEnclosingMethodDeclaration().resolveBinding().getJavaElement();
+		MethodDeclaration enclosingMethodDeclaration = this.getEnclosingMethodDeclaration();
+
+		if (enclosingMethodDeclaration == null)
+			return null;
+
+		IMethodBinding binding = enclosingMethodDeclaration.resolveBinding();
+		return (IMethod) binding.getJavaElement();
 	}
 
 	public MethodDeclaration getEnclosingMethodDeclaration() {
-		return enclosingMethodDeclaration;
+		return this.enclosingMethodDeclaration;
 	}
 
 	private IR getEnclosingMethodIR(EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws IOException, CoreException {
-		if (enclosingMethodDeclarationIR == null) {
+			throws IOException, CoreException, UnhandledCaseException {
+		if (this.enclosingMethodDeclarationIR == null) {
 			// get the IR for the enclosing method.
-			com.ibm.wala.classLoader.IMethod resolvedMethod = getEnclosingWalaMethod(engine);
-			enclosingMethodDeclarationIR = engine.getCache().getIR(resolvedMethod);
+			com.ibm.wala.classLoader.IMethod resolvedMethod = this.getEnclosingWalaMethod(engine);
 
-			if (enclosingMethodDeclarationIR == null)
+			if (resolvedMethod == null)
+				throw new UnhandledCaseException("Couldn't retrieve enclosing WALA method. Most likely an AIC #155.");
+
+			this.enclosingMethodDeclarationIR = engine.getCache().getIR(resolvedMethod);
+
+			if (this.enclosingMethodDeclarationIR == null)
 				throw new IllegalStateException("IR is null for: " + resolvedMethod);
 
-			LOGGER.fine("IR is: " + enclosingMethodDeclarationIR);
+			LOGGER.fine("IR is: " + this.enclosingMethodDeclarationIR);
 		}
-		return enclosingMethodDeclarationIR;
+		return this.enclosingMethodDeclarationIR;
 	}
 
 	/**
-	 * @return The {@link CGNode} representing the enclosing method of this stream.
+	 * @return The {@link CGNode}s representing the enclosing method of this stream.
 	 * @throws NoEnclosingMethodNodeFoundException
 	 *             If the call graph doesn't contain a node for the enclosing
 	 *             method.
 	 */
-	protected CGNode getEnclosingMethodNode(EclipseProjectAnalysisEngine<InstanceKey> engine)
+	protected Collection<CGNode> getEnclosingMethodNodes(EclipseProjectAnalysisEngine<InstanceKey> engine)
 			throws IOException, CoreException, NoEnclosingMethodNodeFoundException {
 		MethodReference methodReference = this.getEnclosingMethodReference();
 		Set<CGNode> nodes = engine.getCallGraph().getNodes(methodReference);
@@ -355,88 +444,96 @@ public class Stream {
 		if (nodes.isEmpty())
 			throw new NoEnclosingMethodNodeFoundException(methodReference);
 		else
-			return nodes.iterator().next(); // just return the first.
+			return nodes;
 	}
 
 	MethodReference getEnclosingMethodReference() {
-		JDTIdentityMapper mapper = getJDTIdentifyMapper(getEnclosingMethodDeclaration());
-		MethodReference methodRef = mapper.getMethodRef(getEnclosingMethodDeclaration().resolveBinding());
+		MethodDeclaration enclosingMethodDeclaration = this.getEnclosingMethodDeclaration();
+		JDTIdentityMapper mapper = getJDTIdentifyMapper(enclosingMethodDeclaration);
+		MethodReference methodRef = mapper.getMethodRef(enclosingMethodDeclaration.resolveBinding());
 
 		if (methodRef == null)
 			throw new IllegalStateException(
-					"Could not get method reference for: " + getEnclosingMethodDeclaration().getName());
+					"Could not get method reference for: " + enclosingMethodDeclaration.getName());
 		return methodRef;
 	}
 
 	public IType getEnclosingType() {
-		return (IType) getEnclosingMethodDeclaration().resolveBinding().getDeclaringClass().getJavaElement();
+		MethodDeclaration enclosingMethodDeclaration = this.getEnclosingMethodDeclaration();
+
+		if (enclosingMethodDeclaration == null)
+			return null;
+
+		IMethodBinding binding = enclosingMethodDeclaration.resolveBinding();
+		return (IType) binding.getDeclaringClass().getJavaElement();
 	}
 
 	public TypeDeclaration getEnclosingTypeDeclaration() {
-		return enclosingTypeDeclaration;
+		return this.enclosingTypeDeclaration;
 	}
 
 	public TypeReference getEnclosingTypeReference() {
-		JDTIdentityMapper mapper = getJDTIdentifyMapper(getEnclosingTypeDeclaration());
-		TypeReference ref = mapper.getTypeRef(getEnclosingTypeDeclaration().resolveBinding());
+		JDTIdentityMapper mapper = getJDTIdentifyMapper(this.getEnclosingTypeDeclaration());
+		TypeReference ref = mapper.getTypeRef(this.getEnclosingTypeDeclaration().resolveBinding());
 
 		if (ref == null)
 			throw new IllegalStateException(
-					"Could not get type reference for: " + getEnclosingTypeDeclaration().getName());
+					"Could not get type reference for: " + this.getEnclosingTypeDeclaration().getName());
 		return ref;
 	}
 
 	public com.ibm.wala.classLoader.IMethod getEnclosingWalaMethod(EclipseProjectAnalysisEngine<InstanceKey> engine)
 			throws IOException, CoreException {
 		IClassHierarchy classHierarchy = engine.getClassHierarchy();
-		MethodReference methodRef = getEnclosingMethodReference();
+		MethodReference methodRef = this.getEnclosingMethodReference();
 		com.ibm.wala.classLoader.IMethod resolvedMethod = classHierarchy.resolveMethod(methodRef);
 		return resolvedMethod;
 	}
 
 	protected ExecutionMode getInitialExecutionMode() {
-		return initialExecutionMode;
+		return this.initialExecutionMode;
 	}
 
 	protected Ordering getInitialOrdering() {
-		return initialOrdering;
+		return this.initialOrdering;
 	}
 
 	public InstanceKey getInstanceKey(Collection<InstanceKey> trackedInstances,
 			EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws InvalidClassFileException, IOException, CoreException, InstanceKeyNotFoundException {
-		if (instanceKey == null) {
-			instanceKey = this.getInstructionForCreation(engine)
-					.flatMap(instruction -> trackedInstances.stream()
-							.filter(ik -> instanceKeyCorrespondsWithInstantiationInstruction(ik, instruction,
-									engine.getCallGraph()))
-							.findFirst())
-					.orElseThrow(() -> new InstanceKeyNotFoundException("Can't find instance key for: "
-							+ this.getCreation() + " using tracked instances: " + trackedInstances));
-		}
-		return instanceKey;
+			throws InvalidClassFileException, IOException, CoreException, InstanceKeyNotFoundException,
+			UnhandledCaseException, NoApplicationCodeExistsInCallStringsException {
+		// if not present.
+		if (this.instanceKey == null)
+			// compute it.
+			this.instanceKey = this.computeInstanceKey(trackedInstances, engine);
+		return this.instanceKey;
 	}
 
 	Optional<SSAInvokeInstruction> getInstructionForCreation(EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws InvalidClassFileException, IOException, CoreException {
-		IBytecodeMethod method = (IBytecodeMethod) this.getEnclosingMethodIR(engine).getMethod();
-		SimpleName methodName = this.getCreation().getName();
+			throws InvalidClassFileException, IOException, CoreException, UnhandledCaseException {
+		if (this.instructionForCreation == null) {
+			IR enclosingMethodIR = this.getEnclosingMethodIR(engine);
 
-		for (Iterator<SSAInstruction> it = this.getEnclosingMethodIR(engine).iterateNormalInstructions(); it
-				.hasNext();) {
-			SSAInstruction instruction = it.next();
+			IBytecodeMethod method = (IBytecodeMethod) enclosingMethodIR.getMethod();
+			SimpleName methodName = this.getCreation().getName();
 
-			int lineNumberFromIR = getLineNumberFromIR(method, instruction);
-			int lineNumberFromAST = getLineNumberFromAST(methodName);
+			for (Iterator<SSAInstruction> it = enclosingMethodIR.iterateNormalInstructions(); it.hasNext();) {
+				SSAInstruction instruction = it.next();
 
-			if (lineNumberFromIR == lineNumberFromAST) {
-				// lines from the AST and the IR match. Let's dive a little
-				// deeper to be more confident of the correspondence.
-				if (matches(instruction, this.getCreation(), Optional.of(LOGGER)))
-					return Optional.of((SSAInvokeInstruction) instruction);
+				int lineNumberFromIR = getLineNumberFromIR(method, instruction);
+				int lineNumberFromAST = getLineNumberFromAST(methodName);
+
+				if (lineNumberFromIR == lineNumberFromAST)
+					// lines from the AST and the IR match. Let's dive a little
+					// deeper to be more confident of the correspondence.
+					if (matches(instruction, this.getCreation(), Optional.of(LOGGER))) {
+						this.instructionForCreation = Optional.of((SSAInvokeInstruction) instruction);
+						return this.instructionForCreation;
+					}
 			}
+			this.instructionForCreation = Optional.empty();
 		}
-		return Optional.empty();
+		return this.instructionForCreation;
 	}
 
 	private JDTIdentityMapper getJDTIdentifyMapperForCreation() {
@@ -451,7 +548,7 @@ public class Stream {
 		// if no other possible execution modes exist.
 		ExecutionMode initialExecutionMode = this.getInitialExecutionMode();
 
-		if (possibleExecutionModes.isEmpty())
+		if (this.possibleExecutionModes.isEmpty())
 			if (initialExecutionMode == null)
 				return null;
 			else
@@ -460,7 +557,7 @@ public class Stream {
 
 		// otherwise, return the internal possible execution modes but with the
 		// null value (bottom state) replaced by the initial state.
-		return possibleExecutionModes.stream().map(e -> e == null ? initialExecutionMode : e)
+		return this.possibleExecutionModes.stream().map(e -> e == null ? initialExecutionMode : e)
 				.collect(Collectors.toSet());
 	}
 
@@ -468,7 +565,7 @@ public class Stream {
 		Ordering initialOrdering = this.getInitialOrdering();
 
 		// if no other possible orderings exist.
-		if (possibleOrderings.isEmpty())
+		if (this.possibleOrderings.isEmpty())
 			// default to the initial ordering or null if there isn't any.
 			if (initialOrdering == null)
 				return null;
@@ -477,7 +574,7 @@ public class Stream {
 
 		// otherwise, return the internal possible orderings but with the null
 		// value (bottom state) replaced by the initial state.
-		return possibleOrderings.stream().map(e -> e == null ? initialOrdering : e).collect(Collectors.toSet());
+		return this.possibleOrderings.stream().map(e -> e == null ? initialOrdering : e).collect(Collectors.toSet());
 	}
 
 	public Refactoring getRefactoring() {
@@ -485,31 +582,34 @@ public class Stream {
 	}
 
 	public RefactoringStatus getStatus() {
-		return status;
+		return this.status;
 	}
 
 	public TypeReference getTypeReference() {
-		JDTIdentityMapper mapper = getJDTIdentifyMapperForCreation();
+		JDTIdentityMapper mapper = this.getJDTIdentifyMapperForCreation();
 		ITypeBinding typeBinding = this.getCreation().resolveTypeBinding();
 
 		// try to get the top-most type.
 		ITypeBinding[] allSuperTypes = Bindings.getAllSuperTypes(typeBinding);
 
-		for (ITypeBinding supertype : allSuperTypes) {
+		for (ITypeBinding supertype : allSuperTypes)
 			// if it's the top-most interface.
 			if (supertype.isInterface() && supertype.getName().startsWith(BASE_STREAM_TYPE_NAME)) {
 				typeBinding = supertype; // use it.
 				break;
 			}
-		}
 
 		TypeReference typeRef = mapper.getTypeRef(typeBinding);
 		return typeRef;
 	}
 
 	private int getUseValueNumberForCreation(EclipseProjectAnalysisEngine<InstanceKey> engine)
-			throws InvalidClassFileException, IOException, CoreException {
-		return getInstructionForCreation(engine).map(i -> i.getUse(0)).orElse(-1);
+			throws InvalidClassFileException, IOException, CoreException, UnhandledCaseException {
+		return this.getInstructionForCreation(engine).map(i -> i.getUse(0)).orElse(-1);
+	}
+
+	public boolean hasNoTerminalOperation() {
+		return this.hasNoTerminalOperation;
 	}
 
 	/**
@@ -522,15 +622,18 @@ public class Stream {
 	 *         possible path.
 	 */
 	public boolean hasPossibleSideEffects() {
-		return hasPossibleSideEffects;
+		return this.hasPossibleSideEffects;
 	}
 
 	public boolean hasPossibleStatefulIntermediateOperations() {
-		return hasPossibleStatefulIntermediateOperations;
+		return this.hasPossibleStatefulIntermediateOperations;
 	}
 
-	public boolean hasNoTerminalOperation() {
-		return hasNoTerminalOperation;
+	public void inferInitialAttributes(EclipseProjectAnalysisEngine<InstanceKey> engine,
+			OrderingInference orderingInference) throws InvalidClassFileException, IOException, CoreException,
+			UnhandledCaseException, StreamCreationNotConsideredException {
+		this.inferInitialExecution();
+		this.inferInitialOrdering(engine, orderingInference);
 	}
 
 	private void inferInitialExecution() throws JavaModelException {
@@ -558,7 +661,7 @@ public class Stream {
 		String expressionTypeQualifiedName = expressionTypeBinding.getErasure().getQualifiedName();
 		IMethodBinding calledMethodBinding = this.getCreation().resolveMethodBinding();
 
-		if (JdtFlags.isStatic(calledMethodBinding)) {
+		if (JdtFlags.isStatic(calledMethodBinding))
 			// static methods returning unordered streams.
 			switch (expressionTypeQualifiedName) {
 			case JAVA_UTIL_STREAM_STREAM:
@@ -578,16 +681,22 @@ public class Stream {
 						+ ". Falling back to: " + defaultOrdering + ".");
 				this.setInitialOrdering(defaultOrdering);
 			}
-		} else { // instance method.
-			// get the use value number for the stream creation.
-			int valueNumber = getUseValueNumberForCreation(engine);
+		else { // instance method.
+				// get the use value number for the stream creation.
+			int valueNumber = this.getUseValueNumberForCreation(engine);
 
-			// get the enclosing method node.
-			CGNode node = null;
+			if (valueNumber < 0) {
+				LOGGER.warning("Use value number: " + valueNumber + " for stream creation: "
+						+ this.getCreation().getName() + " is invalid. Most likely #155.");
+				throw new UnhandledCaseException("Encountered unhandled case, most likely an embedded stream.");
+			}
+
+			// get the enclosing method nodes.
+			Collection<CGNode> nodeCollection = null;
 			try {
-				node = this.getEnclosingMethodNode(engine);
+				nodeCollection = this.getEnclosingMethodNodes(engine);
 			} catch (NoEnclosingMethodNodeFoundException e) {
-				LOGGER.log(Level.WARNING, "Can't find enclosing method node for " + this.getCreation()
+				LOGGER.log(Level.WARNING, "Can't find enclosing method nodes for " + this.getCreation()
 						+ ". Falling back to: " + Ordering.ORDERED + ".", e);
 				this.setInitialOrdering(Ordering.ORDERED);
 				return;
@@ -598,7 +707,8 @@ public class Stream {
 			IMethod calledMethod = null;
 			Ordering ordering = null;
 			try {
-				possibleTypes = getPossibleTypesInterprocedurally(node, valueNumber, engine, orderingInference);
+				possibleTypes = getPossibleTypesInterprocedurally(nodeCollection, valueNumber, engine,
+						orderingInference);
 
 				// Possible types: check each one.
 				calledMethod = (IMethod) calledMethodBinding.getJavaElement();
@@ -636,7 +746,7 @@ public class Stream {
 	private boolean isConsistent(Collection<?> collection, PreconditionFailure failure, String failureMessage,
 			MethodInvocation streamCreation) {
 		if (!allEqual(collection)) {
-			addStatusEntry(failure, failureMessage);
+			this.addStatusEntry(failure, failureMessage);
 			return false;
 		} else
 			return true;
@@ -646,16 +756,16 @@ public class Stream {
 		return this.reduceOrderingPossiblyMatters;
 	}
 
+	public void setHasNoTerminalOperation(boolean hasNoTerminalOperation) {
+		this.hasNoTerminalOperation = hasNoTerminalOperation;
+	}
+
 	protected void setHasPossibleSideEffects(boolean hasPossibleSideEffects) {
 		this.hasPossibleSideEffects = hasPossibleSideEffects;
 	}
 
 	protected void setHasPossibleStatefulIntermediateOperations(boolean hasPossibleStatefulIntermediateOperations) {
 		this.hasPossibleStatefulIntermediateOperations = hasPossibleStatefulIntermediateOperations;
-	}
-
-	public void setHasNoTerminalOperation(boolean hasNoTerminalOperation) {
-		this.hasNoTerminalOperation = hasNoTerminalOperation;
 	}
 
 	protected void setInitialExecutionMode(ExecutionMode initialExecutionMode) {
@@ -698,34 +808,90 @@ public class Stream {
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
 		builder.append("Stream [actions=");
-		builder.append(actions);
+		builder.append(this.actions);
 		builder.append(", creation=");
-		builder.append(creation);
+		builder.append(this.creation);
 		builder.append(", enclosingMethodDeclaration=");
-		builder.append(enclosingMethodDeclaration);
+		builder.append(this.enclosingMethodDeclaration.getName());
 		builder.append(", hasPossibleSideEffects=");
-		builder.append(hasPossibleSideEffects);
+		builder.append(this.hasPossibleSideEffects);
 		builder.append(", hasPossibleStatefulIntermediateOperations=");
-		builder.append(hasPossibleStatefulIntermediateOperations);
+		builder.append(this.hasPossibleStatefulIntermediateOperations);
 		builder.append(", hasNoTerminalOperation=");
-		builder.append(hasNoTerminalOperation);
+		builder.append(this.hasNoTerminalOperation);
 		builder.append(", initialExecutionMode=");
-		builder.append(initialExecutionMode);
+		builder.append(this.initialExecutionMode);
 		builder.append(", initialOrdering=");
-		builder.append(initialOrdering);
+		builder.append(this.initialOrdering);
 		builder.append(", passingPrecondition=");
-		builder.append(passingPrecondition);
+		builder.append(this.passingPrecondition);
 		builder.append(", possibleExecutionModes=");
-		builder.append(possibleExecutionModes);
+		builder.append(this.possibleExecutionModes);
 		builder.append(", possibleOrderings=");
-		builder.append(possibleOrderings);
+		builder.append(this.possibleOrderings);
 		builder.append(", reduceOrderingPossiblyMatters=");
-		builder.append(reduceOrderingPossiblyMatters);
+		builder.append(this.reduceOrderingPossiblyMatters);
 		builder.append(", refactoring=");
-		builder.append(refactoring);
+		builder.append(this.refactoring);
 		builder.append(", status=");
-		builder.append(status.getSeverity());
+		builder.append(this.status.getSeverity());
 		builder.append("]");
 		return builder.toString();
+	}
+
+	public void transform(CompilationUnitRewrite rewrite) {
+		// for each stream transformation.
+		for (TransformationAction action : this.getActions())
+			switch (action) {
+			case CONVERT_TO_PARALLEL:
+				this.convertToParallel(rewrite);
+				break;
+			case CONVERT_TO_SEQUENTIAL:
+				this.convertToSequential(rewrite);
+				break;
+			case UNORDER:
+				this.unorder(rewrite);
+				break;
+			}
+	}
+
+	protected void unorder(CompilationUnitRewrite rewrite) {
+		MethodInvocation creation = this.getCreation();
+		ASTRewrite astRewrite = rewrite.getASTRewrite();
+		MethodInvocation termOp = findTerminalOperation(creation);
+		Expression expression = termOp.getExpression();
+
+		boolean done = false;
+		boolean hasDistinct = false;
+
+		while (expression != null && !done)
+			if (expression.getNodeType() == ASTNode.METHOD_INVOCATION) {
+				MethodInvocation inv = (MethodInvocation) expression;
+				AST ast = creation.getAST();
+
+				String identifier = inv.getName().getIdentifier();
+
+				if (identifier.equals("distinct")) {
+					MethodInvocation newMethodInvocation = ast.newMethodInvocation();
+					newMethodInvocation.setName(ast.newSimpleName("unordered"));
+					MethodInvocation exprCopy = (MethodInvocation) ASTNode.copySubtree(ast, inv.getExpression());
+					newMethodInvocation.setExpression(exprCopy);
+					astRewrite.replace(inv.getExpression(), newMethodInvocation, null);
+					hasDistinct = true;
+				}
+
+				expression = inv.getExpression();
+			} else
+				done = true;
+
+		if (!hasDistinct) {
+			AST ast = creation.getAST();
+
+			MethodInvocation newMethodInvocation = ast.newMethodInvocation();
+			newMethodInvocation.setName(ast.newSimpleName("unordered"));
+			MethodInvocation exprCopy = (MethodInvocation) ASTNode.copySubtree(ast, termOp.getExpression());
+			newMethodInvocation.setExpression(exprCopy);
+			astRewrite.replace(termOp.getExpression(), newMethodInvocation, null);
+		}
 	}
 }

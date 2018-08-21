@@ -9,27 +9,23 @@ import org.eclipse.ltk.core.refactoring.Refactoring;
 import org.eclipse.ltk.core.refactoring.RefactoringDescriptor;
 import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 
-import edu.cuny.hunter.streamrefactoring.core.descriptors.ConvertStreamToParallelRefactoringDescriptor;
+import edu.cuny.hunter.streamrefactoring.core.descriptors.OptimizeStreamRefactoringDescriptor;
 
 @SuppressWarnings("restriction")
-public class ConvertStreamToParallelRefactoringContribution
-		extends JavaUIRefactoringContribution {
+public class OptimizeStreamRefactoringContribution extends JavaUIRefactoringContribution {
 
 	/*
 	 * (non-Javadoc)
-	 * 
+	 *
 	 * @see
 	 * org.eclipse.ltk.core.refactoring.RefactoringContribution#createDescriptor
 	 * (java.lang.String, java.lang.String, java.lang.String, java.lang.String,
 	 * java.util.Map, int)
 	 */
 	@Override
-	public RefactoringDescriptor createDescriptor(String id, String project,
-			String description, String comment,
-			@SuppressWarnings("rawtypes") Map arguments, int flags)
-			throws IllegalArgumentException {
-		return new ConvertStreamToParallelRefactoringDescriptor(
-				id, project, description, comment, arguments, flags);
+	public RefactoringDescriptor createDescriptor(String id, String project, String description, String comment,
+			@SuppressWarnings("rawtypes") Map arguments, int flags) throws IllegalArgumentException {
+		return new OptimizeStreamRefactoringDescriptor(id, project, description, comment, arguments, flags);
 	}
 
 	@Override

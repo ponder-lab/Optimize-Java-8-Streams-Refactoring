@@ -4,10 +4,11 @@
   <parent>
     <groupId>edu.cuny.hunter.streamrefactoring</groupId>
     <artifactId>parent</artifactId>
-    <version>1.0.0</version>
+    <version>1.3.0</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   <artifactId>edu.cuny.hunter.streamrefactoring.tests</artifactId>
+  <version>1.0.0</version>
   <packaging>eclipse-test-plugin</packaging>
   <profiles>
     <profile>
@@ -19,7 +20,7 @@
         </os>
       </activation>
       <properties>
-        <ui.test.vmargs>${tycho.testArgLine} -XstartOnFirstThread -Xmx4g -XX:MaxPermSize=1g</ui.test.vmargs>
+        <ui.test.vmargs>${tycho.testArgLine} -XstartOnFirstThread -ea -Dosgi.requiredJavaVersion=1.8 -XX:MaxPermSize=256m -Xms1024m -Xmx8192m</ui.test.vmargs>
         <argLine>${ui.test.vmargs}</argLine>
       </properties>
     </profile>
@@ -32,8 +33,8 @@
         </os>
       </activation>
       <properties>
-        <ui.test.vmargs>${tycho.testArgLine}</ui.test.vmargs>
-        <argLine>${ui.test.vmargs} -Xmx4g -XX:MaxPermSize=1g</argLine>
+        <ui.test.vmargs>${tycho.testArgLine} -ea -Dosgi.requiredJavaVersion=1.8 -XX:MaxPermSize=256m -Xms1024m -Xmx8192m</ui.test.vmargs>
+        <argLine>${ui.test.vmargs}</argLine>
       </properties>
     </profile>
   </profiles>

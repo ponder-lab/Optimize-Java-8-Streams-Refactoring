@@ -3,7 +3,7 @@ DATABASE=$1
 TABLE=$2
 . myimport.cfg
 dos2unix $TABLE.csv
-mysql --local-infile -D $DATABASE -u $USER -p$PASSWORD -h $HOST --execute="\
+mysql --local-infile -D $DATABASE -u $USER -p$PASSWORD -h $HOST -P $PORT --execute="\
     TRUNCATE $TABLE; \
     LOAD DATA LOCAL INFILE '$TABLE.csv' \
     INTO TABLE $TABLE \

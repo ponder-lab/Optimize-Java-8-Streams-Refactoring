@@ -13,8 +13,6 @@ import com.ibm.safe.typestate.mine.TraceReporter;
 import com.ibm.safe.typestate.options.TypeStateOptions;
 import com.ibm.safe.typestate.rules.ITypeStateDFA;
 import com.ibm.safe.typestate.unique.UniqueSolver;
-import com.ibm.wala.classLoader.CallSiteReference;
-import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.escape.ILiveObjectAnalysis;
 import com.ibm.wala.ipa.callgraph.CallGraph;
@@ -31,7 +29,7 @@ import edu.cuny.hunter.streamrefactoring.core.wala.CallStringWithReceivers;
 
 /**
  * A solver that only tracks instances created from client (non-JDK) calls.
- * 
+ *
  * @author <a href="mailto:rk1424@hunter.cuny.edu">Raffi Khatchadourian</a>
  */
 public class ClientSlicingUniqueSolver extends UniqueSolver {

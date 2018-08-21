@@ -11,10 +11,6 @@ public class StreamCreationNotConsideredException extends Exception {
 		super(message);
 	}
 
-	public StreamCreationNotConsideredException(Throwable cause) {
-		super(cause);
-	}
-
 	public StreamCreationNotConsideredException(String message, Throwable cause) {
 		super(message, cause);
 	}
@@ -22,5 +18,9 @@ public class StreamCreationNotConsideredException extends Exception {
 	public StreamCreationNotConsideredException(String message, Throwable cause, boolean enableSuppression,
 			boolean writableStackTrace) {
 		super(message, cause, enableSuppression, writableStackTrace);
+	}
+
+	public StreamCreationNotConsideredException(Throwable cause) {
+		super(cause);
 	}
 }

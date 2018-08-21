@@ -2,63 +2,39 @@
 <?eclipse version="3.4"?>
 <plugin>
   <extension point="org.eclipse.ui.commands">
-    <command
-          categoryId="org.eclipse.jdt.ui.category.refactoring"
-          defaultHandler="edu.cuny.hunter.streamrefactoring.ui.handlers.ConvertStreamToParallelHandler"
-          description="%MigrateSkeletalImplementationToInterfaceDescription"
-          id="org.eclipse.migrate.skeletal.implementation.to.interface.command"
-          name="%ConvertStreamToParallelLabel"></command>
+    <command categoryId="org.eclipse.jdt.ui.category.refactoring" defaultHandler="edu.cuny.hunter.streamrefactoring.ui.handlers.OptimizeStreamHandler" description="%OptimizeStreamDescription" id="edu.cuny.hunter.optimize.stream.command" name="%OptimizeStreamLabel" />
+  </extension>
+  <extension point="org.eclipse.core.expressions.definitions">
+    <definition id="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet">
+      <with variable="selection">
+        <iterate ifEmpty="false" operator="or">
+          <instanceof value="org.eclipse.jdt.core.IJavaProject" />
+        </iterate>
+      </with>
+    </definition>
   </extension>
   <extension point="org.eclipse.ui.handlers">
-    <handler class="edu.cuny.hunter.streamrefactoring.ui.handlers.ConvertStreamToParallelHandler" commandId="org.eclipse.migrate.skeletal.implementation.to.interface.command">
+    <handler class="edu.cuny.hunter.streamrefactoring.ui.handlers.OptimizeStreamHandler" commandId="edu.cuny.hunter.optimize.stream.command">
       <activeWhen>
-        <with variable="selection">
-          <iterate ifEmpty="false" operator="or">
-            <instanceof value="org.eclipse.jdt.core.IMethod"/>
-            <instanceof value="org.eclipse.jdt.core.IType"/>
-            <instanceof value="org.eclipse.jdt.core.IPackageFragment"/>
-            <instanceof value="org.eclipse.jdt.core.IPackageFragmentRoot"/>
-            <instanceof value="org.eclipse.jdt.core.ICompilationUnit"/>
-            <instanceof value="org.eclipse.jdt.core.IJavaProject"/>
-          </iterate>
-        </with>
+        <reference definitionId="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet" />
       </activeWhen>
     </handler>
   </extension>
   <extension point="org.eclipse.ui.menus">
-    <!-- [rk] Doesn't seem to be working -->
     <menuContribution locationURI="menu:org.eclipse.jdt.ui.refactoring.menu?after=additions">
-      <command commandId="org.eclipse.migrate.skeletal.implementation.to.interface.command" mnemonic="%command.mnemonic" id="org.eclipse.migrate.skeletal.implementation.to.interface.menus.command">
-        <visibleWhen checkEnabled="true"></visibleWhen>
+      <!-- [rk] Doesn't seem to be working -->
+      <command commandId="edu.cuny.hunter.optimize.stream.command" id="edu.cuny.hunter.optimize.stream.menus.command" label="%OptimizeStreamLabel" mnemonic="%command.mnemonic">
+        <visibleWhen>
+          <reference definitionId="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet" />
+        </visibleWhen>
       </command>
     </menuContribution>
     <menuContribution locationURI="popup:org.eclipse.jdt.ui.refactoring.menu?after=additions">
-      <command commandId="org.eclipse.migrate.skeletal.implementation.to.interface.command" style="push">
-        <visibleWhen checkEnabled="true"></visibleWhen>
+      <command commandId="edu.cuny.hunter.optimize.stream.command" label="%OptimizeStreamLabel" style="push">
+        <visibleWhen>
+          <reference definitionId="edu.cuny.hunter.streamrefactoring.ui.definitions.actionSet" />
+        </visibleWhen>
       </command>
     </menuContribution>
   </extension>
-  <!-- [rk] This is deprecated #2. -->
-  <!-- [bm] we need to use actionSets for the Refactoring main menu as o.e.ui.menus is not capable of adding commands to actionsets -->
-  <!--
-   <extension
-         point="org.eclipse.ui.actionSets">
-      [bm] alphabetic order matters as we need to be plugged in after JDT, thus added XXX 
-      <actionSet
-            id="XXXorg.eclipse.jdt.x.migrate.skeletal.implementation.to.interface.actionset"
-            label="%MigrateSkeletalImplementationToInterfaceLabel"
-            visible="true">
-         <action
-               allowLabelUpdate="true"
-               definitionId="org.eclipse.jdt.x.migrate.skeletal.implementation.to.interface.action"
-               id="XXXedu.cuny.hunter.streamrefactoring.contributions.MigrateSkeletalImplementationToInterfaceRefactoringAction"
-               label="%MigrateSkeletalImplementationToInterfaceLabel"
-               menubarPath="org.eclipse.jdt.ui.refactoring.menu/typeGroup2"
-               retarget="true"
-               style="push"
-               tooltip="%MigrateSkeletalImplementationToInterfaceToolTip">
-         </action>
-      </actionSet>
-   </extension>
-   -->
 </plugin>

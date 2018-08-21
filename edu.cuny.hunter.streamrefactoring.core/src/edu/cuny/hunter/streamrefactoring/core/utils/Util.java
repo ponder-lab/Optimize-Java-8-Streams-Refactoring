@@ -1,7 +1,9 @@
 /**
- * 
+ *
  */
 package edu.cuny.hunter.streamrefactoring.core.utils;
+
+import static org.eclipse.jdt.core.dom.ASTNode.PARENTHESIZED_EXPRESSION;
 
 import java.util.Optional;
 
@@ -24,7 +26,7 @@ import org.eclipse.ltk.core.refactoring.RefactoringStatus;
 import org.eclipse.ltk.core.refactoring.participants.ProcessorBasedRefactoring;
 import org.eclipse.ltk.core.refactoring.participants.RefactoringProcessor;
 
-import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStreamRefactoringProcessor;
+import edu.cuny.hunter.streamrefactoring.core.refactorings.OptimizeStreamsRefactoringProcessor;
 
 /**
  * @author <a href="mailto:raffi.khatchadourian@hunter.cuny.edu">Raffi
@@ -33,26 +35,48 @@ import edu.cuny.hunter.streamrefactoring.core.refactorings.ConvertToParallelStre
  */
 @SuppressWarnings("restriction")
 public final class Util {
-	private Util() {
-	}
-
-	public static ProcessorBasedRefactoring createRefactoring(IJavaProject[] projects,
+	public static OptimizeStreamsRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
+			IJavaProject[] projects, boolean useImplicitEntrypoints, boolean useImplicitTestEntrypoints,
+			boolean useImplicitBenchmarkEntrypoints, boolean useImplicitJavaFXEntrypoints,
 			Optional<IProgressMonitor> monitor) throws JavaModelException {
-		ConvertToParallelStreamRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(
-				projects, monitor);
-		return new ProcessorBasedRefactoring(processor);
+		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(projects[0]);
+		OptimizeStreamsRefactoringProcessor processor = new OptimizeStreamsRefactoringProcessor(projects, settings,
+				false, useImplicitEntrypoints, useImplicitTestEntrypoints, useImplicitBenchmarkEntrypoints,
+				useImplicitJavaFXEntrypoints, monitor);
+		return processor;
 	}
 
-	public static ConvertToParallelStreamRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
+	public static OptimizeStreamsRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
+			IJavaProject[] projects, int nForStreams, boolean useImplicitEntrypoints,
+			boolean useImplicitTestEntrypoints, boolean useImplicitBenchmarkEntrypoints,
+			boolean useImplicitJavaFXEntrypoints, Optional<IProgressMonitor> monitor) throws JavaModelException {
+		OptimizeStreamsRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(projects,
+				useImplicitEntrypoints, useImplicitTestEntrypoints, useImplicitBenchmarkEntrypoints,
+				useImplicitJavaFXEntrypoints, monitor);
+		processor.setNForStreams(nForStreams);
+		return processor;
+	}
+
+	public static OptimizeStreamsRefactoringProcessor createConvertToParallelStreamRefactoringProcessor(
 			IJavaProject[] projects, Optional<IProgressMonitor> monitor) throws JavaModelException {
+		if (projects.length < 1)
+			throw new IllegalArgumentException("No projects.");
+
 		CodeGenerationSettings settings = JavaPreferencesSettings.getCodeGenerationSettings(projects[0]);
-		ConvertToParallelStreamRefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor(projects,
-				settings, monitor);
+		OptimizeStreamsRefactoringProcessor processor = new OptimizeStreamsRefactoringProcessor(projects, settings,
+				monitor);
 		return processor;
 	}
 
 	public static ProcessorBasedRefactoring createRefactoring() throws JavaModelException {
-		RefactoringProcessor processor = new ConvertToParallelStreamRefactoringProcessor();
+		RefactoringProcessor processor = new OptimizeStreamsRefactoringProcessor();
+		return new ProcessorBasedRefactoring(processor);
+	}
+
+	public static ProcessorBasedRefactoring createRefactoring(IJavaProject[] projects,
+			Optional<IProgressMonitor> monitor) throws JavaModelException {
+		OptimizeStreamsRefactoringProcessor processor = createConvertToParallelStreamRefactoringProcessor(projects,
+				monitor);
 		return new ProcessorBasedRefactoring(processor);
 	}
 
@@ -61,13 +85,9 @@ public final class Util {
 		return new edu.cuny.citytech.refactoring.common.core.Refactoring() {
 
 			@Override
-			public String getName() {
-				return refactoring.getName();
-			}
-
-			@Override
-			public Change createChange(IProgressMonitor pm) throws CoreException, OperationCanceledException {
-				return refactoring.createChange(pm);
+			public RefactoringStatus checkFinalConditions(IProgressMonitor pm)
+					throws CoreException, OperationCanceledException {
+				return refactoring.checkFinalConditions(pm);
 			}
 
 			@Override
@@ -77,11 +97,29 @@ public final class Util {
 			}
 
 			@Override
-			public RefactoringStatus checkFinalConditions(IProgressMonitor pm)
-					throws CoreException, OperationCanceledException {
-				return refactoring.checkFinalConditions(pm);
+			public Change createChange(IProgressMonitor pm) throws CoreException, OperationCanceledException {
+				return refactoring.createChange(pm);
+			}
+
+			@Override
+			public String getName() {
+				return refactoring.getName();
 			}
 		};
+	}
+
+	public static String getMethodIdentifier(IMethod method) throws JavaModelException {
+		StringBuilder sb = new StringBuilder();
+		sb.append(method.getElementName() + "(");
+		ILocalVariable[] parameters = method.getParameters();
+		for (int i = 0; i < parameters.length; i++) {
+			sb.append(edu.cuny.hunter.streamrefactoring.core.utils.Util
+					.getQualifiedNameFromTypeSignature(parameters[i].getTypeSignature(), method.getDeclaringType()));
+			if (i != parameters.length - 1)
+				sb.append(",");
+		}
+		sb.append(")");
+		return sb.toString();
 	}
 
 	public static String getQualifiedNameFromTypeSignature(String typeSignature, IType declaringType)
@@ -105,14 +143,11 @@ public final class Util {
 			String[] nameParts = allResults[0];
 			if (nameParts != null) {
 				StringBuilder fullNameBuilder = new StringBuilder();
-				for (int i = 0; i < nameParts.length; i++) {
-					if (fullNameBuilder.length() > 0) {
+				for (String part : nameParts) {
+					if (fullNameBuilder.length() > 0)
 						fullNameBuilder.append('.');
-					}
-					String part = nameParts[i];
-					if (part != null) {
+					if (part != null)
 						fullNameBuilder.append(part);
-					}
 				}
 				fullName = fullNameBuilder.toString();
 			}
@@ -127,25 +162,13 @@ public final class Util {
 	}
 
 	public static ASTNode stripParenthesizedExpressions(ASTNode node) {
-		if (node != null && node.getNodeType() == ASTNode.PARENTHESIZED_EXPRESSION) {
+		if (node != null && node.getNodeType() == PARENTHESIZED_EXPRESSION) {
 			ParenthesizedExpression parenthesizedExpression = (ParenthesizedExpression) node;
 			return stripParenthesizedExpressions(parenthesizedExpression.getExpression());
 		} else
 			return node;
 	}
-	
-	public static String getMethodIdentifier(IMethod method) throws JavaModelException {
-		StringBuilder sb = new StringBuilder();
-		sb.append((method.getElementName()) + "(");
-		ILocalVariable[] parameters = method.getParameters();
-		for (int i = 0; i < parameters.length; i++) {
-			sb.append(edu.cuny.hunter.streamrefactoring.core.utils.Util
-					.getQualifiedNameFromTypeSignature(parameters[i].getTypeSignature(), method.getDeclaringType()));
-			if (i != (parameters.length - 1)) {
-				sb.append(",");
-			}
-		}
-		sb.append(")");
-		return sb.toString();
+
+	private Util() {
 	}
 }
