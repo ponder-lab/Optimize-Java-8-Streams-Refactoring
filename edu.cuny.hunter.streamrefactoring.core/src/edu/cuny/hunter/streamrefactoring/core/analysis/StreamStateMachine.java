@@ -58,6 +58,7 @@ import com.ibm.wala.ipa.callgraph.propagation.InstanceFieldPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
+import com.ibm.wala.ipa.callgraph.pruned.PrunedCallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.ipa.modref.ModRef;
@@ -75,10 +76,8 @@ import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
 import com.ibm.wala.util.CancelException;
-import com.ibm.wala.util.Predicate;
 import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.Pair;
-import com.ibm.wala.util.graph.GraphSlicer;
 import com.ibm.wala.util.intset.IntIterator;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.OrdinalSet;
@@ -1298,16 +1297,16 @@ public class StreamStateMachine {
 
 	private static CallGraph pruneCallGraph(CallGraph callGraph, IClassHierarchy classHierarchy) {
 		LOGGER.info("The number of nodes in call graph: " + callGraph.getNumberOfNodes());
-
-		CallGraph partialGraph = (CallGraph) GraphSlicer.prune(callGraph, new Predicate<CGNode>() {
-			@Override
-			public boolean test(CGNode node) {
-				return Util.isStreamNode(node, classHierarchy);
-			}
-		});
-
-		LOGGER.info("The number of nodes in partial graph: " + partialGraph.getNumberOfNodes());
-		return partialGraph;
+		HashSet<CGNode> keep = new HashSet<>();
+		for (CGNode node: callGraph) {
+			if(Util.isStreamNode(node, classHierarchy))
+				keep.add(node);
+		}
+		
+		PrunedCallGraph prunedCallGraph = new PrunedCallGraph(callGraph, keep);
+		LOGGER.info("The number of nodes in partial graph: " + prunedCallGraph.getNumberOfNodes());
+		
+		return prunedCallGraph;
 	}
 
 }
