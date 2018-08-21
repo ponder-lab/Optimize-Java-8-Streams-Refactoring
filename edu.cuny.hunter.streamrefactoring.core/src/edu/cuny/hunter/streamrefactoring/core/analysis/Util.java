@@ -411,22 +411,24 @@ public final class Util {
 	}
 
 	static private LinkedList<Value> checkInstructions = new LinkedList<>();
-	
+
 	static private void clearCheckedInstructions() {
 		checkInstructions = new LinkedList<>();
 	}
-	
+
 	static Collection<TypeAbstraction> getPossibleStreamTypes(int valueNumber, TypeInference inference) {
 		clearCheckedInstructions();
 		return getPossibleTypes(valueNumber, inference);
 	}
-	
+
 	static Collection<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
 		Set<TypeAbstraction> ret = new HashSet<>();
 		Value value = inference.getIR().getSymbolTable().getValue(valueNumber);
-		
-		if (checkInstructions.contains(value)) return ret;
-		else checkInstructions.add(value);
+
+		if (checkInstructions.contains(value))
+			return ret;
+		else
+			checkInstructions.add(value);
 
 		// TODO: Should really be using a pointer analysis here rather than
 		// re-implementing one using PhiValue.
@@ -617,7 +619,7 @@ public final class Util {
 	public static boolean implementsBaseStream(TypeReference typeReference, IClassHierarchy classHierarchy) {
 		return implementsType(typeReference, classHierarchy, Util::isBaseStream);
 	}
-	
+
 	// base stream is not enough
 	// only using base stream causes missing CGNodes
 	public static boolean implementsBaseStreamOp(TypeReference typeReference, IClassHierarchy classHierarchy) {
@@ -634,8 +636,9 @@ public final class Util {
 
 	public static boolean implementsType(TypeReference typeReference, IClassHierarchy classHierarchy,
 			Predicate<IClass> predicate) {
-		if (typeReference == null) return false;
-		
+		if (typeReference == null)
+			return false;
+
 		IClass clazz = classHierarchy.lookupClass(typeReference);
 
 		if (clazz == null)
@@ -667,7 +670,7 @@ public final class Util {
 	public static boolean isBaseStream(IClass clazz) {
 		return Util.isType(clazz, "java/util/stream", "BaseStream");
 	}
-	
+
 	public static boolean isBaseStreamOp(IClass clazz) {
 		return Util.isType(clazz, "java/util/stream/StreamOpFlag", "StreamOp");
 	}
@@ -793,17 +796,17 @@ public final class Util {
 
 	public static boolean isStreamNode(CGNode node, IClassHierarchy classHierarchy) {
 		IR ir = node.getIR();
-	
+
 		if (ir == null || ir.isEmptyIR())
 			return true;
-		
+
 		for (SSAInstruction instruction : ir.getInstructions()) {
 			if (instruction == null)
 				continue;
-			
+
 			StreamFindingVisitor visitor = new StreamFindingVisitor(classHierarchy);
 			instruction.visit(visitor);
-			
+
 			if (visitor.hasFoundStream())
 				return true;
 
@@ -812,7 +815,7 @@ public final class Util {
 
 			Stream<TypeAbstraction> defs = IntStream.range(0, instruction.getNumberOfDefs())
 					.mapToObj(i -> instruction.getDef(i)).flatMap(d -> getPossibleStreamTypes(d, inference).stream());
-	
+
 			Stream<TypeAbstraction> uses = IntStream.range(0, instruction.getNumberOfUses())
 					.mapToObj(i -> instruction.getUse(i)).flatMap(u -> getPossibleStreamTypes(u, inference).stream());
 
