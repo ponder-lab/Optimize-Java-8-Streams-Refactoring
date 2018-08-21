@@ -65,31 +65,9 @@ import com.ibm.wala.ssa.DefUse;
 import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.ISSABasicBlock;
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
-import com.ibm.wala.ssa.SSAArrayLengthInstruction;
-import com.ibm.wala.ssa.SSAArrayLoadInstruction;
-import com.ibm.wala.ssa.SSAArrayStoreInstruction;
-import com.ibm.wala.ssa.SSABinaryOpInstruction;
-import com.ibm.wala.ssa.SSACheckCastInstruction;
-import com.ibm.wala.ssa.SSAComparisonInstruction;
-import com.ibm.wala.ssa.SSAConditionalBranchInstruction;
-import com.ibm.wala.ssa.SSAConversionInstruction;
-import com.ibm.wala.ssa.SSAGetCaughtExceptionInstruction;
-import com.ibm.wala.ssa.SSAGetInstruction;
-import com.ibm.wala.ssa.SSAGotoInstruction;
-import com.ibm.wala.ssa.SSAInstanceofInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
-import com.ibm.wala.ssa.SSAInstruction.IVisitor;
 import com.ibm.wala.ssa.SSAInvokeInstruction;
-import com.ibm.wala.ssa.SSALoadMetadataInstruction;
-import com.ibm.wala.ssa.SSAMonitorInstruction;
-import com.ibm.wala.ssa.SSANewInstruction;
 import com.ibm.wala.ssa.SSAPhiInstruction;
-import com.ibm.wala.ssa.SSAPiInstruction;
-import com.ibm.wala.ssa.SSAPutInstruction;
-import com.ibm.wala.ssa.SSAReturnInstruction;
-import com.ibm.wala.ssa.SSASwitchInstruction;
-import com.ibm.wala.ssa.SSAThrowInstruction;
-import com.ibm.wala.ssa.SSAUnaryOpInstruction;
 import com.ibm.wala.ssa.analysis.IExplodedBasicBlock;
 import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.types.MethodReference;
@@ -1331,20 +1309,17 @@ public class StreamStateMachine {
 	 */
 	private Graph<CGNode> pruneCallGraph(final EclipseProjectAnalysisEngine<InstanceKey> engine) {
 		CallGraph cg = engine.getCallGraph();
-		IClassHierarchy classHierarchy = engine.getClassHierarchy();
 		LOGGER.info("The number of nodes in call graph: " + cg.getNumberOfNodes());
 
 		Graph<CGNode> partialGraph = GraphSlicer.prune(cg, new Predicate<CGNode>() {
 			@Override
 			public boolean test(CGNode node) {
-				return isStreamNode(node, classHierarchy);
+				return isStreamNode(node, engine);
 			}
 		});
 		LOGGER.info("The number of nodes in partial graph: " + partialGraph.getNumberOfNodes());
 		return partialGraph;
 	}
-
-	static boolean isStreamNode;
 
 	/**
 	 * Check whether a CGNode is reached by stream object
@@ -1353,9 +1328,7 @@ public class StreamStateMachine {
 	 *            CGNode
 	 * @return true/false
 	 */
-	public boolean isStreamNode(CGNode node, IClassHierarchy classHierarchy) {
-
-		isStreamNode = false;
+	public boolean isStreamNode(CGNode node, EclipseProjectAnalysisEngine<InstanceKey> engine) {
 
 		IR ir = node.getIR();
 
@@ -1365,148 +1338,16 @@ public class StreamStateMachine {
 
 		for (SSAInstruction instruction : ir.getInstructions()) {
 
-			if (isStreamNode)
-				return true;
-
 			if (instruction == null)
 				continue;
 
-			instruction.visit(new IVisitor() {
+			StreamVisitor visitor = new StreamVisitor(node, engine);
+			instruction.visit(visitor);
 
-				@Override
-				public void visitPut(SSAPutInstruction instruction) {
-					if (Util.implementsBaseStream(instruction.getDeclaredFieldType(), classHierarchy))
-						isStreamNode = true;
-				}
-
-				@Override
-				public void visitNew(SSANewInstruction instruction) {
-					if (Util.implementsBaseStream(instruction.getConcreteType(), classHierarchy))
-						isStreamNode = true;
-
-				}
-
-				@Override
-				public void visitLoadMetadata(SSALoadMetadataInstruction instruction) {
-					if (Util.implementsBaseStream(instruction.getType(), classHierarchy))
-						isStreamNode = true;
-				}
-
-				@Override
-				public void visitInvoke(SSAInvokeInstruction instruction) {
-					if (Util.implementsBaseStream(instruction.getDeclaredResultType(), classHierarchy))
-						isStreamNode = true;
-
-					MethodReference methodReference = instruction.getDeclaredTarget();
-					// check parameters
-					// TODO: the code below cannot work well.
-					// int numberOfParameters = methodReference.getNumberOfParameters();
-					// for(int i = 0; i< numberOfParameters; ++ i) {
-					// TypeReference typeReference = methodReference.getParameterType(i);
-					// if (isStreamType(typeReference, classHierarchy)) {
-					// isStreamNode = true;
-					// return;
-					// }
-					//
-					// }
-				}
-
-				@Override
-				public void visitInstanceof(SSAInstanceofInstruction instruction) {
-					if (Util.implementsBaseStream(instruction.getCheckedType(), classHierarchy))
-						isStreamNode = true;
-				}
-
-				@Override
-				public void visitGet(SSAGetInstruction instruction) {
-					if (Util.implementsBaseStream(instruction.getDeclaredFieldType(), classHierarchy))
-						isStreamNode = true;
-				}
-
-				@Override
-				public void visitCheckCast(SSACheckCastInstruction instruction) {
-					if (Util.implementsBaseStream(instruction.getDeclaredResultType(), classHierarchy))
-						isStreamNode = true;
-				}
-
-				@Override
-				public void visitArrayStore(SSAArrayStoreInstruction instruction) {
-					if (Util.implementsBaseStream(instruction.getElementType(), classHierarchy))
-						isStreamNode = true;
-				}
-
-				@Override
-				public void visitArrayLoad(SSAArrayLoadInstruction instruction) {
-					if (Util.implementsBaseStream(instruction.getElementType(), classHierarchy))
-						isStreamNode = true;
-				}
-
-				@Override
-				public void visitGoto(SSAGotoInstruction instruction) {
-				}
-
-				@Override
-				public void visitBinaryOp(SSABinaryOpInstruction instruction) {
-				}
-
-				@Override
-				public void visitUnaryOp(SSAUnaryOpInstruction instruction) {
-				}
-
-				@Override
-				public void visitConversion(SSAConversionInstruction instruction) {
-				}
-
-				@Override
-				public void visitComparison(SSAComparisonInstruction instruction) {
-				}
-
-				@Override
-				public void visitConditionalBranch(SSAConditionalBranchInstruction instruction) {
-				}
-
-				@Override
-				public void visitSwitch(SSASwitchInstruction instruction) {
-				}
-
-				@Override
-				public void visitReturn(SSAReturnInstruction instruction) {
-					int numberOfUses = instruction.getNumberOfUses();
-					for (int i = 0; i < numberOfUses; ++i) {
-						int uses = instruction.getUse(i);
-						SSAInstruction def = node.getDU().getDef(i);
-						// TODO: Util.getPossibleTypesInterprocedurally
-					}
-				}
-
-				@Override
-				public void visitArrayLength(SSAArrayLengthInstruction instruction) {
-				}
-
-				@Override
-				public void visitThrow(SSAThrowInstruction instruction) {
-				}
-
-				@Override
-				public void visitMonitor(SSAMonitorInstruction instruction) {
-				}
-
-				@Override
-				public void visitPhi(SSAPhiInstruction instruction) {
-				}
-
-				@Override
-				public void visitPi(SSAPiInstruction instruction) {
-				}
-
-				@Override
-				public void visitGetCaughtException(SSAGetCaughtExceptionInstruction instruction) {
-				}
-
-			});
-
+			if (visitor.getIsStreamNode()) {
+				return true;
+			}
 		}
-
 		return false;
 	}
 
