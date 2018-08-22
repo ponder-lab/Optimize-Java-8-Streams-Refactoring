@@ -485,6 +485,7 @@ public final class Util {
 					// type is java.lang.Object.
 					// Find the return type of the instruction.
 					TypeInference inference = TypeInference.make(node.getIR(), false);
+					seenValues.clear();
 					Collection<TypeAbstraction> returnTypes = Util.getPossibleTypes(valueNumber, inference);
 
 					// for each return type.
