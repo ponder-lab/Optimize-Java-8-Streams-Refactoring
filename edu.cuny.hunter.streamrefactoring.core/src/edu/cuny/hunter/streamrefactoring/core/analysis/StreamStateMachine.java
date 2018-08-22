@@ -1032,6 +1032,7 @@ public class StreamStateMachine {
 			for (Iterator<InstanceKey> iterator = result.iterateInstances(); iterator.hasNext();) {
 				// get the instance's key.
 				InstanceKey instanceKey = iterator.next();
+
 				// add to tracked instances.
 				this.trackedInstances.add(instanceKey);
 
