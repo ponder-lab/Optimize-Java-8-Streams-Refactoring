@@ -424,9 +424,10 @@ public final class Util {
 	static Collection<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
 		Set<TypeAbstraction> ret = new HashSet<>();
 		Value value;
-		if (valueNumber >= 1 && valueNumber < 5) {
+		try {
 			value = inference.getIR().getSymbolTable().getValue(valueNumber);
-		} else {
+		} catch (IllegalArgumentException exception) {
+			LOGGER.info("The value number is invalid for getting possible types.");
 			return ret;
 		}
 
