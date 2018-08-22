@@ -869,6 +869,7 @@ public class OptimizeStreamRefactoringTest extends RefactoringTest {
 				new StreamAnalysisExpectedResult("orderedWidgets4.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
 						EnumSet.of(Ordering.ORDERED), true, false, false, null, null, null, RefactoringStatus.ERROR,
 						EnumSet.of(PreconditionFailure.HAS_SIDE_EFFECTS2)));
+	}
 
 	public void testStreamOf() throws Exception {
 		this.helper(new StreamAnalysisExpectedResult("Stream.of(\"a\")",
