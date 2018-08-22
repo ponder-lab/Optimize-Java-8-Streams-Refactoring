@@ -11,7 +11,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -410,10 +409,15 @@ public final class Util {
 		return lineNumberFromIR;
 	}
 
-	static private LinkedList<Value> checkInstructions = new LinkedList<>();
+	/**
+	 * This set is used to store visited values. Without this set, the method
+	 * getPossibleTypes could be infinitely recursively called and would never
+	 * return. So adding this set means to add a base case.
+	 */
+	static private HashSet<Value> seenValues = new HashSet();
 
 	static Collection<TypeAbstraction> getPossibleStreamTypes(int valueNumber, TypeInference inference) {
-		checkInstructions.clear();
+		seenValues.clear();
 		return getPossibleTypes(valueNumber, inference);
 	}
 
@@ -423,6 +427,7 @@ public final class Util {
 		try {
 			value = inference.getIR().getSymbolTable().getValue(valueNumber);
 		} catch (IllegalArgumentException exception) {
+			LOGGER.info("Value number for getting possible types is invalid!");
 			return ret;
 		}
 
@@ -430,10 +435,11 @@ public final class Util {
 		// re-implementing one using PhiValue.
 		if (value instanceof PhiValue) {
 
-			if (checkInstructions.contains(value))
+			// avoid infinite recursion here
+			if (seenValues.contains(value))
 				return ret;
 			else
-				checkInstructions.add(value);
+				seenValues.add(value);
 
 			// multiple possible types.
 			PhiValue phiValue = (PhiValue) value;
@@ -787,7 +793,7 @@ public final class Util {
 	}
 
 	public static boolean isStreamNode(CGNode node, IClassHierarchy classHierarchy) {
-		if (checkDeclaredClass(node))
+		if (isDeclaredStreamClass(node))
 			return true;
 
 		IR ir = node.getIR();
@@ -821,8 +827,13 @@ public final class Util {
 		return false;
 	}
 
-	// check declared class for CGNode
-	private static boolean checkDeclaredClass(CGNode node) {
+	/**
+	 * Check declared class for CGNode
+	 * 
+	 * @param node:
+	 *            CGNode in the CallGraph
+	 */
+	private static boolean isDeclaredStreamClass(CGNode node) {
 		IMethod method = node.getMethod();
 		if (isBaseStream(method.getDeclaringClass()))
 			return true;

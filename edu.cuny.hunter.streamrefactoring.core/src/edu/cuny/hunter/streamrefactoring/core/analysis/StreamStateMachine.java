@@ -1172,7 +1172,6 @@ public class StreamStateMachine {
 							}
 						}
 					}
-
 				instanceMonitor.worked(1);
 			} // end for each instance in the typestate analysis result.
 
@@ -1296,7 +1295,8 @@ public class StreamStateMachine {
 	}
 
 	private static CallGraph pruneCallGraph(CallGraph callGraph, IClassHierarchy classHierarchy) {
-		LOGGER.info("The number of nodes in call graph: " + callGraph.getNumberOfNodes());
+		int numberOfNodesInCallGraph = callGraph.getNumberOfNodes();
+		LOGGER.info("The number of nodes in the call graph: " + numberOfNodesInCallGraph);
 		HashSet<CGNode> keep = new HashSet<>();
 		for (CGNode node: callGraph) {
 			if(Util.isStreamNode(node, classHierarchy))
@@ -1304,9 +1304,10 @@ public class StreamStateMachine {
 		}
 		
 		PrunedCallGraph prunedCallGraph = new PrunedCallGraph(callGraph, keep);
-		LOGGER.info("The number of nodes in partial graph: " + prunedCallGraph.getNumberOfNodes());
+		int numberOfNodesInPrunedCallGraph = prunedCallGraph.getNumberOfNodes();
+		LOGGER.info("The number of nodes in partial graph: " + numberOfNodesInPrunedCallGraph
+				+ ". The number of saved nodes: " + (numberOfNodesInCallGraph - numberOfNodesInPrunedCallGraph));
 		
 		return prunedCallGraph;
 	}
-
 }
