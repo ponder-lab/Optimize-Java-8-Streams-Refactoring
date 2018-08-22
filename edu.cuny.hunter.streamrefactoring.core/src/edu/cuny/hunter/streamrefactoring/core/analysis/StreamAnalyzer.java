@@ -405,8 +405,6 @@ public class StreamAnalyzer extends ASTVisitor {
 						+ engine.getProject().getElementName());
 				throw e;
 			}
-			// TODO: Can I slice the graph so that only nodes relevant to the
-			// instance in question are present?
 			this.enginesWithBuiltCallGraphsToEntrypointsUsed.put(engine, entryPoints);
 		}
 		return this.enginesWithBuiltCallGraphsToEntrypointsUsed.get(engine);

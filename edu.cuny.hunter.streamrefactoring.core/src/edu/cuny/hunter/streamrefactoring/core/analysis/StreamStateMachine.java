@@ -58,6 +58,7 @@ import com.ibm.wala.ipa.callgraph.propagation.InstanceFieldPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
+import com.ibm.wala.ipa.callgraph.pruned.PrunedCallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
 import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.ipa.modref.ModRef;
@@ -982,7 +983,8 @@ public class StreamStateMachine {
 		SubMonitor subMonitor = SubMonitor.convert(monitor, "Performing typestate analysis (may take a while)", 100);
 		Map<TypestateRule, Statistics> ret = new HashMap<>();
 
-		BenignOracle ora = new ModifiedBenignOracle(engine.getCallGraph(), engine.getPointerAnalysis());
+		CallGraph prunedCallGraph = pruneCallGraph(engine.getCallGraph(), engine.getClassHierarchy());
+		BenignOracle ora = new ModifiedBenignOracle(prunedCallGraph, engine.getPointerAnalysis());
 
 		PropertiesManager manager = PropertiesManager.initFromMap(Collections.emptyMap());
 		PropertiesManager.registerProperties(
@@ -1006,7 +1008,7 @@ public class StreamStateMachine {
 
 			// this gets a solver that tracks all streams.
 			LOGGER.info(() -> "Starting " + rule.getName() + " solver for: " + engine.getProject().getElementName());
-			ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getOptions(), engine.getCallGraph(),
+			ISafeSolver solver = TypestateSolverFactory.getSolver(engine.getOptions(), prunedCallGraph,
 					engine.getPointerAnalysis(), engine.getHeapGraph(), dfa, ora, typeStateOptions, null, null, null);
 
 			AggregateSolverResult result;
@@ -1043,7 +1045,7 @@ public class StreamStateMachine {
 				// TODO: Can this be somehow rewritten to get blocks corresponding to terminal
 				// operations?
 				// for each call graph node in the call graph.
-				for (CGNode cgNode : engine.getCallGraph())
+				for (CGNode cgNode : prunedCallGraph)
 					// separating client from library code, improving performance #103.
 					if (cgNode.getMethod().getDeclaringClass().getClassLoader().getReference()
 							.equals(ClassLoaderReference.Application)) {
@@ -1228,7 +1230,7 @@ public class StreamStateMachine {
 
 		// discover whether any stateful intermediate operations are
 		// present.
-		this.discoverPossibleStatefulIntermediateOperations(engine.getClassHierarchy(), engine.getCallGraph(),
+		this.discoverPossibleStatefulIntermediateOperations(engine.getClassHierarchy(), prunedCallGraph,
 				subMonitor.split(5, SubMonitor.SUPPRESS_NONE));
 
 		// does reduction order matter?
@@ -1290,5 +1292,31 @@ public class StreamStateMachine {
 			}
 		}
 		return ret;
+	}
+
+	/**
+	 * This method is used to prune call graph. For each CGNode in the callGraph, it
+	 * check whether it is a stream node. If it is, then keep it. If it not, then
+	 * remove it.
+	 * 
+	 * @param callGraph
+	 * @param classHierarchy
+	 * @return A pruned callGraph
+	 */
+	private static CallGraph pruneCallGraph(CallGraph callGraph, IClassHierarchy classHierarchy) {
+		int numberOfNodesInCallGraph = callGraph.getNumberOfNodes();
+		LOGGER.info("The number of nodes in the call graph: " + numberOfNodesInCallGraph);
+		HashSet<CGNode> keep = new HashSet<>();
+		for (CGNode node : callGraph) {
+			if (Util.isStreamNode(node, classHierarchy))
+				keep.add(node);
+		}
+		
+		PrunedCallGraph prunedCallGraph = new PrunedCallGraph(callGraph, keep);
+		int numberOfNodesInPrunedCallGraph = prunedCallGraph.getNumberOfNodes();
+		LOGGER.info("The number of nodes in partial graph: " + numberOfNodesInPrunedCallGraph
+				+ ". The number of saved nodes: " + (numberOfNodesInCallGraph - numberOfNodesInPrunedCallGraph));
+		
+		return prunedCallGraph;
 	}
 }

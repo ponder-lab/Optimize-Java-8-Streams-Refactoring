@@ -17,6 +17,8 @@ import java.util.function.Predicate;
 import java.util.logging.Logger;
 import java.util.stream.BaseStream;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.IType;
@@ -407,13 +409,38 @@ public final class Util {
 		return lineNumberFromIR;
 	}
 
+	/**
+	 * This set is used to store visited values. Without this set, the method
+	 * getPossibleTypes could be infinitely recursively called and would never
+	 * return. So adding this set means to add a base case.
+	 */
+	static private HashSet<Value> seenValues = new HashSet<>();
+
 	static Collection<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
+		seenValues.clear();
+		return getPossibleTypesInternal(valueNumber, inference);
+	}
+
+	static private Collection<TypeAbstraction> getPossibleTypesInternal(int valueNumber, TypeInference inference) {
 		Set<TypeAbstraction> ret = new HashSet<>();
-		Value value = inference.getIR().getSymbolTable().getValue(valueNumber);
+		Value value;
+		try {
+			value = inference.getIR().getSymbolTable().getValue(valueNumber);
+		} catch (IllegalArgumentException exception) {
+			LOGGER.info("The value number is invalid for getting possible types.");
+			return ret;
+		}
 
 		// TODO: Should really be using a pointer analysis here rather than
 		// re-implementing one using PhiValue.
 		if (value instanceof PhiValue) {
+
+			// avoid infinite recursion here
+			if (seenValues.contains(value))
+				return ret;
+			else
+				seenValues.add(value);
+
 			// multiple possible types.
 			PhiValue phiValue = (PhiValue) value;
 			SSAPhiInstruction phiInstruction = phiValue.getPhiInstruction();
@@ -421,7 +448,7 @@ public final class Util {
 			// get the possible types for each use.
 			for (int i = 0; i < numberOfUses; i++) {
 				int use = phiInstruction.getUse(i);
-				Collection<TypeAbstraction> possibleTypes = getPossibleTypes(use, inference);
+				Collection<TypeAbstraction> possibleTypes = getPossibleTypesInternal(use, inference);
 				ret.addAll(possibleTypes);
 			}
 		} else
@@ -458,6 +485,7 @@ public final class Util {
 					// type is java.lang.Object.
 					// Find the return type of the instruction.
 					TypeInference inference = TypeInference.make(node.getIR(), false);
+					// Get all possible types
 					Collection<TypeAbstraction> returnTypes = Util.getPossibleTypes(valueNumber, inference);
 
 					// for each return type.
@@ -611,6 +639,9 @@ public final class Util {
 
 	public static boolean implementsType(TypeReference typeReference, IClassHierarchy classHierarchy,
 			Predicate<IClass> predicate) {
+		if (typeReference == null)
+			return false;
+
 		IClass clazz = classHierarchy.lookupClass(typeReference);
 
 		if (clazz == null)
@@ -760,5 +791,64 @@ public final class Util {
 	}
 
 	private Util() {
+	}
+
+	/**
+	 * This method is used to check whether the CGNode is a "stream node". It checks
+	 * each instruction in the node. If the type of instruction could implement base
+	 * stream, then it is a stream node.
+	 * 
+	 * @param node:
+	 *            CGNode
+	 * @param classHierarchy
+	 */
+	public static boolean isStreamNode(CGNode node, IClassHierarchy classHierarchy) {
+		if (isDeclaredStreamClass(node, classHierarchy))
+			return true;
+
+		IR ir = node.getIR();
+
+		if (ir == null || ir.isEmptyIR())
+			return true;
+
+		for (SSAInstruction instruction : ir.getInstructions()) {
+			if (instruction == null)
+				continue;
+
+			// Most of instruction APIs provide the methods to get the return types.
+			StreamFindingVisitor visitor = new StreamFindingVisitor(classHierarchy);
+			instruction.visit(visitor);
+
+			if (visitor.hasFoundStream())
+				return true;
+
+			// otherwise, let's check the defs and uses.
+			TypeInference inference = TypeInference.make(ir, false);
+
+			Stream<TypeAbstraction> defs = IntStream.range(0, instruction.getNumberOfDefs())
+					.mapToObj(i -> instruction.getDef(i)).flatMap(d -> getPossibleTypes(d, inference).stream());
+
+			Stream<TypeAbstraction> uses = IntStream.range(0, instruction.getNumberOfUses())
+					.mapToObj(i -> instruction.getUse(i)).flatMap(u -> getPossibleTypes(u, inference).stream());
+
+			if (Stream.concat(defs, uses).anyMatch(t -> implementsBaseStream(t.getTypeReference(), classHierarchy)))
+				return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check declared class for CGNode
+	 * 
+	 * @param node:
+	 *            CGNode in the CallGraph
+	 */
+	private static boolean isDeclaredStreamClass(CGNode node, IClassHierarchy classHierarchy) {
+		IMethod method = node.getMethod();
+		if (implementsBaseStream(method.getDeclaringClass().getReference(), classHierarchy))
+			return true;
+		else
+			return false;
 	}
 }
