@@ -414,9 +414,12 @@ public final class Util {
 	 * getPossibleTypes could be infinitely recursively called and would never
 	 * return. So adding this set means to add a base case.
 	 */
-	static private HashSet<Value> seenValues = new HashSet();
+	static private HashSet<Value> seenValues = new HashSet<>();
 
-	static Collection<TypeAbstraction> getPossibleStreamTypes(int valueNumber, TypeInference inference) {
+	/**
+	 * Use this method to get possible types instead of method getPossibleTypes().
+	 */
+	static Collection<TypeAbstraction> getAllPossibleTypes(int valueNumber, TypeInference inference) {
 		seenValues.clear();
 		return getPossibleTypes(valueNumber, inference);
 	}
@@ -485,8 +488,8 @@ public final class Util {
 					// type is java.lang.Object.
 					// Find the return type of the instruction.
 					TypeInference inference = TypeInference.make(node.getIR(), false);
-					seenValues.clear();
-					Collection<TypeAbstraction> returnTypes = Util.getPossibleTypes(valueNumber, inference);
+					// Get all possible types
+					Collection<TypeAbstraction> returnTypes = Util.getAllPossibleTypes(valueNumber, inference);
 
 					// for each return type.
 					for (TypeAbstraction rType : returnTypes) {
@@ -826,10 +829,10 @@ public final class Util {
 			TypeInference inference = TypeInference.make(ir, false);
 
 			Stream<TypeAbstraction> defs = IntStream.range(0, instruction.getNumberOfDefs())
-					.mapToObj(i -> instruction.getDef(i)).flatMap(d -> getPossibleStreamTypes(d, inference).stream());
+					.mapToObj(i -> instruction.getDef(i)).flatMap(d -> getAllPossibleTypes(d, inference).stream());
 
 			Stream<TypeAbstraction> uses = IntStream.range(0, instruction.getNumberOfUses())
-					.mapToObj(i -> instruction.getUse(i)).flatMap(u -> getPossibleStreamTypes(u, inference).stream());
+					.mapToObj(i -> instruction.getUse(i)).flatMap(u -> getAllPossibleTypes(u, inference).stream());
 
 			if (Stream.concat(defs, uses).anyMatch(t -> implementsBaseStream(t.getTypeReference(), classHierarchy)))
 				return true;
