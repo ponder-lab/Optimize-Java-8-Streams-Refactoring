@@ -421,7 +421,7 @@ public final class Util {
 		return getPossibleTypesInternal(valueNumber, inference);
 	}
 
-	static Collection<TypeAbstraction> getPossibleTypesInternal(int valueNumber, TypeInference inference) {
+	static private Collection<TypeAbstraction> getPossibleTypesInternal(int valueNumber, TypeInference inference) {
 		Set<TypeAbstraction> ret = new HashSet<>();
 		Value value;
 		try {
