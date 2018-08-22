@@ -11,10 +11,6 @@ public class UnhandledCaseException extends Exception {
 		super(message);
 	}
 
-	public UnhandledCaseException(Throwable cause) {
-		super(cause);
-	}
-
 	public UnhandledCaseException(String message, Throwable cause) {
 		super(message, cause);
 	}
@@ -22,5 +18,9 @@ public class UnhandledCaseException extends Exception {
 	public UnhandledCaseException(String message, Throwable cause, boolean enableSuppression,
 			boolean writableStackTrace) {
 		super(message, cause, enableSuppression, writableStackTrace);
+	}
+
+	public UnhandledCaseException(Throwable cause) {
+		super(cause);
 	}
 }

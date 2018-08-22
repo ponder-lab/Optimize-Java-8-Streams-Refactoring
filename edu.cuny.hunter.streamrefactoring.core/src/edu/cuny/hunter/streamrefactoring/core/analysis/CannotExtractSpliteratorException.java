@@ -13,8 +13,9 @@ public class CannotExtractSpliteratorException extends Exception {
 		this.fromType = fromType;
 	}
 
-	public CannotExtractSpliteratorException(Throwable cause) {
-		super(cause);
+	public CannotExtractSpliteratorException(String message, Throwable cause, boolean enableSuppression,
+			boolean writableStackTrace) {
+		super(message, cause, enableSuppression, writableStackTrace);
 	}
 
 	public CannotExtractSpliteratorException(String message, Throwable cause, Class<? extends Object> fromType) {
@@ -22,12 +23,11 @@ public class CannotExtractSpliteratorException extends Exception {
 		this.fromType = fromType;
 	}
 
-	public CannotExtractSpliteratorException(String message, Throwable cause, boolean enableSuppression,
-			boolean writableStackTrace) {
-		super(message, cause, enableSuppression, writableStackTrace);
+	public CannotExtractSpliteratorException(Throwable cause) {
+		super(cause);
 	}
 
 	public Class<? extends Object> getFromType() {
-		return fromType;
+		return this.fromType;
 	}
 }

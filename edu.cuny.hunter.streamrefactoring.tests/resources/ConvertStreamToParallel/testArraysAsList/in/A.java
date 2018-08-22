@@ -7,6 +7,6 @@ import edu.cuny.hunter.streamrefactoring.annotations.*;
 class A {
 	@EntryPoint
 	void m() {
-		Arrays.asList().stream();
+		Arrays.asList().stream().count();
 	}
 }

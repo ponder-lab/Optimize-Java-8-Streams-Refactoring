@@ -6,7 +6,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>edu.cuny.hunter.streamrefactoring</groupId>
   <artifactId>parent</artifactId>
-  <version>1.0.0</version>
+  <version>1.3.0</version>
   <packaging>pom</packaging>
   <modules>
     <module>edu.cuny.hunter.streamrefactoring.ui</module>
@@ -45,7 +45,7 @@
                 <jacocoReports>
                   <jacocoReport>${project.basedir}/edu.cuny.hunter.streamrefactoring.tests.report/target/site/jacoco-aggregate/jacoco.xml</jacocoReport>
                 </jacocoReports>
-                <repoToken>r9J3kTb5zPkhuN3pLbX48On78BFoAFHJX</repoToken>
+                <repoToken>9A4KG0v1S4zBHbXGsHqDwpsrBA74edGZ5</repoToken>
                 <serviceName>travis-pro</serviceName>
               </configuration>
             </plugin>
@@ -68,7 +68,7 @@
     <repository>
       <id>common-refactoring</id>
       <layout>p2</layout>
-      <url>https://raw.githubusercontent.com/khatchad/Common-Eclipse-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite</url>
+      <url>https://raw.githubusercontent.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite</url>
     </repository>
     <repository>
       <id>safe</id>

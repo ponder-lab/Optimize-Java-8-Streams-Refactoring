@@ -19,7 +19,7 @@ public class CallStringWithReceivers extends CallString {
 	public CallStringWithReceivers(CallSiteReference site, IMethod method, int length, CallString callString) {
 		super(site, method, length, callString);
 	}
-	
+
 	public void addPossibleReceiver(InstanceKey receiver) {
 		this.getPossibleReceivers().add(receiver);
 	}
