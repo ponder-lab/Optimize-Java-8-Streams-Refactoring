@@ -1294,12 +1294,21 @@ public class StreamStateMachine {
 		return ret;
 	}
 
+	/**
+	 * This method is used to prune call graph. For each CGNode in the callGraph, it
+	 * check whether it is a stream node. If it is, then keep it. If it not, then
+	 * remove it.
+	 * 
+	 * @param callGraph
+	 * @param classHierarchy
+	 * @return A pruned callGraph
+	 */
 	private static CallGraph pruneCallGraph(CallGraph callGraph, IClassHierarchy classHierarchy) {
 		int numberOfNodesInCallGraph = callGraph.getNumberOfNodes();
 		LOGGER.info("The number of nodes in the call graph: " + numberOfNodesInCallGraph);
 		HashSet<CGNode> keep = new HashSet<>();
-		for (CGNode node: callGraph) {
-			if(Util.isStreamNode(node, classHierarchy))
+		for (CGNode node : callGraph) {
+			if (Util.isStreamNode(node, classHierarchy))
 				keep.add(node);
 		}
 		

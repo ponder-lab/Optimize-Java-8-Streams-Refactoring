@@ -424,10 +424,9 @@ public final class Util {
 	static Collection<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
 		Set<TypeAbstraction> ret = new HashSet<>();
 		Value value;
-		try {
+		if (valueNumber >= 1 && valueNumber < 5) {
 			value = inference.getIR().getSymbolTable().getValue(valueNumber);
-		} catch (IllegalArgumentException exception) {
-			LOGGER.info("Value number for getting possible types is invalid!");
+		} else {
 			return ret;
 		}
 
@@ -792,6 +791,15 @@ public final class Util {
 	private Util() {
 	}
 
+	/**
+	 * This method is used to check whether the CGNode is a "stream node". It checks
+	 * each instruction in the node. If the type of instruction could implement base
+	 * stream, then it is a stream node.
+	 * 
+	 * @param node:
+	 *            CGNode
+	 * @param classHierarchy
+	 */
 	public static boolean isStreamNode(CGNode node, IClassHierarchy classHierarchy) {
 		if (isDeclaredStreamClass(node))
 			return true;
@@ -805,6 +813,7 @@ public final class Util {
 			if (instruction == null)
 				continue;
 
+			// Most of instruction APIs provide the methods to get the return types.
 			StreamFindingVisitor visitor = new StreamFindingVisitor(classHierarchy);
 			instruction.visit(visitor);
 
