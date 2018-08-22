@@ -803,7 +803,7 @@ public final class Util {
 	 * @param classHierarchy
 	 */
 	public static boolean isStreamNode(CGNode node, IClassHierarchy classHierarchy) {
-		if (isDeclaredStreamClass(node))
+		if (isDeclaredStreamClass(node, classHierarchy))
 			return true;
 
 		IR ir = node.getIR();
@@ -844,9 +844,9 @@ public final class Util {
 	 * @param node:
 	 *            CGNode in the CallGraph
 	 */
-	private static boolean isDeclaredStreamClass(CGNode node) {
+	private static boolean isDeclaredStreamClass(CGNode node, IClassHierarchy classHierarchy) {
 		IMethod method = node.getMethod();
-		if (isBaseStream(method.getDeclaringClass()))
+		if (implementsBaseStream(method.getDeclaringClass().getReference(), classHierarchy))
 			return true;
 		else
 			return false;
