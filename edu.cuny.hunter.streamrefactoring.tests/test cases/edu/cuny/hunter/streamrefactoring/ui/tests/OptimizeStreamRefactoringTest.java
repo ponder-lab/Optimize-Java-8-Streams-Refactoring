@@ -694,21 +694,6 @@ public class OptimizeStreamRefactoringTest extends RefactoringTest {
 
 	}
 
-	public void testMotivatingExample() throws Exception {
-		this.helper(new StreamAnalysisExpectedResult("unorderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
-				EnumSet.of(Ordering.ORDERED), false, false, true, EnumSet.of(TransformationAction.CONVERT_TO_PARALLEL),
-				PreconditionSuccess.P2, Refactoring.CONVERT_SEQUENTIAL_STREAM_TO_PARALLEL, RefactoringStatus.OK,
-				Collections.emptySet()),
-
-				new StreamAnalysisExpectedResult("orderedWidgets.parallelStream()", EnumSet.of(ExecutionMode.PARALLEL),
-						EnumSet.of(Ordering.ORDERED), false, false, false, null, null, null, RefactoringStatus.ERROR,
-						EnumSet.of(PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS)),
-
-				new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
-						EnumSet.of(Ordering.ORDERED), false, true, true, null, null, null, RefactoringStatus.ERROR,
-						EnumSet.of(PreconditionFailure.REDUCE_ORDERING_MATTERS)));
-	}
-
 	public void testMultipleCallsToEnclosingMethod() throws Exception {
 		this.helper(new StreamAnalysisExpectedResult("DoubleStream.of(1.111)",
 				Collections.singleton(ExecutionMode.SEQUENTIAL), Collections.singleton(Ordering.ORDERED), false, false,
@@ -858,7 +843,7 @@ public class OptimizeStreamRefactoringTest extends RefactoringTest {
 				Collections.emptySet()),
 
 				new StreamAnalysisExpectedResult("orderedWidgets.parallelStream()", EnumSet.of(ExecutionMode.PARALLEL),
-						EnumSet.of(Ordering.ORDERED), false, false, true, null, null, null, RefactoringStatus.ERROR,
+						EnumSet.of(Ordering.ORDERED), false, false, false, null, null, null, RefactoringStatus.ERROR,
 						EnumSet.of(PreconditionFailure.NO_STATEFUL_INTERMEDIATE_OPERATIONS)),
 
 				new StreamAnalysisExpectedResult("orderedWidgets.stream()", EnumSet.of(ExecutionMode.SEQUENTIAL),
