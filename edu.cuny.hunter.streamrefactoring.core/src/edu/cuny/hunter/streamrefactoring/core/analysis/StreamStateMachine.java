@@ -980,7 +980,6 @@ public class StreamStateMachine {
 			OrderingInference orderingInference, IProgressMonitor monitor)
 			throws PropertiesException, CancelException, IOException, CoreException, NoniterableException,
 			NoninstantiableException, CannotExtractSpliteratorException, InvalidClassFileException {
-
 		SubMonitor subMonitor = SubMonitor.convert(monitor, "Performing typestate analysis (may take a while)", 100);
 		Map<TypestateRule, Statistics> ret = new HashMap<>();
 
@@ -1033,6 +1032,7 @@ public class StreamStateMachine {
 			for (Iterator<InstanceKey> iterator = result.iterateInstances(); iterator.hasNext();) {
 				// get the instance's key.
 				InstanceKey instanceKey = iterator.next();
+
 				// add to tracked instances.
 				this.trackedInstances.add(instanceKey);
 
