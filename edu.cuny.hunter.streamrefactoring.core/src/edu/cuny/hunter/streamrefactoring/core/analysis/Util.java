@@ -410,10 +410,7 @@ public final class Util {
 		return lineNumberFromIR;
 	}
 
-	static private LinkedList<Value> checkInstructions = new LinkedList<>();
-
 	static Collection<TypeAbstraction> getPossibleStreamTypes(int valueNumber, TypeInference inference) {
-		checkInstructions.clear();
 		return getPossibleTypes(valueNumber, inference);
 	}
 
@@ -429,12 +426,6 @@ public final class Util {
 		// TODO: Should really be using a pointer analysis here rather than
 		// re-implementing one using PhiValue.
 		if (value instanceof PhiValue) {
-
-			if (checkInstructions.contains(value))
-				return ret;
-			else
-				checkInstructions.add(value);
-
 			// multiple possible types.
 			PhiValue phiValue = (PhiValue) value;
 			SSAPhiInstruction phiInstruction = phiValue.getPhiInstruction();
