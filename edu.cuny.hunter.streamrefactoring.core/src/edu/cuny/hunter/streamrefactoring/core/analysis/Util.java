@@ -416,15 +416,12 @@ public final class Util {
 	 */
 	static private HashSet<Value> seenValues = new HashSet<>();
 
-	/**
-	 * Use this method to get possible types instead of method getPossibleTypes().
-	 */
-	static Collection<TypeAbstraction> getAllPossibleTypes(int valueNumber, TypeInference inference) {
+	static Collection<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
 		seenValues.clear();
-		return getPossibleTypes(valueNumber, inference);
+		return getPossibleTypesInternal(valueNumber, inference);
 	}
 
-	static Collection<TypeAbstraction> getPossibleTypes(int valueNumber, TypeInference inference) {
+	static Collection<TypeAbstraction> getPossibleTypesInternal(int valueNumber, TypeInference inference) {
 		Set<TypeAbstraction> ret = new HashSet<>();
 		Value value;
 		try {
@@ -451,7 +448,7 @@ public final class Util {
 			// get the possible types for each use.
 			for (int i = 0; i < numberOfUses; i++) {
 				int use = phiInstruction.getUse(i);
-				Collection<TypeAbstraction> possibleTypes = getPossibleTypes(use, inference);
+				Collection<TypeAbstraction> possibleTypes = getPossibleTypesInternal(use, inference);
 				ret.addAll(possibleTypes);
 			}
 		} else
@@ -489,7 +486,7 @@ public final class Util {
 					// Find the return type of the instruction.
 					TypeInference inference = TypeInference.make(node.getIR(), false);
 					// Get all possible types
-					Collection<TypeAbstraction> returnTypes = Util.getAllPossibleTypes(valueNumber, inference);
+					Collection<TypeAbstraction> returnTypes = Util.getPossibleTypes(valueNumber, inference);
 
 					// for each return type.
 					for (TypeAbstraction rType : returnTypes) {
@@ -829,10 +826,10 @@ public final class Util {
 			TypeInference inference = TypeInference.make(ir, false);
 
 			Stream<TypeAbstraction> defs = IntStream.range(0, instruction.getNumberOfDefs())
-					.mapToObj(i -> instruction.getDef(i)).flatMap(d -> getAllPossibleTypes(d, inference).stream());
+					.mapToObj(i -> instruction.getDef(i)).flatMap(d -> getPossibleTypes(d, inference).stream());
 
 			Stream<TypeAbstraction> uses = IntStream.range(0, instruction.getNumberOfUses())
-					.mapToObj(i -> instruction.getUse(i)).flatMap(u -> getAllPossibleTypes(u, inference).stream());
+					.mapToObj(i -> instruction.getUse(i)).flatMap(u -> getPossibleTypes(u, inference).stream());
 
 			if (Stream.concat(defs, uses).anyMatch(t -> implementsBaseStream(t.getTypeReference(), classHierarchy)))
 				return true;
