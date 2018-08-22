@@ -980,7 +980,6 @@ public class StreamStateMachine {
 			OrderingInference orderingInference, IProgressMonitor monitor)
 			throws PropertiesException, CancelException, IOException, CoreException, NoniterableException,
 			NoninstantiableException, CannotExtractSpliteratorException, InvalidClassFileException {
-
 		SubMonitor subMonitor = SubMonitor.convert(monitor, "Performing typestate analysis (may take a while)", 100);
 		Map<TypestateRule, Statistics> ret = new HashMap<>();
 
