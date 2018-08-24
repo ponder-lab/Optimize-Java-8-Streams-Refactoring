@@ -160,7 +160,8 @@ public class StreamStateMachine {
 			"java.util.stream.Stream.toArray", "java.util.stream.Stream.reduce", "java.util.stream.Stream.collect",
 			"java.util.stream.Stream.min", "java.util.stream.Stream.max", "java.util.stream.Stream.count",
 			"java.util.stream.Stream.anyMatch", "java.util.stream.Stream.allMatch", "java.util.stream.Stream.noneMatch",
-			"java.util.stream.Stream.findFirst", "java.util.stream.Stream.findAny" };
+			"java.util.stream.Stream.findFirst", "java.util.stream.Stream.findAny",
+			"java.util.stream.BaseStream.iterator", "java.util.stream.BaseStream.spliterator" };
 	// @formatter:on
 
 	// @formatter:off
@@ -168,7 +169,8 @@ public class StreamStateMachine {
 			"java.util.stream.DoubleStream.forEachOrdered", "java.util.stream.IntStream.forEachOrdered",
 			"java.util.stream.LongStream.forEachOrdered", "java.util.stream.Stream.forEachOrdered",
 			"java.util.stream.DoubleStream.findFirst", "java.util.stream.IntStream.findFirst",
-			"java.util.stream.LongStream.findFirst", "java.util.stream.Stream.findFirst" };
+			"java.util.stream.LongStream.findFirst", "java.util.stream.Stream.findFirst",
+			"java.util.stream.BaseStream.iterator", "java.util.stream.BaseStream.spliterator" };
 	// @formatter:on
 
 	// @formatter:off
