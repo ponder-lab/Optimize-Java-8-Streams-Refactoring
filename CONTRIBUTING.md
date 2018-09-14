@@ -30,6 +30,8 @@ Key              | Value Type | Description
 ---------------- | ---------- | ----------
 nToUseForStreams | Integer    | The value of N to use while building the nCFA for stream types.
 
+More info can be found on [this wiki page](https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/wiki/Running-the-Evaluator).
+
 [wiki]: https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/wiki
 [annotations]: https://github.com/ponder-lab/edu.cuny.hunter.streamrefactoring.annotations
 [wala]: https://github.com/wala/WALA
