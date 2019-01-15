@@ -92,4 +92,4 @@ See the [wiki][wiki] for further information.
 [install]: https://youtu.be/On4xBzvFk1c
 [entrypoints]: https://youtu.be/On4xBzvFk1c?t=2m6s
 [SCAM 2018]: http://www.ieee-scam.org/2018
-[paper]: https://khatchad.commons.gc.cuny.edu/research/publications/#Khatchadourian2018a
+[paper]: https://khatchad.commons.gc.cuny.edu/research/publications/#Khatchadourian2018b
