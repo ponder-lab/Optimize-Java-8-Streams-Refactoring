@@ -38,7 +38,7 @@
     <dependency>
       <groupId>edu.cuny.hunter.streamrefactoring</groupId>
       <artifactId>edu.cuny.hunter.streamrefactoring.core</artifactId>
-      <version>1.6.0</version>
+      <version>1.7.0</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
