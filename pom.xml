@@ -55,15 +55,15 @@
     </profile>
   </profiles>
   <properties>
-    <tycho-version>0.26.0</tycho-version>
+    <tycho-version>1.4.0</tycho-version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jacoco-version>0.7.8</jacoco-version>
   </properties>
   <repositories>
     <repository>
-      <id>neon</id>
+      <id>2018-09</id>
       <layout>p2</layout>
-      <url>http://download.eclipse.org/releases/neon</url>
+      <url>http://download.eclipse.org/releases/2018-09</url>
     </repository>
     <repository>
       <id>common-refactoring</id>
@@ -81,9 +81,9 @@
       <url>https://raw.githubusercontent.com/ponder-lab/WALA/master/com.ibm.wala.updatesite</url>
     </repository>
     <repository>
-      <id>neon-update</id>
+      <id>2018-09-update</id>
       <layout>p2</layout>
-      <url>http://download.eclipse.org/eclipse/updates/4.6</url>
+      <url>http://download.eclipse.org/eclipse/updates/4.9</url>
     </repository>
   </repositories>
   <build>
