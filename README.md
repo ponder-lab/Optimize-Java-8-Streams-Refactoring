@@ -1,7 +1,9 @@
 # Optimize Java 8 Streams Refactoring
 
 [![Build Status](https://travis-ci.com/ponder-lab/Optimize-Java-8-Streams-Refactoring.svg?branch=master)](https://travis-ci.com/ponder-lab/Optimize-Java-8-Streams-Refactoring) [![Coverage Status](https://coveralls.io/repos/github/ponder-lab/Optimize-Java-8-Streams-Refactoring/badge.svg?branch=master)](https://coveralls.io/github/ponder-lab/Optimize-Java-8-Streams-Refactoring?branch=master) [![GitHub license](https://img.shields.io/badge/license-Eclipse-blue.svg)](https://github.com/khatchadourian-lab/Java-8-Stream-Refactoring/raw/master/LICENSE.txt) [![DOI](https://zenodo.org/badge/78147265.svg)](https://zenodo.org/badge/latestdoi/78147265) [![Java profiler](https://www.ej-technologies.com/images/product_banners/jprofiler_small.png)](https://www.ej-technologies.com/products/jprofiler/overview.html)
-## Introduction 
+
+## Introduction
+
 <img src="https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.ui/icons/icon.png" alt="Icon" align="left" height=150px width=150px/> The Java 8 Stream API sets forth a promising new programming model that incorporates functional-like, MapReduce-style features into a mainstream programming language. However, using streams efficiently may involve subtle considerations.
 
 This tool consists of automated refactoring research prototype plug-ins for [Eclipse][eclipse] that assists developers in writing optimal stream client code in a semantics-preserving fashion. Refactoring preconditions and transformations for automatically determining when it is safe and possibly advantageous to convert a sequential stream to parallel and improve upon already parallel streams are included. The approach utilizes both [WALA][wala] and [SAFE][safe].
@@ -69,7 +71,7 @@ Explicit entry points may be marked using the appropriate annotation found in th
 
 There are currently some limitations with embedded streams (i.e., streams declared as part of lambda expressions sent as arguments to intermediate stream operations). This is due to model differences between the Eclipse JDT and WALA. See [#155](https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/155) for details.
 
-In general, there is [an issue](https://github.com/wala/WALA/issues/281) with the mapping between the Eclipse DOM and WALA DOM, particuarly when using Anonymous Inner Classes (AICs). We are currently working with the WALA developers to resolve [this issue](https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/155).
+In general, there is [an issue](https://github.com/wala/WALA/issues/2/edit81) with the mapping between the Eclipse DOM and WALA DOM, particuarly when using Anonymous Inner Classes (AICs). We are currently working with the WALA developers to resolve [this issue](https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/155).
 
 ## Contributing
 
