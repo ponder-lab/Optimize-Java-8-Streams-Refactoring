@@ -1,14 +1,13 @@
 # Optimize Java 8 Streams Refactoring
 
 [![Build Status](https://travis-ci.com/ponder-lab/Optimize-Java-8-Streams-Refactoring.svg?branch=master)](https://travis-ci.com/ponder-lab/Optimize-Java-8-Streams-Refactoring) [![Coverage Status](https://coveralls.io/repos/github/ponder-lab/Optimize-Java-8-Streams-Refactoring/badge.svg?branch=master)](https://coveralls.io/github/ponder-lab/Optimize-Java-8-Streams-Refactoring?branch=master) [![GitHub license](https://img.shields.io/badge/license-Eclipse-blue.svg)](https://github.com/khatchadourian-lab/Java-8-Stream-Refactoring/raw/master/LICENSE.txt) [![DOI](https://zenodo.org/badge/78147265.svg)](https://zenodo.org/badge/latestdoi/78147265) [![Java profiler](https://www.ej-technologies.com/images/product_banners/jprofiler_small.png)](https://www.ej-technologies.com/products/jprofiler/overview.html)
-
-## Introduction
-
-<img src="https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.ui/icons/icon.png" alt="Icon" align="left" height=150px width=150px/> The Java 8 Stream API sets forth a promising new programming model that incorporates functional-like, MapReduce-style features into a mainstream programming language. However, using streams efficiently may involve subtle considerations. 
+## Introduction 
+<img src="https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.ui/icons/icon.png" alt="Icon" align="left" height=150px width=150px/> The Java 8 Stream API sets forth a promising new programming model that incorporates functional-like, MapReduce-style features into a mainstream programming language. However, using streams efficiently may involve subtle considerations.
 
 This tool consists of automated refactoring research prototype plug-ins for [Eclipse][eclipse] that assists developers in writing optimal stream client code in a semantics-preserving fashion. Refactoring preconditions and transformations for automatically determining when it is safe and possibly advantageous to convert a sequential stream to parallel and improve upon already parallel streams are included. The approach utilizes both [WALA][wala] and [SAFE][safe].
 
 ## Screenshot
+
 ![Screenshot](http://i2.wp.com/khatchad.commons.gc.cuny.edu/files/2018/03/Screenshot-from-2018-04-28-17-34-53.png)
 
 ## Demonstration
@@ -32,6 +31,8 @@ Currently, the refactoring works only via the package explorer and the outline v
 
 ## Installation
 
+The latest release is [v0.18.0][v0.18.0]. It has been tested on Eclipse IDE for RCP and RAP Developers Version: 2019-03 (4.11.0), Build id: 20190314-1200 under OpenJDK Runtime Environment (build 1.8.0_212-8u212-b03-0ubuntu1.19.04.2-b03) and OpenJDK 64-Bit Server VM (build 25.212-b03, mixed mode) on Ubuntu 19.04.
+
 [This video][install] demonstrates the different ways that this tool can be installed.
 
 ### Update Site
@@ -39,7 +40,7 @@ Currently, the refactoring works only via the package explorer and the outline v
 An alpha version of our tool is available via an Eclipse update site at: https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.updatesite. Please choose the latest version of the "Optimize Stream Refactoring."
 
 ### Eclipse Marketplace
-
+ 
 You may also install the tool via the [Eclipse Marketplace](https://marketplace.eclipse.org/content/optimize-java-8-streams-refactoring) by dragging this icon to your running Eclipse workspace: [![Drag to your running Eclipse* workspace. *Requires Eclipse Marketplace Client](https://marketplace.eclipse.org/sites/all/themes/solstice/public/images/marketplace/btn-install.png)](http://marketplace.eclipse.org/marketplace-client-intro?mpc_install=4056021 "Drag to your running Eclipse* workspace. *Requires Eclipse Marketplace Client")
 
 ### Dependencies
@@ -93,3 +94,4 @@ See the [wiki][wiki] for further information.
 [entrypoints]: https://youtu.be/On4xBzvFk1c?t=2m6s
 [SCAM 2018]: http://www.ieee-scam.org/2018
 [paper]: https://khatchad.commons.gc.cuny.edu/research/publications/#Khatchadourian2018b
+[v0.18.0]: /releases/tag/v0.18.0
