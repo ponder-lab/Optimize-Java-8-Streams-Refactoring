@@ -61,9 +61,9 @@
   </properties>
   <repositories>
     <repository>
-      <id>2018-09</id>
+      <id>2019-06</id>
       <layout>p2</layout>
-      <url>http://download.eclipse.org/releases/2018-09</url>
+      <url>http://download.eclipse.org/releases/2019-06</url>
     </repository>
     <repository>
       <id>common-refactoring</id>
@@ -81,9 +81,9 @@
       <url>https://raw.githubusercontent.com/ponder-lab/WALA/master/com.ibm.wala.updatesite</url>
     </repository>
     <repository>
-      <id>2018-09-update</id>
+      <id>2019-06-update</id>
       <layout>p2</layout>
-      <url>http://download.eclipse.org/eclipse/updates/4.9</url>
+      <url>http://download.eclipse.org/eclipse/updates/4.12</url>
     </repository>
   </repositories>
   <build>
