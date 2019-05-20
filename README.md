@@ -94,4 +94,4 @@ See the [wiki][wiki] for further information.
 [entrypoints]: https://youtu.be/On4xBzvFk1c?t=2m6s
 [SCAM 2018]: http://www.ieee-scam.org/2018
 [paper]: https://khatchad.commons.gc.cuny.edu/research/publications/#Khatchadourian2018b
-[v0.18.0]: /releases/tag/v0.18.0
+[v0.18.0]: https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/releases/tag/v0.18.0
