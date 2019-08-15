@@ -239,10 +239,8 @@ public class StreamStateMachine {
 	 * Returns true if the given {@link PointerKey} should be filtered from the
 	 * {@link ModRef} analysis.
 	 *
-	 * @param pointerKey
-	 *            The {@link PointerKey} in question.
-	 * @param engine
-	 *            The {@link AnalysisEngine} to use.
+	 * @param pointerKey The {@link PointerKey} in question.
+	 * @param engine     The {@link AnalysisEngine} to use.
 	 * @return <code>true</code> if the given {@link PointerKey} should be filtered
 	 *         and <code>false</code> otherwise.
 	 * @apiNote The current filtering mechanism excludes field {@link PointerKey}s
@@ -340,15 +338,12 @@ public class StreamStateMachine {
 	 * Return the basic block in context for the given block in the procedure
 	 * represented by the given call graph node in the given supergraph.
 	 *
-	 * @param block
-	 *            The block in which to find the corresponding block in context in
-	 *            the supergraph.
-	 * @param cgNode
-	 *            The call graph node representing the procedure that contains the
-	 *            block.
-	 * @param supergraph
-	 *            The supergraph in which to look up the corresponding block in
-	 *            context.
+	 * @param block      The block in which to find the corresponding block in
+	 *                   context in the supergraph.
+	 * @param cgNode     The call graph node representing the procedure that
+	 *                   contains the block.
+	 * @param supergraph The supergraph in which to look up the corresponding block
+	 *                   in context.
 	 * @return The block in context in the given supergraph that corresponds to the
 	 *         given block with the procedure represented by the given call graph
 	 *         node.
@@ -1311,12 +1306,12 @@ public class StreamStateMachine {
 			if (Util.isStreamNode(node, classHierarchy))
 				keep.add(node);
 		}
-		
+
 		PrunedCallGraph prunedCallGraph = new PrunedCallGraph(callGraph, keep);
 		int numberOfNodesInPrunedCallGraph = prunedCallGraph.getNumberOfNodes();
 		LOGGER.info("The number of nodes in partial graph: " + numberOfNodesInPrunedCallGraph
 				+ ". The number of saved nodes: " + (numberOfNodesInCallGraph - numberOfNodesInPrunedCallGraph));
-		
+
 		return prunedCallGraph;
 	}
 }
