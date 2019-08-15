@@ -910,7 +910,8 @@ public class StreamStateMachine {
 						+ stream.getCreation() + ".", e);
 				stream.addStatusEntry(PreconditionFailure.NO_APPLICATION_CODE_IN_CALL_STRINGS,
 						"No application code in the call strings generated for stream: " + stream.getCreation()
-								+ " was found. The maximum call string length may need to be increased.");
+								+ " was found. The maximum call string length (" + engine.getNToUseForStreams()
+								+ ") may need to be increased.");
 				++skippedStreams;
 				continue; // next stream.
 			}
