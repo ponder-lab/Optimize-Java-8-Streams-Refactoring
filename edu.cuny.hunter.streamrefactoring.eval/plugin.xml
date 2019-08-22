@@ -7,6 +7,13 @@
           description="Evaluates the Convert Stream to Parallel refactoring"
           id="edu.cuny.hunter.evaluate.convert.stream.to.parallel.refactoring.command"
           name="Evaluate Convert Stream To Parallel Refactoring"/>
+    <command
+          categoryId="org.eclipse.jdt.ui.category.source"
+          defaultHandler="edu.cuny.hunter.streamrefactoring.eval.handlers.StreamMethodCallFinder"
+          description="Counts the number of methods called that are stream methods"
+          id="edu.cuny.hunter.count.stream.methods.command"
+          name="Count the number of stream methods called">
+    </command>
   </extension>
   <extension point="org.eclipse.ui.handlers">
     <handler
@@ -19,6 +26,22 @@
           </iterate>
         </with>
       </activeWhen>
+    </handler>
+    <handler
+          class="edu.cuny.hunter.streamrefactoring.eval.handlers.StreamMethodCallFinder"
+          commandId="edu.cuny.hunter.count.stream.methods.command">
+       <activeWhen>
+          <with
+                variable="selection">
+             <iterate
+                   ifEmpty="false"
+                   operator="or">
+                <instanceof
+                      value="org.eclipse.jdt.core.IJavaProject">
+                </instanceof>
+             </iterate>
+          </with>
+       </activeWhen>
     </handler>
   </extension>
 </plugin>
