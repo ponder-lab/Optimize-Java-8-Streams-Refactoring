@@ -55,7 +55,7 @@ public class StreamMethodCallFinder extends AbstractHandler {
 	@Override
 	public Object execute(ExecutionEvent event) throws ExecutionException {
 		Job.create("Finding stream method calls...", monitor -> {
-			try (CSVPrinter printer = new CSVPrinter(new FileWriter("stream_calls.csv"),
+			try (CSVPrinter printer = new CSVPrinter(new FileWriter("stream_calls.csv", true),
 					CSVFormat.DEFAULT.withHeader("subject", "method", "calls"))) {
 
 				IJavaProject[] javaProjects = Util.getSelectedJavaProjectsFromEvent(event);
