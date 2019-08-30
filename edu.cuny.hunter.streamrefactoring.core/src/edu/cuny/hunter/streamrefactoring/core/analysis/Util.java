@@ -763,10 +763,27 @@ public final class Util {
 
 	private static boolean matches(TypeReference methodDeclaringType, MethodReference method,
 			MethodInvocation invocation) {
-		if (getBinaryName(methodDeclaringType).equals(invocation.getExpression().resolveTypeBinding().getBinaryName()))
-			// FIXME: This matching needs much work #153.
-			if (method.getName().toString().equals(invocation.resolveMethodBinding().getName()))
-				return true;
+		String declaringTypeBinaryName = getBinaryName(methodDeclaringType);
+
+		if (declaringTypeBinaryName != null) {
+			Expression expression = invocation.getExpression();
+
+			if (expression != null) {
+				ITypeBinding typeBinding = expression.resolveTypeBinding();
+
+				if (typeBinding != null) {
+					String expressionBinaryName = typeBinding.getBinaryName();
+
+					if (declaringTypeBinaryName.equals(expressionBinaryName))
+						// FIXME: This matching needs much work #153.
+						if (method.getName().toString().equals(invocation.resolveMethodBinding().getName()))
+							return true;
+				} else
+					LOGGER.warning("typeBinding is null for expression: " + expression);
+			} else
+				LOGGER.warning("expression is null for invocation: " + invocation);
+		} else
+			LOGGER.warning("Binary name is null for method declarying type: " + methodDeclaringType);
 		return false;
 	}
 
