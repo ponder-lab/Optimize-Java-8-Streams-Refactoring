@@ -24,6 +24,7 @@ import org.eclipse.jdt.core.dom.AST;
 import org.eclipse.jdt.core.dom.ASTNode;
 import org.eclipse.jdt.core.dom.ASTParser;
 import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.core.dom.SimpleName;
@@ -91,15 +92,25 @@ public class StreamMethodCallFinder extends AbstractHandler {
 
 										@Override
 										public boolean visit(MethodInvocation node) {
-											ITypeBinding declaringClass = node.resolveMethodBinding()
-													.getDeclaringClass().getErasure();
+											IMethodBinding binding = node.resolveMethodBinding();
 
-											if (declaringClass.getPackage().getName().startsWith("java.util.stream")) {
-												String declaringClassName = declaringClass.getQualifiedName();
-												SimpleName methodName = node.getName();
-												String qualfiedMethodName = declaringClassName + "." + methodName;
+											if (binding != null) {
+												ITypeBinding declaringClass = binding.getDeclaringClass();
 
-												calledMethodNameToCount.merge(qualfiedMethodName, 1, Integer::sum);
+												if (declaringClass != null) {
+													declaringClass = declaringClass.getErasure();
+
+													if (declaringClass.getPackage().getName()
+															.startsWith("java.util.stream")) {
+														String declaringClassName = declaringClass.getQualifiedName();
+														SimpleName methodName = node.getName();
+														String qualfiedMethodName = declaringClassName + "."
+																+ methodName;
+
+														calledMethodNameToCount.merge(qualfiedMethodName, 1,
+																Integer::sum);
+													}
+												}
 											}
 											return super.visit(node);
 										}
