@@ -1,14 +1,15 @@
 # Optimize Java 8 Streams Refactoring
 
-[![Build Status](https://travis-ci.com/ponder-lab/Optimize-Java-8-Streams-Refactoring.svg?branch=master)](https://travis-ci.com/ponder-lab/Optimize-Java-8-Streams-Refactoring) [![Coverage Status](https://coveralls.io/repos/github/ponder-lab/Optimize-Java-8-Streams-Refactoring/badge.svg?branch=master)](https://coveralls.io/github/ponder-lab/Optimize-Java-8-Streams-Refactoring?branch=master) [![GitHub license](https://img.shields.io/badge/license-Eclipse-blue.svg)](https://github.com/khatchadourian-lab/Java-8-Stream-Refactoring/raw/master/LICENSE.txt) [![DOI](https://zenodo.org/badge/78147265.svg)](https://zenodo.org/badge/latestdoi/78147265)
+[![Build Status](https://travis-ci.com/ponder-lab/Optimize-Java-8-Streams-Refactoring.svg?branch=master)](https://travis-ci.com/ponder-lab/Optimize-Java-8-Streams-Refactoring) [![Coverage Status](https://coveralls.io/repos/github/ponder-lab/Optimize-Java-8-Streams-Refactoring/badge.svg?branch=master)](https://coveralls.io/github/ponder-lab/Optimize-Java-8-Streams-Refactoring?branch=master) [![GitHub license](https://img.shields.io/badge/license-Eclipse-blue.svg)](https://github.com/khatchadourian-lab/Java-8-Stream-Refactoring/raw/master/LICENSE.txt) [![DOI](https://zenodo.org/badge/78147265.svg)](https://zenodo.org/badge/latestdoi/78147265) [![Java profiler](https://www.ej-technologies.com/images/product_banners/jprofiler_small.png)](https://www.ej-technologies.com/products/jprofiler/overview.html)
 
 ## Introduction
 
-<img src="https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.ui/icons/icon.png" alt="Icon" align="left" height=150px width=150px/> The Java 8 Stream API sets forth a promising new programming model that incorporates functional-like, MapReduce-style features into a mainstream programming language. However, using streams efficiently may involve subtle considerations. 
+<img src="https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.ui/icons/icon.png" alt="Icon" align="left" height=150px width=150px/> The Java 8 Stream API sets forth a promising new programming model that incorporates functional-like, MapReduce-style features into a mainstream programming language. However, using streams efficiently may involve subtle considerations.
 
 This tool consists of automated refactoring research prototype plug-ins for [Eclipse][eclipse] that assists developers in writing optimal stream client code in a semantics-preserving fashion. Refactoring preconditions and transformations for automatically determining when it is safe and possibly advantageous to convert a sequential stream to parallel and improve upon already parallel streams are included. The approach utilizes both [WALA][wala] and [SAFE][safe].
 
 ## Screenshot
+
 ![Screenshot](http://i2.wp.com/khatchad.commons.gc.cuny.edu/files/2018/03/Screenshot-from-2018-04-28-17-34-53.png)
 
 ## Demonstration
@@ -32,6 +33,8 @@ Currently, the refactoring works only via the package explorer and the outline v
 
 ## Installation
 
+The latest release is [v0.18.0][v0.18.0]. It has been tested on Eclipse IDE for RCP and RAP Developers Version: 2019-03 (4.11.0), Build id: 20190314-1200 under OpenJDK Runtime Environment (build 1.8.0_212-8u212-b03-0ubuntu1.19.04.2-b03) and OpenJDK 64-Bit Server VM (build 25.212-b03, mixed mode) on Ubuntu 19.04.
+
 [This video][install] demonstrates the different ways that this tool can be installed.
 
 ### Update Site
@@ -39,7 +42,7 @@ Currently, the refactoring works only via the package explorer and the outline v
 An alpha version of our tool is available via an Eclipse update site at: https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.updatesite. Please choose the latest version of the "Optimize Stream Refactoring."
 
 ### Eclipse Marketplace
-
+ 
 You may also install the tool via the [Eclipse Marketplace](https://marketplace.eclipse.org/content/optimize-java-8-streams-refactoring) by dragging this icon to your running Eclipse workspace: [![Drag to your running Eclipse* workspace. *Requires Eclipse Marketplace Client](https://marketplace.eclipse.org/sites/all/themes/solstice/public/images/marketplace/btn-install.png)](http://marketplace.eclipse.org/marketplace-client-intro?mpc_install=4056021 "Drag to your running Eclipse* workspace. *Requires Eclipse Marketplace Client")
 
 ### Dependencies
@@ -68,7 +71,7 @@ Explicit entry points may be marked using the appropriate annotation found in th
 
 There are currently some limitations with embedded streams (i.e., streams declared as part of lambda expressions sent as arguments to intermediate stream operations). This is due to model differences between the Eclipse JDT and WALA. See [#155](https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/155) for details.
 
-In general, there is [an issue](https://github.com/wala/WALA/issues/281) with the mapping between the Eclipse DOM and WALA DOM, particuarly when using Anonymous Inner Classes (AICs). We are currently working with the WALA developers to resolve [this issue](https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/155).
+In general, there is [an issue](https://github.com/wala/WALA/issues/2/edit81) with the mapping between the Eclipse DOM and WALA DOM, particuarly when using Anonymous Inner Classes (AICs). We are currently working with the WALA developers to resolve [this issue](https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/155).
 
 ## Contributing
 
@@ -82,6 +85,35 @@ For information on contributing, see [CONTRIBUTING.md][contrib].
 
 See the [wiki][wiki] for further information.
 
+## Publications
+
+<a name="Khatchadourian2019"></a>Raffi Khatchadourian, Yiming Tang, Mehdi Bagherzadeh, and Syed Ahmed. Safe automated refactoring for intelligent parallelization of Java 8 streams. In <em>International Conference on Software Engineering</em>, ICSE '19, pages 619--630, Piscataway, NJ, USA, May 2019. ACM/IEEE, IEEE Press. [ <a href="http://www.cs.hunter.cuny.edu/~Raffi.Khatchadourian99/all_bib.html#Khatchadourian2019">bib</a> | <a href="http://dx.doi.org/10.1109/ICSE.2019.00072">DOI</a> | <a href="http://www.slideshare.net/khatchad/safe-automated-refactoring-for-intelligent-parallelization-of-java-8-streams">slides</a> | <a href="http://academicworks.cuny.edu/hc_pubs/489">http</a> ]
+
+<a name="Khatchadourian2018b"></a>Raffi Khatchadourian, Yiming Tang, Mehdi Bagherzadeh, and Syed Ahmed. A tool for optimizing Java 8 stream software via automated refactoring. In <em>International Working Conference on Source Code Analysis and Manipulation</em>, SCAM '18, pages 34--39. IEEE, IEEE Press, September 2018. Engineering Track. [ <a href="http://www.cs.hunter.cuny.edu/~Raffi.Khatchadourian99/all_bib.html#Khatchadourian2018b">bib</a> | <a href="http://dx.doi.org/10.1109/SCAM.2018.00011">DOI</a> | <a href="http://www.slideshare.net/khatchad/a-tool-for-optimizing-java-8-stream-softwarevia-automated-refactoring">slides</a> | <a href="http://academicworks.cuny.edu/hc_pubs/429">http</a> ]
+
+## Citation
+
+Please cite this work as follows:
+
+```bibtex
+@inproceedings{Khatchadourian2018b,
+  author = {Raffi Khatchadourian and Yiming Tang and Mehdi Bagherzadeh and Syed Ahmed},
+  title = {A Tool for Optimizing {Java} 8 Stream Software via Automated Refactoring},
+  booktitle = {International Working Conference on Source Code Analysis and Manipulation},
+  year = {2018},
+  series = {SCAM '18},
+  pages = {34--39},
+  month = sep,
+  organization = {IEEE},
+  publisher = {IEEE Press},
+  note = {Engineering Track.},
+  doi = {10.1109/SCAM.2018.00011},
+  issn = {2470-6892},
+  location = {Madrid, Spain},
+  numpages = {6},
+}
+```
+
 [wiki]: https://github.com/ponder-lab/Java-8-Stream-Refactoring/wiki
 [challenges]: https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/wiki/Solutions-to-Engineering-Challenges
 [annotations]: https://github.com/ponder-lab/edu.cuny.hunter.streamrefactoring.annotations
@@ -92,4 +124,5 @@ See the [wiki][wiki] for further information.
 [install]: https://youtu.be/On4xBzvFk1c
 [entrypoints]: https://youtu.be/On4xBzvFk1c?t=2m6s
 [SCAM 2018]: http://www.ieee-scam.org/2018
-[paper]: https://khatchad.commons.gc.cuny.edu/research/publications/#Khatchadourian2018a
+[paper]: https://khatchad.commons.gc.cuny.edu/research/publications/#Khatchadourian2018b
+[v0.18.0]: https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/releases/tag/v0.18.0

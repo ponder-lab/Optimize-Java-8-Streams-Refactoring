@@ -4,7 +4,7 @@ Please see [the wiki][wiki] for more information regarding development.
 
 ## Building
 
-The project includes a maven configuration file using the tycho plug-in, which is part of the [maven eclipse plugin](http://www.eclipse.org/m2e/). Running `mvn install` will install *most* dependencies. Note that if you are not using maven, this plugin depends on https://github.com/khatchad/edu.cuny.citytech.refactoring.common, the **Eclipse SDK**, **Eclipse SDK tests**, and the **Eclipse testing framework** (may also be called the **Eclipse Test Framework**). The latter three can be installed from the "Install New Software..." menu option under "Help" in Eclipse.
+The project includes a maven configuration file using the tycho plug-in, which is part of the [maven eclipse plugin](http://www.eclipse.org/m2e/). Running `mvn install` will install *most* dependencies. Note that if you are not using maven, this plugin depends on https://github.com/khatchad/edu.cuny.citytech.refactoring.common, the **Eclipse SDK**, **Eclipse SDK tests**, the **Eclipse testing framework** (may also be called the **Eclipse Test Framework**), and [Metrics](http://metrics2.sourceforge.net). Some of these can be installed from the "Install New Software..." menu option under "Help" in Eclipse.
 
 ## Generating Entry Points Files
 
@@ -29,6 +29,8 @@ A file named `eval.properties` can be placed at the project root. The following 
 Key              | Value Type | Description
 ---------------- | ---------- | ----------
 nToUseForStreams | Integer    | The value of N to use while building the nCFA for stream types.
+
+More info can be found on [this wiki page](https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/wiki/Running-the-Evaluator).
 
 [wiki]: https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/wiki
 [annotations]: https://github.com/ponder-lab/edu.cuny.hunter.streamrefactoring.annotations
