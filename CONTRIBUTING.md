@@ -15,7 +15,7 @@ Each time we run the evaluation, a text file is generated in the working directo
 You should have the following projects in your workspace:
 
 1. [WALA stream branch](https://github.com/ponder-lab/WALA/tree/streams). Though, not all projecst are necessary. You can close thee ones related to JavaScript and Android.
-1. [SAFE](https://github.com/ponder-lab/safe).
+1. [SAFE](https://github.com/tech-srl/safe).
 1. [Common Eclipse Java Refactoring Framework](https://github.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework).
 
 It's also possible just to use `mvn install` if you do not intend on changing any of the dependencies.
