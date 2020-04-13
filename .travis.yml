@@ -18,7 +18,8 @@ cache:
     directories:
         - $HOME/.m2
 services:
-    - xvfb
+ - xvfb
+    
 script:
  - cd edu.cuny.streamrefactoring.parent && mvn -e generate-sources install && cd -  
  - cd edu.cuny.streamrefactoring.parent && mvn clean verify -Pjacoco coveralls:report && cd -
