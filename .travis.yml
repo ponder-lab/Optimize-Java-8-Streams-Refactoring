@@ -1,12 +1,33 @@
-sudo: false
+
+install: true
+
 language: java
-jdk: openjdk8
+
+before_script:
+ - echo $JAVA_OPTS
+ - export JAVA_OPTS='-Xms1g -Xmx3g'
+ - echo "MAVEN_OPTS='-Xmx3g'" > ~/.mavenrc
+
+env:
+  global:
+    - MAVEN_OPTS="-Xmx3g"
+
+
 cache:
     apt: true
     directories:
         - $HOME/.m2
 services:
     - xvfb
-script: mvn clean verify -Pjacoco coveralls:report
-notifications:
-    slack: cunyponder:A8GuEoj0voEn2H7MJDL1eNji
+script:
+ - cd edu.cuny.streamrefactoring.parent && mvn -e generate-sources install && cd -  
+ - cd edu.cuny.streamrefactoring.parent && mvn clean verify -Pjacoco coveralls:report && cd -
+ - du -sh edu.cuny.streamrefactoring.updatesite/target/repository
+
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: $GITHUB_TOKEN # Set in travis-ci.org dashboard
+  local_dir: edu.cuny.streamrefactoring.updatesite/target/repository
+  on:
+    branch: master
