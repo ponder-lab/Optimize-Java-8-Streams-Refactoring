@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: %Bundle-Name
 Bundle-SymbolicName: edu.cuny.hunter.streamrefactoring.eval;singleton:=true
-Bundle-Version: 1.0.0
+Bundle-Version: 1.3.0.qualifier
 Bundle-Activator: edu.cuny.hunter.streamrefactoring.ui.plugins.EvaluateConvertToParllelStreamRefactoringPlugin
 Bundle-Vendor: %Bundle-Vendor
 Bundle-Localization: bundle
@@ -13,7 +13,11 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.ltk.core.refactoring,
  edu.cuny.citytech.refactoring.common.core;bundle-version="1.1.0",
  net.sourceforge.metrics;bundle-version="1.3.8",
- com.google.guava;bundle-version="21.0.0"
+ com.google.guava;bundle-version="21.0.0",
+ com.ibm.wala.core,
+ edu.cuny.hunter.streamrefactoring.core,
+ org.eclipse.core.resources,
+ org.eclipse.swt.tools
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ClassPath: .,
  lib/commons-csv-1.1.jar
@@ -21,11 +25,3 @@ Export-Package: edu.cuny.hunter.streamrefactoring.eval.handlers,
  edu.cuny.hunter.streamrefactoring.eval.messages,
  edu.cuny.hunter.streamrefactoring.eval.utils,
  edu.cuny.hunter.streamrefactoring.ui.plugins
-Import-Package: com.google.common.io,
- com.ibm.wala.classLoader,
- com.ibm.wala.ipa.callgraph,
- com.ibm.wala.types,
- edu.cuny.hunter.streamrefactoring.core.analysis,
- edu.cuny.hunter.streamrefactoring.core.refactorings,
- edu.cuny.hunter.streamrefactoring.core.utils,
- org.eclipse.core.resources
