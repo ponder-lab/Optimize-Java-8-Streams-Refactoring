@@ -1,10 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
-      id="edu.cuny.hunter.optimize.stream.refactoring"
+      id="edu.cuny.hunter.streamrefactoring.feature"
       label="Optimize Streams Refactoring"
-      version="0.18.0.qualifier"
-      provider-name="Hunter College, City University of New York"
-      plugin="edu.cuny.hunter.streamrefactoring.core">
+      version="2.0.0.qualifier"
+      provider-name="Hunter College, City University of New York">
 
    <description url="http://cuny.is/streams">
       The Java 8 Stream API sets forth a promising new programming model that incorporates functional-like, MapReduce-style features into a mainstream programming language. However, using streams efficiently may involve subtle considerations.
@@ -223,10 +222,7 @@ any resulting litigation.
    </license>
 
    <url>
-      <update label="Optimize Streams Refactoring Update Site" url="https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.updatesite"/>
-      <discovery label="Common Eclipse Java Refactoring Framework" url="https://raw.githubusercontent.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite"/>
-      <discovery label="WALA" url="https://raw.githubusercontent.com/ponder-lab/WALA/master/com.ibm.wala.updatesite"/>
-      <discovery label="SAFE" url="https://raw.githubusercontent.com/ponder-lab/safe/master/com.ibm.safe.updatesite"/>
+      <discovery label="Stream CUNY update site" url="https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.updatesite"/>
    </url>
 
    <includes
@@ -243,34 +239,30 @@ any resulting litigation.
 
    <requires>
       <import plugin="org.eclipse.ltk.core.refactoring"/>
-      <import plugin="org.eclipse.equinox.registry"/>
       <import plugin="org.eclipse.jdt.core"/>
-      <import plugin="org.eclipse.osgi"/>
       <import plugin="edu.cuny.citytech.refactoring.common.core" version="1.1.0" match="greaterOrEqual"/>
       <import plugin="org.eclipse.jdt.ui"/>
-      <import plugin="org.eclipse.jface" version="3.11.0" match="greaterOrEqual"/>
       <import plugin="com.google.guava"/>
-      <import plugin="com.ibm.safe.core" version="1.0.0" match="greaterOrEqual"/>
-      <import plugin="com.ibm.safe.typestate" version="1.0.0" match="greaterOrEqual"/>
-      <import plugin="org.eclipse.jdt.launching"/>
-      <import plugin="com.ibm.safe"/>
-      <import plugin="org.eclipse.core.resources"/>
-      <import plugin="org.eclipse.core.runtime"/>
-      <import plugin="org.eclipse.core.jobs"/>
-      <import plugin="org.eclipse.jdt.core.manipulation"/>
-      <import plugin="org.eclipse.jface.text"/>
-      <import plugin="org.eclipse.pde.core"/>
-      <import plugin="org.eclipse.text"/>
-      <import plugin="org.eclipse.ui.workbench"/>
-      <import plugin="org.eclipse.ui"/>
-      <import plugin="org.eclipse.ltk.ui.refactoring"/>
-      <import plugin="edu.cuny.hunter.streamrefactoring.core" version="1.0.0" match="greaterOrEqual"/>
-      <import plugin="edu.cuny.citytech.refactoring.common.ui" version="1.1.0" match="greaterOrEqual"/>
       <import plugin="com.ibm.wala.ide" version="1.3.10" match="greaterOrEqual"/>
       <import plugin="com.ibm.wala.ide.jdt" version="1.3.10" match="greaterOrEqual"/>
       <import plugin="com.ibm.wala.core" version="1.3.10" match="greaterOrEqual"/>
       <import plugin="com.ibm.wala.cast.java" version="1.3.10" match="greaterOrEqual"/>
       <import plugin="com.ibm.wala.shrike" version="1.3.10" match="greaterOrEqual"/>
+      <import plugin="com.ibm.safe.core" version="1.0.0" match="greaterOrEqual"/>
+      <import plugin="com.ibm.safe.typestate" version="1.0.0" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.jdt.launching"/>
+      <import plugin="org.eclipse.core.resources"/>
+      <import plugin="org.eclipse.core.runtime"/>
+      <import plugin="org.eclipse.jdt.core.manipulation"/>
+      <import plugin="org.eclipse.text"/>
+      <import plugin="org.eclipse.ui"/>
+      <import plugin="org.eclipse.pde.core"/>
+      <import plugin="org.eclipse.ltk.ui.refactoring"/>
+      <import plugin="edu.cuny.hunter.streamrefactoring.core" version="1.0.0" match="greaterOrEqual"/>
+      <import plugin="edu.cuny.citytech.refactoring.common.ui" version="1.1.0" match="greaterOrEqual"/>
+      <import plugin="org.eclipse.equinox.registry"/>
+      <import plugin="org.eclipse.ui.workbench"/>
+      <import plugin="org.eclipse.osgi"/>
    </requires>
 
    <plugin
