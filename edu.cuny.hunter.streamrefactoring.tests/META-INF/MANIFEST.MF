@@ -2,21 +2,15 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: %Bundle-Name
 Bundle-SymbolicName: edu.cuny.hunter.streamrefactoring.tests;singleton:=true
-Bundle-Version: 1.0.0
+Bundle-Version: 2.0.0.qualifier
 Bundle-ActivationPolicy: lazy
 Bundle-Vendor: %Bundle-Vendor
-Fragment-Host: org.eclipse.jdt.ui
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
-Require-Bundle: org.junit,
- edu.cuny.citytech.refactoring.common.core,
- edu.cuny.citytech.refactoring.common.tests,
- org.eclipse.jdt.ui.tests.refactoring;bundle-version="3.13.200"
-Import-Package: com.ibm.wala.ipa.callgraph,
- edu.cuny.hunter.streamrefactoring.core.analysis,
- edu.cuny.hunter.streamrefactoring.core.descriptors,
- edu.cuny.hunter.streamrefactoring.core.refactorings,
- edu.cuny.hunter.streamrefactoring.core.utils,
+Require-Bundle: edu.cuny.hunter.streamrefactoring.core,
+ org.junit,
  org.eclipse.core.resources,
+ org.eclipse.jdt.ui,
+ org.eclipse.core.runtime,
  org.eclipse.jdt.core,
- org.eclipse.jdt.testplugin
+ org.eclipse.ltk.core.refactoring
 Export-Package: edu.cuny.hunter.streamrefactoring.ui.tests
