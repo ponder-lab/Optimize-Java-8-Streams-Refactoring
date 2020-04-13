@@ -5,13 +5,13 @@
   <parent>
     <groupId>edu.cuny.hunter.streamrefactoring</groupId>
     <artifactId>edu.cuny.streamrefactoring.parent</artifactId>
-    <version>1.3.0</version>
+    <version>1.3.0-SNAPSHOT</version>
     <relativePath>../edu.cuny.hunter.streamrefactoring.parent/pom.xml</relativePath>
   </parent>
   
-    <artifactId>fr.lip6.move.gal.feature.core</artifactId>
+    <artifactId>edu.cuny.hunter.streamrefactoring.feature</artifactId>
     <packaging>eclipse-feature</packaging>
-    <name>Features :: gal Core feature</name>
-    <description>gal XText Editor Feature</description>
+    <name>Features :: Parallel Stream refactoring feature</name>
+    <description>Everything needed to run Java Parallel Stream refactoring.</description>
 
 </project>

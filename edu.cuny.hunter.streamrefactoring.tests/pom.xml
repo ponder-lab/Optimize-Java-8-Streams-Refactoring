@@ -4,11 +4,10 @@
   <parent>
     <groupId>edu.cuny.hunter.streamrefactoring</groupId>
     <artifactId>edu.cuny.streamrefactoring.parent</artifactId>
-    <version>1.3.0</version>
+    <version>1.3.0-SNAPSHOT</version>
     <relativePath>../edu.cuny.hunter.streamrefactoring.parent/pom.xml</relativePath>
   </parent>
   <artifactId>edu.cuny.hunter.streamrefactoring.tests</artifactId>
-  <version>1.0.0</version>
   <packaging>eclipse-test-plugin</packaging>
   <profiles>
     <profile>
