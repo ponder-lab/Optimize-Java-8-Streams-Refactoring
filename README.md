@@ -51,7 +51,7 @@ The refactoring has several dependencies as listed below. If you experience any 
 
 Dependency | Update Site
 --- | ---
-[WALA](https://github.com/ponder-lab/WALA) | https://raw.githubusercontent.com/ponder-lab/WALA/master/com.ibm.wala.updatesite
+[WALA](https://github.com/ponder-lab/WALA) | https://raw.githubusercontent.com/ponder-lab/WALA/streams/com.ibm.wala.updatesite
 [SAFE](https://github.com/ponder-lab/safe) | https://raw.githubusercontent.com/ponder-lab/safe/master/com.ibm.safe.updatesite
 [Common Eclipse Java Refactoring Framework](https://github.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework) | https://raw.githubusercontent.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite
 
