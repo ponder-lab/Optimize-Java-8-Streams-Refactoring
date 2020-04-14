@@ -4,7 +4,7 @@ Please see [the wiki][wiki] for more information regarding development.
 
 ## Building
 
-The project includes a maven configuration file using the tycho plug-in, which is part of the [maven eclipse plugin](http://www.eclipse.org/m2e/). Running `mvn install` will install *most* dependencies. Note that if you are not using maven, this plugin depends on https://github.com/khatchad/edu.cuny.citytech.refactoring.common, the **Eclipse SDK**, **Eclipse SDK tests**, the **Eclipse testing framework** (may also be called the **Eclipse Test Framework**), and [Metrics](http://metrics2.sourceforge.net). Some of these can be installed from the "Install New Software..." menu option under "Help" in Eclipse.
+The project includes a maven configuration file using the Tycho plug-in, which is part of the [maven eclipse plugin](http://www.eclipse.org/m2e/). Running `mvn install` will install *most* dependencies. Note that if you are not using maven, this plugin depends on https://github.com/khatchad/edu.cuny.citytech.refactoring.common, the **Eclipse SDK**, **Eclipse SDK tests**, the **Eclipse testing framework** (may also be called the **Eclipse Test Framework**), and [Metrics](http://metrics2.sourceforge.net). Some of these can be installed from the "Install New Software..." menu option under "Help" in Eclipse.
 
 ## Generating Entry Points Files
 
@@ -14,7 +14,7 @@ Each time we run the evaluation, a text file is generated in the working directo
 
 You should have the following projects in your workspace:
 
-1. [WALA streams branch](https://github.com/ponder-lab/WALA/tree/streams). Though, not all projecst are necessary. You can close thee ones related to JavaScript and Android.
+1. [WALA streams branch](https://github.com/ponder-lab/WALA/tree/streams). Though, not all projects are necessary. You can close thee ones related to JavaScript and Android.
 1. [SAFE](https://github.com/ponder-lab/safe).
 1. [Common Eclipse Java Refactoring Framework](https://github.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework).
 
