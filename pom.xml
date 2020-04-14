@@ -78,7 +78,7 @@
     <repository>
       <id>WALA</id>
       <layout>p2</layout>
-      <url>https://raw.githubusercontent.com/ponder-lab/WALA/master/com.ibm.wala.updatesite</url>
+      <url>https://raw.githubusercontent.com/ponder-lab/WALA/streams/com.ibm.wala.updatesite</url>
     </repository>
     <repository>
       <id>2018-09-update</id>
