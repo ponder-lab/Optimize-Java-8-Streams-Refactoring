@@ -59,7 +59,7 @@ class OrderingInference {
 	}
 
 	private String findStreamCreationMethod(IClass type) {
-		Collection<com.ibm.wala.classLoader.IMethod> allMethods = type.getAllMethods();
+		Iterable<? extends com.ibm.wala.classLoader.IMethod> allMethods = type.getAllMethods();
 		for (com.ibm.wala.classLoader.IMethod method : allMethods) {
 			TypeReference typeToCheck = Util.getEvaluationType(method);
 

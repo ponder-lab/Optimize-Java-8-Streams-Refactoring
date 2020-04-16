@@ -46,7 +46,7 @@ import com.ibm.wala.util.config.FileOfClasses;
  * Khatchadourian.
  *
  */
-public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJavaSourceAnalysisEngine<I> {
+public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJavaSourceAnalysisEngine {
 
 	private static final Logger LOGGER = Logger.getLogger(LOGGER_NAME);
 
@@ -182,7 +182,7 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 	}
 
 	@Override
-	protected CallGraphBuilder<?> getCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options,
+	protected CallGraphBuilder<InstanceKey> getCallGraphBuilder(IClassHierarchy cha, AnalysisOptions options,
 			IAnalysisCacheView cache) {
 		LOGGER.fine(() -> "Using N = " + this.getNToUseForStreams() + ".");
 		return Util.makeNCFABuilder(N, options, (AnalysisCache) cache, cha, this.scope, this.getNToUseForStreams());
