@@ -9,6 +9,7 @@
   <version>1.3.0</version>
   <packaging>pom</packaging>
   <modules>
+    <module>edu.cuny.hunter.streamrefactoring.maven-deps</module>
     <module>edu.cuny.hunter.streamrefactoring.ui</module>
     <module>edu.cuny.hunter.streamrefactoring.core</module>
     <module>edu.cuny.hunter.streamrefactoring.tests</module>
