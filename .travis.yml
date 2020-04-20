@@ -1,5 +1,10 @@
 install: true
 
+jdk:
+ - openjdk8
+ - openjdk11
+
+
 language: java
 
 before_script:
