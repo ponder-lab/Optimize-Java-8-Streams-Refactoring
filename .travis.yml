@@ -26,8 +26,11 @@ services:
     
 script:
  - cd edu.cuny.hunter.streamrefactoring.parent && mvn -e generate-sources install && cd -  
- - cd edu.cuny.hunter.streamrefactoring.parent && mvn clean verify -Pjacoco coveralls:report && cd -
  - du -sh edu.cuny.hunter.streamrefactoring.updatesite/target/repository
+
+# this reporting step does not work currently...
+# - cd edu.cuny.hunter.streamrefactoring.parent && mvn clean verify -Pjacoco coveralls:report && cd -
+
 
 deploy:
   provider: pages
