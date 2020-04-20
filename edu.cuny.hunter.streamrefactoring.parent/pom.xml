@@ -110,14 +110,19 @@
 			<url>https://raw.githubusercontent.com/ponder-lab/Common-Eclipse-Java-Refactoring-Framework/master/edu.cuny.citytech.refactoring.common.updatesite</url>
 		</repository>
 		<repository>
-			<id>safe</id>
+			<id>SAFE</id>
 			<layout>p2</layout>
 			<url>https://raw.githubusercontent.com/ponder-lab/safe/master/com.ibm.safe.updatesite</url>
 		</repository>
 		<repository>
-			<id>stream Java - CUNY base update site</id>
+			<id>WALA</id>
 			<layout>p2</layout>
-			<url>https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.updatesite</url>
+			<url>https://raw.githubusercontent.com/ponder-lab/WALA/streams/com.ibm.wala.updatesite</url>
+		</repository>
+		<repository>
+			<id>Metric</id>
+			<layout>p2</layout>
+			<url>http://metrics2.sourceforge.net/update</url>
 		</repository>
 
 		<repository>
