@@ -122,7 +122,7 @@
 		<repository>
 			<id>Metric</id>
 			<layout>p2</layout>
-			<url>http://metrics2.sourceforge.net/update</url>
+			<url>https://yanntm.github.io/metrics2-gh/</url>
 		</repository>
 
 		<repository>
