@@ -21,7 +21,9 @@
 		<module>../edu.cuny.hunter.streamrefactoring.ui</module>
 		<module>../edu.cuny.hunter.streamrefactoring.tests</module>
 		<module>../edu.cuny.hunter.streamrefactoring.tests.report</module>
+		<module>../edu.cuny.hunter.streamrefactoring.eval</module>
 		<module>../edu.cuny.hunter.streamrefactoring.feature</module>
+		<module>../edu.cuny.hunter.streamrefactoring.dev.feature</module>
 		<module>../edu.cuny.hunter.streamrefactoring.updatesite</module>
 	</modules>
 
