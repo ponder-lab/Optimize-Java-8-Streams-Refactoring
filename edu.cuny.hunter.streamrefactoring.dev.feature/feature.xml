@@ -243,8 +243,9 @@ any resulting litigation.
       <import plugin="org.eclipse.swt.tools"/>
       <import plugin="net.sourceforge.metrics.core" version="1.3.9" match="greaterOrEqual"/>
       <import plugin="org.junit"/>
-      <import plugin="org.eclipse.jdt.ui.tests.refactoring"/>
       <import plugin="org.eclipse.jdt.text.tests"/>
+      <import plugin="org.eclipse.jdt.ui.tests.refactoring"/>
+      <import plugin="org.apache.commons.csv"/>
    </requires>
 
    <plugin
