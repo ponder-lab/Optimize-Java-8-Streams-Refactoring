@@ -2,7 +2,9 @@ install: true
 
 jdk:
  - openjdk8
- - openjdk11
+
+# due to absence of rt.jar and others, code broken for Java >= 9 
+# - openjdk11
 
 
 language: java
