@@ -36,7 +36,6 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubMonitor;
-import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.core.runtime.jobs.Job;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
@@ -321,7 +320,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					// build the workspace.
 					monitor.beginTask("Building workspace ...", IProgressMonitor.UNKNOWN);
 					ResourcesPlugin.getWorkspace().build(IncrementalProjectBuilder.FULL_BUILD,
-							new SubProgressMonitor(monitor, IProgressMonitor.UNKNOWN));
+							SubMonitor.convert(monitor, IProgressMonitor.UNKNOWN));
 				}
 
 				IJavaProject[] javaProjects = Util.getSelectedJavaProjectsFromEvent(event);
@@ -567,14 +566,14 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 						if (!status.hasFatalError()) {
 							resultsTimeCollector.start();
 							Change change = new ProcessorBasedRefactoring(processor)
-									.createChange(new SubProgressMonitor(monitor, IProgressMonitor.UNKNOWN));
-							change.perform(new SubProgressMonitor(monitor, IProgressMonitor.UNKNOWN));
+									.createChange(SubMonitor.convert(monitor, IProgressMonitor.UNKNOWN));
+							change.perform(SubMonitor.convert(monitor, IProgressMonitor.UNKNOWN));
 							resultsTimeCollector.stop();
 						}
 
 					// ensure that we can build the project.
 					if (!javaProject.isConsistent())
-						javaProject.makeConsistent(new SubProgressMonitor(monitor, IProgressMonitor.UNKNOWN));
+						javaProject.makeConsistent(SubMonitor.convert(monitor, IProgressMonitor.UNKNOWN));
 
 					if (!javaProject.isStructureKnown())
 						throw new IllegalStateException(String.format("Project: %s should compile after refactoring.",

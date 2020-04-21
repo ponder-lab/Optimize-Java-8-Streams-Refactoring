@@ -19,7 +19,6 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.OperationCanceledException;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubMonitor;
-import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.jdt.core.ICompilationUnit;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
@@ -370,7 +369,7 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 			for (ICompilationUnit cu : units) {
 				CompilationUnit compilationUnit = this.getCompilationUnit(cu, pm);
 				this.manageCompilationUnit(manager, this.getCompilationUnitRewrite(cu, compilationUnit),
-						Optional.of(new SubProgressMonitor(pm, IProgressMonitor.UNKNOWN)));
+						Optional.of(SubMonitor.convert(pm, IProgressMonitor.UNKNOWN)));
 			}
 
 			final Map<String, String> arguments = new HashMap<>();
