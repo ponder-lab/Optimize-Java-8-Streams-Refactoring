@@ -17,6 +17,7 @@ Require-Bundle: org.eclipse.ui,
  edu.cuny.hunter.streamrefactoring.core,
  org.eclipse.core.resources,
  org.eclipse.swt.tools,
+ org.apache.commons.csv,
  net.sourceforge.metrics.core;bundle-version="1.3.9"
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ClassPath: .,
