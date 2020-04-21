@@ -221,10 +221,6 @@ after the cause of action arose. Each party waives its rights to a jury trial in
 any resulting litigation.
    </license>
 
-   <url>
-      <discovery label="Stream CUNY update site" url="https://raw.githubusercontent.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/master/edu.cuny.hunter.streamrefactoring.updatesite"/>
-   </url>
-
    <includes
          id="com.ibm.safe.feature"
          version="0.0.0"/>
