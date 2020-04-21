@@ -229,6 +229,22 @@ any resulting litigation.
          id="net.sourceforge.metrics.feature"
          version="0.0.0"/>
 
+   <includes
+         id="org.eclipse.pde"
+         version="0.0.0"/>
+
+   <includes
+         id="org.eclipse.jdt.source"
+         version="0.0.0"/>
+
+   <includes
+         id="org.eclipse.pde.source"
+         version="0.0.0"/>
+
+   <includes
+         id="org.eclipse.jdt"
+         version="0.0.0"/>
+
    <requires>
       <import plugin="org.eclipse.ui"/>
       <import plugin="org.eclipse.core.runtime" version="3.11.0" match="greaterOrEqual"/>
@@ -253,7 +269,6 @@ any resulting litigation.
          install-size="0"
          version="0.0.0"
          unpack="false"/>
-
 
    <plugin
          id="edu.cuny.hunter.streamrefactoring.eval"
