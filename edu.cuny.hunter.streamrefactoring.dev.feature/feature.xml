@@ -245,8 +245,15 @@ any resulting litigation.
       <import plugin="org.junit"/>
       <import plugin="org.eclipse.jdt.text.tests"/>
       <import plugin="org.eclipse.jdt.ui.tests.refactoring"/>
-      <import plugin="org.apache.commons.csv"/>
    </requires>
+
+   <plugin
+         id="org.apache.commons.csv"
+         download-size="0"
+         install-size="0"
+         version="0.0.0"
+         unpack="false"/>
+
 
    <plugin
          id="edu.cuny.hunter.streamrefactoring.eval"
