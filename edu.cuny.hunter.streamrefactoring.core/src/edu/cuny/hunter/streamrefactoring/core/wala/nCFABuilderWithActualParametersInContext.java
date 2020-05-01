@@ -1,6 +1,7 @@
 package edu.cuny.hunter.streamrefactoring.core.wala;
 
 import com.ibm.wala.analysis.reflection.ReflectionContextInterpreter;
+import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.ContextSelector;
@@ -26,7 +27,7 @@ public class nCFABuilderWithActualParametersInContext extends SSAPropagationCall
 	public nCFABuilderWithActualParametersInContext(int n, IClassHierarchy cha, AnalysisOptions options,
 			AnalysisCache cache, ContextSelector appContextSelector, SSAContextInterpreter appContextInterpreter,
 			int nToUseForStreams) {
-		super(cha, options, cache, new DefaultPointerKeyFactory());
+		super(Language.JAVA.getFakeRootMethod(cha, options, cache), options, cache, new DefaultPointerKeyFactory());
 		if (options == null)
 			throw new IllegalArgumentException("options is null");
 

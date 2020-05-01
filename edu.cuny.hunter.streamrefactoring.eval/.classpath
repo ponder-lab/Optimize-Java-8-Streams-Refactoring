@@ -8,5 +8,6 @@
 			<attribute name="javadoc_location" value="jar:platform:/resource/edu.cuny.hunter.streamrefactoring.eval/lib/commons-csv-docs-1.1.zip!/commons-csv-1.1/apidocs"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.ibm.wala.core"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

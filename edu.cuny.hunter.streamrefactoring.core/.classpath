@@ -13,5 +13,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/com.ibm.wala.shrike"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.ibm.wala.util"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/com.ibm.wala.cast.java.ecj"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.ibm.wala.cast.java"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

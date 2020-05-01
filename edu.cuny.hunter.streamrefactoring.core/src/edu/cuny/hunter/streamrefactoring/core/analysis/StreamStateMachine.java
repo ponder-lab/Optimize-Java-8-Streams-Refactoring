@@ -57,6 +57,7 @@ import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceFieldPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.NormalAllocationInNode;
+import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
 import com.ibm.wala.ipa.callgraph.pruned.PrunedCallGraph;
 import com.ibm.wala.ipa.cfg.BasicBlockInContext;
@@ -734,7 +735,8 @@ public class StreamStateMachine {
 		// compute modifications over the call graph.
 		// TODO: Should this be cached? Didn't have luck caching the call graph.
 		// Perhaps this will be similar.
-		Map<CGNode, OrdinalSet<PointerKey>> mod = modRef.computeMod(engine.getCallGraph(), engine.getPointerAnalysis());
+		Map<CGNode, OrdinalSet<PointerKey>> mod = modRef.computeMod(engine.getCallGraph(),
+				(PointerAnalysis<InstanceKey>) engine.getPointerAnalysis());
 
 		// for each terminal operation call, I think?
 		SubMonitor loopMonitor = subMonitor.split(50, SubMonitor.SUPPRESS_NONE)
@@ -1105,7 +1107,7 @@ public class StreamStateMachine {
 											// receiver. This will give us all
 											// object instances that the receiver
 											// reference points to.
-											OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis()
+											OrdinalSet<InstanceKey> pointsToSet = (OrdinalSet<InstanceKey>) engine.getPointerAnalysis()
 													.getPointsToSet(pointerKey);
 											assert pointsToSet != null : "The points-to set (I think) should not be null for pointer: "
 													+ pointerKey;
@@ -1179,7 +1181,8 @@ public class StreamStateMachine {
 
 			// for each terminal operation call.
 			for (BasicBlockInContext<IExplodedBasicBlock> block : this.terminalBlockToPossibleReceivers.keySet()) {
-				OrdinalSet<InstanceKey> possibleReceivers = this.terminalBlockToPossibleReceivers.get(block);
+				OrdinalSet<InstanceKey> possibleReceivers = (OrdinalSet<InstanceKey>) this.terminalBlockToPossibleReceivers.get(block);
+
 				// for each possible receiver of the terminal operation call.
 				for (InstanceKey instanceKey : possibleReceivers) {
 					Set<IDFAState> possibleStates = this.computeMergedTypeState(instanceKey, block, rule);

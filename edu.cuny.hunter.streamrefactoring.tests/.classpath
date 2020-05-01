@@ -7,5 +7,6 @@
 		<attribute name="test" value="true"/>
 	    </attributes>
 	</classpathentry>
+	<classpathentry combineaccessrules="false" kind="src" path="/com.ibm.wala.core"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

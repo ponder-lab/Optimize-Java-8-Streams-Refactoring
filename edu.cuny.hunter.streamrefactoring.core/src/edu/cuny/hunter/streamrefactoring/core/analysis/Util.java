@@ -405,7 +405,7 @@ public final class Util {
 
 	static int getLineNumberFromIR(IBytecodeMethod method, SSAInstruction instruction)
 			throws InvalidClassFileException {
-		int bytecodeIndex = method.getBytecodeIndex(instruction.iindex);
+		int bytecodeIndex = method.getBytecodeIndex(instruction.iIndex());
 		int lineNumberFromIR = method.getLineNumber(bytecodeIndex);
 		return lineNumberFromIR;
 	}
@@ -471,7 +471,8 @@ public final class Util {
 			PointerKey valueKey = engine.getHeapGraph().getHeapModel().getPointerKeyForLocal(node, valueNumber);
 			LOGGER.fine(() -> "Value pointer key is: " + valueKey);
 
-			OrdinalSet<InstanceKey> pointsToSet = engine.getPointerAnalysis().getPointsToSet(valueKey);
+			OrdinalSet<InstanceKey> pointsToSet = (OrdinalSet<InstanceKey>) engine.getPointerAnalysis()
+					.getPointsToSet(valueKey);
 			assert pointsToSet != null;
 			LOGGER.fine(() -> "PointsTo set is: " + pointsToSet);
 
