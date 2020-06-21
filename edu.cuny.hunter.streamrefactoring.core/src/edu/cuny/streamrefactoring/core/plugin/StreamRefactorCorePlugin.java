@@ -56,7 +56,7 @@ public class StreamRefactorCorePlugin extends Plugin {
 			URL toolff = getDefault().getBundle().getResource(relativePath);
 			if (toolff == null) {
 				log.severe("unable to find a folder for JRE in path " + relativePath);
-				throw new IOException("unable to find the tool binary");
+				throw new IOException("Unable to find the embedded JVM folder " + relativePath + " within bundle "+ getDefault().getBundle());
 			}
 			URL tmpURL = FileLocator.toFileURL(toolff);
 
