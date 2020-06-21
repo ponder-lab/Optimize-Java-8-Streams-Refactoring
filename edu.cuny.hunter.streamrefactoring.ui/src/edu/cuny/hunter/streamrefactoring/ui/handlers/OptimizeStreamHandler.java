@@ -8,9 +8,11 @@ import java.util.Set;
 import org.eclipse.core.commands.AbstractHandler;
 import org.eclipse.core.commands.ExecutionEvent;
 import org.eclipse.core.commands.ExecutionException;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.core.IJavaElement;
 import org.eclipse.jdt.core.IJavaProject;
+import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.internal.ui.JavaPlugin;
 import org.eclipse.jdt.internal.ui.util.SelectionUtil;
@@ -44,6 +46,13 @@ public class OptimizeStreamHandler extends AbstractHandler {
 						case IJavaElement.JAVA_PROJECT:
 							javaProjectSet.add((IJavaProject) jElem);
 							break;
+						}
+					} else if (obj instanceof IProject) {
+						IJavaProject javaProject = JavaCore.create((IProject)obj);
+						if (javaProject == null || !javaProject.exists()) {
+							// current project is not a Java project
+						} else {
+							javaProjectSet.add(javaProject);							
 						}
 					}
 
