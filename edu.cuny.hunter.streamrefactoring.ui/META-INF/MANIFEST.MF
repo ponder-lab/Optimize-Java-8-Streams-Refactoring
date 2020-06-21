@@ -14,7 +14,8 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.ltk.core.refactoring,
  edu.cuny.hunter.streamrefactoring.core;bundle-version="1.0.0",
  edu.cuny.citytech.refactoring.common.ui;bundle-version="1.1.0",
- edu.cuny.citytech.refactoring.common.core;bundle-version="1.1.0"
+ edu.cuny.citytech.refactoring.common.core;bundle-version="1.1.0",
+ org.eclipse.core.resources
 Bundle-RequiredExecutionEnvironment: JavaSE-1.8
 Bundle-ClassPath: .
 Export-Package: edu.cuny.hunter.streamrefactoring.ui.handlers,
