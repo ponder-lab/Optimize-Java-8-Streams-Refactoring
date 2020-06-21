@@ -40,6 +40,8 @@ import com.ibm.wala.types.ClassLoaderReference;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.config.FileOfClasses;
 
+import edu.cuny.streamrefactoring.core.plugin.StreamRefactorCorePlugin;
+
 /**
  * Modified from EclipseAnalysisEngine.java, originally from Keshmesh. Authored
  * by Mohsen Vakilian and Stas Negara. Modified by Nicholas Chen and Raffi
@@ -92,6 +94,9 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 		this.scope.addToScope(Primordial, new JarFile(installPath.resolve("lib").resolve(fileName).toFile()));
 	}
 
+	void addToScope(String fileName, Path installPath) throws IOException {
+		this.scope.addToScope(Primordial, new JarFile(installPath.resolve("lib").resolve(fileName).toFile()));
+	}
 	@Override
 	public void buildAnalysisScope() throws IOException {
 		try {
@@ -103,27 +108,25 @@ public class EclipseProjectAnalysisEngine<I extends InstanceKey> extends JDTJava
 		this.scope = this.ePath.toAnalysisScope(this.makeAnalysisScope());
 
 		// if no primordial classes are in scope.
-		if (this.scope.getModules(ClassLoaderReference.Primordial).isEmpty()) {
+		if (this.scope.getModules(ClassLoaderReference.Primordial).isEmpty()
+				|| true) { // TODO : this should test Java 9+ is used 
+			
 			// Add "real" libraries per
 			// https://github.com/ponder-lab/Java-8-Stream-Refactoring/issues/83.
 
-			IVMInstall defaultVMInstall = JavaRuntime.getDefaultVMInstall();
-			File installLocation = defaultVMInstall.getInstallLocation();
-			Path installPath = installLocation.toPath();
+			// old version
+//			IVMInstall defaultVMInstall = JavaRuntime.getDefaultVMInstall();
+//			File installLocation = defaultVMInstall.getInstallLocation();
 
-			if (Util.isWindows()) {
-				this.addToScopeWindows("resources.jar", installPath);
-				this.addToScopeWindows("rt.jar", installPath);
-				this.addToScopeWindows("jsse.jar", installPath);
-				this.addToScopeWindows("jce.jar", installPath);
-				this.addToScopeWindows("charsets.jar", installPath);
-			} else {
-				this.addToScopeNotWindows("resources.jar", installPath);
-				this.addToScopeNotWindows("rt.jar", installPath);
-				this.addToScopeNotWindows("jsse.jar", installPath);
-				this.addToScopeNotWindows("jce.jar", installPath);
-				this.addToScopeNotWindows("charsets.jar", installPath);
-			}
+			// embedded version
+			File installLocation = new File(StreamRefactorCorePlugin.getJVMLocalVersionURI().getPath() ) ;			
+			Path installPath = installLocation.toPath();
+			
+			this.addToScope("resources.jar", installPath);
+			this.addToScope("rt.jar", installPath);
+			this.addToScope("jsse.jar", installPath);
+			this.addToScope("jce.jar", installPath);
+			this.addToScope("charsets.jar", installPath);
 
 		}
 
