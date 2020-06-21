@@ -170,7 +170,20 @@
 					<!-- <target> <artifact> <groupId>org.eclipselabs.spray</groupId> <artifactId>org.eclipselabs.spray.targetplatform</artifactId> 
 						<version>0.4.0-SNAPSHOT</version> <classifier>spray</classifier> </artifact> 
 						</target> -->
-					<environments>
+						
+						<!-- This block solves issues with tests not having PDE visible
+							https://wiki.eclipse.org/Tycho/FAQ#How_do_I_install_the_org.eclipse.osgi.compatibility.state_fragment.3F
+						 -->
+					<dependency-resolution>
+      					<extraRequirements>
+        					<requirement>
+          						<type>eclipse-plugin</type>
+          						<id>org.eclipse.osgi.compatibility.state</id>
+          						<versionRange>[1.1.0,2.0.0)</versionRange>
+        					</requirement>
+      					</extraRequirements>
+    				</dependency-resolution>
+    				<environments>
 						<environment>
 							<os>win32</os>
 							<ws>win32</ws>
