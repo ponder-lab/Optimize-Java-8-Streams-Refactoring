@@ -33,3 +33,5 @@ Export-Package: edu.cuny.hunter.streamrefactoring.core.analysis,
  edu.cuny.hunter.streamrefactoring.core.refactorings,
  edu.cuny.hunter.streamrefactoring.core.utils,
  edu.cuny.hunter.streamrefactoring.core.wala
+Bundle-ActivationPolicy: lazy
+Bundle-Activator: edu.cuny.streamrefactoring.core.plugin.StreamRefactorCorePlugin
