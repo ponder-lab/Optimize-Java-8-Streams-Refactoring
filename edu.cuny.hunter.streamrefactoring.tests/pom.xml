@@ -47,9 +47,7 @@
           <useUIHarness>true</useUIHarness>
           <useUIThread>false</useUIThread>
           <failIfNoTests>true</failIfNoTests>
-          <showEclipseLog>true</showEclipseLog>
-          <skip>false</skip>
-          <skipTests>false</skipTests>
+          <showEclipseLog>true</showEclipseLog>          
           <explodedBundles>
             <bundle>org.junit</bundle>
           </explodedBundles>
