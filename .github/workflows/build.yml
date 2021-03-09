@@ -25,7 +25,7 @@ jobs:
          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
          restore-keys: ${{ runner.os }}-m2
     - name: Build with Maven
-      run: cd edu.cuny.hunter.streamrefactoring..parent && mvn -T 4 -e generate-sources install && cd -
+      run: cd edu.cuny.hunter.streamrefactoring.parent && mvn -T 4 -e generate-sources install && cd -
     - name: Deploy to GitHub Pages
       uses: JamesIves/github-pages-deploy-action@3.7.1
       with:
