@@ -171,7 +171,7 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 			this.useImplicitBenchmarkEntrypoints = useImplicitBenchmarkEntrypoints;
 			this.useImplicitJavaFXEntrypoints = useImplicitJavaFXEntrypoints;
 		} finally {
-			monitor.ifPresent(IProgressMonitor::done);
+			monitor.ifPresent(m -> m.done());
 		}
 	}
 
