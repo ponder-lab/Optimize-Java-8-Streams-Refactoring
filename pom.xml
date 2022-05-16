@@ -73,7 +73,7 @@
     <repository>
       <id>safe</id>
       <layout>p2</layout>
-      <url>https://raw.githubusercontent.com/ponder-lab/safe/master/com.ibm.safe.updatesite</url>
+      <url>https://raw.githubusercontent.com/tech-srl/safe/master/com.ibm.safe.updatesite</url>
     </repository>
     <repository>
       <id>WALA</id>
