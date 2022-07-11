@@ -194,7 +194,7 @@ public class OptimizeStreamRefactoringWizard extends RefactoringWizard {
 		RefactoringWizard wizard = new OptimizeStreamRefactoringWizard(refactoring);
 
 		new RefactoringStarter().activate(wizard, shell, RefactoringMessages.OpenRefactoringWizardAction_refactoring,
-				RefactoringSaveHelper.SAVE_REFACTORING);//
+				RefactoringSaveHelper.SAVE_REFACTORING);
 	}
 
 	public OptimizeStreamRefactoringWizard(Refactoring refactoring) {

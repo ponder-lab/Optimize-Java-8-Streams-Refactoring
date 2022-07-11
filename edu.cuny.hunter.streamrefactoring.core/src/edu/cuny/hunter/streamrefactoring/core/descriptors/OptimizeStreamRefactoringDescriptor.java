@@ -28,5 +28,4 @@ public class OptimizeStreamRefactoringDescriptor extends JavaRefactoringDescript
 			@SuppressWarnings("rawtypes") Map arguments, int flags) {
 		super(id, project, description, comment, arguments, flags);
 	}
-
 }

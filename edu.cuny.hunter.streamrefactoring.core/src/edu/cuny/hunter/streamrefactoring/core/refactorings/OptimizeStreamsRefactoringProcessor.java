@@ -437,6 +437,7 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 	 */
 	@Override
 	public Object[] getElements() {
+		// TODO.
 		return null;
 	}
 
