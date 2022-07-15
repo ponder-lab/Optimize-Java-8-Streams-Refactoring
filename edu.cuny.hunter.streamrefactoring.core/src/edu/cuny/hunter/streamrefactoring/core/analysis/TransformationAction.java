@@ -4,5 +4,4 @@ public enum TransformationAction {
 	CONVERT_TO_PARALLEL,
 	CONVERT_TO_SEQUENTIAL,
 	UNORDER
-
 }
