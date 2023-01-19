@@ -79,7 +79,7 @@ For information on contributing, see [CONTRIBUTING.md][contrib].
 
 ## Engineering Challenges and Solutions
 
-[This wiki page][challenges] highlights the locations in our code that solve several engineerinng challenges outlined in our [SCAM 2018] [paper].
+[This wiki page][challenges] highlights the locations in our code that solve several engineering challenges outlined in our [SCAM 2018] [paper].
 
 ## Further Information
 
