@@ -500,7 +500,7 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 								stream.getEnclosingType().getFullyQualifiedName());
 
 					// failed streams.
-					SetView<Stream> failures = Sets.difference(candidates, processor.getOptimizableStreams());
+					SetView<Stream> failures = Sets.difference(candidates, optimizableStreams);
 
 					for (Stream stream : failures)
 						nonOptimizedStreamPrinter.printRecord(javaProject.getElementName(), stream.getCreation(),
