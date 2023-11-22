@@ -312,7 +312,7 @@ public class StreamAnalyzer extends ASTVisitor {
 			}
 
 			subMonitor.worked(1);
-		} // end for each stream.
+		}
 		return ret;
 	}
 
