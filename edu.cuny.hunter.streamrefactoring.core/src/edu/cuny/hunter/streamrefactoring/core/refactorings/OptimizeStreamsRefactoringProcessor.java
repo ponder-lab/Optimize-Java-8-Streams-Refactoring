@@ -130,8 +130,6 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 
 	private Map<IJavaProject, Collection<Entrypoint>> projectToEntryPoints;
 
-	private SearchEngine searchEngine = new SearchEngine();
-
 	/** The code generation settings, or <code>null</code> */
 	private CodeGenerationSettings settings;
 
@@ -479,10 +477,6 @@ public class OptimizeStreamsRefactoringProcessor extends RefactoringProcessor {
 	@Override
 	public String getProcessorName() {
 		return Messages.Name;
-	}
-
-	private SearchEngine getSearchEngine() {
-		return this.searchEngine;
 	}
 
 	public Set<Stream> getStreamSet() {
