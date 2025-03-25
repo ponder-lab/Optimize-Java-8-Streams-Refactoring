@@ -26,8 +26,10 @@ import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.SubMonitor;
 import org.eclipse.jdt.core.IJavaProject;
 import org.eclipse.jdt.core.dom.ASTVisitor;
+import org.eclipse.jdt.core.dom.FieldDeclaration;
 import org.eclipse.jdt.core.dom.IMethodBinding;
 import org.eclipse.jdt.core.dom.ITypeBinding;
+import org.eclipse.jdt.core.dom.MethodDeclaration;
 import org.eclipse.jdt.core.dom.MethodInvocation;
 import org.eclipse.jdt.internal.corext.util.JdtFlags;
 
@@ -60,6 +62,12 @@ public class StreamAnalyzer extends ASTVisitor {
 	private static final Logger LOGGER = Logger.getLogger(LoggerNames.LOGGER_NAME);
 
 	private static final int N_FOR_STREAMS_DEFAULT = 2;
+
+	private int numberOfMethodForStreamReturnType;
+
+	private int numberOfMethodForStreamParameter;
+
+	private int numberOfFieldForStream;
 
 	private static void addImplicitEntryPoints(Collection<Entrypoint> target, Iterable<Entrypoint> source) {
 		for (Entrypoint implicitEntryPoint : source)
@@ -509,4 +517,49 @@ public class StreamAnalyzer extends ASTVisitor {
 
 		return super.visit(node);
 	}
+
+	@Override
+	public boolean visit(MethodDeclaration methodDeclaration) {
+		IMethodBinding methodBinding = methodDeclaration.resolveBinding();
+		ITypeBinding returnType = methodBinding.getReturnType();
+		boolean returnTypeImplementsBaseStream = Util.implementsBaseStream(returnType);
+		if (returnTypeImplementsBaseStream) {
+			numberOfMethodForStreamReturnType++;
+			super.visit(methodDeclaration);
+		}
+		ITypeBinding parameterTypes[] = methodBinding.getParameterTypes();
+		if (parameterTypes.length < 1)
+			return false;
+		else {
+			for (ITypeBinding parameterBinding : parameterTypes) {
+				if (Util.implementsBaseStream(parameterBinding)) {
+					numberOfMethodForStreamParameter++;
+					break;
+				}
+			}
+		}
+		return super.visit(methodDeclaration);
+	}
+
+	@Override
+	public boolean visit(FieldDeclaration fieldDeclaration) {
+		ITypeBinding fieldBinding = fieldDeclaration.getType().resolveBinding();
+		if (Util.implementsBaseStream(fieldBinding)) {
+			numberOfFieldForStream++;
+		}
+		return super.visit(fieldDeclaration);
+	}
+
+	public int getNumberOfMethodForStreamReturnType() {
+		return this.numberOfMethodForStreamReturnType;
+	}
+
+	public int getNumberOfMethodForStreamParameter() {
+		return this.numberOfMethodForStreamParameter;
+	}
+
+	public int getNumberOfFieldForStream() {
+		return this.numberOfFieldForStream;
+	}
+
 }

@@ -340,6 +340,8 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					resultsHeader.add(action.toString());
 
 				resultsHeader.add("time (s)");
+				resultsHeader.addAll(Arrays.asList("#methods for stream return type", "#methods for stream parameter",
+						"#number of fields for stream"));
 
 				resultsPrinter = createCSVPrinter("results.csv",
 						resultsHeader.toArray(new String[resultsHeader.size()]));
@@ -585,6 +587,10 @@ public class EvaluateConvertToParallelStreamRefactoringHandler extends AbstractH
 					// overall results time.
 					resultsPrinter.print((resultsTimeCollector.getCollectedTime()
 							- processor.getExcludedTimeCollector().getCollectedTime()) / 1000.0);
+
+					resultsPrinter.print(processor.getNumberOfMethodForStreamReturnType());
+					resultsPrinter.print(processor.getNumberOfMethodForStreamParameter());
+					resultsPrinter.print(processor.getNumberOfFieldForStream());
 
 					// end the record.
 					resultsPrinter.println();
