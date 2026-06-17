@@ -91,10 +91,6 @@ See the [wiki][wiki] for further information.
 
 <a name="Khatchadourian2018b"></a>Raffi Khatchadourian, Yiming Tang, Mehdi Bagherzadeh, and Syed Ahmed. A tool for optimizing Java 8 stream software via automated refactoring. In <em>International Working Conference on Source Code Analysis and Manipulation</em>, SCAM '18, pages 34--39. IEEE, IEEE Press, September 2018. Engineering Track. [ <a href="http://www.cs.hunter.cuny.edu/~Raffi.Khatchadourian99/all_bib.html#Khatchadourian2018b">bib</a> | <a href="http://dx.doi.org/10.1109/SCAM.2018.00011">DOI</a> | <a href="http://www.slideshare.net/khatchad/a-tool-for-optimizing-java-8-stream-softwarevia-automated-refactoring">slides</a> | <a href="http://academicworks.cuny.edu/hc_pubs/429">http</a> ]
 
-## Citation
-
-To cite this work, use the **"Cite this repository"** button in the GitHub sidebar, backed by [`CITATION.cff`](CITATION.cff), which generates APA or BibTeX for our [ICSE '19 paper](#Khatchadourian2019). See [Publications](#publications) above for the related [SCAM '18 tool paper](#Khatchadourian2018b).
-
 [wiki]: https://github.com/ponder-lab/Java-8-Stream-Refactoring/wiki
 [challenges]: https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/wiki/Solutions-to-Engineering-Challenges
 [annotations]: https://github.com/ponder-lab/edu.cuny.hunter.streamrefactoring.annotations
