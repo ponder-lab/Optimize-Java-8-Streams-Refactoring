@@ -43,7 +43,7 @@ An alpha version of our tool is available via an Eclipse update site at: https:/
 
 ### Eclipse Marketplace
  
-You may also install the tool via the [Eclipse Marketplace](https://marketplace.eclipse.org/content/optimize-java-8-streams-refactoring) by dragging this icon to your running Eclipse workspace: [![Drag to your running Eclipse* workspace. *Requires Eclipse Marketplace Client](https://marketplace.eclipse.org/sites/all/themes/solstice/public/images/marketplace/btn-install.png)](http://marketplace.eclipse.org/marketplace-client-intro?mpc_install=4056021 "Drag to your running Eclipse* workspace. *Requires Eclipse Marketplace Client")
+You may also install the tool via the [Eclipse Marketplace](https://marketplace.eclipse.org/content/optimize-java-8-streams-refactoring) by dragging this icon to your running Eclipse workspace: [![Drag to your running Eclipse* workspace. *Requires Eclipse Marketplace Client](https://marketplace.eclipse.org/misc/installbutton.png)](http://marketplace.eclipse.org/marketplace-client-intro?mpc_install=4056021 "Drag to your running Eclipse* workspace. *Requires Eclipse Marketplace Client")
 
 ### Dependencies
 
