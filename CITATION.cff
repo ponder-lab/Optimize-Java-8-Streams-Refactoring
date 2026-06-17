@@ -1,0 +1,87 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata from this file (the ICSE '19 paper)."
+title: "Optimize Java 8 Streams Refactoring"
+abstract: >-
+  Automated refactoring research prototype plug-ins for Eclipse that assist
+  developers in writing optimal Java 8 stream client code in a
+  semantics-preserving fashion, including preconditions and transformations
+  for safely converting sequential streams to parallel and improving already
+  parallel streams. The approach utilizes both WALA and SAFE.
+type: software
+authors:
+  - family-names: Khatchadourian
+    given-names: Raffi
+    orcid: "https://orcid.org/0000-0002-7930-0182"
+  - family-names: Tang
+    given-names: Yiming
+  - family-names: Bagherzadeh
+    given-names: Mehdi
+  - family-names: Ahmed
+    given-names: Syed
+repository-code: "https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring"
+license: EPL-1.0
+keywords:
+  - Java 8
+  - automatic parallelization
+  - refactoring
+  - static analysis
+  - streams
+  - typestate analysis
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.3066221
+    description: Concept DOI for all versions (Zenodo).
+preferred-citation:
+  type: conference-paper
+  title: "Safe Automated Refactoring for Intelligent Parallelization of Java 8 Streams"
+  authors:
+    - family-names: Khatchadourian
+      given-names: Raffi
+      orcid: "https://orcid.org/0000-0002-7930-0182"
+    - family-names: Tang
+      given-names: Yiming
+    - family-names: Bagherzadeh
+      given-names: Mehdi
+    - family-names: Ahmed
+      given-names: Syed
+  collection-title: "Proceedings of the 41st International Conference on Software Engineering"
+  conference:
+    name: "International Conference on Software Engineering (ICSE '19)"
+    city: "Montréal"
+    region: "QC"
+    country: CA
+  publisher:
+    name: "IEEE Press"
+  year: 2019
+  month: 5
+  start: 619
+  end: 630
+  doi: 10.1109/ICSE.2019.00072
+  url: "http://academicworks.cuny.edu/hc_pubs/489"
+references:
+  - type: conference-paper
+    title: "A Tool for Optimizing Java 8 Stream Software via Automated Refactoring"
+    authors:
+      - family-names: Khatchadourian
+        given-names: Raffi
+        orcid: "https://orcid.org/0000-0002-7930-0182"
+      - family-names: Tang
+        given-names: Yiming
+      - family-names: Bagherzadeh
+        given-names: Mehdi
+      - family-names: Ahmed
+        given-names: Syed
+    collection-title: "Proceedings of the 18th IEEE International Working Conference on Source Code Analysis and Manipulation"
+    conference:
+      name: "International Working Conference on Source Code Analysis and Manipulation (SCAM '18)"
+      city: "Madrid"
+      country: ES
+    publisher:
+      name: "IEEE"
+    notes: "Engineering Track."
+    year: 2018
+    month: 9
+    start: 34
+    end: 39
+    doi: 10.1109/SCAM.2018.00011
+    url: "http://academicworks.cuny.edu/hc_pubs/429"
