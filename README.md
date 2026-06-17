@@ -93,47 +93,7 @@ See the [wiki][wiki] for further information.
 
 ## Citation
 
-Please cite this work as follows:
-
-```bibtex
-@InProceedings{Khatchadourian2019,
-  author       = {Raffi Khatchadourian and Yiming Tang and Mehdi Bagherzadeh and Syed Ahmed},
-  booktitle    = {International Conference on Software Engineering},
-  title        = {Safe Automated Refactoring for Intelligent Parallelization of {Java} 8 Streams},
-  year         = {2019},
-  address      = {Piscataway, NJ, USA},
-  month        = may,
-  organization = {ACM/IEEE},
-  pages        = {619--630},
-  publisher    = {{IEEE}},
-  series       = {ICSE '19},
-  acmid        = {3339586},
-  doi          = {10.1109/icse.2019.00072},
-  keywords     = {Java 8, automatic parallelization, refactoring, static analysis, streams, typestate analysis},
-  location     = {Montr\'eal, QC, Canada},
-  numpages     = {12},
-  url          = {http://academicworks.cuny.edu/hc_pubs/489},
-}
-
-@InProceedings{Khatchadourian2018,
-  author       = {Raffi Khatchadourian and Yiming Tang and Mehdi Bagherzadeh and Syed Ahmed},
-  booktitle    = {International Working Conference on Source Code Analysis and Manipulation},
-  title        = {A Tool for Optimizing {Java} 8 Stream Software via Automated Refactoring},
-  year         = {2018},
-  month        = sep,
-  note         = {Engineering Track.},
-  organization = {IEEE},
-  pages        = {34--39},
-  publisher    = {IEEE Press},
-  series       = {IEEE SCAM '18},
-  doi          = {10.1109/SCAM.2018.00011},
-  issn         = {2470-6892},
-  keywords     = {refactoring, automatic parallelization, typestate analysis, ordering, Java 8, streams, eclipse, WALA, SAFE},
-  location     = {Madrid, Spain},
-  numpages     = {6},
-  url          = {http://academicworks.cuny.edu/hc_pubs/429},
-}
-```
+To cite this work, use the **"Cite this repository"** button in the GitHub sidebar, backed by [`CITATION.cff`](CITATION.cff), which generates APA or BibTeX for our [ICSE '19 paper](#Khatchadourian2019). See [Publications](#publications) above for the related [SCAM '18 tool paper](#Khatchadourian2018b).
 
 [wiki]: https://github.com/ponder-lab/Java-8-Stream-Refactoring/wiki
 [challenges]: https://github.com/ponder-lab/Optimize-Java-8-Streams-Refactoring/wiki/Solutions-to-Engineering-Challenges
